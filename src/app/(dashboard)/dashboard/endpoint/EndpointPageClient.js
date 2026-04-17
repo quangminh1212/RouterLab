@@ -88,51 +88,11 @@ export default function APIPageClient({ machineId }) {
         const tPublicUrl = data.tunnel?.publicUrl || "";
         setTunnelUrl(tUrl);
         setTunnelPublicUrl(tPublicUrl);
+        setTunnelEnabled(tEnabled);
         const tsEn = data.tailscale?.enabled || false;
         const tsUrlVal = data.tailscale?.tunnelUrl || "";
         setTsUrl(tsUrlVal);
-
-        if (tsEn && tsUrlVal) {
-          setTsLoading(true);
-          setTsProgress("Checking Tailscale...");
-          const tsHealthUrl = `${tsUrlVal}/api/health`;
-          try {
-            const tsPing = await fetch(tsHealthUrl, { mode: "no-cors", cache: "no-store" });
-            if (tsPing.ok || tsPing.type === "opaque") {
-              setTsEnabled(true);
-            } else {
-              const ok = await pingTsHealth(tsUrlVal);
-              setTsEnabled(ok);
-              if (!ok) setTsStatus({ type: "warning", message: "Tailscale not reachable." });
-            }
-          } catch {
-            const ok = await pingTsHealth(tsUrlVal);
-            setTsEnabled(ok);
-            if (!ok) setTsStatus({ type: "warning", message: "Tailscale not reachable." });
-          } finally {
-            setTsLoading(false);
-            setTsProgress("");
-          }
-        } else {
-          setTsEnabled(tsEn);
-        }
-
-        if (tEnabled && (tPublicUrl || tUrl)) {
-          // Ping once to verify reachable
-          const healthUrl = `${tPublicUrl || tUrl}/api/health`;
-          try {
-            const ping = await fetch(healthUrl, { cache: "no-store" });
-            if (ping.ok) {
-              setTunnelEnabled(true);
-            } else {
-              pingTunnelHealth(tPublicUrl || tUrl);
-            }
-          } catch {
-            pingTunnelHealth(tPublicUrl || tUrl);
-          }
-        } else {
-          setTunnelEnabled(tEnabled);
-        }
+        setTsEnabled(tsEn);
       }
     } catch (error) {
       console.log("Error loading settings:", error);
