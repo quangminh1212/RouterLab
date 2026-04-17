@@ -1,10 +1,77 @@
 #!/usr/bin/env node
 
 const { spawn, exec } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const inquirer = require("inquirer").default || require("inquirer");
 const https = require("https");
+
+const LOG_FILE_NAME = "log.txt";
+const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
+
+function setupFileLogging() {
+  const repoRoot = path.resolve(__dirname, "..");
+  const logFilePath = path.join(repoRoot, LOG_FILE_NAME);
+
+  try {
+    if (fs.existsSync(logFilePath)) {
+      const stats = fs.statSync(logFilePath);
+      if (stats.size >= MAX_LOG_SIZE_BYTES) {
+        fs.unlinkSync(logFilePath);
+      }
+    }
+  } catch (error) {
+    process.stderr.write(`[WARN] Failed to rotate log file: ${error.message}\n`);
+  }
+
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  function enforceLogLimit(extraBytes = 0) {
+    try {
+      const currentSize = fs.existsSync(logFilePath) ? fs.statSync(logFilePath).size : 0;
+      if (currentSize + extraBytes < MAX_LOG_SIZE_BYTES) {
+        return true;
+      }
+
+      fs.unlinkSync(logFilePath);
+      return true;
+    } catch (error) {
+      originalStderrWrite(`[WARN] Failed to reset log file: ${error.message}\n`);
+      return false;
+    }
+  }
+
+  function writeToLog(chunk, encoding) {
+    const resolvedEncoding = typeof encoding === "string" ? encoding : "utf8";
+    const content = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), resolvedEncoding);
+    if (!enforceLogLimit(content.length)) {
+      return;
+    }
+
+    try {
+      fs.appendFileSync(logFilePath, content);
+    } catch (error) {
+      originalStderrWrite(`[WARN] Failed to write log file: ${error.message}\n`);
+    }
+  }
+
+  process.stdout.write = (chunk, encoding, callback) => {
+    writeToLog(chunk, encoding);
+    return originalStdoutWrite(chunk, encoding, callback);
+  };
+
+  process.stderr.write = (chunk, encoding, callback) => {
+    writeToLog(chunk, encoding);
+    return originalStderrWrite(chunk, encoding, callback);
+  };
+
+  process.on("SIGINT", () => process.exit(130));
+  process.on("SIGTERM", () => process.exit(143));
+}
+
+setupFileLogging();
 
 const command = process.argv[2];
 const port = process.env.PORT || 20128;
@@ -110,12 +177,25 @@ async function startWebUI() {
   }
 
   console.log(`[INFO] Visit http://localhost:${port}`);
+  console.log(`[INFO] Logging to ${path.resolve(__dirname, "..", LOG_FILE_NAME)} (auto-delete at 100MB)`);
   console.log(`[INFO] Press Ctrl+C to stop\n`);
 
   const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
     cwd: path.resolve(__dirname, ".."),
-    stdio: "inherit",
+    stdio: ["inherit", "pipe", "pipe"],
   });
+
+  if (child.stdout) {
+    child.stdout.on("data", (chunk) => {
+      process.stdout.write(chunk);
+    });
+  }
+
+  if (child.stderr) {
+    child.stderr.on("data", (chunk) => {
+      process.stderr.write(chunk);
+    });
+  }
 
   child.on("error", (err) => {
     console.error("[ERROR] Failed to start XLab Router:", err);
