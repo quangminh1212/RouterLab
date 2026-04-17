@@ -1,5 +1,6 @@
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
+import { logger } from "@/lib/logger";
 
 let initialized = false;
 
@@ -10,7 +11,7 @@ async function ensureInitialized() {
   if (!initialized) {
     await initTranslators();
     initialized = true;
-    console.log("[SSE] Translators initialized for /v1beta/models");
+    logger.info("SSE:GEMINI", "Translators initialized for /v1beta/models");
   }
 }
 
@@ -43,6 +44,7 @@ export async function POST(request, { params }) {
   await ensureInitialized();
 
   try {
+    logger.info("SSE:GEMINI", "POST /v1beta/models request started");
     const { path } = await params;
     // path = ["provider", "model:action"] or ["model:action"]
 
@@ -77,6 +79,7 @@ export async function POST(request, { params }) {
     //   :streamGenerateContent => stream: true  (SSE)
     //   :generateContent       => stream: false (plain JSON)
     const stream = action === ":streamGenerateContent";
+    logger.info("SSE:GEMINI", "Request converted", { model, stream, action });
 
     // Convert Gemini request format to OpenAI/internal format
     const convertedBody = convertGeminiToInternal(body, model, stream);
@@ -89,6 +92,7 @@ export async function POST(request, { params }) {
     });
 
     const response = await handleChat(newRequest);
+    logger.info("SSE:GEMINI", "handleChat completed", { stream });
 
     if (stream) {
       // Transform OpenAI SSE => Gemini SSE on the fly.
@@ -100,7 +104,7 @@ export async function POST(request, { params }) {
       return await convertOpenAIResponseToGemini(response, model);
     }
   } catch (error) {
-    console.log("Error handling Gemini request:", error);
+    logger.error("SSE:GEMINI", "Error handling Gemini request", error);
     return Response.json(
       { error: { message: error.message, code: 500 } },
       { status: 500 }
