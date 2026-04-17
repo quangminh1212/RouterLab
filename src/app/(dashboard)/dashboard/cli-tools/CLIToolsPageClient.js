@@ -18,6 +18,22 @@ const STATUS_ENDPOINTS = {
   openclaw: "/api/cli-tools/openclaw-settings",
 };
 
+const PROVIDERS_FETCH_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = PROVIDERS_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export default function CLIToolsPageClient({ machineId }) {
   const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,13 +105,14 @@ export default function CLIToolsPageClient({ machineId }) {
 
   const fetchConnections = async () => {
     try {
-      const res = await fetch("/api/providers");
+      const res = await fetchWithTimeout("/api/providers");
       const data = await res.json();
       if (res.ok) {
         setConnections(data.connections || []);
       }
     } catch (error) {
-      console.log("Error fetching connections:", error);
+      console.log("Error fetching connections (timeout or network issue):", error);
+      setConnections([]);
     } finally {
       setLoading(false);
     }
