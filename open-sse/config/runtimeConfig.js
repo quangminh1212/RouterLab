@@ -31,6 +31,11 @@ export const MEMORY_CONFIG = {
   proxyDispatchersMaxSize: 20,
 };
 
+export const NETWORK_GUARD_CONFIG = {
+  defaultFetchTimeoutMs: Number(process.env.DEFAULT_FETCH_TIMEOUT_MS || 45000),
+  streamingFetchTimeoutMs: Number(process.env.STREAMING_FETCH_TIMEOUT_MS || 300000),
+};
+
 // Default token limits
 export const DEFAULT_MAX_TOKENS = 64000;
 export const DEFAULT_MIN_TOKENS = 32000;

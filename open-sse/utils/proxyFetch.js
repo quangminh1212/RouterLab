@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { MEMORY_CONFIG } from "../config/runtimeConfig.js";
+import { MEMORY_CONFIG, NETWORK_GUARD_CONFIG } from "../config/runtimeConfig.js";
 
 const isCloud = typeof caches !== "undefined" && typeof caches === "object";
 
@@ -150,9 +150,51 @@ async function createBypassRequest(parsedUrl, realIP, options) {
   // CJS modules expose exports via .default in ESM dynamic import context
   const https = httpsModule.default ?? httpsModule;
   const net = netModule.default ?? netModule;
+  const abortSignal = options?.signal;
 
   return new Promise((resolve, reject) => {
+    if (abortSignal?.aborted) {
+      const abortError = new Error("Fetch aborted");
+      abortError.name = "AbortError";
+      reject(abortError);
+      return;
+    }
+
     const socket = new net.Socket();
+    let req;
+    let settled = false;
+
+    const cleanupAbortListener = () => {
+      if (abortSignal) {
+        abortSignal.removeEventListener("abort", onAbort);
+      }
+    };
+
+    const resolveOnce = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanupAbortListener();
+      resolve(value);
+    };
+
+    const rejectOnce = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanupAbortListener();
+      reject(error);
+    };
+
+    function onAbort() {
+      const abortError = new Error("Fetch aborted");
+      abortError.name = "AbortError";
+      if (req) req.destroy(abortError);
+      socket.destroy(abortError);
+      rejectOnce(abortError);
+    }
+
+    if (abortSignal) {
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    }
 
     socket.connect(HTTPS_PORT, realIP, () => {
       const reqOptions = {
@@ -167,7 +209,7 @@ async function createBypassRequest(parsedUrl, realIP, options) {
         },
       };
 
-      const req = https.request(reqOptions, (res) => {
+      req = https.request(reqOptions, (res) => {
         const response = {
           ok: res.statusCode >= HTTP_SUCCESS_MIN && res.statusCode < HTTP_SUCCESS_MAX,
           status: res.statusCode,
@@ -181,22 +223,105 @@ async function createBypassRequest(parsedUrl, realIP, options) {
           },
           json: async () => JSON.parse(await response.text()),
         };
-        resolve(response);
+        resolveOnce(response);
       });
 
-      req.on("error", reject);
+      req.on("error", rejectOnce);
       if (options.body) {
         req.write(typeof options.body === "string" ? options.body : JSON.stringify(options.body));
       }
       req.end();
     });
 
-    socket.on("error", reject);
+    socket.on("error", rejectOnce);
+  });
+}
+
+function mergeAbortSignals(primarySignal, secondarySignal) {
+  const hasPrimary = primarySignal && typeof primarySignal.addEventListener === "function";
+  const hasSecondary = secondarySignal && typeof secondarySignal.addEventListener === "function";
+
+  if (!hasPrimary && !hasSecondary) {
+    return { signal: undefined, cleanup: () => {} };
+  }
+
+  if (hasPrimary && !hasSecondary) {
+    return { signal: primarySignal, cleanup: () => {} };
+  }
+
+  if (!hasPrimary && hasSecondary) {
+    return { signal: secondarySignal, cleanup: () => {} };
+  }
+
+  const mergedController = new AbortController();
+
+  const abortFrom = (sourceSignal) => {
+    if (mergedController.signal.aborted) return;
+    if (sourceSignal.reason !== undefined) {
+      mergedController.abort(sourceSignal.reason);
+      return;
+    }
+    mergedController.abort();
+  };
+
+  const onPrimaryAbort = () => abortFrom(primarySignal);
+  const onSecondaryAbort = () => abortFrom(secondarySignal);
+
+  if (primarySignal.aborted) {
+    abortFrom(primarySignal);
+  } else {
+    primarySignal.addEventListener("abort", onPrimaryAbort, { once: true });
+  }
+
+  if (secondarySignal.aborted) {
+    abortFrom(secondarySignal);
+  } else {
+    secondarySignal.addEventListener("abort", onSecondaryAbort, { once: true });
+  }
+
+  return {
+    signal: mergedController.signal,
+    cleanup: () => {
+      primarySignal.removeEventListener("abort", onPrimaryAbort);
+      secondarySignal.removeEventListener("abort", onSecondaryAbort);
+    },
+  };
+}
+
+function withFetchTimeout(requestFactory, options, timeoutMs) {
+  const timeoutController = new AbortController();
+  const { signal, cleanup } = mergeAbortSignals(options?.signal, timeoutController.signal);
+
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const timeoutError = new Error(`Fetch timeout after ${timeoutMs}ms`);
+      timeoutError.name = "FetchTimeoutError";
+      timeoutController.abort(timeoutError);
+      reject(timeoutError);
+    }, timeoutMs);
+  });
+
+  const requestOptions = signal ? { ...options, signal } : options;
+  const requestPromise = Promise.resolve().then(() => requestFactory(requestOptions));
+
+  return Promise.race([requestPromise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+    cleanup();
   });
 }
 
 export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
   const targetUrl = typeof url === "string" ? url : url.toString();
+  const acceptHeader = typeof options.headers?.get === "function"
+    ? options.headers.get("accept")
+    : options.headers?.Accept || options.headers?.accept || "";
+  const isStreaming = String(acceptHeader || "").includes("text/event-stream");
+  const timeoutMs =
+    options._fetchTimeout ||
+    (isStreaming
+      ? NETWORK_GUARD_CONFIG.streamingFetchTimeoutMs
+      : NETWORK_GUARD_CONFIG.defaultFetchTimeoutMs);
 
   // Vercel relay: forward request via relay headers
   const vercelRelayUrl = normalizeString(proxyOptions?.vercelRelayUrl);
@@ -207,7 +332,12 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
       "x-relay-target": `${parsed.protocol}//${parsed.host}`,
       "x-relay-path": `${parsed.pathname}${parsed.search}`,
     };
-    return originalFetch(vercelRelayUrl, { ...options, headers: relayHeaders });
+    const relayOptions = { ...options, headers: relayHeaders };
+    return withFetchTimeout(
+      (effectiveOptions) => originalFetch(vercelRelayUrl, effectiveOptions),
+      relayOptions,
+      timeoutMs,
+    );
   }
 
   const connectionProxyUrl = resolveConnectionProxyUrl(targetUrl, proxyOptions);
@@ -220,7 +350,12 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
       // Proxy resolves DNS externally (not affected by /etc/hosts) — use proxy directly
       try {
         const dispatcher = await getDispatcher(proxyUrl);
-        return await originalFetch(url, { ...options, dispatcher });
+        const proxyFetchOptions = { ...options, dispatcher };
+        return await withFetchTimeout(
+          (effectiveOptions) => originalFetch(url, effectiveOptions),
+          proxyFetchOptions,
+          timeoutMs,
+        );
       } catch (proxyError) {
         if (proxyOptions?.strictProxy === true) {
           throw new Error(`[ProxyFetch] Proxy required but failed (strictProxy=true): ${proxyError.message}`);
@@ -232,7 +367,13 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
     try {
       const parsedUrl = new URL(targetUrl);
       const realIP = await resolveRealIP(parsedUrl.hostname);
-      if (realIP) return await createBypassRequest(parsedUrl, realIP, options);
+      if (realIP) {
+        return await withFetchTimeout(
+          (effectiveOptions) => createBypassRequest(parsedUrl, realIP, effectiveOptions),
+          options,
+          timeoutMs,
+        );
+      }
     } catch (error) {
       console.warn(`[ProxyFetch] MITM bypass failed: ${error.message}`);
     }
@@ -241,18 +382,31 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
   if (proxyUrl) {
     try {
       const dispatcher = await getDispatcher(proxyUrl);
-      return await originalFetch(url, { ...options, dispatcher });
+      const proxyFetchOptions = { ...options, dispatcher };
+      return await withFetchTimeout(
+        (effectiveOptions) => originalFetch(url, effectiveOptions),
+        proxyFetchOptions,
+        timeoutMs,
+      );
     } catch (proxyError) {
       // If strictProxy is enabled, fail hard instead of falling back to direct
       if (proxyOptions?.strictProxy === true) {
         throw new Error(`[ProxyFetch] Proxy required but failed (strictProxy=true): ${proxyError.message}`);
       }
       console.warn(`[ProxyFetch] Proxy failed, falling back to direct: ${proxyError.message}`);
-      return originalFetch(url, options);
+      return withFetchTimeout(
+        (effectiveOptions) => originalFetch(url, effectiveOptions),
+        options,
+        timeoutMs,
+      );
     }
   }
 
-  return originalFetch(url, options);
+  return withFetchTimeout(
+    (effectiveOptions) => originalFetch(url, effectiveOptions),
+    options,
+    timeoutMs,
+  );
 }
 
 /**
