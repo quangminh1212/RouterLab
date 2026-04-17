@@ -5,6 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import lockfile from "proper-lockfile";
 import { DATA_DIR } from "@/lib/dataDir.js";
+import { logger } from "@/lib/logger.js";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:20128";
 const isCloud = typeof caches !== 'undefined' || typeof caches === 'object';
@@ -147,11 +148,13 @@ async function withFileLock(db, operation) {
   const releaseLocal = await localMutex.acquire();
   let release = null;
   try {
+    logger.debug("DB", "Acquiring file lock");
     release = await lockfile.lock(DB_FILE, LOCK_OPTIONS);
     await operation();
+    logger.debug("DB", "File lock operation completed");
   } catch (error) {
     if (error.code === "ELOCKED") {
-      console.warn(`[DB] File is locked, retrying...`);
+      logger.warn("DB", "File is locked, retrying...");
     }
     throw error;
   } finally {
@@ -173,6 +176,7 @@ async function safeWrite(db) {
 export async function getDb() {
   if (isCloud) {
     if (!dbInstance) {
+      logger.info("DB", "Initializing cloud DB instance");
       const data = cloneDefaultData();
       dbInstance = new Low({ read: async () => { }, write: async () => { } }, data);
       dbInstance.data = data;
@@ -181,6 +185,7 @@ export async function getDb() {
   }
 
   if (!dbInstance) {
+    logger.info("DB", "Initializing local DB instance", { file: DB_FILE });
     dbInstance = new Low(new JSONFile(DB_FILE), cloneDefaultData());
   }
 
@@ -188,7 +193,7 @@ export async function getDb() {
     await safeRead(dbInstance);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      console.warn('[DB] Corrupt JSON detected, resetting to defaults...');
+      logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
       dbInstance.data = cloneDefaultData();
       await safeWrite(dbInstance);
     } else {
@@ -197,12 +202,16 @@ export async function getDb() {
   }
 
   if (!dbInstance.data) {
+    logger.warn("DB", "DB data is null, initializing with defaults");
     dbInstance.data = cloneDefaultData();
     await safeWrite(dbInstance);
   } else {
     const { data, changed } = ensureDbShape(dbInstance.data);
     dbInstance.data = data;
-    if (changed) await safeWrite(dbInstance);
+    if (changed) {
+      logger.info("DB", "DB schema updated, writing changes");
+      await safeWrite(dbInstance);
+    }
   }
 
   return dbInstance;
