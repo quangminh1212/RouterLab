@@ -1,3 +1,8 @@
+# v1.0.5 (2026-04-18)
+
+## Fixes
+- Remove BOM (Byte Order Mark) from package.json to fix JSON parsing error on startup.
+
 # v1.0.4 (2026-04-18)
 
 ## Improvements
