@@ -118,12 +118,13 @@ echo [INFO] Server will start on http://localhost:20128 >> %LOG_FILE%
 echo [INFO] Press Ctrl+C to stop the server
 echo [INFO] Press Ctrl+C to stop the server >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
-echo [INFO] Dev server output is shown directly below
+echo [INFO] All server output will be logged to %LOG_FILE%
+echo [INFO] Server output is also shown below (press Ctrl+C to stop)
 echo ========================================
 echo.
 
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
-call npm run dev
+powershell -Command "npm run dev 2>&1 | Tee-Object -FilePath '%LOG_FILE%' -Append"
 set DEV_EXIT_CODE=%ERRORLEVEL%
 
 if not "%DEV_EXIT_CODE%"=="0" (
