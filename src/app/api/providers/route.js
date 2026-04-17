@@ -8,6 +8,7 @@ import {
 } from "@/models";
 import { APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { FREE_TIER_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +49,15 @@ async function normalizeProxyPoolId(proxyPoolId) {
 // GET /api/providers - List all connections
 export async function GET() {
   try {
+    logger.info("API:PROVIDERS", "GET /api/providers started");
     const connections = await getProviderConnections();
+    logger.info("API:PROVIDERS", "Provider connections loaded", { count: connections.length });
 
     // Build nodeNameMap for compatible providers (id → name)
     let nodeNameMap = {};
     try {
       const nodes = await getProviderNodes();
+      logger.info("API:PROVIDERS", "Provider nodes loaded", { count: nodes.length });
       for (const node of nodes) {
         if (node.id && node.name) nodeNameMap[node.id] = node.name;
       }
@@ -75,9 +79,10 @@ export async function GET() {
       };
     });
 
+    logger.info("API:PROVIDERS", "GET /api/providers completed", { count: safeConnections.length });
     return NextResponse.json({ connections: safeConnections });
   } catch (error) {
-    console.log("Error fetching providers:", error);
+    logger.error("API:PROVIDERS", "Error fetching providers", error);
     return NextResponse.json({ error: "Failed to fetch providers" }, { status: 500 });
   }
 }
@@ -85,6 +90,7 @@ export async function GET() {
 // POST /api/providers - Create new connection (API Key only, OAuth via separate flow)
 export async function POST(request) {
   try {
+    logger.info("API:PROVIDERS", "POST /api/providers started");
     const body = await request.json();
     const { provider, apiKey, name, priority, globalPriority, defaultModel, testStatus } = body;
     const proxyConfig = normalizeProxyConfig(body);
@@ -179,9 +185,10 @@ export async function POST(request) {
     const result = { ...newConnection };
     delete result.apiKey;
 
+    logger.info("API:PROVIDERS", "POST /api/providers completed", { provider, name });
     return NextResponse.json({ connection: result }, { status: 201 });
   } catch (error) {
-    console.log("Error creating provider:", error);
+    logger.error("API:PROVIDERS", "Error creating provider", error);
     return NextResponse.json({ error: "Failed to create provider" }, { status: 500 });
   }
 }
