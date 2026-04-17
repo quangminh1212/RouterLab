@@ -28,42 +28,102 @@ if (command === "--help" || command === "-h") {
   process.exit(0);
 }
 
-function killProcessOnPort(port, callback) {
-  const isWin = process.platform === "win32";
-  const cmd = isWin
-    ? `powershell -Command "Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"`
-    : `lsof -ti:${port} | xargs kill -9 2>/dev/null || true`;
-
-  exec(cmd, (err) => {
-    if (err && !isWin) {
-      // Ignore errors on Unix (port might be free)
-    }
-    callback();
+function execCommand(commandText) {
+  return new Promise((resolve) => {
+    exec(commandText, (error, stdout, stderr) => {
+      resolve({ error, stdout, stderr });
+    });
   });
 }
 
-function startWebUI() {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getPidsOnPort(targetPort) {
+  const isWin = process.platform === "win32";
+  const commandText = isWin
+    ? `powershell -Command "Get-NetTCPConnection -LocalPort ${targetPort} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique"`
+    : `lsof -ti:${targetPort}`;
+  const { stdout } = await execCommand(commandText);
+  return String(stdout || "")
+    .split(/\r?\n/)
+    .map((line) => Number.parseInt(line.trim(), 10))
+    .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+}
+
+async function waitForPortToClear(targetPort, retries = 20, delayMs = 250) {
+  for (let index = 0; index < retries; index += 1) {
+    const pids = await getPidsOnPort(targetPort);
+    if (pids.length === 0) {
+      return true;
+    }
+    await sleep(delayMs);
+  }
+  return false;
+}
+
+async function killProcessOnPort(targetPort) {
+  const pids = await getPidsOnPort(targetPort);
+  if (pids.length === 0) {
+    return [];
+  }
+
+  const killedPids = [];
+  for (const pid of pids) {
+    try {
+      process.kill(pid, "SIGTERM");
+      killedPids.push(pid);
+    } catch (_) {
+    }
+  }
+
+  await sleep(500);
+
+  const remainingPids = await getPidsOnPort(targetPort);
+  for (const pid of remainingPids) {
+    try {
+      process.kill(pid, "SIGKILL");
+      if (!killedPids.includes(pid)) {
+        killedPids.push(pid);
+      }
+    } catch (_) {
+    }
+  }
+
+  const isCleared = await waitForPortToClear(targetPort);
+  if (!isCleared) {
+    throw new Error(`Port ${targetPort} is still busy after stopping old processes.`);
+  }
+
+  return killedPids;
+}
+
+async function startWebUI() {
   const nextBin = require.resolve("next/dist/bin/next");
 
   console.log(`\n[INFO] Starting XLab Router Web UI on port ${port}...`);
 
-  killProcessOnPort(port, () => {
-    console.log(`[INFO] Visit http://localhost:${port}`);
-    console.log(`[INFO] Press Ctrl+C to stop\n`);
+  const killedPids = await killProcessOnPort(port);
+  if (killedPids.length > 0) {
+    console.log(`[INFO] Stopped old process(es) on port ${port}: ${killedPids.join(", ")}`);
+  }
 
-    const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
-      cwd: path.resolve(__dirname, ".."),
-      stdio: "inherit",
-    });
+  console.log(`[INFO] Visit http://localhost:${port}`);
+  console.log(`[INFO] Press Ctrl+C to stop\n`);
 
-    child.on("error", (err) => {
-      console.error("[ERROR] Failed to start XLab Router:", err);
-      process.exit(1);
-    });
+  const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
+    cwd: path.resolve(__dirname, ".."),
+    stdio: "inherit",
+  });
 
-    child.on("exit", (code) => {
-      process.exit(code || 0);
-    });
+  child.on("error", (err) => {
+    console.error("[ERROR] Failed to start XLab Router:", err);
+    process.exit(1);
+  });
+
+  child.on("exit", (code) => {
+    process.exit(code || 0);
   });
 }
 
