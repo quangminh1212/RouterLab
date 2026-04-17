@@ -845,7 +845,22 @@ export { saveRequestDetail, getRequestDetails, getRequestDetailById } from "./re
  */
 export async function exportUsageDb() {
   const db = await getUsageDb();
-  return db.data;
+  const history = db.data.history || [];
+  const dailySummary = db.data.dailySummary || {};
+  const totalRequestsLifetime = db.data.totalRequestsLifetime || 0;
+
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    history,
+    dailySummary,
+    totalRequestsLifetime,
+    metadata: {
+      historyCount: history.length,
+      dailySummaryDays: Object.keys(dailySummary).length,
+      totalRequests: totalRequestsLifetime,
+    },
+  };
 }
 
 /**
@@ -853,6 +868,16 @@ export async function exportUsageDb() {
  */
 export async function importUsageDb(payload) {
   const db = await getUsageDb();
-  db.data = payload;
+  db.data = {
+    history: Array.isArray(payload?.history) ? payload.history : [],
+    dailySummary:
+      typeof payload?.dailySummary === "object" && payload.dailySummary !== null
+        ? payload.dailySummary
+        : {},
+    totalRequestsLifetime:
+      typeof payload?.totalRequestsLifetime === "number"
+        ? payload.totalRequestsLifetime
+        : 0,
+  };
   await safeWrite(db);
 }
