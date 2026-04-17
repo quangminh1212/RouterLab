@@ -337,7 +337,7 @@ export default function ClaudeToolCard({
                     <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">{model.name}</span>
                     <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                     <input type="text" value={modelMappings[model.alias] || ""} onChange={(e) => onModelMappingChange(model.alias, e.target.value)} placeholder="provider/model-id" className="flex-1 px-2 py-1.5 bg-surface rounded border border-border text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
-                    <button onClick={() => openModelSelector(model.alias)} disabled={!hasActiveProviders} className={`px-2 py-1.5 rounded border text-xs transition-colors shrink-0 whitespace-nowrap ${hasActiveProviders ? "bg-surface border-border text-text-main hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-border"}`}>Select Model</button>
+                    <button onClick={() => openModelSelector(model.alias)} className="px-2 py-1.5 rounded border text-xs transition-colors shrink-0 whitespace-nowrap bg-surface border-border text-text-main hover:border-primary cursor-pointer">Select Model</button>
                     {modelMappings[model.alias] && <button onClick={() => onModelMappingChange(model.alias, "")} className="p-1 text-text-muted hover:text-red-500 rounded transition-colors" title="Clear"><span className="material-symbols-outlined text-[14px]">close</span></button>}
                   </div>
                 ))}
@@ -364,7 +364,7 @@ export default function ClaudeToolCard({
               )}
 
               <div className="flex items-center gap-2">
-                <Button variant="primary" size="sm" onClick={handleApplySettings} disabled={!hasActiveProviders} loading={applying}>
+                <Button variant="primary" size="sm" onClick={handleApplySettings} loading={applying}>
                   <span className="material-symbols-outlined text-[14px] mr-1">save</span>Apply
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleResetSettings} disabled={!claudeStatus?.has9Router} loading={restoring}>
