@@ -1,5 +1,6 @@
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
+import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
@@ -30,8 +31,13 @@ export async function OPTIONS() {
 /**
  * POST /v1/messages - Claude format (auto convert via handleChat)
  */
-export async function POST(request) {
+async function postHandler(request) {
   await ensureInitialized();
   return await handleChat(request);
 }
 
+export const POST = withRouteGuard(
+  "v1/messages",
+  postHandler,
+  { timeoutMs: 180000 },
+);

@@ -1,5 +1,6 @@
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
+import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
@@ -25,7 +26,13 @@ export async function OPTIONS() {
  * POST /v1/responses - OpenAI Responses API format
  * Now handled by translator pattern (openai-responses format auto-detected)
  */
-export async function POST(request) {
+async function postHandler(request) {
   await ensureInitialized();
   return await handleChat(request);
 }
+
+export const POST = withRouteGuard(
+  "v1/responses",
+  postHandler,
+  { timeoutMs: 180000 },
+);

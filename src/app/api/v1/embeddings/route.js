@@ -1,4 +1,5 @@
 import { handleEmbeddings } from "@/sse/handlers/embeddings.js";
+import { withRouteGuard } from "@/lib/runtimeGuard";
 
 /**
  * Handle CORS preflight
@@ -16,6 +17,12 @@ export async function OPTIONS() {
 /**
  * POST /v1/embeddings - OpenAI-compatible embeddings endpoint
  */
-export async function POST(request) {
+async function postHandler(request) {
   return await handleEmbeddings(request);
 }
+
+export const POST = withRouteGuard(
+  "v1/embeddings",
+  postHandler,
+  { timeoutMs: 90000 },
+);

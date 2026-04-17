@@ -1,5 +1,6 @@
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
+import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
@@ -24,7 +25,7 @@ export async function OPTIONS() {
  * POST /v1/responses/compact - Compact conversation context
  * Reuses the same handleChat pipeline, signals compact via body._compact
  */
-export async function POST(request) {
+async function postHandler(request) {
   await ensureInitialized();
   const body = await request.json();
   body._compact = true;
@@ -35,3 +36,9 @@ export async function POST(request) {
   });
   return await handleChat(newRequest);
 }
+
+export const POST = withRouteGuard(
+  "v1/responses/compact",
+  postHandler,
+  { timeoutMs: 180000 },
+);

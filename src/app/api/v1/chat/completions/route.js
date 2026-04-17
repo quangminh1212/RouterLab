@@ -1,6 +1,7 @@
 import { callCloudWithMachineId } from "@/shared/utils/cloud.js";
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
+import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
@@ -28,10 +29,15 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request) {  
+async function postHandler(request) {
   // Fallback to local handling
   await ensureInitialized();
   
   return await handleChat(request);
 }
 
+export const POST = withRouteGuard(
+  "v1/chat/completions",
+  postHandler,
+  { timeoutMs: 180000 },
+);
