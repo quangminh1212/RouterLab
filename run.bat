@@ -31,14 +31,19 @@ echo.
 
 echo [STEP 2/5] Checking npm installation...
 echo [STEP 2/5] Checking npm installation... >> %LOG_FILE%
-npm --version >> %LOG_FILE% 2>&1
+call npm --version > nul 2>&1
 if errorlevel 1 (
     echo [ERROR] npm not found!
     echo [ERROR] npm not found! >> %LOG_FILE%
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
+for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
+if not defined NPM_VERSION (
+    echo [WARN] Cannot detect npm version, but npm is available.
+    echo [WARN] Cannot detect npm version, but npm is available. >> %LOG_FILE%
+    set NPM_VERSION=unknown
+)
 echo [OK] npm version: %NPM_VERSION%
 echo [OK] npm version: %NPM_VERSION% >> %LOG_FILE%
 echo.
@@ -50,7 +55,7 @@ if not exist "node_modules" (
     echo [WARN] node_modules not found. Installing dependencies... >> %LOG_FILE%
     echo [INFO] Running npm install...
     echo [INFO] Running npm install... >> %LOG_FILE%
-    npm install >> %LOG_FILE% 2>&1
+    call npm install >> %LOG_FILE% 2>&1
     if errorlevel 1 (
         echo [ERROR] npm install failed! Check %LOG_FILE% for details.
         echo [ERROR] npm install failed! >> %LOG_FILE%
@@ -97,7 +102,7 @@ echo ========================================
 echo.
 
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
-npm run dev >> %LOG_FILE% 2>&1
+call npm run dev >> %LOG_FILE% 2>&1
 
 if errorlevel 1 (
     echo.
