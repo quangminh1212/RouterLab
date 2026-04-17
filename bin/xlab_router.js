@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { spawn } = require("child_process");
+const { spawn, exec } = require("child_process");
 const path = require("path");
 const pkg = require("../package.json");
 
@@ -24,21 +24,38 @@ if (command === "--help" || command === "-h") {
   process.exit(0);
 }
 
+function killProcessOnPort(port, callback) {
+  const isWin = process.platform === "win32";
+  const cmd = isWin
+    ? `powershell -Command "Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"`
+    : `lsof -ti:${port} | xargs kill -9 2>/dev/null || true`;
+
+  exec(cmd, (err) => {
+    if (err && !isWin) {
+      // Ignore errors on Unix (port might be free)
+    }
+    callback();
+  });
+}
+
 const nextBin = require.resolve("next/dist/bin/next");
 
 console.log(`Starting 9Router on port ${port}...`);
-console.log(`Visit http://localhost:${port}`);
 
-const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
-  cwd: path.resolve(__dirname, ".."),
-  stdio: "inherit",
-});
+killProcessOnPort(port, () => {
+  console.log(`Visit http://localhost:${port}`);
 
-child.on("error", (err) => {
-  console.error("Failed to start 9Router:", err);
-  process.exit(1);
-});
+  const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
+    cwd: path.resolve(__dirname, ".."),
+    stdio: "inherit",
+  });
 
-child.on("exit", (code) => {
-  process.exit(code || 0);
+  child.on("error", (err) => {
+    console.error("Failed to start 9Router:", err);
+    process.exit(1);
+  });
+
+  child.on("exit", (code) => {
+    process.exit(code || 0);
+  });
 });
