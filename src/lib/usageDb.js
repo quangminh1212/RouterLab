@@ -839,3 +839,20 @@ export async function getChartData(period = "7d") {
 
 // Re-export request details functions from new SQLite-based module
 export { saveRequestDetail, getRequestDetails, getRequestDetailById } from "./requestDetailsDb.js";
+
+/**
+ * Export usage database
+ */
+export async function exportUsageDb() {
+  const db = await getUsageDb();
+  return db.data;
+}
+
+/**
+ * Import usage database
+ */
+export async function importUsageDb(payload) {
+  const db = await getUsageDb();
+  db.data = payload;
+  await safeWrite(db);
+}

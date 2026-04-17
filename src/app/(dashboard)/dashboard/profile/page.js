@@ -329,6 +329,37 @@ export default function ProfilePage() {
     }
   };
 
+  const handleExportUsage = async () => {
+    setDbLoading(true);
+    setDbStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/settings/usage");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to export usage");
+      }
+
+      const payload = await res.json();
+      const content = JSON.stringify(payload, null, 2);
+      const blob = new Blob([content], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[.:]/g, "-");
+      anchor.href = url;
+      anchor.download = `9router-usage-${stamp}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      setDbStatus({ type: "success", message: "Usage backup downloaded" });
+    } catch (err) {
+      setDbStatus({ type: "error", message: err.message || "Failed to export usage" });
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
   const observabilityEnabled = settings.enableObservability === true;
 
   return (
@@ -382,6 +413,14 @@ export default function ProfilePage() {
                 loading={dbLoading}
               >
                 Download Backup
+              </Button>
+              <Button
+                variant="secondary"
+                icon="download"
+                onClick={handleExportUsage}
+                loading={dbLoading}
+              >
+                Download Usage
               </Button>
               <Button
                 variant="outline"
