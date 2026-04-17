@@ -15,8 +15,28 @@ echo [INFO] Starting at %date% %time%
 echo [INFO] Starting at %date% %time% > %LOG_FILE%
 echo.
 
-echo [STEP 1/5] Checking Node.js installation...
-echo [STEP 1/5] Checking Node.js installation... >> %LOG_FILE%
+echo [STEP 1/6] Checking for existing server on port 20128...
+echo [STEP 1/6] Checking for existing server on port 20128... >> %LOG_FILE%
+netstat -ano | findstr /R /C:":20128 .*LISTENING" >nul 2>&1
+if not errorlevel 1 (
+    echo [WARN] Port 20128 is in use. Stopping existing process...
+    echo [WARN] Port 20128 is in use. Stopping existing process... >> %LOG_FILE%
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":20128 .*LISTENING"') do (
+        echo [INFO] Killing process ID: %%a
+        echo [INFO] Killing process ID: %%a >> %LOG_FILE%
+        taskkill /F /PID %%a >nul 2>&1
+    )
+    timeout /t 2 /nobreak >nul
+    echo [OK] Existing process stopped.
+    echo [OK] Existing process stopped. >> %LOG_FILE%
+) else (
+    echo [OK] Port 20128 is free.
+    echo [OK] Port 20128 is free. >> %LOG_FILE%
+)
+echo.
+
+echo [STEP 2/6] Checking Node.js installation...
+echo [STEP 2/6] Checking Node.js installation... >> %LOG_FILE%
 node --version >> %LOG_FILE% 2>&1
 if errorlevel 1 (
     echo [ERROR] Node.js not found! Please install Node.js first.
@@ -29,8 +49,8 @@ echo [OK] Node.js version: %NODE_VERSION%
 echo [OK] Node.js version: %NODE_VERSION% >> %LOG_FILE%
 echo.
 
-echo [STEP 2/5] Checking npm installation...
-echo [STEP 2/5] Checking npm installation... >> %LOG_FILE%
+echo [STEP 3/6] Checking npm installation...
+echo [STEP 3/6] Checking npm installation... >> %LOG_FILE%
 call npm --version > nul 2>&1
 if errorlevel 1 (
     echo [ERROR] npm not found!
@@ -48,8 +68,8 @@ echo [OK] npm version: %NPM_VERSION%
 echo [OK] npm version: %NPM_VERSION% >> %LOG_FILE%
 echo.
 
-echo [STEP 3/5] Checking node_modules...
-echo [STEP 3/5] Checking node_modules... >> %LOG_FILE%
+echo [STEP 4/6] Checking node_modules...
+echo [STEP 4/6] Checking node_modules... >> %LOG_FILE%
 if not exist "node_modules" (
     echo [WARN] node_modules not found. Installing dependencies...
     echo [WARN] node_modules not found. Installing dependencies... >> %LOG_FILE%
@@ -70,8 +90,8 @@ if not exist "node_modules" (
 )
 echo.
 
-echo [STEP 4/5] Checking .env file...
-echo [STEP 4/5] Checking .env file... >> %LOG_FILE%
+echo [STEP 5/6] Checking .env file...
+echo [STEP 5/6] Checking .env file... >> %LOG_FILE%
 if not exist ".env" (
     if exist ".env.example" (
         echo [WARN] .env not found. Copying from .env.example...
@@ -89,25 +109,27 @@ if not exist ".env" (
 )
 echo.
 
-echo [STEP 5/5] Starting development server...
-echo [STEP 5/5] Starting development server... >> %LOG_FILE%
+echo [STEP 6/6] Starting development server...
+echo [STEP 6/6] Starting development server... >> %LOG_FILE%
 echo [INFO] Running: npm run dev
 echo [INFO] Running: npm run dev >> %LOG_FILE%
 echo [INFO] Server will start on http://localhost:20128
 echo [INFO] Server will start on http://localhost:20128 >> %LOG_FILE%
 echo [INFO] Press Ctrl+C to stop the server
 echo [INFO] Press Ctrl+C to stop the server >> %LOG_FILE%
-echo [INFO] All output will be logged to %LOG_FILE%
+echo [INFO] Startup events are logged to %LOG_FILE%
+echo [INFO] Dev server output is shown directly below
 echo ========================================
 echo.
 
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
-call npm run dev >> %LOG_FILE% 2>&1
+call npm run dev
+set DEV_EXIT_CODE=%ERRORLEVEL%
 
-if errorlevel 1 (
+if not "%DEV_EXIT_CODE%"=="0" (
     echo.
-    echo [ERROR] Server failed to start! Check %LOG_FILE% for details.
-    echo [ERROR] Server failed to start! >> %LOG_FILE%
+    echo [ERROR] Server stopped with exit code %DEV_EXIT_CODE%. Check %LOG_FILE% for startup details.
+    echo [ERROR] Server stopped with exit code %DEV_EXIT_CODE%. >> %LOG_FILE%
     pause
-    exit /b 1
+    exit /b %DEV_EXIT_CODE%
 )
