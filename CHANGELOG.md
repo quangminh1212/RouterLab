@@ -1,3 +1,8 @@
+# v1.0.4 (2026-04-18)
+
+## Improvements
+- Update package dependencies for improved stability and release the global CLI package as v1.0.4.
+
 # v0.3.96 (2026-04-17)
 
 ## Features
