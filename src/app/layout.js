@@ -5,9 +5,14 @@ import "@/lib/initCloudSync"; // Auto-initialize cloud sync
 import "@/lib/network/initOutboundProxy"; // Auto-initialize outbound proxy env
 import { initConsoleLogCapture } from "@/lib/consoleLogBuffer";
 import { RuntimeI18nProvider } from "@/i18n/RuntimeI18nProvider";
+import { logger } from "@/lib/logger";
 
 // Hook console immediately at module load time (server-side only, runs once)
 initConsoleLogCapture();
+logger.info("APP", "Console log capture initialized");
+logger.info("APP", "Cloud sync module loaded");
+logger.info("APP", "Outbound proxy module loaded");
+logger.info("APP", "9Router application starting up");
 
 const inter = Inter({
   subsets: ["latin"],
