@@ -1,31 +1,38 @@
-# Database files - NEVER publish
-data/
-**/data/
-**/db.json
+# Build artifacts
+.next/
+node_modules/
 
 # Development
-src/
+.vscode/
+.github/
+tester/
+tests/
 docs/
-test/
-agents/
-scripts/
-worker/
-shared-sse/
-copilot-api/
-CLIProxyAPI/
 
-# Config files
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local data
+cloud/
+data/
+*.log
+*.db
+*.sqlite
+
+# Git
+.git/
+.gitignore
+
+# Scripts and configs
+scripts/
+run.bat
+run_*.log
+
+# Images (keep only essential)
+images/
+
+# Misc
 *.md
 !README.md
-.gitignore
-.env*
-jsconfig.json
-eslint.config.mjs
-postcss.config.mjs
-next.config.mjs
-tsconfig.json
-
-# Build artifacts that shouldn't be published
-.next/cache/
-.next/standalone/data/
-
