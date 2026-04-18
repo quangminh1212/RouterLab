@@ -52,7 +52,7 @@ export default function ProviderDetailPage() {
     ? {
         id: providerNode.id,
         name: providerNode.name || (providerNode.type === "anthropic-compatible" ? "Anthropic Compatible" : "OpenAI Compatible"),
-        color: providerNode.type === "anthropic-compatible" ? "#D97757" : "#10A37F",
+        color: providerNode.type === "anthropic-compatible" ? "#187878" : "#10A37F",
         textIcon: providerNode.type === "anthropic-compatible" ? "AC" : "OC",
         apiType: providerNode.apiType,
         baseUrl: providerNode.baseUrl,
