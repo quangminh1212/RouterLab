@@ -72,7 +72,7 @@ export const CLI_TOOLS = {
     id: "claude",
     name: "Claude Code",
     icon: "terminal",
-    color: "#D97757",
+    color: "#187878",
     description: "Anthropic Claude Code CLI",
     configType: "env",
     envVars: {
