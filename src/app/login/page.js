@@ -85,6 +85,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
+          <div className="mx-auto mb-3 w-14 h-14 rounded-xl overflow-hidden bg-surface/60 border border-black/5 dark:border-white/10">
+            <img src="/topup.png" alt="xlabrouter logo" className="w-full h-full object-cover" />
+          </div>
           <h1 className="text-3xl font-bold text-primary mb-2">xlabrouter</h1>
           <p className="text-text-muted">Enter your password to access the dashboard</p>
         </div>
