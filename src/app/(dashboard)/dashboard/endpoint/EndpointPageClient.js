@@ -19,6 +19,9 @@ export default function APIPageClient({ machineId }) {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyHasLimit, setNewKeyHasLimit] = useState(false);
+  const [newKeyCostLimit, setNewKeyCostLimit] = useState("");
+  const [createKeyError, setCreateKeyError] = useState("");
   const [createdKey, setCreatedKey] = useState(null);
 
   const [requireApiKey, setRequireApiKey] = useState(false);
@@ -483,11 +486,27 @@ export default function APIPageClient({ machineId }) {
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
 
+    setCreateKeyError("");
+
+    if (newKeyHasLimit) {
+      const normalizedLimit = Number(newKeyCostLimit);
+      if (!Number.isFinite(normalizedLimit) || normalizedLimit <= 0) {
+        setCreateKeyError("Cost limit must be a positive number");
+        return;
+      }
+    }
+
     try {
+      const payload = {
+        name: newKeyName,
+        hasCostLimit: newKeyHasLimit,
+        costLimit: newKeyHasLimit ? Number(newKeyCostLimit) : null,
+      };
+
       const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newKeyName }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -495,10 +514,16 @@ export default function APIPageClient({ machineId }) {
         setCreatedKey(data.key);
         await fetchData();
         setNewKeyName("");
+        setNewKeyHasLimit(false);
+        setNewKeyCostLimit("");
+        setCreateKeyError("");
         setShowAddModal(false);
+      } else {
+        setCreateKeyError(data.error || "Failed to create key");
       }
     } catch (error) {
       console.log("Error creating key:", error);
+      setCreateKeyError("Failed to create key");
     }
   };
 
@@ -825,6 +850,11 @@ export default function APIPageClient({ machineId }) {
                   <p className="text-xs text-text-muted mt-1">
                     Created {new Date(key.createdAt).toLocaleDateString()}
                   </p>
+                  <p className="text-xs text-text-muted mt-1">
+                    {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                      ? `Limit: $${Number(key.costLimit).toFixed(2)}`
+                      : "No limit"}
+                  </p>
                   {key.isActive === false && (
                     <p className="text-xs text-orange-500 mt-1">Paused</p>
                   )}
@@ -864,6 +894,9 @@ export default function APIPageClient({ machineId }) {
         onClose={() => {
           setShowAddModal(false);
           setNewKeyName("");
+          setNewKeyHasLimit(false);
+          setNewKeyCostLimit("");
+          setCreateKeyError("");
         }}
       >
         <div className="flex flex-col gap-4">
@@ -873,6 +906,42 @@ export default function APIPageClient({ machineId }) {
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Production Key"
           />
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <p className="text-sm font-medium text-text-main">Limit cost</p>
+              <p className="text-xs text-text-muted">Bật để giới hạn tổng chi phí cho key này</p>
+            </div>
+            <Toggle
+              checked={newKeyHasLimit}
+              onChange={(checked) => {
+                setNewKeyHasLimit(checked);
+                if (!checked) {
+                  setNewKeyCostLimit("");
+                  setCreateKeyError("");
+                }
+              }}
+            />
+          </div>
+
+          {newKeyHasLimit && (
+            <Input
+              label="Cost Limit (USD)"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={newKeyCostLimit}
+              onChange={(e) => setNewKeyCostLimit(e.target.value)}
+              placeholder="10.00"
+              hint="Khi tổng chi phí đạt ngưỡng này, key sẽ tự bị từ chối"
+              error={createKeyError || undefined}
+            />
+          )}
+
+          {createKeyError && !newKeyHasLimit && (
+            <p className="text-xs text-red-500">{createKeyError}</p>
+          )}
+
           <div className="flex gap-2">
             <Button onClick={handleCreateKey} fullWidth disabled={!newKeyName.trim()}>
               Create
@@ -881,6 +950,9 @@ export default function APIPageClient({ machineId }) {
               onClick={() => {
                 setShowAddModal(false);
                 setNewKeyName("");
+                setNewKeyHasLimit(false);
+                setNewKeyCostLimit("");
+                setCreateKeyError("");
               }}
               variant="ghost"
               fullWidth
