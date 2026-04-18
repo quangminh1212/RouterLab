@@ -119,6 +119,10 @@ echo.
 
 echo [STEP 6/6] Starting development server...
 echo [STEP 6/6] Starting development server... >> %LOG_FILE%
+set "XLABROUTER_WEB_MODE=production"
+set "NODE_ENV=production"
+echo [INFO] Startup mode: %XLABROUTER_WEB_MODE%
+echo [INFO] Startup mode: %XLABROUTER_WEB_MODE% >> %LOG_FILE%
 echo [INFO] Running: node .\bin\xlab_router.js --web
 echo [INFO] Running: node .\bin\xlab_router.js --web >> %LOG_FILE%
 echo [INFO] Server will start on http://localhost:20128
