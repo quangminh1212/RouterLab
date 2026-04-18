@@ -1,5 +1,5 @@
 {
-    "name": "@xlabglobal/xlabrouter",
+    "name": "xlabrouter",
     "version": "1.0.0",
     "description": "xlabrouter web dashboard",
     "private": false,
