@@ -682,9 +682,24 @@ let apiKeyCostCache = {
   costByApiKey: new Map(),
 };
 
+function isApiKeyCostCacheFresh(now = Date.now()) {
+  return now - apiKeyCostCache.timestamp < API_KEY_COST_CACHE_TTL_MS;
+}
+
+export function invalidateApiKeyCostCache(apiKey, costDelta) {
+  const normalizedDelta = Number(costDelta);
+  if (!apiKey || !Number.isFinite(normalizedDelta) || normalizedDelta <= 0) return;
+
+  const now = Date.now();
+  if (!isApiKeyCostCacheFresh(now)) return;
+
+  const prev = Number(apiKeyCostCache.costByApiKey.get(apiKey) || 0);
+  apiKeyCostCache.costByApiKey.set(apiKey, prev + normalizedDelta);
+}
+
 async function getApiKeySpentCost(apiKey) {
   const now = Date.now();
-  if (now - apiKeyCostCache.timestamp < API_KEY_COST_CACHE_TTL_MS) {
+  if (isApiKeyCostCacheFresh(now)) {
     return apiKeyCostCache.costByApiKey.get(apiKey) || 0;
   }
 

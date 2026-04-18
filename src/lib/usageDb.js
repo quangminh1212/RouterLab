@@ -299,6 +299,15 @@ export async function saveRequestUsage(entry) {
 
     const entryCost = await calculateCost(entry.provider, entry.model, entry.tokens);
     entry.cost = entryCost;
+
+    // Keep API key cost cache in localDb aligned with newly persisted usage
+    if (entry.apiKey) {
+      try {
+        const { invalidateApiKeyCostCache } = await import("@/lib/localDb.js");
+        invalidateApiKeyCostCache(entry.apiKey, entryCost);
+      } catch {}
+    }
+
     db.data.history.push(entry);
     db.data.totalRequestsLifetime += 1;
 
