@@ -93,12 +93,26 @@ function ensureDbShape(data) {
       }
     }
 
-    // Migrate existing API keys to have isActive
+    // Migrate existing API keys to have isActive and costLimit
     if (key === "apiKeys" && Array.isArray(next.apiKeys)) {
       for (const apiKey of next.apiKeys) {
         if (apiKey.isActive === undefined || apiKey.isActive === null) {
           apiKey.isActive = true;
           changed = true;
+        }
+
+        if (apiKey.costLimit === undefined) {
+          apiKey.costLimit = null;
+          changed = true;
+        } else if (apiKey.costLimit !== null) {
+          const normalizedLimit = Number(apiKey.costLimit);
+          if (!Number.isFinite(normalizedLimit) || normalizedLimit <= 0) {
+            apiKey.costLimit = null;
+            changed = true;
+          } else if (normalizedLimit !== apiKey.costLimit) {
+            apiKey.costLimit = Number(normalizedLimit.toFixed(2));
+            changed = true;
+          }
         }
       }
     }
@@ -614,7 +628,7 @@ function generateShortKey() {
   return result;
 }
 
-export async function createApiKey(name, machineId) {
+export async function createApiKey(name, machineId, costLimit = null) {
   if (!machineId) throw new Error("machineId is required");
 
   const db = await getDb();
@@ -629,6 +643,7 @@ export async function createApiKey(name, machineId) {
     key: result.key,
     machineId: machineId,
     isActive: true,
+    costLimit: costLimit, // null = unlimited, number = USD
     createdAt: now,
   };
 
@@ -661,10 +676,48 @@ export async function updateApiKey(id, data) {
   return db.data.apiKeys[index];
 }
 
+const API_KEY_COST_CACHE_TTL_MS = 15000;
+let apiKeyCostCache = {
+  timestamp: 0,
+  costByApiKey: new Map(),
+};
+
+async function getApiKeySpentCost(apiKey) {
+  const now = Date.now();
+  if (now - apiKeyCostCache.timestamp < API_KEY_COST_CACHE_TTL_MS) {
+    return apiKeyCostCache.costByApiKey.get(apiKey) || 0;
+  }
+
+  const { getUsageStats } = await import("@/lib/usageDb");
+  const stats = await getUsageStats("all");
+  const map = new Map();
+
+  for (const entry of Object.values(stats?.byApiKey || {})) {
+    if (!entry?.apiKey) continue;
+    const prev = map.get(entry.apiKey) || 0;
+    map.set(entry.apiKey, prev + Number(entry.cost || 0));
+  }
+
+  apiKeyCostCache = {
+    timestamp: now,
+    costByApiKey: map,
+  };
+
+  return map.get(apiKey) || 0;
+}
+
 export async function validateApiKey(key) {
   const db = await getDb();
   const found = db.data.apiKeys.find(k => k.key === key);
-  return found && found.isActive !== false;
+  if (!found || found.isActive === false) return false;
+
+  // costLimit: null/undefined => unlimited
+  const limit = Number(found.costLimit);
+  const hasLimit = Number.isFinite(limit) && limit > 0;
+  if (!hasLimit) return true;
+
+  const spent = await getApiKeySpentCost(key);
+  return spent < limit;
 }
 
 export async function cleanupProviderConnections() {

@@ -21,7 +21,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { isActive } = body;
+    const { isActive, hasCostLimit, costLimit } = body;
 
     const existing = await getApiKeyById(id);
     if (!existing) {
@@ -30,6 +30,22 @@ export async function PUT(request, { params }) {
 
     const updateData = {};
     if (isActive !== undefined) updateData.isActive = isActive;
+
+    if (hasCostLimit !== undefined && typeof hasCostLimit !== "boolean") {
+      return NextResponse.json({ error: "hasCostLimit must be a boolean" }, { status: 400 });
+    }
+
+    if (hasCostLimit !== undefined) {
+      if (hasCostLimit === true) {
+        const normalizedCostLimit = Number(costLimit);
+        if (!Number.isFinite(normalizedCostLimit) || normalizedCostLimit <= 0) {
+          return NextResponse.json({ error: "Cost limit must be a positive number" }, { status: 400 });
+        }
+        updateData.costLimit = Number(normalizedCostLimit.toFixed(2));
+      } else {
+        updateData.costLimit = null;
+      }
+    }
 
     const updated = await updateApiKey(id, updateData);
 
