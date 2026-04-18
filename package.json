@@ -6,7 +6,8 @@
     "license": "ISC",
     "bin": {
         "xlabrouter": "./bin/xlab_router.js",
-        "xlab_router": "./bin/xlab_router.js"
+        "xlab_router": "./bin/xlab_router.js",
+        "xrouter": "./bin/xlab_router.js"
     },
     "scripts": {
         "dev": "next dev --webpack --port 20128",
