@@ -207,9 +207,18 @@ async function startWebUI() {
     }
   }
 
-  const nextArgs = runProd
-    ? [nextBin, "start", "--port", String(port)]
-    : [nextBin, "dev", "--webpack", "--port", String(port)];
+  let nextArgs;
+  if (runProd) {
+    const standaloneServerPath = path.join(repoRoot, ".next", "standalone", "server.js");
+    if (fs.existsSync(standaloneServerPath)) {
+      nextArgs = [standaloneServerPath];
+      process.env.PORT = String(port);
+    } else {
+      nextArgs = [nextBin, "start", "--port", String(port)];
+    }
+  } else {
+    nextArgs = [nextBin, "dev", "--webpack", "--port", String(port)];
+  }
 
   const child = spawn(process.execPath, nextArgs, {
     cwd: repoRoot,
