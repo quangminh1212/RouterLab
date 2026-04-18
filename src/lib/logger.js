@@ -1,5 +1,5 @@
 /**
- * Simple logger utility for 9Router
+ * Simple logger utility for xlabrouter
  * Provides consistent logging format with timestamps
  */
 

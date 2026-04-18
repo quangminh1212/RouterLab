@@ -1,7 +1,7 @@
 {
     "name": "xlab_router",
     "version": "1.0.6",
-    "description": "9Router web dashboard",
+    "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
     "bin": {

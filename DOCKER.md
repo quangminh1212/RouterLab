@@ -1,11 +1,11 @@
 # Docker
 
-This project ships with a `Dockerfile` for building and running 9Router in a container.
+This project ships with a `Dockerfile` for building and running xlabrouter in a container.
 
 ## Build image
 
 ```bash
-docker build -t 9router .
+docker build -t xlabrouter .
 ```
 
 ## Start container
@@ -13,10 +13,10 @@ docker build -t 9router .
 ```bash
 docker run --rm \
   -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.xlabrouter:/app/data" \
   -e DATA_DIR=/app/data \
-  --name 9router \
-  9router
+  --name xlabrouter \
+  xlabrouter
 ```
 
 The app listens on port `20128` in the container.
@@ -24,12 +24,12 @@ The app listens on port `20128` in the container.
 ## What the volume does
 
 ```bash
--v "$HOME/.9router:/app/data" \
+-v "$HOME/.xlabrouter:/app/data" \
 -e DATA_DIR=/app/data
 ```
 
-`9router` stores its database at `path.join(DATA_DIR, "db.json")`.
-Without `DATA_DIR`, the app falls back to the current user's home directory (for example `~/.9router/db.json` on macOS/Linux). In the container, set `DATA_DIR=/app/data` so the bind mount is actually used.
+`xlabrouter` stores its database at `path.join(DATA_DIR, "db.json")`.
+Without `DATA_DIR`, the app falls back to the current user's home directory (for example `~/.xlabrouter/db.json` on macOS/Linux). In the container, set `DATA_DIR=/app/data` so the bind mount is actually used.
 
 With the example above, the database file is:
 
@@ -40,13 +40,13 @@ With the example above, the database file is:
 and it is persisted on the host at:
 
 ```text
-$HOME/.9router/db.json
+$HOME/.xlabrouter/db.json
 ```
 
 ## Stop container
 
 ```bash
-docker stop 9router
+docker stop xlabrouter
 ```
 
 ## Run in background
@@ -54,16 +54,16 @@ docker stop 9router
 ```bash
 docker run -d \
   -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.xlabrouter:/app/data" \
   -e DATA_DIR=/app/data \
-  --name 9router \
-  9router
+  --name xlabrouter \
+  xlabrouter
 ```
 
 ## View logs
 
 ```bash
-docker logs -f 9router
+docker logs -f xlabrouter
 ```
 
 ## Optional environment variables
@@ -75,19 +75,19 @@ Example:
 ```bash
 docker run --rm \
   -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.xlabrouter:/app/data" \
   -e DATA_DIR=/app/data \
   -e PORT=20128 \
   -e HOSTNAME=0.0.0.0 \
   -e DEBUG=true \
-  --name 9router \
-  9router
+  --name xlabrouter \
+  xlabrouter
 ```
 
 ## Rebuild after code changes
 
 ```bash
-docker build -t 9router .
+docker build -t xlabrouter .
 ```
 
 Then restart the container.

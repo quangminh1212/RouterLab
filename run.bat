@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo ========================================
-echo 9Router Project Startup
+echo xlabrouter Project Startup
 echo ========================================
 echo.
 

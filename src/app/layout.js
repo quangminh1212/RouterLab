@@ -12,7 +12,7 @@ initConsoleLogCapture();
 logger.info("APP", "Console log capture initialized");
 logger.info("APP", "Cloud sync module loaded");
 logger.info("APP", "Outbound proxy module loaded");
-logger.info("APP", "9Router application starting up");
+logger.info("APP", "xlabrouter application starting up");
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "9Router - AI Infrastructure Management",
+  title: "xlabrouter - AI Infrastructure Management",
   description: "One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.",
   icons: {
     icon: "/favicon.svg",
