@@ -1,12 +1,11 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
     "bin": {
         "xlabrouter": "./bin/xlab_router.js",
-        "xlab_router": "./bin/xlab_router.js",
         "xrouter": "./bin/xlab_router.js"
     },
     "scripts": {
