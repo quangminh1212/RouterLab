@@ -1,8 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/components/ThemeProvider";
-import "@/lib/initCloudSync"; // Auto-initialize cloud sync
-import "@/lib/network/initOutboundProxy"; // Auto-initialize outbound proxy env
 import { initConsoleLogCapture } from "@/lib/consoleLogBuffer";
 import { RuntimeI18nProvider } from "@/i18n/RuntimeI18nProvider";
 import { logger } from "@/lib/logger";
@@ -10,9 +8,36 @@ import { logger } from "@/lib/logger";
 // Hook console immediately at module load time (server-side only, runs once)
 initConsoleLogCapture();
 logger.info("APP", "Console log capture initialized");
-logger.info("APP", "Cloud sync module loaded");
-logger.info("APP", "Outbound proxy module loaded");
 logger.info("APP", "xlabrouter application starting up");
+
+function bootstrapServerInits() {
+  if (typeof window !== "undefined") return;
+
+  const globalKey = "__xlabrouterServerInitStarted";
+  if (globalThis[globalKey]) return;
+  globalThis[globalKey] = true;
+
+  Promise.allSettled([
+    import("@/lib/initCloudSync"),
+    import("@/lib/network/initOutboundProxy"),
+  ]).then((results) => {
+    if (results[0]?.status === "fulfilled") {
+      logger.info("APP", "Cloud sync module loaded");
+    } else {
+      logger.warn("APP", "Cloud sync module failed to load");
+    }
+
+    if (results[1]?.status === "fulfilled") {
+      logger.info("APP", "Outbound proxy module loaded");
+    } else {
+      logger.warn("APP", "Outbound proxy module failed to load");
+    }
+  }).catch(() => {
+    logger.warn("APP", "Server bootstrap initialization failed");
+  });
+}
+
+bootstrapServerInits();
 
 const inter = Inter({
   subsets: ["latin"],
