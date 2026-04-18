@@ -60,16 +60,23 @@ export async function initializeApp() {
   try {
     await cleanupProviderConnections();
 
+    const fastStartup = process.env.XLABROUTER_FAST_STARTUP === "1";
+
     // Auto-reconnect tunnel if it was enabled before restart
+    // Run in background to avoid delaying first-response path.
     const settings = await getSettings();
-    if (settings.tunnelEnabled && !isCloudflaredRunning()) {
+    if (!fastStartup && settings.tunnelEnabled && !isCloudflaredRunning()) {
       console.log("[InitApp] Tunnel was enabled, auto-reconnecting...");
-      try {
-        await enableTunnel();
-        console.log("[InitApp] Tunnel reconnected");
-      } catch (error) {
-        console.log("[InitApp] Tunnel reconnect failed:", error.message);
-      }
+      Promise.resolve()
+        .then(() => enableTunnel())
+        .then(() => {
+          console.log("[InitApp] Tunnel reconnected");
+        })
+        .catch((error) => {
+          console.log("[InitApp] Tunnel reconnect failed:", error.message);
+        });
+    } else if (fastStartup) {
+      console.log("[InitApp] Fast startup enabled, skipping tunnel auto-reconnect");
     }
 
     // Kill cloudflared on process exit (register once only)
