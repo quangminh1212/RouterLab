@@ -122,6 +122,13 @@ function ensureDbShape(data) {
 }
 
 let dbInstance = null;
+let dbLastReadAt = 0;
+
+function getDbRefreshIntervalMs() {
+  const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
+  if (!Number.isFinite(raw) || raw < 0) return 250;
+  return raw;
+}
 
 const LOCK_OPTIONS = {
   retries: { retries: 15, minTimeout: 50, maxTimeout: 3000 },
@@ -181,10 +188,12 @@ async function withFileLock(db, operation) {
 
 async function safeRead(db) {
   await withFileLock(db, () => db.read());
+  dbLastReadAt = Date.now();
 }
 
 async function safeWrite(db) {
   await withFileLock(db, () => db.write());
+  dbLastReadAt = Date.now();
 }
 
 export async function getDb() {
@@ -203,15 +212,19 @@ export async function getDb() {
     dbInstance = new Low(new JSONFile(DB_FILE), cloneDefaultData());
   }
 
-  try {
-    await safeRead(dbInstance);
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
-      dbInstance.data = cloneDefaultData();
-      await safeWrite(dbInstance);
-    } else {
-      throw error;
+  const now = Date.now();
+  const shouldRefresh = now - dbLastReadAt >= getDbRefreshIntervalMs();
+  if (shouldRefresh) {
+    try {
+      await safeRead(dbInstance);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
+        dbInstance.data = cloneDefaultData();
+        await safeWrite(dbInstance);
+      } else {
+        throw error;
+      }
     }
   }
 

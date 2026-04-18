@@ -168,8 +168,16 @@ async function killProcessOnPort(targetPort) {
 
 async function startWebUI() {
   const nextBin = require.resolve("next/dist/bin/next");
+  const repoRoot = path.resolve(__dirname, "..");
 
-  console.log(`\n[INFO] Starting XLab Router Web UI on port ${port}...`);
+  const requestedMode = (process.env.XLABROUTER_WEB_MODE || "auto").toLowerCase();
+  const isNonInteractive = !process.stdout.isTTY;
+  const runProd = requestedMode === "production"
+    || requestedMode === "prod"
+    || (requestedMode === "auto" && isNonInteractive);
+  const modeLabel = runProd ? "production" : "development";
+
+  console.log(`\n[INFO] Starting XLab Router Web UI on port ${port} (${modeLabel})...`);
 
   const killedPids = await killProcessOnPort(port);
   if (killedPids.length > 0) {
@@ -180,8 +188,31 @@ async function startWebUI() {
   console.log(`[INFO] Logging to ${path.resolve(__dirname, "..", LOG_FILE_NAME)} (auto-delete at 100MB)`);
   console.log(`[INFO] Press Ctrl+C to stop\n`);
 
-  const child = spawn(process.execPath, [nextBin, "dev", "--webpack", "--port", String(port)], {
-    cwd: path.resolve(__dirname, ".."),
+  if (runProd) {
+    const buildIdPath = path.join(repoRoot, ".next", "BUILD_ID");
+    if (!fs.existsSync(buildIdPath)) {
+      console.log("[INFO] Production build not found. Running one-time build...");
+      const build = spawn(process.execPath, [nextBin, "build", "--webpack"], {
+        cwd: repoRoot,
+        stdio: "inherit",
+      });
+
+      await new Promise((resolve, reject) => {
+        build.on("error", reject);
+        build.on("exit", (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(`Build failed with exit code ${code || 1}`));
+        });
+      });
+    }
+  }
+
+  const nextArgs = runProd
+    ? [nextBin, "start", "--port", String(port)]
+    : [nextBin, "dev", "--webpack", "--port", String(port)];
+
+  const child = spawn(process.execPath, nextArgs, {
+    cwd: repoRoot,
     stdio: ["inherit", "pipe", "pipe"],
   });
 

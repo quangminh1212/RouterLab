@@ -38,9 +38,26 @@ async function hasValidToken(request) {
 }
 
 // Read settings directly from DB to avoid self-fetch deadlock in proxy
+let cachedSettings = null;
+let cachedSettingsAt = 0;
+
+function getSettingsCacheTtlMs() {
+  const raw = Number(process.env.GUARD_SETTINGS_CACHE_MS);
+  if (!Number.isFinite(raw) || raw < 0) return 1000;
+  return raw;
+}
+
 async function loadSettings() {
+  const now = Date.now();
+  if (cachedSettings && now - cachedSettingsAt < getSettingsCacheTtlMs()) {
+    return cachedSettings;
+  }
+
   try {
-    return await getSettings();
+    const settings = await getSettings();
+    cachedSettings = settings;
+    cachedSettingsAt = now;
+    return settings;
   } catch {
     return null;
   }
