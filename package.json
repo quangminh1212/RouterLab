@@ -5,8 +5,8 @@
     "private": false,
     "license": "ISC",
     "bin": {
-        "xlabrouter": "./bin/xlab_router.js",
-        "xrouter": "./bin/xlab_router.js"
+        "xlabrouter": "bin/xlab_router.js",
+        "xrouter": "bin/xlab_router.js"
     },
     "scripts": {
         "dev": "next dev --webpack --port 20128",
@@ -46,6 +46,7 @@
         "sql.js": "^1.14.1",
         "undici": "^7.25.0",
         "uuid": "^13.0.0",
+        "xlabrouter": "^1.0.3",
         "zustand": "^5.0.12"
     },
     "optionalDependencies": {
@@ -56,5 +57,20 @@
         "eslint-config-next": "16.1.6",
         "postcss": "^8.5.10",
         "tailwindcss": "^4"
-    }
+    },
+    "main": "index.js",
+    "directories": {
+        "doc": "docs",
+        "test": "tests"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/quangminh1212/XLab_9router.git"
+    },
+    "keywords": [],
+    "author": "",
+    "bugs": {
+        "url": "https://github.com/quangminh1212/XLab_9router/issues"
+    },
+    "homepage": "https://github.com/quangminh1212/XLab_9router#readme"
 }
