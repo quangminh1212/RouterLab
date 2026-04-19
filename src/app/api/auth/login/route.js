@@ -8,17 +8,36 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
 );
 
+function safeHostname(urlValue) {
+  if (!urlValue || typeof urlValue !== "string") return "";
+  try {
+    return new URL(urlValue).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function looksLikeBcryptHash(value) {
+  return typeof value === "string" && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value);
+}
+
 function isTunnelRequest(request, settings) {
   const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
-  const tunnelHost = settings.tunnelUrl ? new URL(settings.tunnelUrl).hostname.toLowerCase() : "";
-  const tailscaleHost = settings.tailscaleUrl ? new URL(settings.tailscaleUrl).hostname.toLowerCase() : "";
+  const tunnelHost = safeHostname(settings.tunnelUrl);
+  const tailscaleHost = safeHostname(settings.tailscaleUrl);
   return (tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost);
 }
 
 export async function POST(request) {
   const startedAt = Date.now();
   try {
-    const payload = await request.json();
+    let payload;
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+    }
+
     const password = typeof payload?.password === "string" ? payload.password : null;
     if (password === null) {
       return NextResponse.json({ error: "Password is required" }, { status: 400 });
@@ -36,7 +55,15 @@ export async function POST(request) {
 
     let isValid = false;
     if (storedHash) {
-      isValid = await bcrypt.compare(password, storedHash);
+      if (looksLikeBcryptHash(storedHash)) {
+        try {
+          isValid = await bcrypt.compare(password, storedHash);
+        } catch {
+          isValid = false;
+        }
+      } else {
+        isValid = password === storedHash;
+      }
     } else {
       // Use env var or default
       const initialPassword = process.env.INITIAL_PASSWORD || "123456";
