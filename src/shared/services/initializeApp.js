@@ -93,11 +93,15 @@ export async function initializeApp() {
     // Pre-download cloudflared binary in background
     ensureCloudflared().catch(() => {});
 
-    // Watchdog: recover tunnel after process crash
-    startWatchdog();
+    if (!fastStartup) {
+      // Watchdog: recover tunnel after process crash
+      startWatchdog();
 
-    // Network monitor: detect sleep/wake + network changes → restart tunnel
-    startNetworkMonitor();
+      // Network monitor: detect sleep/wake + network changes → restart tunnel
+      startNetworkMonitor();
+    } else {
+      console.log("[InitApp] Fast startup enabled, skipping tunnel watchdog/network monitor");
+    }
 
     // Auto-start MITM if it was enabled before restart
     autoStartMitm();
