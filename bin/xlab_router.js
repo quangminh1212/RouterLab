@@ -3,7 +3,6 @@
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
 const pkg = require("../package.json");
 const inquirer = require("inquirer").default || require("inquirer");
 const https = require("https");
@@ -97,7 +96,8 @@ function ensureWorkspaceRoot(repoRoot) {
     return { appRoot: repoRoot, sourceNodeModules };
   }
 
-  const workspaceRoot = path.join(os.homedir(), ".xlabrouter", "runtime", pkg.version);
+  const installRoot = path.resolve(repoRoot, "..", "..");
+  const workspaceRoot = path.join(installRoot, ".xlabrouter-runtime", pkg.version);
   const stampFile = path.join(workspaceRoot, ".runtime-stamp");
   const expectedStamp = `${pkg.version}:${repoRoot}`;
   const currentStamp = fs.existsSync(stampFile) ? fs.readFileSync(stampFile, "utf8") : "";
