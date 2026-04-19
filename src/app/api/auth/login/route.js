@@ -21,6 +21,11 @@ function looksLikeBcryptHash(value) {
   return typeof value === "string" && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value);
 }
 
+function isLocalhostRequest(request) {
+  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
 function isTunnelRequest(request, settings) {
   const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
   const tunnelHost = safeHostname(settings.tunnelUrl);
@@ -52,6 +57,7 @@ export async function POST(request) {
 
     // Default password is '123456' if not set
     const storedHash = settings.password;
+    const initialPassword = process.env.INITIAL_PASSWORD || "123456";
 
     let isValid = false;
     if (storedHash) {
@@ -64,9 +70,13 @@ export async function POST(request) {
       } else {
         isValid = password === storedHash;
       }
+
+      // Local recovery: still allow default password from localhost only.
+      if (!isValid && password === initialPassword && isLocalhostRequest(request)) {
+        isValid = true;
+      }
     } else {
       // Use env var or default
-      const initialPassword = process.env.INITIAL_PASSWORD || "123456";
       isValid = password === initialPassword;
     }
 
