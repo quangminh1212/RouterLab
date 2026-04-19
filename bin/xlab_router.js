@@ -9,7 +9,7 @@ const https = require("https");
 
 const LOG_FILE_NAME = "log.txt";
 const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
-const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "localhost";
+const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "0.0.0.0";
 
 function setupFileLogging() {
   const repoRoot = path.resolve(__dirname, "..");
@@ -94,7 +94,7 @@ if (command === "--help" || command === "-h") {
   console.log("");
   console.log("Environment:");
   console.log("  PORT=<port>          Override default port");
-  console.log("  HOSTNAME=<host>      Override bind host (default: localhost)");
+  console.log("  HOSTNAME=<host>      Override bind host (default: 0.0.0.0)");
   process.exit(0);
 }
 
