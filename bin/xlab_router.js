@@ -217,9 +217,10 @@ async function startWebUI() {
 
   const requestedMode = (process.env.XLABROUTER_WEB_MODE || "auto").toLowerCase();
   const isNonInteractive = !process.stdout.isTTY;
+  const isNpmStart = process.env.npm_lifecycle_event === "start";
   const runProd = requestedMode === "production"
     || requestedMode === "prod"
-    || (requestedMode === "auto" && isNonInteractive);
+    || (requestedMode === "auto" && (isNonInteractive || isNpmStart));
   const modeLabel = runProd ? "production" : "development";
 
   console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
