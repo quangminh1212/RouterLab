@@ -9,6 +9,7 @@ const https = require("https");
 
 const LOG_FILE_NAME = "log.txt";
 const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
+const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "::";
 
 function setupFileLogging() {
   const repoRoot = path.resolve(__dirname, "..");
@@ -75,6 +76,7 @@ setupFileLogging();
 
 const command = process.argv[2];
 const port = process.env.PORT || 20128;
+const hostname = DEFAULT_HOSTNAME;
 
 if (command === "--version" || command === "-v") {
   console.log(pkg.version);
@@ -92,6 +94,7 @@ if (command === "--help" || command === "-h") {
   console.log("");
   console.log("Environment:");
   console.log("  PORT=<port>          Override default port");
+  console.log("  HOSTNAME=<host>      Override bind host (default: ::)");
   process.exit(0);
 }
 
@@ -177,7 +180,7 @@ async function startWebUI() {
     || (requestedMode === "auto" && isNonInteractive);
   const modeLabel = runProd ? "production" : "development";
 
-  console.log(`\n[INFO] Starting XLab Router Web UI on port ${port} (${modeLabel})...`);
+  console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
 
   const killedPids = await killProcessOnPort(port);
   if (killedPids.length > 0) {
@@ -213,11 +216,12 @@ async function startWebUI() {
     if (fs.existsSync(standaloneServerPath)) {
       nextArgs = [standaloneServerPath];
       process.env.PORT = String(port);
+      process.env.HOSTNAME = hostname;
     } else {
-      nextArgs = [nextBin, "start", "--port", String(port)];
+      nextArgs = [nextBin, "start", "--hostname", hostname, "--port", String(port)];
     }
   } else {
-    nextArgs = [nextBin, "dev", "--webpack", "--port", String(port)];
+    nextArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
   }
 
   const child = spawn(process.execPath, nextArgs, {
