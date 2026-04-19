@@ -11,7 +11,7 @@ export default function Footer() {
               <div className="size-6 rounded bg-[#187878] flex items-center justify-center text-white">
                 <span className="material-symbols-outlined text-[16px]">hub</span>
               </div>
-              <h3 className="text-white text-lg font-bold">xlabrouter</h3>
+              <h3 className="text-white text-lg font-bold">XLab Router</h3>
             </div>
             <p className="text-gray-500 text-sm max-w-xs mb-6">
               The unified endpoint for AI generation. Connect, route, and manage your AI providers with ease.
@@ -48,7 +48,7 @@ export default function Footer() {
         
         {/* Bottom */}
         <div className="border-t border-[#3a2f27] pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-gray-600 text-sm">© 2025 xlabrouter. All rights reserved.</p>
+          <p className="text-gray-600 text-sm">© 2025 XLab Router. All rights reserved.</p>
           <div className="flex gap-6">
             <a className="text-gray-600 hover:text-white text-sm transition-colors" href="https://github.com/decolua/xlabrouter" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a className="text-gray-600 hover:text-white text-sm transition-colors" href="https://www.npmjs.com/package/xlabrouter" target="_blank" rel="noopener noreferrer">NPM</a>

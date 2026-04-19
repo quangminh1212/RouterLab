@@ -1,7 +1,7 @@
 export default function manifest() {
   return {
-    name: 'xlabrouter - AI Infrastructure Management',
-    short_name: 'xlabrouter',
+    name: 'XLab Router - AI Infrastructure Management',
+    short_name: 'XLab Router',
     description: 'One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.',
     start_url: '/',
     display: 'standalone',

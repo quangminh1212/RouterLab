@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 // Hook console immediately at module load time (server-side only, runs once)
 initConsoleLogCapture();
 logger.info("APP", "Console log capture initialized");
-logger.info("APP", "xlabrouter application starting up");
+logger.info("APP", "XLab Router application starting up");
 
 function bootstrapServerInits() {
   if (typeof window !== "undefined") return;
@@ -50,7 +50,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "xlabrouter - AI Infrastructure Management",
+  title: "XLab Router - AI Infrastructure Management",
   description: "One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.",
   icons: {
     icon: "/topup.png",
