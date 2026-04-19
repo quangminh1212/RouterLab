@@ -7,10 +7,7 @@
   
   **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
   
-  [![npm](https://img.shields.io/npm/v/xlabrouter.svg)](https://www.npmjs.com/package/xlabrouter)
-  [![Downloads](https://img.shields.io/npm/dm/xlabrouter.svg)](https://www.npmjs.com/package/xlabrouter)
-  [![License](https://img.shields.io/npm/l/xlabrouter.svg)](https://github.com/decolua/xlabrouter/blob/main/LICENSE)
-  
+
   [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://xlabrouter.com)
 
   [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
