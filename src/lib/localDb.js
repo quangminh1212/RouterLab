@@ -123,6 +123,7 @@ function ensureDbShape(data) {
 
 let dbInstance = null;
 let dbLastReadAt = 0;
+let dbHydrated = false;
 let settingsCache = null;
 let settingsCacheAt = 0;
 let settingsCachePromise = null;
@@ -164,6 +165,12 @@ class LocalMutex {
     return new Promise((resolve) => {
       this._queue.push(() => resolve(() => this._release()));
     });
+  }
+
+  tryAcquire() {
+    if (this._locked) return null;
+    this._locked = true;
+    return () => this._release();
   }
 
   _release() {
@@ -213,11 +220,42 @@ async function withFileLock(db, operation) {
 async function safeRead(db) {
   await withFileLock(db, () => db.read());
   dbLastReadAt = Date.now();
+  dbHydrated = true;
+}
+
+async function tryRefreshReadNonBlocking(db) {
+  if (isCloud) {
+    await db.read();
+    dbLastReadAt = Date.now();
+    dbHydrated = true;
+    return true;
+  }
+
+  const releaseLocal = localMutex.tryAcquire();
+  if (!releaseLocal) return false;
+
+  let release = null;
+  try {
+    release = await lockfile.lock(DB_FILE, { ...LOCK_OPTIONS, retries: 0 });
+    await db.read();
+    dbLastReadAt = Date.now();
+    dbHydrated = true;
+    return true;
+  } catch (error) {
+    if (error?.code === "ELOCKED") return false;
+    throw error;
+  } finally {
+    if (release) {
+      try { await release(); } catch (_) { }
+    }
+    releaseLocal();
+  }
 }
 
 async function safeWrite(db) {
   await withFileLock(db, () => db.write());
   dbLastReadAt = Date.now();
+  dbHydrated = true;
 }
 
 export async function getDb() {
@@ -240,7 +278,15 @@ export async function getDb() {
   const shouldRefresh = now - dbLastReadAt >= getDbRefreshIntervalMs();
   if (shouldRefresh) {
     try {
-      await safeRead(dbInstance);
+      if (dbHydrated) {
+        const refreshed = await tryRefreshReadNonBlocking(dbInstance);
+        if (!refreshed) {
+          dbLastReadAt = now;
+          logger.debug("DB", "Skip refresh due to active DB lock, using in-memory snapshot");
+        }
+      } else {
+        await safeRead(dbInstance);
+      }
     } catch (error) {
       if (error instanceof SyntaxError) {
         logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
