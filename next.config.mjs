@@ -1,3 +1,5 @@
+import path from "node:path";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -7,6 +9,11 @@ const nextConfig = {
   },
   env: {},
   webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      "@": path.resolve(process.cwd(), "src"),
+    };
+
     // Ignore fs/path modules in browser bundle
     if (!isServer) {
       config.resolve.fallback = {

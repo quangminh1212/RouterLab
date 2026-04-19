@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
@@ -17,6 +17,7 @@
         "start:bun": "bun ./.next/standalone/server.js"
     },
     "dependencies": {
+        "@tailwindcss/postcss": "^4.2.2",
         "@monaco-editor/react": "^4.7.0",
         "@xyflow/react": "^12.10.2",
         "bcryptjs": "^3.0.3",
@@ -34,6 +35,7 @@
         "node-machine-id": "^1.1.12",
         "open": "^11.0.0",
         "ora": "^9.3.0",
+        "prop-types": "^15.8.1",
         "proper-lockfile": "^4.1.2",
         "react": "19.2.4",
         "react-dom": "19.2.4",
@@ -50,7 +52,6 @@
         "better-sqlite3": "^12.9.0"
     },
     "devDependencies": {
-        "@tailwindcss/postcss": "^4.2.2",
         "eslint": "^9.39.4",
         "eslint-config-next": "16.1.6",
         "postcss": "^8.5.10",
