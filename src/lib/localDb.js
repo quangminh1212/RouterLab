@@ -130,6 +130,12 @@ function getDbRefreshIntervalMs() {
   return raw;
 }
 
+function getDbSlowLockWarnMs() {
+  const raw = Number(process.env.DB_SLOW_LOCK_WARN_MS);
+  if (!Number.isFinite(raw) || raw < 0) return 80;
+  return raw;
+}
+
 const LOCK_OPTIONS = {
   retries: { retries: 15, minTimeout: 50, maxTimeout: 3000 },
   stale: 10000,
@@ -166,6 +172,7 @@ async function withFileLock(db, operation) {
     return;
   }
 
+  const startedAt = Date.now();
   const releaseLocal = await localMutex.acquire();
   let release = null;
   try {
@@ -183,6 +190,14 @@ async function withFileLock(db, operation) {
       try { await release(); } catch (_) { }
     }
     releaseLocal();
+
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= getDbSlowLockWarnMs()) {
+      logger.warn("DB", "Slow DB lock operation", {
+        durationMs,
+        refreshIntervalMs: getDbRefreshIntervalMs(),
+      });
+    }
   }
 }
 
