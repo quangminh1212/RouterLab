@@ -18,6 +18,7 @@ const CONFIG = {
   maxInFlightDegraded: toPositiveNumber(process.env.RUNTIME_MAX_INFLIGHT_DEGRADED, 16),
   timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 2))),
   circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 15000),
+  slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 1000),
 };
 
 const runtimeState =
@@ -245,7 +246,17 @@ export function withRouteGuard(routeName, handler, options = {}) {
       const response = await runWithTimeout(Promise.resolve(handler(...args)), timeoutMs);
       routeState.consecutiveTimeouts = 0;
       routeState.circuitOpenUntil = 0;
-      updateLatency(routeState, Date.now() - startedAt);
+      const durationMs = Date.now() - startedAt;
+      updateLatency(routeState, durationMs);
+      if (durationMs >= CONFIG.slowRouteWarnMs) {
+        logger.warn("RUNTIME_GUARD", "Slow route detected", {
+          route: routeName,
+          durationMs,
+          timeoutMs,
+          inFlight: runtimeState.inFlight,
+          eventLoopLagMsP99: runtimeState.lastEventLoopLagMs,
+        });
+      }
       return response;
     } catch (error) {
       if (error instanceof RouteTimeoutError) {
