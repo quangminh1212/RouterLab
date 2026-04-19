@@ -125,6 +125,7 @@ let dbInstance = null;
 let dbLastReadAt = 0;
 let settingsCache = null;
 let settingsCacheAt = 0;
+let settingsCachePromise = null;
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
@@ -805,10 +806,22 @@ export async function getSettings() {
     return settingsCache;
   }
 
-  const db = await getDb();
-  settingsCache = db.data.settings || { cloudEnabled: false };
-  settingsCacheAt = now;
-  return settingsCache;
+  if (settingsCachePromise) {
+    return settingsCachePromise;
+  }
+
+  settingsCachePromise = (async () => {
+    const db = await getDb();
+    settingsCache = db.data.settings || { cloudEnabled: false };
+    settingsCacheAt = Date.now();
+    return settingsCache;
+  })();
+
+  try {
+    return await settingsCachePromise;
+  } finally {
+    settingsCachePromise = null;
+  }
 }
 
 export async function updateSettings(updates) {
