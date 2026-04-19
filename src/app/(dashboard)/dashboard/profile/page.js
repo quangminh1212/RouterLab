@@ -318,7 +318,14 @@ export default function ProfilePage() {
       }
 
       await reloadSettings();
-      setDbStatus({ type: "success", message: "Backup imported successfully" });
+      const importMode = data?.importMode;
+      if (importMode === "usage") {
+        setDbStatus({ type: "success", message: "Usage backup imported successfully" });
+      } else if (importMode === "bundle") {
+        setDbStatus({ type: "success", message: "Backup imported successfully (database + usage)" });
+      } else {
+        setDbStatus({ type: "success", message: "Database backup imported successfully" });
+      }
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Invalid backup file" });
     } finally {

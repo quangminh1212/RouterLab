@@ -13,6 +13,17 @@ function isBackupBundle(payload) {
   );
 }
 
+function isUsageBackupPayload(payload) {
+  return !!(
+    payload &&
+    typeof payload === "object" &&
+    !Array.isArray(payload) &&
+    (Array.isArray(payload.history) ||
+      (typeof payload.dailySummary === "object" && payload.dailySummary !== null) ||
+      typeof payload.totalRequestsLifetime === "number")
+  );
+}
+
 export async function GET() {
   try {
     const [database, usage] = await Promise.all([exportDb(), exportUsageDb()]);
@@ -35,25 +46,37 @@ export async function GET() {
 export async function POST(request) {
   try {
     const payload = await request.json();
+    let importMode = "database";
+    let importedDb = false;
 
     if (isBackupBundle(payload)) {
       await importDb(payload.database);
+      importedDb = true;
+      importMode = "bundle";
+
       if (payload.usage && typeof payload.usage === "object") {
         await importUsageDb(payload.usage);
       }
+    } else if (isUsageBackupPayload(payload)) {
+      await importUsageDb(payload);
+      importMode = "usage";
     } else {
       await importDb(payload);
+      importedDb = true;
+      importMode = "database";
     }
 
     // Ensure proxy settings take effect immediately after a DB import.
-    try {
-      const settings = await getSettings();
-      applyOutboundProxyEnv(settings);
-    } catch (err) {
-      console.warn("[Settings][DatabaseImport] Failed to re-apply outbound proxy env:", err);
+    if (importedDb) {
+      try {
+        const settings = await getSettings();
+        applyOutboundProxyEnv(settings);
+      } catch (err) {
+        console.warn("[Settings][DatabaseImport] Failed to re-apply outbound proxy env:", err);
+      }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, importMode });
   } catch (error) {
     console.log("Error importing database:", error);
     return NextResponse.json(
