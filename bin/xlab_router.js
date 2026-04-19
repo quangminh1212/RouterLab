@@ -169,6 +169,36 @@ async function killProcessOnPort(targetPort) {
   return killedPids;
 }
 
+async function warmupRoutes(baseUrl) {
+  const enabled = process.env.XLABROUTER_WARMUP === "1";
+  if (!enabled) {
+    return;
+  }
+
+  const startedAt = Date.now();
+  const targets = [
+    { method: "GET", path: "/api/settings" },
+    {
+      method: "POST",
+      path: "/api/auth/login",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password: "" }),
+    },
+  ];
+
+  await Promise.allSettled(
+    targets.map((target) =>
+      fetch(`${baseUrl}${target.path}`, {
+        method: target.method,
+        headers: target.headers,
+        body: target.body,
+      })
+    )
+  );
+
+  console.log(`[INFO] Warmup completed in ${Date.now() - startedAt}ms`);
+}
+
 async function startWebUI() {
   const nextBin = require.resolve("next/dist/bin/next");
   const repoRoot = path.resolve(__dirname, "..");
@@ -229,9 +259,22 @@ async function startWebUI() {
     stdio: ["inherit", "pipe", "pipe"],
   });
 
+  let warmupTriggered = false;
+
   if (child.stdout) {
     child.stdout.on("data", (chunk) => {
       process.stdout.write(chunk);
+
+      if (!warmupTriggered) {
+        const text = chunk.toString();
+        if (/ready in/i.test(text)) {
+          warmupTriggered = true;
+          const baseUrl = `http://localhost:${port}`;
+          warmupRoutes(baseUrl).catch((error) => {
+            console.log(`[WARN] Warmup failed: ${error.message}`);
+          });
+        }
+      }
     });
   }
 
