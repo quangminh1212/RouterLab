@@ -245,14 +245,10 @@ async function startWebUI() {
 
   let nextArgs;
   if (runProd) {
-    const standaloneServerPath = path.join(repoRoot, ".next", "standalone", "server.js");
-    if (fs.existsSync(standaloneServerPath)) {
-      nextArgs = [standaloneServerPath];
-      process.env.PORT = String(port);
-      process.env.HOSTNAME = hostname;
-    } else {
-      nextArgs = [nextBin, "start", "--hostname", hostname, "--port", String(port)];
-    }
+    // Always use `next start` in production mode.
+    // Running standalone `server.js` directly can miss static/public assets,
+    // causing chunk 404 and the UI getting stuck on Loading.
+    nextArgs = [nextBin, "start", "--hostname", hostname, "--port", String(port)];
   } else {
     nextArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
   }
