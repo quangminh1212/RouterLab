@@ -16,8 +16,14 @@ function isTunnelRequest(request, settings) {
 }
 
 export async function POST(request) {
+  const startedAt = Date.now();
   try {
-    const { password } = await request.json();
+    const payload = await request.json();
+    const password = typeof payload?.password === "string" ? payload.password : null;
+    if (password === null) {
+      return NextResponse.json({ error: "Password is required" }, { status: 400 });
+    }
+
     const settings = await getSettings();
 
     // Block login via tunnel/tailscale if dashboard access is disabled
@@ -62,5 +68,10 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= 100) {
+      console.log(`[PERF] POST /api/auth/login took ${durationMs}ms`);
+    }
   }
 }
