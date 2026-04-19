@@ -4,6 +4,7 @@ import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
+  const startedAt = Date.now();
   try {
     const settings = await getSettings();
     const { password, ...safeSettings } = settings;
@@ -20,6 +21,11 @@ export async function GET() {
   } catch (error) {
     console.log("Error getting settings:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= 100) {
+      console.log(`[PERF] GET /api/settings took ${durationMs}ms`);
+    }
   }
 }
 

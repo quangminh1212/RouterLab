@@ -123,10 +123,18 @@ function ensureDbShape(data) {
 
 let dbInstance = null;
 let dbLastReadAt = 0;
+let settingsCache = null;
+let settingsCacheAt = 0;
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
-  if (!Number.isFinite(raw) || raw < 0) return 250;
+  if (!Number.isFinite(raw) || raw < 0) return 5000;
+  return raw;
+}
+
+function getSettingsCacheTtlMs() {
+  const raw = Number(process.env.SETTINGS_CACHE_TTL_MS);
+  if (!Number.isFinite(raw) || raw < 0) return 60000;
   return raw;
 }
 
@@ -792,14 +800,24 @@ export async function cleanupProviderConnections() {
 }
 
 export async function getSettings() {
+  const now = Date.now();
+  if (settingsCache && now - settingsCacheAt < getSettingsCacheTtlMs()) {
+    return settingsCache;
+  }
+
   const db = await getDb();
-  return db.data.settings || { cloudEnabled: false };
+  settingsCache = db.data.settings || { cloudEnabled: false };
+  settingsCacheAt = now;
+  return settingsCache;
 }
 
 export async function updateSettings(updates) {
   const db = await getDb();
   db.data.settings = { ...db.data.settings, ...updates };
   await safeWrite(db);
+
+  settingsCache = db.data.settings;
+  settingsCacheAt = Date.now();
   return db.data.settings;
 }
 
@@ -828,6 +846,9 @@ export async function importDb(payload) {
   const db = await getDb();
   db.data = normalized;
   await safeWrite(db);
+
+  settingsCache = db.data.settings || { cloudEnabled: false };
+  settingsCacheAt = Date.now();
   return db.data;
 }
 
