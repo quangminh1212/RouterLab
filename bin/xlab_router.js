@@ -170,19 +170,22 @@ async function killProcessOnPort(targetPort) {
 }
 
 async function warmupRoutes(baseUrl) {
-  const enabled = process.env.XLABROUTER_WARMUP === "1";
+  const warmupFlag = (process.env.XLABROUTER_WARMUP || "").trim();
+  const enabled = warmupFlag !== "0";
   if (!enabled) {
     return;
   }
 
   const startedAt = Date.now();
   const targets = [
+    { method: "GET", path: "/login" },
     { method: "GET", path: "/api/settings" },
+    { method: "GET", path: "/api/proxy/systems/list" },
     {
       method: "POST",
       path: "/api/auth/login",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ password: "" }),
+      body: JSON.stringify({ username: "warmup", password: "warmup" }),
     },
   ];
 
