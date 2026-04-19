@@ -11,6 +11,15 @@ const LOG_FILE_NAME = "log.txt";
 const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
 const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "0.0.0.0";
 
+function copyDirectoryIfExists(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+
+  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+  fs.cpSync(sourceDir, targetDir, { recursive: true, force: true });
+}
+
 function setupFileLogging() {
   const repoRoot = path.resolve(__dirname, "..");
   const logFilePath = path.join(repoRoot, LOG_FILE_NAME);
@@ -241,21 +250,37 @@ async function startWebUI() {
         });
       });
     }
+
+    // Next.js standalone runtime needs static/public assets beside server.js
+    // when running directly via `node .next/standalone/server.js`.
+    copyDirectoryIfExists(
+      path.join(repoRoot, ".next", "static"),
+      path.join(repoRoot, ".next", "standalone", ".next", "static")
+    );
+    copyDirectoryIfExists(
+      path.join(repoRoot, "public"),
+      path.join(repoRoot, ".next", "standalone", "public")
+    );
   }
 
-  let nextArgs;
+  let commandPath;
+  let commandArgs;
   if (runProd) {
-    // Always use `next start` in production mode.
-    // Running standalone `server.js` directly can miss static/public assets,
-    // causing chunk 404 and the UI getting stuck on Loading.
-    nextArgs = [nextBin, "start", "--hostname", hostname, "--port", String(port)];
+    commandPath = process.execPath;
+    commandArgs = [path.join(repoRoot, ".next", "standalone", "server.js")];
   } else {
-    nextArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
+    commandPath = process.execPath;
+    commandArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
   }
 
-  const child = spawn(process.execPath, nextArgs, {
+  const child = spawn(commandPath, commandArgs, {
     cwd: repoRoot,
     stdio: ["inherit", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOSTNAME: hostname,
+    },
   });
 
   let warmupTriggered = false;

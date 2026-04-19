@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
@@ -11,7 +11,7 @@
     "scripts": {
         "dev": "next dev --webpack --port 20128",
         "build": "next build --webpack",
-        "start": "next start",
+        "start": "node ./.next/standalone/server.js",
         "dev:bun": "bun --bun next dev --webpack --port 20128",
         "build:bun": "bun --bun next build --webpack",
         "start:bun": "bun ./.next/standalone/server.js"
