@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.3",
+    "version": "1.0.2",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
@@ -17,8 +17,8 @@
         "start:bun": "bun ./.next/standalone/server.js"
     },
     "dependencies": {
-        "@tailwindcss/postcss": "^4.2.2",
         "@monaco-editor/react": "^4.7.0",
+        "@tailwindcss/postcss": "^4.2.2",
         "@xyflow/react": "^12.10.2",
         "bcryptjs": "^3.0.3",
         "confbox": "^0.2.4",
