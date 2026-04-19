@@ -29,7 +29,7 @@
   --color-bg: #0B1416;
   --color-bg-alt: #101C1F;
   --color-surface: #152226;
-  --color-sidebar: rgba(16, 26, 30, 0.82);
+  --color-sidebar: #111A1F;
   --color-border: rgba(255, 255, 255, 0.1);
   --color-text-main: #E8F3F3;
   --color-text-muted: #98AFB1;
@@ -59,7 +59,7 @@
   --color-surface-light: #FFFFFF;
   --color-surface-dark: #152226;
   --color-sidebar-light: #EAF4F4;
-  --color-sidebar-dark: #101C1F;
+  --color-sidebar-dark: #111A1F;
   --color-border-light: #D6E5E5;
   --color-border-dark: #203338;
   --color-text-main-light: #132325;
