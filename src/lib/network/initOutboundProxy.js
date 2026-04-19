@@ -20,7 +20,9 @@ export async function ensureOutboundProxyInitialized() {
   return initialized;
 }
 
-logger.info("INIT", "Auto-initialize outbound proxy enabled");
-ensureOutboundProxyInitialized().catch(console.log);
+if (process.env.NEXT_PHASE !== "phase-production-build") {
+  logger.info("INIT", "Auto-initialize outbound proxy enabled");
+  ensureOutboundProxyInitialized().catch(console.log);
+}
 
 export default ensureOutboundProxyInitialized;
