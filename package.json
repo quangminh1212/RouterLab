@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
@@ -46,7 +46,6 @@
         "sql.js": "^1.14.1",
         "undici": "^7.25.0",
         "uuid": "^13.0.0",
-        "xlabrouter": "^1.0.3",
         "zustand": "^5.0.12"
     },
     "optionalDependencies": {

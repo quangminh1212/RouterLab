@@ -36,3 +36,6 @@ images/
 # Misc
 *.md
 !README.md
+*.tgz
+.tmp-*/
+log.txt

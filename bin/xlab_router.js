@@ -3,6 +3,7 @@
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const pkg = require("../package.json");
 const inquirer = require("inquirer").default || require("inquirer");
 const https = require("https");
@@ -18,6 +19,96 @@ function copyDirectoryIfExists(sourceDir, targetDir) {
 
   fs.mkdirSync(path.dirname(targetDir), { recursive: true });
   fs.cpSync(sourceDir, targetDir, { recursive: true, force: true });
+}
+
+function shouldSkipCopyPath(sourceDir, itemPath) {
+  const relative = path.relative(sourceDir, itemPath);
+  if (!relative) {
+    return false;
+  }
+
+  const normalized = relative.replace(/\\/g, "/");
+  if (normalized === "node_modules" || normalized.startsWith("node_modules/")) {
+    return true;
+  }
+  if (normalized === ".next" || normalized.startsWith(".next/")) {
+    return true;
+  }
+  if (normalized === ".git" || normalized.startsWith(".git/")) {
+    return true;
+  }
+  if (normalized.startsWith(".tmp-") || normalized.endsWith(".tgz")) {
+    return true;
+  }
+  return false;
+}
+
+function copyProjectFiles(sourceDir, targetDir) {
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const queue = [{ src: sourceDir, dst: targetDir }];
+  while (queue.length > 0) {
+    const current = queue.pop();
+    const entries = fs.readdirSync(current.src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(current.src, entry.name);
+      if (shouldSkipCopyPath(sourceDir, srcPath)) {
+        continue;
+      }
+
+      const dstPath = path.join(current.dst, entry.name);
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        fs.mkdirSync(dstPath, { recursive: true });
+        queue.push({ src: srcPath, dst: dstPath });
+        continue;
+      }
+
+      fs.mkdirSync(path.dirname(dstPath), { recursive: true });
+      fs.copyFileSync(srcPath, dstPath);
+    }
+  }
+}
+
+function ensureWorkspaceRoot(repoRoot) {
+  const normalizedRepoRoot = repoRoot.replace(/\\/g, "/").toLowerCase();
+  const inNodeModules = normalizedRepoRoot.includes("/node_modules/xlabrouter");
+
+  const sourceNodeModulesCandidates = inNodeModules
+    ? [
+      path.resolve(repoRoot, ".."),
+      path.join(repoRoot, "node_modules"),
+      path.resolve(repoRoot, "..", "..", "node_modules"),
+    ]
+    : [
+      path.join(repoRoot, "node_modules"),
+    ];
+
+  const sourceNodeModules = sourceNodeModulesCandidates.find((candidate) => fs.existsSync(candidate));
+  if (!sourceNodeModules) {
+    throw new Error("Cannot locate node_modules for runtime workspace.");
+  }
+
+  if (!inNodeModules) {
+    return { appRoot: repoRoot, sourceNodeModules };
+  }
+
+  const workspaceRoot = path.join(os.homedir(), ".xlabrouter", "runtime", pkg.version);
+  const stampFile = path.join(workspaceRoot, ".runtime-stamp");
+  const expectedStamp = `${pkg.version}:${repoRoot}`;
+  const currentStamp = fs.existsSync(stampFile) ? fs.readFileSync(stampFile, "utf8") : "";
+
+  if (currentStamp !== expectedStamp) {
+    fs.mkdirSync(workspaceRoot, { recursive: true });
+    copyProjectFiles(repoRoot, workspaceRoot);
+    fs.writeFileSync(stampFile, expectedStamp, "utf8");
+  }
+
+  return { appRoot: workspaceRoot, sourceNodeModules };
 }
 
 function setupFileLogging() {
@@ -214,6 +305,9 @@ async function warmupRoutes(baseUrl) {
 async function startWebUI() {
   const nextBin = require.resolve("next/dist/bin/next");
   const repoRoot = path.resolve(__dirname, "..");
+  const runtime = ensureWorkspaceRoot(repoRoot);
+  const appRoot = runtime.appRoot;
+  const sourceNodeModules = runtime.sourceNodeModules;
 
   const requestedMode = (process.env.XLABROUTER_WEB_MODE || "auto").toLowerCase();
   const isNonInteractive = !process.stdout.isTTY;
@@ -224,6 +318,7 @@ async function startWebUI() {
   const modeLabel = runProd ? "production" : "development";
 
   console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
+  console.log(`[INFO] Runtime paths => repoRoot: ${repoRoot} | appRoot: ${appRoot}`);
 
   const killedPids = await killProcessOnPort(port);
   if (killedPids.length > 0) {
@@ -234,13 +329,21 @@ async function startWebUI() {
   console.log(`[INFO] Logging to ${path.resolve(__dirname, "..", LOG_FILE_NAME)} (auto-delete at 100MB)`);
   console.log(`[INFO] Press Ctrl+C to stop\n`);
 
+  const sharedEnv = {
+    ...process.env,
+    PORT: String(port),
+    HOSTNAME: hostname,
+    NODE_PATH: sourceNodeModules,
+  };
+
   if (runProd) {
-    const buildIdPath = path.join(repoRoot, ".next", "BUILD_ID");
+    const buildIdPath = path.join(appRoot, ".next", "BUILD_ID");
     if (!fs.existsSync(buildIdPath)) {
       console.log("[INFO] Production build not found. Running one-time build...");
       const build = spawn(process.execPath, [nextBin, "build", "--webpack"], {
-        cwd: repoRoot,
+        cwd: appRoot,
         stdio: "inherit",
+        env: sharedEnv,
       });
 
       await new Promise((resolve, reject) => {
@@ -255,12 +358,12 @@ async function startWebUI() {
     // Next.js standalone runtime needs static/public assets beside server.js
     // when running directly via `node .next/standalone/server.js`.
     copyDirectoryIfExists(
-      path.join(repoRoot, ".next", "static"),
-      path.join(repoRoot, ".next", "standalone", ".next", "static")
+      path.join(appRoot, ".next", "static"),
+      path.join(appRoot, ".next", "standalone", ".next", "static")
     );
     copyDirectoryIfExists(
-      path.join(repoRoot, "public"),
-      path.join(repoRoot, ".next", "standalone", "public")
+      path.join(appRoot, "public"),
+      path.join(appRoot, ".next", "standalone", "public")
     );
   }
 
@@ -268,20 +371,16 @@ async function startWebUI() {
   let commandArgs;
   if (runProd) {
     commandPath = process.execPath;
-    commandArgs = [path.join(repoRoot, ".next", "standalone", "server.js")];
+    commandArgs = [path.join(appRoot, ".next", "standalone", "server.js")];
   } else {
     commandPath = process.execPath;
     commandArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
   }
 
   const child = spawn(commandPath, commandArgs, {
-    cwd: repoRoot,
+    cwd: appRoot,
     stdio: ["inherit", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      PORT: String(port),
-      HOSTNAME: hostname,
-    },
+    env: sharedEnv,
   });
 
   let warmupTriggered = false;
