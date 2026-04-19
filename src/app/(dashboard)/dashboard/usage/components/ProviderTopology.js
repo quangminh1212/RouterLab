@@ -81,8 +81,8 @@ function RouterNode({ data }) {
       <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
-      <img src="/topup.png" alt="xlabrouter" className="w-6 h-6 mr-2" />
-      <span className="text-sm font-bold text-primary">xlabrouter</span>
+      <img src="/topup.png" alt="XLab Router" className="w-6 h-6 mr-2" />
+      <span className="text-sm font-bold text-primary">XLab Router</span>
       {data.activeCount > 0 && (
         <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
           {data.activeCount}
