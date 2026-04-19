@@ -59,8 +59,13 @@ export default function LoginPage() {
         router.push("/dashboard");
         router.refresh();
       } else {
-        const data = await res.json();
-        setError(data.error || "Invalid password");
+        let data = null;
+        try {
+          data = await res.json();
+        } catch {
+          // ignore parse error and use fallback message
+        }
+        setError(data?.error || "Invalid password");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -116,9 +121,15 @@ export default function LoginPage() {
               Login
             </Button>
 
-            <p className="text-xs text-center text-text-muted mt-2">
-              Default password is <code className="bg-sidebar px-1 rounded">123456</code>
-            </p>
+            {!hasPassword ? (
+              <p className="text-xs text-center text-text-muted mt-2">
+                Default password is <code className="bg-sidebar px-1 rounded">123456</code>
+              </p>
+            ) : (
+              <p className="text-xs text-center text-text-muted mt-2">
+                Default password only works on first setup.
+              </p>
+            )}
           </form>
         </Card>
       </div>
