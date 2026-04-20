@@ -90,7 +90,7 @@ export default function Sidebar({ onClose }) {
         <div className="px-6 py-4 flex flex-col gap-2">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center size-9 rounded overflow-hidden bg-sidebar border border-black/5 dark:border-white/5">
-              <img src="/topup.png" alt="xlabrouter" className="w-full h-full object-cover" />
+              <img src="/topup.png" alt="XLab Router" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
               <h1 className="text-lg font-semibold tracking-tight text-text-main">
