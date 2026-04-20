@@ -117,8 +117,70 @@ if not exist ".env" (
 )
 echo.
 
-echo [STEP 6/6] Starting development server...
-echo [STEP 6/6] Starting development server... >> %LOG_FILE%
+echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)...
+echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG_FILE%
+
+set "AUTO_SYNC_CLI=0"
+
+if exist ".env" (
+    for /f "usebackq tokens=1,* delims==" %%A in (`findstr /R "^[A-Za-z_][A-Za-z0-9_]*=" ".env"`) do (
+        set "ENV_KEY=%%A"
+        set "ENV_VAL=%%B"
+        set "!ENV_KEY!=!ENV_VAL!"
+    )
+)
+
+if defined XLABROUTER_CODEX_MODEL set "AUTO_SYNC_CLI=1"
+if defined XLABROUTER_CLAUDE_OPUS_MODEL set "AUTO_SYNC_CLI=1"
+if defined XLABROUTER_CLAUDE_SONNET_MODEL set "AUTO_SYNC_CLI=1"
+if defined XLABROUTER_CLAUDE_HAIKU_MODEL set "AUTO_SYNC_CLI=1"
+
+if "%AUTO_SYNC_CLI%"=="1" (
+    set "CLI_BASE_URL=%XLABROUTER_CLI_BASE_URL%"
+    if not defined CLI_BASE_URL set "CLI_BASE_URL=http://localhost:20128/v1"
+    if /I not "%CLI_BASE_URL:~-3%"=="/v1" set "CLI_BASE_URL=%CLI_BASE_URL%/v1"
+
+    set "CLI_API_KEY=%XLABROUTER_CLI_API_KEY%"
+    if not defined CLI_API_KEY set "CLI_API_KEY=sk_xlabrouter"
+
+    set "CLAUDE_OPUS_MODEL=%XLABROUTER_CLAUDE_OPUS_MODEL%"
+    set "CLAUDE_SONNET_MODEL=%XLABROUTER_CLAUDE_SONNET_MODEL%"
+    set "CLAUDE_HAIKU_MODEL=%XLABROUTER_CLAUDE_HAIKU_MODEL%"
+
+    set "CODEX_MODEL=%XLABROUTER_CODEX_MODEL%"
+    set "CODEX_SUBAGENT_MODEL=%XLABROUTER_CODEX_SUBAGENT_MODEL%"
+    if not defined CODEX_SUBAGENT_MODEL set "CODEX_SUBAGENT_MODEL=%CODEX_MODEL%"
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $claudeDir=Join-Path $env:USERPROFILE '.claude'; New-Item -ItemType Directory -Force -Path $claudeDir | Out-Null; $settingsPath=Join-Path $claudeDir 'settings.json'; $settings=@{hasCompletedOnboarding=$true; env=@{ANTHROPIC_BASE_URL=$env:CLI_BASE_URL; ANTHROPIC_AUTH_TOKEN=$env:CLI_API_KEY}}; if($env:CLAUDE_OPUS_MODEL){$settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL=$env:CLAUDE_OPUS_MODEL}; if($env:CLAUDE_SONNET_MODEL){$settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL=$env:CLAUDE_SONNET_MODEL}; if($env:CLAUDE_HAIKU_MODEL){$settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL=$env:CLAUDE_HAIKU_MODEL}; $settings | ConvertTo-Json -Depth 8 | Set-Content -Path $settingsPath -Encoding UTF8" >> %LOG_FILE% 2>&1
+    if errorlevel 1 (
+        echo [WARN] Failed to auto-write Claude settings. >> %LOG_FILE%
+        echo [WARN] Failed to auto-write Claude settings.
+    ) else (
+        echo [OK] Claude settings synced to %USERPROFILE%\.claude\settings.json
+        echo [OK] Claude settings synced. >> %LOG_FILE%
+    )
+
+    if defined CODEX_MODEL (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $codexDir=Join-Path $env:USERPROFILE '.codex'; New-Item -ItemType Directory -Force -Path $codexDir | Out-Null; $configPath=Join-Path $codexDir 'config.toml'; $authPath=Join-Path $codexDir 'auth.json'; $lines=@('# XLab Router Configuration for Codex CLI', ('model = \"' + $env:CODEX_MODEL + '\"'), 'model_provider = \"xlabrouter\"', '', '[model_providers.xlabrouter]', 'name = \"xlabrouter\"', ('base_url = \"' + $env:CLI_BASE_URL + '\"'), 'wire_api = \"responses\"', '', '[agents.subagent]', ('model = \"' + $env:CODEX_SUBAGENT_MODEL + '\"')); Set-Content -Path $configPath -Encoding UTF8 -Value $lines; @{OPENAI_API_KEY=$env:CLI_API_KEY} | ConvertTo-Json -Depth 5 | Set-Content -Path $authPath -Encoding UTF8" >> %LOG_FILE% 2>&1
+        if errorlevel 1 (
+            echo [WARN] Failed to auto-write Codex settings. >> %LOG_FILE%
+            echo [WARN] Failed to auto-write Codex settings.
+        ) else (
+            echo [OK] Codex settings synced to %USERPROFILE%\.codex\config.toml and auth.json
+            echo [OK] Codex settings synced. >> %LOG_FILE%
+        )
+    ) else (
+        echo [INFO] XLABROUTER_CODEX_MODEL is empty. Skipped Codex auto-sync.
+        echo [INFO] XLABROUTER_CODEX_MODEL is empty. Skipped Codex auto-sync. >> %LOG_FILE%
+    )
+) else (
+    echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync.
+    echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync. >> %LOG_FILE%
+)
+echo.
+
+echo [STEP 7/7] Starting development server...
+echo [STEP 7/7] Starting development server... >> %LOG_FILE%
 set "XLABROUTER_WEB_MODE=production"
 set "NODE_ENV=production"
 set "XLABROUTER_FAST_STARTUP=1"
