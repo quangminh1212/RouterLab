@@ -8,6 +8,26 @@ import { DATA_DIR } from "@/lib/dataDir.js";
 import { logger } from "@/lib/logger.js";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:20128";
+const LEGACY_CLOUD_HOST_REGEX = /(^|\.)9router\.com$/i;
+const REPLACEMENT_CLOUD_HOST = "xlabrouter.com";
+
+function normalizeCloudUrl(url) {
+  if (typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+
+  try {
+    const parsed = new URL(trimmed);
+    if (LEGACY_CLOUD_HOST_REGEX.test(parsed.hostname)) {
+      parsed.hostname = REPLACEMENT_CLOUD_HOST;
+      return parsed.toString().replace(/\/$/, "");
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+}
+
 const isCloud = typeof caches !== 'undefined' || typeof caches === 'object';
 const DB_FILE = isCloud ? null : path.join(DATA_DIR, "db.json");
 
@@ -90,6 +110,12 @@ function ensureDbShape(data) {
           }
           changed = true;
         }
+      }
+
+      const normalizedCloudUrl = normalizeCloudUrl(next.settings.cloudUrl);
+      if ((next.settings.cloudUrl || "") !== normalizedCloudUrl) {
+        next.settings.cloudUrl = normalizedCloudUrl;
+        changed = true;
       }
     }
 
@@ -918,7 +944,7 @@ export async function isCloudEnabled() {
 
 export async function getCloudUrl() {
   const settings = await getSettings();
-  return settings.cloudUrl || process.env.CLOUD_URL || process.env.NEXT_PUBLIC_CLOUD_URL || "";
+  return normalizeCloudUrl(settings.cloudUrl) || normalizeCloudUrl(process.env.CLOUD_URL) || normalizeCloudUrl(process.env.NEXT_PUBLIC_CLOUD_URL) || "";
 }
 
 export async function getPricing() {

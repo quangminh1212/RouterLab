@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
 
-const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
-
 export default function DroidToolCard({
   tool,
   isExpanded,
@@ -15,6 +13,7 @@ export default function DroidToolCard({
   apiKeys,
   activeProviders,
   cloudEnabled,
+  cloudUrl,
   initialStatus,
 }) {
   const [droidStatus, setDroidStatus] = useState(initialStatus || null);
@@ -38,7 +37,7 @@ export default function DroidToolCard({
     const currentConfig = droidStatus.settings?.customModels?.find(m => m.id?.startsWith("custom:xlabrouter"));
     if (!currentConfig) return "not_configured";
     const localMatch = currentConfig.baseUrl?.includes("localhost") || currentConfig.baseUrl?.includes("127.0.0.1");
-    const cloudMatch = cloudEnabled && CLOUD_URL && currentConfig.baseUrl?.startsWith(CLOUD_URL);
+    const cloudMatch = cloudEnabled && cloudUrl && currentConfig.baseUrl?.startsWith(cloudUrl);
     const tunnelMatch = baseUrl && currentConfig.baseUrl?.startsWith(baseUrl);
     if (localMatch || cloudMatch || tunnelMatch) return "configured";
     return "other";

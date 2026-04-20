@@ -7,8 +7,20 @@ import { getModelsByProviderId, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/
 import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, DefaultToolCard, OpenCodeToolCard, MitmLinkCard } from "./components";
 import { MITM_TOOLS } from "@/shared/constants/cliTools";
 
-const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
-
+function normalizeCloudUrl(url) {
+  if (typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (/(^|\.)9router\.com$/i.test(parsed.hostname)) {
+      parsed.hostname = "xlabrouter.com";
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+}
 
 const STATUS_ENDPOINTS = {
   claude: "/api/cli-tools/claude-settings",
@@ -40,6 +52,7 @@ export default function CLIToolsPageClient({ machineId }) {
   const [expandedTool, setExpandedTool] = useState(null);
   const [modelMappings, setModelMappings] = useState({});
   const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [cloudUrl, setCloudUrl] = useState("");
   const [tunnelEnabled, setTunnelEnabled] = useState(false);
   const [tunnelPublicUrl, setTunnelPublicUrl] = useState("");
   const [apiKeys, setApiKeys] = useState([]);
@@ -80,6 +93,7 @@ export default function CLIToolsPageClient({ machineId }) {
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         setCloudEnabled(data.cloudEnabled || false);
+        setCloudUrl(normalizeCloudUrl(data.cloudUrl || process.env.NEXT_PUBLIC_CLOUD_URL || ""));
       }
       if (tunnelRes.ok) {
         const data = await tunnelRes.json();
@@ -147,7 +161,7 @@ export default function CLIToolsPageClient({ machineId }) {
 
   const getBaseUrl = () => {
     if (tunnelEnabled && tunnelPublicUrl) return tunnelPublicUrl;
-    if (cloudEnabled && CLOUD_URL) return CLOUD_URL;
+    if (cloudEnabled && cloudUrl) return cloudUrl;
     if (typeof window !== "undefined") return window.location.origin;
     return "http://localhost:20128";
   };
@@ -185,6 +199,7 @@ export default function CLIToolsPageClient({ machineId }) {
             onModelMappingChange={(alias, target) => handleModelMappingChange(toolId, alias, target)}
             hasActiveProviders={hasActiveProviders}
             cloudEnabled={cloudEnabled}
+            cloudUrl={cloudUrl}
             initialStatus={toolStatuses.claude}
           />
         );
@@ -193,7 +208,7 @@ export default function CLIToolsPageClient({ machineId }) {
       case "opencode":
         return <OpenCodeToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.opencode} />;
       case "droid":
-        return <DroidToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.droid} />;
+        return <DroidToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} cloudUrl={cloudUrl} initialStatus={toolStatuses.droid} />;
       case "openclaw":
         return <OpenClawToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.openclaw} />;
       default:
