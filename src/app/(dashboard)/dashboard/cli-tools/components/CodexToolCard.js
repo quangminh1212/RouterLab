@@ -160,7 +160,7 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
     
     const effectiveSubagentModel = subagentModel || selectedModel;
     
-    const configContent = `# xlabrouter Configuration for Codex CLI
+    const configContent = `# XLab Router Configuration for Codex CLI
 model = "${selectedModel}"
 model_provider = "xlabrouter"
 
