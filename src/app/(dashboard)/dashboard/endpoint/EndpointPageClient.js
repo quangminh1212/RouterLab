@@ -1081,7 +1081,7 @@ export default function APIPageClient({ machineId }) {
           {/* Not installed */}
           {tsInstalled === false && !tsInstalling && (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-muted">Tailscale is not installed. Install it to enable Funnel.</p>
+              <p className="text-sm text-text-muted">Tailscale chua du?c cài. Cài d?t d? có link tunnel c? d?nh (mi?n phí, truy c?p public).</p>
               <div className="flex gap-2">
                 <Button
                   onClick={handleInstallTailscale}

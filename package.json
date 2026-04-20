@@ -14,7 +14,8 @@
         "start": "node ./bin/xlab_router.js --web",
         "dev:bun": "bun --bun next dev --webpack --port 20128",
         "build:bun": "bun --bun next build --webpack",
-        "start:bun": "bun ./.next/standalone/server.js"
+        "start:bun": "bun ./.next/standalone/server.js",
+        "postinstall": "node scripts/check-tailscale.js"
     },
     "dependencies": {
         "@monaco-editor/react": "^4.7.0",
