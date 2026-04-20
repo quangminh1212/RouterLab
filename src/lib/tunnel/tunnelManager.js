@@ -7,7 +7,8 @@ import { getCachedPassword, loadEncryptedPassword, initDbHooks } from "@/mitm/ma
 
 initDbHooks(getSettings, updateSettings);
 
-const WORKER_URL = process.env.TUNNEL_WORKER_URL || "https://xlabrouter.com";
+const TUNNEL_PUBLIC_DOMAIN = process.env.TUNNEL_PUBLIC_DOMAIN || "9router.com";
+const WORKER_URL = process.env.TUNNEL_WORKER_URL || `https://${TUNNEL_PUBLIC_DOMAIN}`;
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
@@ -38,11 +39,22 @@ function getMachineId() {
 // ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
 
 async function registerTunnelUrl(shortId, tunnelUrl) {
-  await fetch(`${WORKER_URL}/api/tunnel/register`, {
+  const response = await fetch(`${WORKER_URL}/api/tunnel/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ shortId, tunnelUrl })
   });
+
+  if (!response.ok) {
+    let message = `Tunnel register failed (${response.status})`;
+    try {
+      const text = await response.text();
+      if (text) message = `${message}: ${text}`;
+    } catch {
+      // ignore parse error and keep generic message
+    }
+    throw new Error(message);
+  }
 }
 
 export async function enableTunnel(localPort = 20128) {
@@ -51,7 +63,7 @@ export async function enableTunnel(localPort = 20128) {
   if (isCloudflaredRunning()) {
     const existing = loadState();
     if (existing?.tunnelUrl) {
-      const publicUrl = `https://r${existing.shortId}.xlabrouter.com`;
+      const publicUrl = `https://r${existing.shortId}.${TUNNEL_PUBLIC_DOMAIN}`;
       return { success: true, tunnelUrl: existing.tunnelUrl, shortId: existing.shortId, publicUrl, alreadyRunning: true };
     }
   }
@@ -83,7 +95,7 @@ export async function enableTunnel(localPort = 20128) {
     exitHandlerRegistered = true;
   }
 
-  const publicUrl = `https://r${shortId}.xlabrouter.com`;
+  const publicUrl = `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}`;
   return { success: true, tunnelUrl, shortId, publicUrl };
 }
 
@@ -142,7 +154,7 @@ export async function getTunnelStatus() {
   const running = isCloudflaredRunning();
   const settings = await getSettings();
   const shortId = state?.shortId || "";
-  const publicUrl = shortId ? `https://r${shortId}.xlabrouter.com` : "";
+  const publicUrl = shortId ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
 
   return {
     enabled: settings.tunnelEnabled === true && running,
