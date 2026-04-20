@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   
   # XLab Router - Free AI Router
   
@@ -7,7 +7,7 @@
   **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
   
 
-  [ðŸš€ Quick Start](#-quick-start) â€¢ [ðŸ’¡ Features](#-key-features) â€¢ [ðŸ“– Setup](#-setup-guide) â€¢ [ðŸŒ Website](https://xlabrouter.com)
+  [ðŸš€ Quick Start](#-quick-start) • [ðŸ’¡ Features](#-key-features) • [ðŸ“– Setup](#-setup-guide) • [ðŸŒ� Website](https://xlabrouter.com)
 
   [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
 </div>
@@ -18,10 +18,10 @@
 
 **Stop wasting money and hitting limits:**
 
-- âŒ Subscription quota expires unused every month
-- âŒ Rate limits stop you mid-coding
-- âŒ Expensive APIs ($20-50/month per provider)
-- âŒ Manual switching between providers
+- â�Œ Subscription quota expires unused every month
+- â�Œ Rate limits stop you mid-coding
+- â�Œ Expensive APIs ($20-50/month per provider)
+- â�Œ Manual switching between providers
 
 **XLab Router solves this:**
 
@@ -35,13 +35,13 @@
 ## 🔄 How It Works
 
 ```
-â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
+â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"�
 │  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
 │   Tool      │
 └──────┬──────┘
        │ http://localhost:20128/v1
        ↓
-â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
+â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"�
 │           XLab Router (Smart Router)        │
 │  • Format translation (OpenAI ↔ Claude) │
 │  • Quota tracking                       │
@@ -180,9 +180,9 @@ XLab Router works seamlessly with all major AI coding tools:
 
 ---
 
-## ðŸŒ Supported Providers
+## ðŸŒ� Supported Providers
 
-### ðŸ" OAuth Providers
+### ðŸ"� OAuth Providers
 
 <div align="center">
   <table>
@@ -311,10 +311,10 @@ XLab Router works seamlessly with all major AI coding tools:
 | 👥 **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
 | 🔄 **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
 | 🎨 **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
-| ðŸ“ **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
+| ðŸ“� **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
 | 💾 **Cloud Sync** | Sync config across devices | Same setup everywhere |
 | 📊 **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
-| ðŸŒ **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
+| ðŸŒ� **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
 
 <details>
 <summary><b>📖 Feature Details</b></summary>
@@ -365,7 +365,7 @@ Seamless translation between formats:
 - Name your combos for easy access
 - Share combos across devices with Cloud Sync
 
-### ðŸ“ Request Logging
+### ðŸ“� Request Logging
 
 - Enable debug mode for full request/response logs
 - Track API calls, headers, and payloads
@@ -405,11 +405,11 @@ Seamless translation between formats:
 > Think of it as a "savings tracker" showing how much you're saving by using free models or 
 > routing through XLab Router!
 
-### ðŸŒ Deploy Anywhere
+### ðŸŒ� Deploy Anywhere
 
 - 💻 **Localhost** - Default, works offline
 - â˜ï¸ **VPS/Cloud** - Share across devices
-- ðŸ³ **Docker** - One-command deployment
+- ðŸ�³ **Docker** - One-command deployment
 - 🚀 **Cloudflare Workers** - Global edge network
 
 </details>
@@ -443,7 +443,7 @@ Seamless translation between formats:
 ✅ **Dashboard "costs" = Display/tracking only** (not actual bills)  
 ✅ **You pay providers directly** (subscriptions or API fees)  
 ✅ **FREE providers stay FREE** (iFlow, Kiro, Qwen = $0 unlimited)  
-âŒ **XLab Router never sends invoices** or charges your card
+â�Œ **XLab Router never sends invoices** or charges your card
 
 **How Cost Display Works:**
 
@@ -536,7 +536,7 @@ Access via: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 
 ---
 
-## â“ Frequently Asked Questions
+## â�“ Frequently Asked Questions
 
 <details>
 <summary><b>📊 Why does my dashboard show high costs?</b></summary>
@@ -561,7 +561,7 @@ The cost display is a "savings tracker" to help you understand your usage patter
 **You only pay:**
 - ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) → Pay them directly on their websites
 - ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, XLab Router just routes your requests
-- âŒ **XLab Router itself** â†’ **Never charges anything, ever**
+- â�Œ **XLab Router itself** â†’ **Never charges anything, ever**
 
 XLab Router is a local proxy/router. It doesn't have your credit card, can't send invoices, and has no billing system. It's completely free software.
 
@@ -618,8 +618,8 @@ XLab Router's smart fallback prevents surprise charges:
 **Scenario:** You're on a coding sprint and blow through your quotas
 
 **Without XLab Router:**
-- âŒ Hit rate limit â†’ Work stops â†’ Frustration
-- âŒ Or: Accidentally rack up huge API bills
+- â�Œ Hit rate limit â†’ Work stops â†’ Frustration
+- â�Œ Or: Accidentally rack up huge API bills
 
 **With XLab Router:**
 - ✅ Subscription hits limit → Auto-fallback to cheap tier
@@ -635,7 +635,7 @@ XLab Router's smart fallback prevents surprise charges:
 ## 📖 Setup Guide
 
 <details>
-<summary><b>ðŸ" Subscription Providers (Maximize Value)</b></summary>
+<summary><b>ðŸ"� Subscription Providers (Maximize Value)</b></summary>
 
 ### Claude Code (Pro/Max)
 
@@ -1052,7 +1052,7 @@ Notes:
 
 ---
 
-## ðŸ› Troubleshooting
+## ðŸ�› Troubleshooting
 
 **"Language model did not provide messages"**
 - Provider quota exhausted → Check dashboard quota tracker
@@ -1094,7 +1094,7 @@ Notes:
 
 ---
 
-## ðŸ“ API Reference
+## ðŸ“� API Reference
 
 ### Chat Completions
 
@@ -1163,7 +1163,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for developers who code 24/7</sub>
+  <sub>Built with �️ for developers who code 24/7</sub>
 </div>
 
 
