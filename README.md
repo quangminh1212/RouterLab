@@ -9,12 +9,12 @@
 
   [ðŸš€ Quick Start](#-quick-start) â€¢ [ðŸ’¡ Features](#-key-features) â€¢ [ðŸ“– Setup](#-setup-guide) â€¢ [ðŸŒ Website](https://xlabrouter.com)
 
-  [ðŸ‡»ðŸ‡³ Tiáº¿ng Viá»‡t](./i18n/README.vi.md) â€¢ [ðŸ‡¨ðŸ‡³ ä¸­æ–‡](./i18n/README.zh-CN.md) â€¢ [ðŸ‡¯ðŸ‡µ æ—¥æœ¬èªž](./i18n/README.ja-JP.md)
+  [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
 </div>
 
 ---
 
-## ðŸ¤” Why XLab Router?
+## 🤔 Why XLab Router?
 
 **Stop wasting money and hitting limits:**
 
@@ -25,41 +25,41 @@
 
 **XLab Router solves this:**
 
-- âœ… **Maximize subscriptions** - Track quota, use every bit before reset
-- âœ… **Auto fallback** - Subscription â†’ Cheap â†’ Free, zero downtime
-- âœ… **Multi-account** - Round-robin between accounts per provider
-- âœ… **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
+- ✅ **Maximize subscriptions** - Track quota, use every bit before reset
+- ✅ **Auto fallback** - Subscription → Cheap → Free, zero downtime
+- ✅ **Multi-account** - Round-robin between accounts per provider
+- ✅ **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
 
 ---
 
-## ðŸ”„ How It Works
+## 🔄 How It Works
 
 ```
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Your CLI   â”‚  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
-â”‚   Tool      â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-       â”‚ http://localhost:20128/v1
-       â†“
+│  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
+│   Tool      │
+└──────┬──────┘
+       │ http://localhost:20128/v1
+       ↓
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚           XLab Router (Smart Router)        â”‚
-â”‚  â€¢ Format translation (OpenAI â†” Claude) â”‚
-â”‚  â€¢ Quota tracking                       â”‚
-â”‚  â€¢ Auto token refresh                   â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-       â”‚
-       â”œâ”€â†’ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
-       â”‚   â†“ quota exhausted
-       â”œâ”€â†’ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
-       â”‚   â†“ budget limit
-       â””â”€â†’ [Tier 3: FREE] iFlow, Qwen, Kiro (unlimited)
+│           XLab Router (Smart Router)        │
+│  • Format translation (OpenAI ↔ Claude) │
+│  • Quota tracking                       │
+│  • Auto token refresh                   │
+└──────┬──────────────────────────────────┘
+       │
+       ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
+       │   ↓ quota exhausted
+       ├─→ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
+       │   ↓ budget limit
+       └─→ [Tier 3: FREE] iFlow, Qwen, Kiro (unlimited)
 
 Result: Never stop coding, minimal cost
 ```
 
 ---
 
-## Ã¢Å¡Â¡ Quick Start
+## 🚀 Quick Start
 
 **1. Install globally:**
 
@@ -68,11 +68,11 @@ npm install -g xlabrouter
 xlabrouter
 ```
 
-ðŸŽ‰ Dashboard opens at `http://localhost:20128`
+🎉 Dashboard opens at `http://localhost:20128`
 
 **2. Connect a FREE provider (no signup needed):**
 
-Dashboard â†’ Providers â†’ Connect **Claude Code** or **Antigravity** â†’ OAuth login â†’ Done!
+Dashboard → Providers → Connect **Claude Code** or **Antigravity** → OAuth login → Done!
 
 **3. Use in your CLI tool:**
 
@@ -108,18 +108,18 @@ Default URLs:
 
 ---
 
-## ðŸŽ¥ Video Tutorial
+## 🎥 Video Tutorial
 
 <div align="center">
   
-### ðŸ“º Complete Setup Guide - XLab Router + Claude Code FREE
+### 📺 Complete Setup Guide - XLab Router + Claude Code FREE
   
 
-**ðŸŽ¬ Watch the complete step-by-step tutorial:**
-- âœ… XLab Router installation & setup
-- âœ… FREE Claude Sonnet 4.5 configuration
-- âœ… Claude Code integration
-- âœ… Live coding demonstration
+**🎬 Watch the complete step-by-step tutorial:**
+- ✅ XLab Router installation & setup
+- ✅ FREE Claude Sonnet 4.5 configuration
+- ✅ Claude Code integration
+- ✅ Live coding demonstration
 
 **â±ï¸ Duration:** 20 minutes | **ðŸ‘¥ By:** Developer Community
 
@@ -206,32 +206,32 @@ XLab Router works seamlessly with all major AI coding tools:
   </table>
 </div>
 
-### ðŸ†“ Free Providers
+### 🆓 Free Providers
 
-<div align="center">
+<div align=”center”>
   <table>
     <tr>
-      <td align="center" width="150">
+      <td align=”center” width=”150”>
         <b>iFlow AI</b><br/>
-        <sub>8+ models â€¢ Unlimited</sub>
+        <sub>8+ models • Unlimited</sub>
       </td>
-      <td align="center" width="150">
+      <td align=”center” width=”150”>
         <b>Qwen Code</b><br/>
-        <sub>3+ models â€¢ Unlimited</sub>
+        <sub>3+ models • Unlimited</sub>
       </td>
-      <td align="center" width="150">
+      <td align=”center” width=”150”>
         <b>Gemini CLI</b><br/>
         <sub>180K/month FREE</sub>
       </td>
-      <td align="center" width="150">
+      <td align=”center” width=”150”>
         <b>Kiro AI</b><br/>
-        <sub>Claude â€¢ Unlimited</sub>
+        <sub>Claude • Unlimited</sub>
       </td>
     </tr>
   </table>
 </div>
 
-### ðŸ”‘ API Key Providers (40+)
+### 🔑 API Key Providers (40+)
 
 <div align="center">
   <table>
@@ -301,25 +301,25 @@ XLab Router works seamlessly with all major AI coding tools:
 
 ---
 
-## ðŸ’¡ Key Features
+## 💡 Key Features
 
 | Feature | What It Does | Why It Matters |
 |---------|--------------|----------------|
-| ðŸŽ¯ **Smart 3-Tier Fallback** | Auto-route: Subscription â†’ Cheap â†’ Free | Never stop coding, zero downtime |
-| ðŸ“Š **Real-Time Quota Tracking** | Live token count + reset countdown | Maximize subscription value |
-| ðŸ”„ **Format Translation** | OpenAI â†” Claude â†” Gemini seamless | Works with any CLI tool |
-| ðŸ‘¥ **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
-| ðŸ”„ **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
-| ðŸŽ¨ **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
+| 🎯 **Smart 3-Tier Fallback** | Auto-route: Subscription → Cheap → Free | Never stop coding, zero downtime |
+| 📊 **Real-Time Quota Tracking** | Live token count + reset countdown | Maximize subscription value |
+| 🔄 **Format Translation** | OpenAI ↔ Claude ↔ Gemini seamless | Works with any CLI tool |
+| 👥 **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
+| 🔄 **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
+| 🎨 **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
 | ðŸ“ **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
-| ðŸ’¾ **Cloud Sync** | Sync config across devices | Same setup everywhere |
-| ðŸ“Š **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
+| 💾 **Cloud Sync** | Sync config across devices | Same setup everywhere |
+| 📊 **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
 | ðŸŒ **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
 
 <details>
-<summary><b>ðŸ“– Feature Details</b></summary>
+<summary><b>📖 Feature Details</b></summary>
 
-### ðŸŽ¯ Smart 3-Tier Fallback
+### 🎯 Smart 3-Tier Fallback
 
 Create combos with automatic fallback:
 
@@ -329,36 +329,36 @@ Combo: "my-coding-stack"
   2. glm/glm-4.7               (cheap backup, $0.6/1M)
   3. if/kimi-k2-thinking       (free fallback)
 
-â†’ Auto switches when quota runs out or errors occur
+→ Auto switches when quota runs out or errors occur
 ```
 
-### ðŸ“Š Real-Time Quota Tracking
+### 📊 Real-Time Quota Tracking
 
 - Token consumption per provider
 - Reset countdown (5-hour, daily, weekly)
 - Cost estimation for paid tiers
 - Monthly spending reports
 
-### ðŸ”„ Format Translation
+### 🔄 Format Translation
 
 Seamless translation between formats:
-- **OpenAI** â†” **Claude** â†” **Gemini** â†” **OpenAI Responses**
-- Your CLI tool sends OpenAI format â†’ XLab Router translates â†’ Provider receives native format
+- **OpenAI** ↔ **Claude** ↔ **Gemini** ↔ **OpenAI Responses**
+- Your CLI tool sends OpenAI format → XLab Router translates → Provider receives native format
 - Works with any tool that supports custom OpenAI endpoints
 
-### ðŸ‘¥ Multi-Account Support
+### 👥 Multi-Account Support
 
 - Add multiple accounts per provider
 - Auto round-robin or priority-based routing
 - Fallback to next account when one hits quota
 
-### ðŸ”„ Auto Token Refresh
+### 🔄 Auto Token Refresh
 
 - OAuth tokens automatically refresh before expiration
 - No manual re-authentication needed
 - Seamless experience across all providers
 
-### ðŸŽ¨ Custom Combos
+### 🎨 Custom Combos
 
 - Create unlimited model combinations
 - Mix subscription, cheap, and free tiers
@@ -372,7 +372,7 @@ Seamless translation between formats:
 - Troubleshoot integration issues
 - Export logs for analysis
 
-### ðŸ’¾ Cloud Sync
+### 💾 Cloud Sync
 
 - Sync providers, combos, and settings across devices
 - Automatic background sync
@@ -387,14 +387,14 @@ Seamless translation between formats:
 - `NEXT_PUBLIC_BASE_URL` and `NEXT_PUBLIC_CLOUD_URL` are still supported for compatibility/UI, but server runtime now prioritizes `BASE_URL`/`CLOUD_URL`.
 - Cloud sync requests now use timeout + fail-fast behavior to avoid UI hanging when cloud DNS/network is unavailable.
 
-### ðŸ“Š Usage Analytics
+### 📊 Usage Analytics
 
 - Track token usage per provider and model
 - Cost estimation and spending trends
 - Monthly reports and insights
 - Optimize your AI spending
 
-> **ðŸ’¡ IMPORTANT - Understanding Dashboard Costs:**
+> **💡 IMPORTANT - Understanding Dashboard Costs:**
 > 
 > The "cost" displayed in Usage Analytics is **for tracking and comparison purposes only**. 
 > XLab Router itself **never charges** you anything. You only pay providers directly (if using paid services).
@@ -407,42 +407,42 @@ Seamless translation between formats:
 
 ### ðŸŒ Deploy Anywhere
 
-- ðŸ’» **Localhost** - Default, works offline
+- 💻 **Localhost** - Default, works offline
 - â˜ï¸ **VPS/Cloud** - Share across devices
 - ðŸ³ **Docker** - One-command deployment
-- ðŸš€ **Cloudflare Workers** - Global edge network
+- 🚀 **Cloudflare Workers** - Global edge network
 
 </details>
 
 ---
 
-## ðŸ’° Pricing at a Glance
+## 💰 Pricing at a Glance
 
 | Tier | Provider | Cost | Quota Reset | Best For |
 |------|----------|------|-------------|----------|
-| **ðŸ’³ SUBSCRIPTION** | Claude Code (Pro) | $20/mo | 5h + weekly | Already subscribed |
+| **💳 SUBSCRIPTION** | Claude Code (Pro) | $20/mo | 5h + weekly | Already subscribed |
 | | Codex (Plus/Pro) | $20-200/mo | 5h + weekly | OpenAI users |
 | | Gemini CLI | **FREE** | 180K/mo + 1K/day | Everyone! |
 | | GitHub Copilot | $10-19/mo | Monthly | GitHub users |
-| **ðŸ’° CHEAP** | GLM-4.7 | $0.6/1M | Daily 10AM | Budget backup |
+| **💰 CHEAP** | GLM-4.7 | $0.6/1M | Daily 10AM | Budget backup |
 | | MiniMax M2.1 | $0.2/1M | 5-hour rolling | Cheapest option |
 | | Kimi K2 | $9/mo flat | 10M tokens/mo | Predictable cost |
-| **ðŸ†“ FREE** | iFlow | $0 | Unlimited | 8 models free |
+| **🆓 FREE** | iFlow | $0 | Unlimited | 8 models free |
 | | Qwen | $0 | Unlimited | 3 models free |
 | | Kiro | $0 | Unlimited | Claude free |
 
-**ðŸ’¡ Pro Tip:** Start with Gemini CLI (180K free/month) + iFlow (unlimited free) combo = $0 cost!
+**💡 Pro Tip:** Start with Gemini CLI (180K free/month) + iFlow (unlimited free) combo = $0 cost!
 
 ---
 
-### ðŸ“Š Understanding XLab Router Costs & Billing
+### 📊 Understanding XLab Router Costs & Billing
 
 **XLab Router Billing Reality:**
 
-âœ… **XLab Router software = FREE forever** (open source, never charges)  
-âœ… **Dashboard "costs" = Display/tracking only** (not actual bills)  
-âœ… **You pay providers directly** (subscriptions or API fees)  
-âœ… **FREE providers stay FREE** (iFlow, Kiro, Qwen = $0 unlimited)  
+✅ **XLab Router software = FREE forever** (open source, never charges)  
+✅ **Dashboard "costs" = Display/tracking only** (not actual bills)  
+✅ **You pay providers directly** (subscriptions or API fees)  
+✅ **FREE providers stay FREE** (iFlow, Kiro, Qwen = $0 unlimited)  
 âŒ **XLab Router never sends invoices** or charges your card
 
 **How Cost Display Works:**
@@ -452,14 +452,14 @@ The dashboard shows **estimated costs** as if you were using paid APIs directly.
 **Example Scenario:**
 ```
 Dashboard Display:
-â€¢ Total Requests: 1,662
-â€¢ Total Tokens: 47M
-â€¢ Display Cost: $290
+• Total Requests: 1,662
+• Total Tokens: 47M
+• Display Cost: $290
 
 Reality Check:
-â€¢ Provider: iFlow (FREE unlimited)
-â€¢ Actual Payment: $0.00
-â€¢ What $290 Means: Amount you SAVED by using free models!
+• Provider: iFlow (FREE unlimited)
+• Actual Payment: $0.00
+• What $290 Means: Amount you SAVED by using free models!
 ```
 
 **Payment Rules:**
@@ -470,7 +470,7 @@ Reality Check:
 
 ---
 
-## ðŸŽ¯ Use Cases
+## 🎯 Use Cases
 
 ### Case 1: "I have Claude Pro subscription"
 
@@ -539,7 +539,7 @@ Access via: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 ## â“ Frequently Asked Questions
 
 <details>
-<summary><b>ðŸ“Š Why does my dashboard show high costs?</b></summary>
+<summary><b>📊 Why does my dashboard show high costs?</b></summary>
 
 The dashboard tracks your token usage and displays **estimated costs** as if you were using paid APIs directly. This is **not actual billing** - it's a reference to show how much you're saving by using free models or existing subscriptions through XLab Router.
 
@@ -554,13 +554,13 @@ The cost display is a "savings tracker" to help you understand your usage patter
 </details>
 
 <details>
-<summary><b>ðŸ’³ Will I be charged by XLab Router?</b></summary>
+<summary><b>💳 Will I be charged by XLab Router?</b></summary>
 
 **No.** XLab Router is free, open-source software that runs on your own computer. It never charges you anything.
 
 **You only pay:**
-- âœ… **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) â†’ Pay them directly on their websites
-- âœ… **Cheap providers** (GLM, MiniMax) â†’ Pay them directly, XLab Router just routes your requests
+- ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) → Pay them directly on their websites
+- ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, XLab Router just routes your requests
 - âŒ **XLab Router itself** â†’ **Never charges anything, ever**
 
 XLab Router is a local proxy/router. It doesn't have your credit card, can't send invoices, and has no billing system. It's completely free software.
@@ -568,7 +568,7 @@ XLab Router is a local proxy/router. It doesn't have your credit card, can't sen
 </details>
 
 <details>
-<summary><b>ðŸ†“ Are FREE providers really unlimited?</b></summary>
+<summary><b>🆓 Are FREE providers really unlimited?</b></summary>
 
 **Yes!** Providers marked as FREE (iFlow, Kiro, Qwen) are genuinely unlimited with **no hidden charges**. 
 
@@ -584,7 +584,7 @@ XLab Router just routes your requests to them - there's no "catch" or future bil
 </details>
 
 <details>
-<summary><b>ðŸ’° How do I minimize my actual AI costs?</b></summary>
+<summary><b>💰 How do I minimize my actual AI costs?</b></summary>
 
 **Free-First Strategy:**
 
@@ -611,7 +611,7 @@ XLab Router just routes your requests to them - there's no "catch" or future bil
 </details>
 
 <details>
-<summary><b>ðŸ“ˆ What if my usage suddenly spikes?</b></summary>
+<summary><b>📈 What if my usage suddenly spikes?</b></summary>
 
 XLab Router's smart fallback prevents surprise charges:
 
@@ -622,9 +622,9 @@ XLab Router's smart fallback prevents surprise charges:
 - âŒ Or: Accidentally rack up huge API bills
 
 **With XLab Router:**
-- âœ… Subscription hits limit â†’ Auto-fallback to cheap tier
-- âœ… Cheap tier gets expensive â†’ Auto-fallback to free tier
-- âœ… Never stop coding â†’ Predictable costs
+- ✅ Subscription hits limit → Auto-fallback to cheap tier
+- ✅ Cheap tier gets expensive → Auto-fallback to free tier
+- ✅ Never stop coding → Predictable costs
 
 **You're in control:** Set spending limits per provider in dashboard, and XLab Router respects them.
 
@@ -632,7 +632,7 @@ XLab Router's smart fallback prevents surprise charges:
 
 ---
 
-## ðŸ“– Setup Guide
+## 📖 Setup Guide
 
 <details>
 <summary><b>ðŸ” Subscription Providers (Maximize Value)</b></summary>
@@ -640,9 +640,9 @@ XLab Router's smart fallback prevents surprise charges:
 ### Claude Code (Pro/Max)
 
 ```bash
-Dashboard â†’ Providers â†’ Connect Claude Code
-â†’ OAuth login â†’ Auto token refresh
-â†’ 5-hour + weekly quota tracking
+Dashboard → Providers → Connect Claude Code
+→ OAuth login → Auto token refresh
+→ 5-hour + weekly quota tracking
 
 Models:
   cc/claude-opus-4-6
@@ -655,9 +655,9 @@ Models:
 ### OpenAI Codex (Plus/Pro)
 
 ```bash
-Dashboard â†’ Providers â†’ Connect Codex
-â†’ OAuth login (port 1455)
-â†’ 5-hour + weekly reset
+Dashboard → Providers → Connect Codex
+→ OAuth login (port 1455)
+→ 5-hour + weekly reset
 
 Models:
   cx/gpt-5.2-codex
@@ -667,9 +667,9 @@ Models:
 ### Gemini CLI (FREE 180K/month!)
 
 ```bash
-Dashboard â†’ Providers â†’ Connect Gemini CLI
-â†’ Google OAuth
-â†’ 180K completions/month + 1K/day
+Dashboard → Providers → Connect Gemini CLI
+→ Google OAuth
+→ 180K completions/month + 1K/day
 
 Models:
   gc/gemini-3-flash-preview
@@ -681,9 +681,9 @@ Models:
 ### GitHub Copilot
 
 ```bash
-Dashboard â†’ Providers â†’ Connect GitHub
-â†’ OAuth via GitHub
-â†’ Monthly reset (1st of month)
+Dashboard → Providers → Connect GitHub
+→ OAuth via GitHub
+→ Monthly reset (1st of month)
 
 Models:
   gh/gpt-5
@@ -694,25 +694,25 @@ Models:
 </details>
 
 <details>
-<summary><b>ðŸ’° Cheap Providers (Backup)</b></summary>
+<summary><b>💰 Cheap Providers (Backup)</b></summary>
 
 ### GLM-4.7 (Daily reset, $0.6/1M)
 
 1. Sign up: [Zhipu AI](https://open.bigmodel.cn/)
 2. Get API key from Coding Plan
-3. Dashboard â†’ Add API Key:
+3. Dashboard → Add API Key:
    - Provider: `glm`
    - API Key: `your-key`
 
 **Use:** `glm/glm-4.7`
 
-**Pro Tip:** Coding Plan offers 3Ã— quota at 1/7 cost! Reset daily 10:00 AM.
+**Pro Tip:** Coding Plan offers 3× quota at 1/7 cost! Reset daily 10:00 AM.
 
 ### MiniMax M2.1 (5h reset, $0.20/1M)
 
 1. Sign up: [MiniMax](https://www.minimax.io/)
 2. Get API key
-3. Dashboard â†’ Add API Key
+3. Dashboard → Add API Key
 
 **Use:** `minimax/MiniMax-M2.1`
 
@@ -722,7 +722,7 @@ Models:
 
 1. Subscribe: [Moonshot AI](https://platform.moonshot.ai/)
 2. Get API key
-3. Dashboard â†’ Add API Key
+3. Dashboard → Add API Key
 
 **Use:** `kimi/kimi-latest`
 
@@ -731,14 +731,14 @@ Models:
 </details>
 
 <details>
-<summary><b>ðŸ†“ FREE Providers (Emergency Backup)</b></summary>
+<summary><b>🆓 FREE Providers (Emergency Backup)</b></summary>
 
 ### iFlow (8 FREE models)
 
 ```bash
-Dashboard â†’ Connect iFlow
-â†’ iFlow OAuth login
-â†’ Unlimited usage
+Dashboard → Connect iFlow
+→ iFlow OAuth login
+→ Unlimited usage
 
 Models:
   if/kimi-k2-thinking
@@ -751,9 +751,9 @@ Models:
 ### Qwen (3 FREE models)
 
 ```bash
-Dashboard â†’ Connect Qwen
-â†’ Device code authorization
-â†’ Unlimited usage
+Dashboard → Connect Qwen
+→ Device code authorization
+→ Unlimited usage
 
 Models:
   qw/qwen3-coder-plus
@@ -763,9 +763,9 @@ Models:
 ### Kiro (Claude FREE)
 
 ```bash
-Dashboard â†’ Connect Kiro
-â†’ AWS Builder ID, AWS IAM Identity Center, Google, GitHub
-â†’ Unlimited usage
+Dashboard → Connect Kiro
+→ AWS Builder ID, AWS IAM Identity Center, Google, GitHub
+→ Unlimited usage
 
 Models:
   kr/claude-sonnet-4.5
@@ -775,12 +775,12 @@ Models:
 </details>
 
 <details>
-<summary><b>ðŸŽ¨ Create Combos</b></summary>
+<summary><b>🎨 Create Combos</b></summary>
 
-### Example 1: Maximize Subscription â†’ Cheap Backup
+### Example 1: Maximize Subscription → Cheap Backup
 
 ```
-Dashboard â†’ Combos â†’ Create New
+Dashboard → Combos → Create New
 
 Name: premium-coding
 Models:
@@ -812,12 +812,12 @@ Cost: $0 forever!
 </details>
 
 <details>
-<summary><b>ðŸ”§ CLI Integration</b></summary>
+<summary><b>🔧 CLI Integration</b></summary>
 
 ### Cursor IDE
 
 ```
-Settings â†’ Models â†’ Advanced:
+Settings → Models → Advanced:
   OpenAI API Base URL: http://localhost:20128/v1
   OpenAI API Key: [from XLab Router dashboard]
   Model: cc/claude-opus-4-6
@@ -847,13 +847,13 @@ codex "your prompt"
 
 ### OpenClaw
 
-**Option 1 â€” Dashboard (recommended):**
+**Option 1 — Dashboard (recommended):**
 
 ```
-Dashboard â†’ CLI Tools â†’ OpenClaw â†’ Select Model â†’ Apply
+Dashboard → CLI Tools → OpenClaw → Select Model → Apply
 ```
 
-**Option 2 â€” Manual:** Edit `~/.openclaw/openclaw.json`:
+**Option 2 — Manual:** Edit `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -896,7 +896,7 @@ Model: cc/claude-opus-4-6
 </details>
 
 <details>
-<summary><b>ðŸš€ Deployment</b></summary>
+<summary><b>🚀 Deployment</b></summary>
 
 ### VPS Deployment
 
@@ -1007,7 +1007,7 @@ Notes:
 
 ---
 
-## ðŸ“Š Available Models
+## 📊 Available Models
 
 <details>
 <summary><b>View all available models</b></summary>
@@ -1055,16 +1055,16 @@ Notes:
 ## ðŸ› Troubleshooting
 
 **"Language model did not provide messages"**
-- Provider quota exhausted â†’ Check dashboard quota tracker
+- Provider quota exhausted → Check dashboard quota tracker
 - Solution: Use combo fallback or switch to cheaper tier
 
 **Rate limiting**
-- Subscription quota out â†’ Fallback to GLM/MiniMax
-- Add combo: `cc/claude-opus-4-6 â†’ glm/glm-4.7 â†’ if/kimi-k2-thinking`
+- Subscription quota out → Fallback to GLM/MiniMax
+- Add combo: `cc/claude-opus-4-6 → glm/glm-4.7 → if/kimi-k2-thinking`
 
 **OAuth token expired**
 - Auto-refreshed by XLab Router
-- If issues persist: Dashboard â†’ Provider â†’ Reconnect
+- If issues persist: Dashboard → Provider → Reconnect
 
 **High costs**
 - Check usage stats in Dashboard
@@ -1118,10 +1118,10 @@ Content-Type: application/json
 GET http://localhost:20128/v1/models
 Authorization: Bearer your-api-key
 
-â†’ Returns all models + combos in OpenAI format
+→ Returns all models + combos in OpenAI format
 ```
 
-## ðŸ“§ Support
+## 📧 Support
 
 - **Website**: [xlabrouter.com](https://xlabrouter.com)
 - **GitHub**: [github.com/decolua/xlabrouter](https://github.com/decolua/xlabrouter)
@@ -1129,7 +1129,7 @@ Authorization: Bearer your-api-key
 
 ---
 
-## ðŸ‘¥ Contributors
+## 👥 Contributors
 
 Thanks to all contributors who helped make XLab Router better!
 
@@ -1138,15 +1138,15 @@ Thanks to all contributors who helped make XLab Router better!
 
 ---
 
-## ðŸ“Š Star Chart
+## 📊 Star Chart
 
 [View Star Chart](https://starchart.cc/decolua/xlabrouter)
 
 
 
-## ðŸ”€ Forks
+## 🔀 Forks
 
-**[OmniRoute](https://github.com/diegosouzapw/OmniRoute)** â€” A full-featured TypeScript fork of XLab Router. Adds 36+ providers, 4-tier auto-fallback, multi-modal APIs (images, embeddings, audio, TTS), circuit breaker, semantic cache, LLM evaluations, and a polished dashboard. 368+ unit tests. Available via npm and Docker.
+**[OmniRoute](https://github.com/diegosouzapw/OmniRoute)** — A full-featured TypeScript fork of XLab Router. Adds 36+ providers, 4-tier auto-fallback, multi-modal APIs (images, embeddings, audio, TTS), circuit breaker, semantic cache, LLM evaluations, and a polished dashboard. 368+ unit tests. Available via npm and Docker.
 
 ---
 
@@ -1156,7 +1156,7 @@ Special thanks to **CLIProxyAPI** - the original Go implementation that inspired
 
 ---
 
-## ðŸ“„ License
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
