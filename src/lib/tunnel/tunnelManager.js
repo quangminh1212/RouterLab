@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { loadState, saveState, generateShortId } from "./state.js";
-import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
+import { spawnQuickTunnel, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
 import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword } from "./tailscale.js";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { getCachedPassword, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
@@ -10,8 +10,6 @@ initDbHooks(getSettings, updateSettings);
 const TUNNEL_PUBLIC_DOMAIN = process.env.TUNNEL_PUBLIC_DOMAIN || "";
 const TUNNEL_WORKER_URL = process.env.TUNNEL_WORKER_URL || "";
 const WORKER_URL = TUNNEL_WORKER_URL || (TUNNEL_PUBLIC_DOMAIN ? `https://${TUNNEL_PUBLIC_DOMAIN}` : "");
-const CLOUDFLARE_TUNNEL_TOKEN = process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "";
-const CLOUDFLARE_TUNNEL_PUBLIC_URL = process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "";
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
@@ -39,23 +37,6 @@ function getMachineId() {
   }
 }
 
-function normalizeUrl(url) {
-  if (!url) return "";
-  if (/^https?:\/\//i.test(url)) return url;
-  return `https://${url}`;
-}
-
-function getNamedTunnelPublicUrl() {
-  return normalizeUrl(CLOUDFLARE_TUNNEL_PUBLIC_URL);
-}
-
-function getComputedPublicUrl(shortId) {
-  if (!shortId) return "";
-  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
-  if (namedTunnelPublicUrl) return namedTunnelPublicUrl;
-  return TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
-}
-
 // ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
 
 async function registerTunnelUrl(shortId, tunnelUrl) {
@@ -81,13 +62,11 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 
 export async function enableTunnel(localPort = 20128) {
   manualDisabled = false;
-  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
-  const useNamedTunnel = !!CLOUDFLARE_TUNNEL_TOKEN;
 
   if (isCloudflaredRunning()) {
     const existing = loadState();
     if (existing?.tunnelUrl) {
-      const publicUrl = getComputedPublicUrl(existing.shortId);
+      const publicUrl = TUNNEL_PUBLIC_DOMAIN ? `https://r${existing.shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
       return { success: true, tunnelUrl: existing.tunnelUrl, shortId: existing.shortId, publicUrl, alreadyRunning: true };
     }
   }
@@ -97,22 +76,6 @@ export async function enableTunnel(localPort = 20128) {
   const machineId = getMachineId();
   const existing = loadState();
   const shortId = existing?.shortId || generateShortId();
-
-  if (useNamedTunnel) {
-    await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
-    const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
-    saveState({ shortId, machineId, tunnelUrl });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl });
-
-    if (!exitHandlerRegistered) {
-      setUnexpectedExitHandler(() => {
-        if (!isReconnecting) scheduleReconnect(0);
-      });
-      exitHandlerRegistered = true;
-    }
-
-    return { success: true, tunnelUrl, shortId, publicUrl: getComputedPublicUrl(shortId), mode: "named" };
-  }
 
   // onUrlUpdate: called when URL changes AFTER initial connect
   const onUrlUpdate = async (url) => {
@@ -135,7 +98,7 @@ export async function enableTunnel(localPort = 20128) {
     exitHandlerRegistered = true;
   }
 
-  const publicUrl = getComputedPublicUrl(shortId);
+  const publicUrl = TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
   return { success: true, tunnelUrl, shortId, publicUrl };
 }
 
@@ -194,7 +157,7 @@ export async function getTunnelStatus() {
   const running = isCloudflaredRunning();
   const settings = await getSettings();
   const shortId = state?.shortId || "";
-  const publicUrl = getComputedPublicUrl(shortId);
+  const publicUrl = shortId && TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
 
   return {
     enabled: settings.tunnelEnabled === true && running,
