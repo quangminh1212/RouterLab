@@ -1,5 +1,4 @@
-<div align="center">
-  <img src="./images/xlabrouter.png?1" alt="xlabrouter Dashboard" width="800"/>
+﻿<div align="center">
   
   # xlabrouter - Free AI Router
   
@@ -8,59 +7,59 @@
   **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
   
 
-  [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://xlabrouter.com)
+  [ðŸš€ Quick Start](#-quick-start) â€¢ [ðŸ’¡ Features](#-key-features) â€¢ [ðŸ“– Setup](#-setup-guide) â€¢ [ðŸŒ Website](https://xlabrouter.com)
 
-  [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
+  [ðŸ‡»ðŸ‡³ Tiáº¿ng Viá»‡t](./i18n/README.vi.md) â€¢ [ðŸ‡¨ðŸ‡³ ä¸­æ–‡](./i18n/README.zh-CN.md) â€¢ [ðŸ‡¯ðŸ‡µ æ—¥æœ¬èªž](./i18n/README.ja-JP.md)
 </div>
 
 ---
 
-## 🤔 Why xlabrouter?
+## ðŸ¤” Why xlabrouter?
 
 **Stop wasting money and hitting limits:**
 
-- ❌ Subscription quota expires unused every month
-- ❌ Rate limits stop you mid-coding
-- ❌ Expensive APIs ($20-50/month per provider)
-- ❌ Manual switching between providers
+- âŒ Subscription quota expires unused every month
+- âŒ Rate limits stop you mid-coding
+- âŒ Expensive APIs ($20-50/month per provider)
+- âŒ Manual switching between providers
 
 **xlabrouter solves this:**
 
-- ✅ **Maximize subscriptions** - Track quota, use every bit before reset
-- ✅ **Auto fallback** - Subscription → Cheap → Free, zero downtime
-- ✅ **Multi-account** - Round-robin between accounts per provider
-- ✅ **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
+- âœ… **Maximize subscriptions** - Track quota, use every bit before reset
+- âœ… **Auto fallback** - Subscription â†’ Cheap â†’ Free, zero downtime
+- âœ… **Multi-account** - Round-robin between accounts per provider
+- âœ… **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
 
 ---
 
-## 🔄 How It Works
+## ðŸ”„ How It Works
 
 ```
-┌─────────────┐
-│  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
-│   Tool      │
-└──────┬──────┘
-       │ http://localhost:20128/v1
-       ↓
-┌─────────────────────────────────────────┐
-│           xlabrouter (Smart Router)        │
-│  • Format translation (OpenAI ↔ Claude) │
-│  • Quota tracking                       │
-│  • Auto token refresh                   │
-└──────┬──────────────────────────────────┘
-       │
-       ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
-       │   ↓ quota exhausted
-       ├─→ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
-       │   ↓ budget limit
-       └─→ [Tier 3: FREE] iFlow, Qwen, Kiro (unlimited)
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Your CLI   â”‚  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
+â”‚   Tool      â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
+       â”‚ http://localhost:20128/v1
+       â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚           xlabrouter (Smart Router)        â”‚
+â”‚  â€¢ Format translation (OpenAI â†” Claude) â”‚
+â”‚  â€¢ Quota tracking                       â”‚
+â”‚  â€¢ Auto token refresh                   â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+       â”‚
+       â”œâ”€â†’ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
+       â”‚   â†“ quota exhausted
+       â”œâ”€â†’ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
+       â”‚   â†“ budget limit
+       â””â”€â†’ [Tier 3: FREE] iFlow, Qwen, Kiro (unlimited)
 
 Result: Never stop coding, minimal cost
 ```
 
 ---
 
-## ⚡ Quick Start
+## âš¡ Quick Start
 
 **1. Install globally:**
 
@@ -69,11 +68,11 @@ npm install -g xlabrouter
 xlabrouter
 ```
 
-🎉 Dashboard opens at `http://localhost:20128`
+ðŸŽ‰ Dashboard opens at `http://localhost:20128`
 
 **2. Connect a FREE provider (no signup needed):**
 
-Dashboard → Providers → Connect **Claude Code** or **Antigravity** → OAuth login → Done!
+Dashboard â†’ Providers â†’ Connect **Claude Code** or **Antigravity** â†’ OAuth login â†’ Done!
 
 **3. Use in your CLI tool:**
 
@@ -109,29 +108,28 @@ Default URLs:
 
 ---
 
-## 🎥 Video Tutorial
+## ðŸŽ¥ Video Tutorial
 
 <div align="center">
   
-### 📺 Complete Setup Guide - xlabrouter + Claude Code FREE
+### ðŸ“º Complete Setup Guide - xlabrouter + Claude Code FREE
   
-[![xlabrouter + Claude Code Setup](https://img.youtube.com/vi/raEyZPg5xE0/maxresdefault.jpg)](https://www.youtube.com/watch?v=raEyZPg5xE0)
 
-**🎬 Watch the complete step-by-step tutorial:**
-- ✅ xlabrouter installation & setup
-- ✅ FREE Claude Sonnet 4.5 configuration
-- ✅ Claude Code integration
-- ✅ Live coding demonstration
+**ðŸŽ¬ Watch the complete step-by-step tutorial:**
+- âœ… xlabrouter installation & setup
+- âœ… FREE Claude Sonnet 4.5 configuration
+- âœ… Claude Code integration
+- âœ… Live coding demonstration
 
-**⏱️ Duration:** 20 minutes | **👥 By:** Developer Community
+**â±ï¸ Duration:** 20 minutes | **ðŸ‘¥ By:** Developer Community
 
-[▶️ Watch on YouTube](https://www.youtube.com/watch?v=o3qYCyjrFYg)
+[â–¶ï¸ Watch on YouTube](https://www.youtube.com/watch?v=o3qYCyjrFYg)
 
 </div>
 
 ---
 
-## 🛠️ Supported CLI Tools
+## ðŸ› ï¸ Supported CLI Tools
 
 xlabrouter works seamlessly with all major AI coding tools:
 
@@ -139,53 +137,41 @@ xlabrouter works seamlessly with all major AI coding tools:
   <table>
     <tr>
       <td align="center" width="120">
-        <img src="./public/providers/claude.png" width="60" alt="Claude Code"/><br/>
         <b>Claude-Code</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/openclaw.png" width="60" alt="OpenClaw"/><br/>
         <b>OpenClaw</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/codex.png" width="60" alt="Codex"/><br/>
         <b>Codex</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/opencode.png" width="60" alt="OpenCode"/><br/>
         <b>OpenCode</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/cursor.png" width="60" alt="Cursor"/><br/>
         <b>Cursor</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/antigravity.png" width="60" alt="Antigravity"/><br/>
         <b>Antigravity</b>
       </td>
     </tr>
     <tr>
       <td align="center" width="120">
-        <img src="./public/providers/cline.png" width="60" alt="Cline"/><br/>
         <b>Cline</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/continue.png" width="60" alt="Continue"/><br/>
         <b>Continue</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/droid.png" width="60" alt="Droid"/><br/>
         <b>Droid</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/roo.png" width="60" alt="Roo"/><br/>
         <b>Roo</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/copilot.png" width="60" alt="Copilot"/><br/>
         <b>Copilot</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/kilocode.png" width="60" alt="Kilo Code"/><br/>
         <b>Kilo Code</b>
       </td>
     </tr>
@@ -194,145 +180,118 @@ xlabrouter works seamlessly with all major AI coding tools:
 
 ---
 
-## 🌐 Supported Providers
+## ðŸŒ Supported Providers
 
-### 🔐 OAuth Providers
+### ðŸ” OAuth Providers
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="120">
-        <img src="./public/providers/claude.png" width="60" alt="Claude Code"/><br/>
         <b>Claude-Code</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/antigravity.png" width="60" alt="Antigravity"/><br/>
         <b>Antigravity</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/codex.png" width="60" alt="Codex"/><br/>
         <b>Codex</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/github.png" width="60" alt="GitHub"/><br/>
         <b>GitHub</b>
       </td>
       <td align="center" width="120">
-        <img src="./public/providers/cursor.png" width="60" alt="Cursor"/><br/>
         <b>Cursor</b>
       </td>
     </tr>
   </table>
 </div>
 
-### 🆓 Free Providers
+### ðŸ†“ Free Providers
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="150">
-        <img src="./public/providers/iflow.png" width="70" alt="iFlow"/><br/>
         <b>iFlow AI</b><br/>
-        <sub>8+ models • Unlimited</sub>
+        <sub>8+ models â€¢ Unlimited</sub>
       </td>
       <td align="center" width="150">
-        <img src="./public/providers/qwen.png" width="70" alt="Qwen"/><br/>
         <b>Qwen Code</b><br/>
-        <sub>3+ models • Unlimited</sub>
+        <sub>3+ models â€¢ Unlimited</sub>
       </td>
       <td align="center" width="150">
-        <img src="./public/providers/gemini-cli.png" width="70" alt="Gemini CLI"/><br/>
         <b>Gemini CLI</b><br/>
         <sub>180K/month FREE</sub>
       </td>
       <td align="center" width="150">
-        <img src="./public/providers/kiro.png" width="70" alt="Kiro"/><br/>
         <b>Kiro AI</b><br/>
-        <sub>Claude • Unlimited</sub>
+        <sub>Claude â€¢ Unlimited</sub>
       </td>
     </tr>
   </table>
 </div>
 
-### 🔑 API Key Providers (40+)
+### ðŸ”‘ API Key Providers (40+)
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="100">
-        <img src="./public/providers/openrouter.png" width="50" alt="OpenRouter"/><br/>
         <sub>OpenRouter</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/glm.png" width="50" alt="GLM"/><br/>
         <sub>GLM</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/kimi.png" width="50" alt="Kimi"/><br/>
         <sub>Kimi</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/minimax.png" width="50" alt="MiniMax"/><br/>
         <sub>MiniMax</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/openai.png" width="50" alt="OpenAI"/><br/>
         <sub>OpenAI</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/anthropic.png" width="50" alt="Anthropic"/><br/>
         <sub>Anthropic</sub>
       </td>
     </tr>
     <tr>
       <td align="center" width="100">
-        <img src="./public/providers/gemini.png" width="50" alt="Gemini"/><br/>
         <sub>Gemini</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/deepseek.png" width="50" alt="DeepSeek"/><br/>
         <sub>DeepSeek</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/groq.png" width="50" alt="Groq"/><br/>
         <sub>Groq</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/xai.png" width="50" alt="xAI"/><br/>
         <sub>xAI</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/mistral.png" width="50" alt="Mistral"/><br/>
         <sub>Mistral</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/perplexity.png" width="50" alt="Perplexity"/><br/>
         <sub>Perplexity</sub>
       </td>
     </tr>
     <tr>
       <td align="center" width="100">
-        <img src="./public/providers/together.png" width="50" alt="Together"/><br/>
         <sub>Together AI</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/fireworks.png" width="50" alt="Fireworks"/><br/>
         <sub>Fireworks</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/cerebras.png" width="50" alt="Cerebras"/><br/>
         <sub>Cerebras</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/cohere.png" width="50" alt="Cohere"/><br/>
         <sub>Cohere</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/nvidia.png" width="50" alt="NVIDIA"/><br/>
         <sub>NVIDIA</sub>
       </td>
       <td align="center" width="100">
-        <img src="./public/providers/siliconflow.png" width="50" alt="SiliconFlow"/><br/>
         <sub>SiliconFlow</sub>
       </td>
     </tr>
@@ -342,25 +301,25 @@ xlabrouter works seamlessly with all major AI coding tools:
 
 ---
 
-## 💡 Key Features
+## ðŸ’¡ Key Features
 
 | Feature | What It Does | Why It Matters |
 |---------|--------------|----------------|
-| 🎯 **Smart 3-Tier Fallback** | Auto-route: Subscription → Cheap → Free | Never stop coding, zero downtime |
-| 📊 **Real-Time Quota Tracking** | Live token count + reset countdown | Maximize subscription value |
-| 🔄 **Format Translation** | OpenAI ↔ Claude ↔ Gemini seamless | Works with any CLI tool |
-| 👥 **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
-| 🔄 **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
-| 🎨 **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
-| 📝 **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
-| 💾 **Cloud Sync** | Sync config across devices | Same setup everywhere |
-| 📊 **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
-| 🌐 **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
+| ðŸŽ¯ **Smart 3-Tier Fallback** | Auto-route: Subscription â†’ Cheap â†’ Free | Never stop coding, zero downtime |
+| ðŸ“Š **Real-Time Quota Tracking** | Live token count + reset countdown | Maximize subscription value |
+| ðŸ”„ **Format Translation** | OpenAI â†” Claude â†” Gemini seamless | Works with any CLI tool |
+| ðŸ‘¥ **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
+| ðŸ”„ **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
+| ðŸŽ¨ **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
+| ðŸ“ **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
+| ðŸ’¾ **Cloud Sync** | Sync config across devices | Same setup everywhere |
+| ðŸ“Š **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
+| ðŸŒ **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
 
 <details>
-<summary><b>📖 Feature Details</b></summary>
+<summary><b>ðŸ“– Feature Details</b></summary>
 
-### 🎯 Smart 3-Tier Fallback
+### ðŸŽ¯ Smart 3-Tier Fallback
 
 Create combos with automatic fallback:
 
@@ -370,50 +329,50 @@ Combo: "my-coding-stack"
   2. glm/glm-4.7               (cheap backup, $0.6/1M)
   3. if/kimi-k2-thinking       (free fallback)
 
-→ Auto switches when quota runs out or errors occur
+â†’ Auto switches when quota runs out or errors occur
 ```
 
-### 📊 Real-Time Quota Tracking
+### ðŸ“Š Real-Time Quota Tracking
 
 - Token consumption per provider
 - Reset countdown (5-hour, daily, weekly)
 - Cost estimation for paid tiers
 - Monthly spending reports
 
-### 🔄 Format Translation
+### ðŸ”„ Format Translation
 
 Seamless translation between formats:
-- **OpenAI** ↔ **Claude** ↔ **Gemini** ↔ **OpenAI Responses**
-- Your CLI tool sends OpenAI format → xlabrouter translates → Provider receives native format
+- **OpenAI** â†” **Claude** â†” **Gemini** â†” **OpenAI Responses**
+- Your CLI tool sends OpenAI format â†’ xlabrouter translates â†’ Provider receives native format
 - Works with any tool that supports custom OpenAI endpoints
 
-### 👥 Multi-Account Support
+### ðŸ‘¥ Multi-Account Support
 
 - Add multiple accounts per provider
 - Auto round-robin or priority-based routing
 - Fallback to next account when one hits quota
 
-### 🔄 Auto Token Refresh
+### ðŸ”„ Auto Token Refresh
 
 - OAuth tokens automatically refresh before expiration
 - No manual re-authentication needed
 - Seamless experience across all providers
 
-### 🎨 Custom Combos
+### ðŸŽ¨ Custom Combos
 
 - Create unlimited model combinations
 - Mix subscription, cheap, and free tiers
 - Name your combos for easy access
 - Share combos across devices with Cloud Sync
 
-### 📝 Request Logging
+### ðŸ“ Request Logging
 
 - Enable debug mode for full request/response logs
 - Track API calls, headers, and payloads
 - Troubleshoot integration issues
 - Export logs for analysis
 
-### 💾 Cloud Sync
+### ðŸ’¾ Cloud Sync
 
 - Sync providers, combos, and settings across devices
 - Automatic background sync
@@ -428,14 +387,14 @@ Seamless translation between formats:
 - `NEXT_PUBLIC_BASE_URL` and `NEXT_PUBLIC_CLOUD_URL` are still supported for compatibility/UI, but server runtime now prioritizes `BASE_URL`/`CLOUD_URL`.
 - Cloud sync requests now use timeout + fail-fast behavior to avoid UI hanging when cloud DNS/network is unavailable.
 
-### 📊 Usage Analytics
+### ðŸ“Š Usage Analytics
 
 - Track token usage per provider and model
 - Cost estimation and spending trends
 - Monthly reports and insights
 - Optimize your AI spending
 
-> **💡 IMPORTANT - Understanding Dashboard Costs:**
+> **ðŸ’¡ IMPORTANT - Understanding Dashboard Costs:**
 > 
 > The "cost" displayed in Usage Analytics is **for tracking and comparison purposes only**. 
 > xlabrouter itself **never charges** you anything. You only pay providers directly (if using paid services).
@@ -446,45 +405,45 @@ Seamless translation between formats:
 > Think of it as a "savings tracker" showing how much you're saving by using free models or 
 > routing through xlabrouter!
 
-### 🌐 Deploy Anywhere
+### ðŸŒ Deploy Anywhere
 
-- 💻 **Localhost** - Default, works offline
-- ☁️ **VPS/Cloud** - Share across devices
-- 🐳 **Docker** - One-command deployment
-- 🚀 **Cloudflare Workers** - Global edge network
+- ðŸ’» **Localhost** - Default, works offline
+- â˜ï¸ **VPS/Cloud** - Share across devices
+- ðŸ³ **Docker** - One-command deployment
+- ðŸš€ **Cloudflare Workers** - Global edge network
 
 </details>
 
 ---
 
-## 💰 Pricing at a Glance
+## ðŸ’° Pricing at a Glance
 
 | Tier | Provider | Cost | Quota Reset | Best For |
 |------|----------|------|-------------|----------|
-| **💳 SUBSCRIPTION** | Claude Code (Pro) | $20/mo | 5h + weekly | Already subscribed |
+| **ðŸ’³ SUBSCRIPTION** | Claude Code (Pro) | $20/mo | 5h + weekly | Already subscribed |
 | | Codex (Plus/Pro) | $20-200/mo | 5h + weekly | OpenAI users |
 | | Gemini CLI | **FREE** | 180K/mo + 1K/day | Everyone! |
 | | GitHub Copilot | $10-19/mo | Monthly | GitHub users |
-| **💰 CHEAP** | GLM-4.7 | $0.6/1M | Daily 10AM | Budget backup |
+| **ðŸ’° CHEAP** | GLM-4.7 | $0.6/1M | Daily 10AM | Budget backup |
 | | MiniMax M2.1 | $0.2/1M | 5-hour rolling | Cheapest option |
 | | Kimi K2 | $9/mo flat | 10M tokens/mo | Predictable cost |
-| **🆓 FREE** | iFlow | $0 | Unlimited | 8 models free |
+| **ðŸ†“ FREE** | iFlow | $0 | Unlimited | 8 models free |
 | | Qwen | $0 | Unlimited | 3 models free |
 | | Kiro | $0 | Unlimited | Claude free |
 
-**💡 Pro Tip:** Start with Gemini CLI (180K free/month) + iFlow (unlimited free) combo = $0 cost!
+**ðŸ’¡ Pro Tip:** Start with Gemini CLI (180K free/month) + iFlow (unlimited free) combo = $0 cost!
 
 ---
 
-### 📊 Understanding xlabrouter Costs & Billing
+### ðŸ“Š Understanding xlabrouter Costs & Billing
 
 **xlabrouter Billing Reality:**
 
-✅ **xlabrouter software = FREE forever** (open source, never charges)  
-✅ **Dashboard "costs" = Display/tracking only** (not actual bills)  
-✅ **You pay providers directly** (subscriptions or API fees)  
-✅ **FREE providers stay FREE** (iFlow, Kiro, Qwen = $0 unlimited)  
-❌ **xlabrouter never sends invoices** or charges your card
+âœ… **xlabrouter software = FREE forever** (open source, never charges)  
+âœ… **Dashboard "costs" = Display/tracking only** (not actual bills)  
+âœ… **You pay providers directly** (subscriptions or API fees)  
+âœ… **FREE providers stay FREE** (iFlow, Kiro, Qwen = $0 unlimited)  
+âŒ **xlabrouter never sends invoices** or charges your card
 
 **How Cost Display Works:**
 
@@ -493,14 +452,14 @@ The dashboard shows **estimated costs** as if you were using paid APIs directly.
 **Example Scenario:**
 ```
 Dashboard Display:
-• Total Requests: 1,662
-• Total Tokens: 47M
-• Display Cost: $290
+â€¢ Total Requests: 1,662
+â€¢ Total Tokens: 47M
+â€¢ Display Cost: $290
 
 Reality Check:
-• Provider: iFlow (FREE unlimited)
-• Actual Payment: $0.00
-• What $290 Means: Amount you SAVED by using free models!
+â€¢ Provider: iFlow (FREE unlimited)
+â€¢ Actual Payment: $0.00
+â€¢ What $290 Means: Amount you SAVED by using free models!
 ```
 
 **Payment Rules:**
@@ -511,7 +470,7 @@ Reality Check:
 
 ---
 
-## 🎯 Use Cases
+## ðŸŽ¯ Use Cases
 
 ### Case 1: "I have Claude Pro subscription"
 
@@ -577,10 +536,10 @@ Access via: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 
 ---
 
-## ❓ Frequently Asked Questions
+## â“ Frequently Asked Questions
 
 <details>
-<summary><b>📊 Why does my dashboard show high costs?</b></summary>
+<summary><b>ðŸ“Š Why does my dashboard show high costs?</b></summary>
 
 The dashboard tracks your token usage and displays **estimated costs** as if you were using paid APIs directly. This is **not actual billing** - it's a reference to show how much you're saving by using free models or existing subscriptions through xlabrouter.
 
@@ -595,21 +554,21 @@ The cost display is a "savings tracker" to help you understand your usage patter
 </details>
 
 <details>
-<summary><b>💳 Will I be charged by xlabrouter?</b></summary>
+<summary><b>ðŸ’³ Will I be charged by xlabrouter?</b></summary>
 
 **No.** xlabrouter is free, open-source software that runs on your own computer. It never charges you anything.
 
 **You only pay:**
-- ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) → Pay them directly on their websites
-- ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, xlabrouter just routes your requests
-- ❌ **xlabrouter itself** → **Never charges anything, ever**
+- âœ… **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) â†’ Pay them directly on their websites
+- âœ… **Cheap providers** (GLM, MiniMax) â†’ Pay them directly, xlabrouter just routes your requests
+- âŒ **xlabrouter itself** â†’ **Never charges anything, ever**
 
 xlabrouter is a local proxy/router. It doesn't have your credit card, can't send invoices, and has no billing system. It's completely free software.
 
 </details>
 
 <details>
-<summary><b>🆓 Are FREE providers really unlimited?</b></summary>
+<summary><b>ðŸ†“ Are FREE providers really unlimited?</b></summary>
 
 **Yes!** Providers marked as FREE (iFlow, Kiro, Qwen) are genuinely unlimited with **no hidden charges**. 
 
@@ -625,7 +584,7 @@ xlabrouter just routes your requests to them - there's no "catch" or future bill
 </details>
 
 <details>
-<summary><b>💰 How do I minimize my actual AI costs?</b></summary>
+<summary><b>ðŸ’° How do I minimize my actual AI costs?</b></summary>
 
 **Free-First Strategy:**
 
@@ -652,20 +611,20 @@ xlabrouter just routes your requests to them - there's no "catch" or future bill
 </details>
 
 <details>
-<summary><b>📈 What if my usage suddenly spikes?</b></summary>
+<summary><b>ðŸ“ˆ What if my usage suddenly spikes?</b></summary>
 
 xlabrouter's smart fallback prevents surprise charges:
 
 **Scenario:** You're on a coding sprint and blow through your quotas
 
 **Without xlabrouter:**
-- ❌ Hit rate limit → Work stops → Frustration
-- ❌ Or: Accidentally rack up huge API bills
+- âŒ Hit rate limit â†’ Work stops â†’ Frustration
+- âŒ Or: Accidentally rack up huge API bills
 
 **With xlabrouter:**
-- ✅ Subscription hits limit → Auto-fallback to cheap tier
-- ✅ Cheap tier gets expensive → Auto-fallback to free tier
-- ✅ Never stop coding → Predictable costs
+- âœ… Subscription hits limit â†’ Auto-fallback to cheap tier
+- âœ… Cheap tier gets expensive â†’ Auto-fallback to free tier
+- âœ… Never stop coding â†’ Predictable costs
 
 **You're in control:** Set spending limits per provider in dashboard, and xlabrouter respects them.
 
@@ -673,17 +632,17 @@ xlabrouter's smart fallback prevents surprise charges:
 
 ---
 
-## 📖 Setup Guide
+## ðŸ“– Setup Guide
 
 <details>
-<summary><b>🔐 Subscription Providers (Maximize Value)</b></summary>
+<summary><b>ðŸ” Subscription Providers (Maximize Value)</b></summary>
 
 ### Claude Code (Pro/Max)
 
 ```bash
-Dashboard → Providers → Connect Claude Code
-→ OAuth login → Auto token refresh
-→ 5-hour + weekly quota tracking
+Dashboard â†’ Providers â†’ Connect Claude Code
+â†’ OAuth login â†’ Auto token refresh
+â†’ 5-hour + weekly quota tracking
 
 Models:
   cc/claude-opus-4-6
@@ -696,9 +655,9 @@ Models:
 ### OpenAI Codex (Plus/Pro)
 
 ```bash
-Dashboard → Providers → Connect Codex
-→ OAuth login (port 1455)
-→ 5-hour + weekly reset
+Dashboard â†’ Providers â†’ Connect Codex
+â†’ OAuth login (port 1455)
+â†’ 5-hour + weekly reset
 
 Models:
   cx/gpt-5.2-codex
@@ -708,9 +667,9 @@ Models:
 ### Gemini CLI (FREE 180K/month!)
 
 ```bash
-Dashboard → Providers → Connect Gemini CLI
-→ Google OAuth
-→ 180K completions/month + 1K/day
+Dashboard â†’ Providers â†’ Connect Gemini CLI
+â†’ Google OAuth
+â†’ 180K completions/month + 1K/day
 
 Models:
   gc/gemini-3-flash-preview
@@ -722,9 +681,9 @@ Models:
 ### GitHub Copilot
 
 ```bash
-Dashboard → Providers → Connect GitHub
-→ OAuth via GitHub
-→ Monthly reset (1st of month)
+Dashboard â†’ Providers â†’ Connect GitHub
+â†’ OAuth via GitHub
+â†’ Monthly reset (1st of month)
 
 Models:
   gh/gpt-5
@@ -735,25 +694,25 @@ Models:
 </details>
 
 <details>
-<summary><b>💰 Cheap Providers (Backup)</b></summary>
+<summary><b>ðŸ’° Cheap Providers (Backup)</b></summary>
 
 ### GLM-4.7 (Daily reset, $0.6/1M)
 
 1. Sign up: [Zhipu AI](https://open.bigmodel.cn/)
 2. Get API key from Coding Plan
-3. Dashboard → Add API Key:
+3. Dashboard â†’ Add API Key:
    - Provider: `glm`
    - API Key: `your-key`
 
 **Use:** `glm/glm-4.7`
 
-**Pro Tip:** Coding Plan offers 3× quota at 1/7 cost! Reset daily 10:00 AM.
+**Pro Tip:** Coding Plan offers 3Ã— quota at 1/7 cost! Reset daily 10:00 AM.
 
 ### MiniMax M2.1 (5h reset, $0.20/1M)
 
 1. Sign up: [MiniMax](https://www.minimax.io/)
 2. Get API key
-3. Dashboard → Add API Key
+3. Dashboard â†’ Add API Key
 
 **Use:** `minimax/MiniMax-M2.1`
 
@@ -763,7 +722,7 @@ Models:
 
 1. Subscribe: [Moonshot AI](https://platform.moonshot.ai/)
 2. Get API key
-3. Dashboard → Add API Key
+3. Dashboard â†’ Add API Key
 
 **Use:** `kimi/kimi-latest`
 
@@ -772,14 +731,14 @@ Models:
 </details>
 
 <details>
-<summary><b>🆓 FREE Providers (Emergency Backup)</b></summary>
+<summary><b>ðŸ†“ FREE Providers (Emergency Backup)</b></summary>
 
 ### iFlow (8 FREE models)
 
 ```bash
-Dashboard → Connect iFlow
-→ iFlow OAuth login
-→ Unlimited usage
+Dashboard â†’ Connect iFlow
+â†’ iFlow OAuth login
+â†’ Unlimited usage
 
 Models:
   if/kimi-k2-thinking
@@ -792,9 +751,9 @@ Models:
 ### Qwen (3 FREE models)
 
 ```bash
-Dashboard → Connect Qwen
-→ Device code authorization
-→ Unlimited usage
+Dashboard â†’ Connect Qwen
+â†’ Device code authorization
+â†’ Unlimited usage
 
 Models:
   qw/qwen3-coder-plus
@@ -804,9 +763,9 @@ Models:
 ### Kiro (Claude FREE)
 
 ```bash
-Dashboard → Connect Kiro
-→ AWS Builder ID, AWS IAM Identity Center, Google, GitHub
-→ Unlimited usage
+Dashboard â†’ Connect Kiro
+â†’ AWS Builder ID, AWS IAM Identity Center, Google, GitHub
+â†’ Unlimited usage
 
 Models:
   kr/claude-sonnet-4.5
@@ -816,12 +775,12 @@ Models:
 </details>
 
 <details>
-<summary><b>🎨 Create Combos</b></summary>
+<summary><b>ðŸŽ¨ Create Combos</b></summary>
 
-### Example 1: Maximize Subscription → Cheap Backup
+### Example 1: Maximize Subscription â†’ Cheap Backup
 
 ```
-Dashboard → Combos → Create New
+Dashboard â†’ Combos â†’ Create New
 
 Name: premium-coding
 Models:
@@ -853,12 +812,12 @@ Cost: $0 forever!
 </details>
 
 <details>
-<summary><b>🔧 CLI Integration</b></summary>
+<summary><b>ðŸ”§ CLI Integration</b></summary>
 
 ### Cursor IDE
 
 ```
-Settings → Models → Advanced:
+Settings â†’ Models â†’ Advanced:
   OpenAI API Base URL: http://localhost:20128/v1
   OpenAI API Key: [from xlabrouter dashboard]
   Model: cc/claude-opus-4-6
@@ -888,13 +847,13 @@ codex "your prompt"
 
 ### OpenClaw
 
-**Option 1 — Dashboard (recommended):**
+**Option 1 â€” Dashboard (recommended):**
 
 ```
-Dashboard → CLI Tools → OpenClaw → Select Model → Apply
+Dashboard â†’ CLI Tools â†’ OpenClaw â†’ Select Model â†’ Apply
 ```
 
-**Option 2 — Manual:** Edit `~/.openclaw/openclaw.json`:
+**Option 2 â€” Manual:** Edit `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -937,7 +896,7 @@ Model: cc/claude-opus-4-6
 </details>
 
 <details>
-<summary><b>🚀 Deployment</b></summary>
+<summary><b>ðŸš€ Deployment</b></summary>
 
 ### VPS Deployment
 
@@ -1048,7 +1007,7 @@ Notes:
 
 ---
 
-## 📊 Available Models
+## ðŸ“Š Available Models
 
 <details>
 <summary><b>View all available models</b></summary>
@@ -1093,19 +1052,19 @@ Notes:
 
 ---
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 **"Language model did not provide messages"**
-- Provider quota exhausted → Check dashboard quota tracker
+- Provider quota exhausted â†’ Check dashboard quota tracker
 - Solution: Use combo fallback or switch to cheaper tier
 
 **Rate limiting**
-- Subscription quota out → Fallback to GLM/MiniMax
-- Add combo: `cc/claude-opus-4-6 → glm/glm-4.7 → if/kimi-k2-thinking`
+- Subscription quota out â†’ Fallback to GLM/MiniMax
+- Add combo: `cc/claude-opus-4-6 â†’ glm/glm-4.7 â†’ if/kimi-k2-thinking`
 
 **OAuth token expired**
 - Auto-refreshed by xlabrouter
-- If issues persist: Dashboard → Provider → Reconnect
+- If issues persist: Dashboard â†’ Provider â†’ Reconnect
 
 **High costs**
 - Check usage stats in Dashboard
@@ -1124,7 +1083,7 @@ Notes:
 
 ---
 
-## 🛠️ Tech Stack
+## ðŸ› ï¸ Tech Stack
 
 - **Runtime**: Node.js 20+
 - **Framework**: Next.js 16
@@ -1135,7 +1094,7 @@ Notes:
 
 ---
 
-## 📝 API Reference
+## ðŸ“ API Reference
 
 ### Chat Completions
 
@@ -1159,10 +1118,10 @@ Content-Type: application/json
 GET http://localhost:20128/v1/models
 Authorization: Bearer your-api-key
 
-→ Returns all models + combos in OpenAI format
+â†’ Returns all models + combos in OpenAI format
 ```
 
-## 📧 Support
+## ðŸ“§ Support
 
 - **Website**: [xlabrouter.com](https://xlabrouter.com)
 - **GitHub**: [github.com/decolua/xlabrouter](https://github.com/decolua/xlabrouter)
@@ -1170,38 +1129,39 @@ Authorization: Bearer your-api-key
 
 ---
 
-## 👥 Contributors
+## ðŸ‘¥ Contributors
 
 Thanks to all contributors who helped make xlabrouter better!
 
-[![Contributors](https://contrib.rocks/image?repo=decolua/xlabrouter&max=150&columns=15&anon=1&v=20260309)](https://github.com/decolua/xlabrouter/graphs/contributors)
+[View Contributors](https://github.com/decolua/xlabrouter/graphs/contributors)
+
 
 ---
 
-## 📊 Star Chart
+## ðŸ“Š Star Chart
 
-[![Star Chart](https://starchart.cc/decolua/xlabrouter.svg?variant=adaptive)](https://starchart.cc/decolua/xlabrouter)
+[View Star Chart](https://starchart.cc/decolua/xlabrouter)
 
 
 
-## 🔀 Forks
+## ðŸ”€ Forks
 
-**[OmniRoute](https://github.com/diegosouzapw/OmniRoute)** — A full-featured TypeScript fork of xlabrouter. Adds 36+ providers, 4-tier auto-fallback, multi-modal APIs (images, embeddings, audio, TTS), circuit breaker, semantic cache, LLM evaluations, and a polished dashboard. 368+ unit tests. Available via npm and Docker.
+**[OmniRoute](https://github.com/diegosouzapw/OmniRoute)** â€” A full-featured TypeScript fork of xlabrouter. Adds 36+ providers, 4-tier auto-fallback, multi-modal APIs (images, embeddings, audio, TTS), circuit breaker, semantic cache, LLM evaluations, and a polished dashboard. 368+ unit tests. Available via npm and Docker.
 
 ---
 
-## 🙏 Acknowledgments
+## ðŸ™ Acknowledgments
 
 Special thanks to **CLIProxyAPI** - the original Go implementation that inspired this JavaScript port.
 
 ---
 
-## 📄 License
+## ðŸ“„ License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for developers who code 24/7</sub>
+  <sub>Built with â¤ï¸ for developers who code 24/7</sub>
 </div>
