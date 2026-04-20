@@ -273,7 +273,7 @@ export default function OpenClawToolCard({
             </div>
           )}
 
-          {!checkingOpenclaw && openclawStatus?.installed && (
+          {!checkingOpenclaw && openclawStatus && (
             <>
               <div className="flex flex-col gap-2">
                 {/* Current Base URL */}
