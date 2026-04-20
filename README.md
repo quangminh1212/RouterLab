@@ -35,13 +35,13 @@
 ## 🔄 How It Works
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
 │  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
 │   Tool      │
 └──────┬──────┘
        │ http://localhost:20128/v1
        ↓
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â"Œâ"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"
 │           XLab Router (Smart Router)        │
 │  • Format translation (OpenAI ↔ Claude) │
 │  • Quota tracking                       │
@@ -182,7 +182,7 @@ XLab Router works seamlessly with all major AI coding tools:
 
 ## ðŸŒ Supported Providers
 
-### ðŸ” OAuth Providers
+### ðŸ" OAuth Providers
 
 <div align="center">
   <table>
@@ -208,22 +208,22 @@ XLab Router works seamlessly with all major AI coding tools:
 
 ### 🆓 Free Providers
 
-<div align=”center”>
+<div align="center">
   <table>
     <tr>
-      <td align=”center” width=”150”>
+      <td align="center" width="150">
         <b>iFlow AI</b><br/>
         <sub>8+ models • Unlimited</sub>
       </td>
-      <td align=”center” width=”150”>
+      <td align="center" width="150">
         <b>Qwen Code</b><br/>
         <sub>3+ models • Unlimited</sub>
       </td>
-      <td align=”center” width=”150”>
+      <td align="center" width="150">
         <b>Gemini CLI</b><br/>
         <sub>180K/month FREE</sub>
       </td>
-      <td align=”center” width=”150”>
+      <td align="center" width="150">
         <b>Kiro AI</b><br/>
         <sub>Claude • Unlimited</sub>
       </td>
@@ -635,7 +635,7 @@ XLab Router's smart fallback prevents surprise charges:
 ## 📖 Setup Guide
 
 <details>
-<summary><b>ðŸ” Subscription Providers (Maximize Value)</b></summary>
+<summary><b>ðŸ" Subscription Providers (Maximize Value)</b></summary>
 
 ### Claude Code (Pro/Max)
 
@@ -1163,7 +1163,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 <div align="center">
-  <sub>Built with â¤ï¸ for developers who code 24/7</sub>
+  <sub>Built with ❤️ for developers who code 24/7</sub>
 </div>
 
 
