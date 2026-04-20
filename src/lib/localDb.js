@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS = {
   cloudEnabled: false,
   tunnelEnabled: false,
   tunnelUrl: "",
-  tunnelProvider: "tailscale",
+  tunnelProvider: "cloudflare",
   tailscaleEnabled: false,
   tailscaleUrl: "",
   stickyRoundRobinLimit: 3,
