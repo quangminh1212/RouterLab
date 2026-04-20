@@ -1,6 +1,7 @@
 import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
-import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
+import { enableTunnel, enableTailscale, getTailscaleStatus, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
+import { isTailscaleInstalled } from "@/lib/tunnel/tailscale";
 import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -65,6 +66,26 @@ export async function initializeApp() {
     // Auto-reconnect tunnel if it was enabled before restart
     // Run in background to avoid delaying first-response path.
     const settings = await getSettings();
+
+    // Auto-enable Tailscale Funnel if installed and not configured yet
+    if (!fastStartup && !settings.tunnelEnabled && !settings.tailscaleEnabled && isTailscaleInstalled()) {
+      console.log("[InitApp] Tailscale detected, auto-enabling Funnel...");
+      Promise.resolve()
+        .then(() => enableTailscale())
+        .then((result) => {
+          if (result.success) {
+            console.log("[InitApp] Tailscale Funnel enabled:", result.tunnelUrl);
+          } else if (result.needsLogin) {
+            console.log("[InitApp] Tailscale needs login:", result.authUrl);
+          } else if (result.funnelNotEnabled) {
+            console.log("[InitApp] Tailscale Funnel not enabled on tailnet:", result.enableUrl);
+          }
+        })
+        .catch((error) => {
+          console.log("[InitApp] Tailscale Funnel auto-enable failed:", error.message);
+        });
+    }
+
     if (!fastStartup && settings.tunnelEnabled && !isCloudflaredRunning()) {
       console.log("[InitApp] Tunnel was enabled, auto-reconnecting...");
       Promise.resolve()
