@@ -9,6 +9,8 @@ echo.
 
 set LOG_FILE=log.txt
 set MAX_LOG_BYTES=104857600
+set "SYNC_CLI_ONLY=0"
+if /I "%~1"=="--sync-cli-only" set "SYNC_CLI_ONLY=1"
 
 if exist "%LOG_FILE%" (
     for %%I in ("%LOG_FILE%") do set LOG_SIZE=%%~zI
@@ -22,6 +24,16 @@ echo [INFO] Log file: %LOG_FILE%
 echo [INFO] Starting at %date% %time%
 echo [INFO] Starting at %date% %time% > %LOG_FILE%
 echo.
+
+if "%SYNC_CLI_ONLY%"=="1" goto :SYNC_ONLY_PREP
+goto :CONTINUE_NORMAL
+
+:SYNC_ONLY_PREP
+echo [INFO] Sync-only mode enabled (--sync-cli-only^)
+echo [INFO] Sync-only mode enabled (--sync-cli-only^) >> %LOG_FILE%
+goto :AUTO_SYNC_CLI
+
+:CONTINUE_NORMAL
 
 echo [STEP 1/6] Checking for existing server on port 20128...
 echo [STEP 1/6] Checking for existing server on port 20128... >> %LOG_FILE%
@@ -117,18 +129,20 @@ if not exist ".env" (
 )
 echo.
 
+:AUTO_SYNC_CLI
 echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)...
 echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG_FILE%
 
 set "AUTO_SYNC_CLI=0"
 
-if exist ".env" (
-    for /f "usebackq tokens=1,* delims==" %%A in (`findstr /R "^[A-Za-z_][A-Za-z0-9_]*=" ".env"`) do (
-        set "ENV_KEY=%%A"
-        set "ENV_VAL=%%B"
-        set "!ENV_KEY!=!ENV_VAL!"
-    )
-)
+if exist ".env" call :ReadEnvVar XLABROUTER_CLI_BASE_URL
+if exist ".env" call :ReadEnvVar XLABROUTER_CLI_API_KEY
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_OPUS_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_SONNET_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_HAIKU_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_SUBAGENT_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_SHORTCUT_DIR
 
 if defined XLABROUTER_CODEX_MODEL set "AUTO_SYNC_CLI=1"
 if defined XLABROUTER_CLAUDE_OPUS_MODEL set "AUTO_SYNC_CLI=1"
@@ -138,7 +152,7 @@ if defined XLABROUTER_CLAUDE_HAIKU_MODEL set "AUTO_SYNC_CLI=1"
 if "%AUTO_SYNC_CLI%"=="1" (
     set "CLI_BASE_URL=%XLABROUTER_CLI_BASE_URL%"
     if not defined CLI_BASE_URL set "CLI_BASE_URL=http://localhost:20128/v1"
-    if /I not "%CLI_BASE_URL:~-3%"=="/v1" set "CLI_BASE_URL=%CLI_BASE_URL%/v1"
+    if /I not "!CLI_BASE_URL:~-3!"=="/v1" set "CLI_BASE_URL=!CLI_BASE_URL!/v1"
 
     set "CLI_API_KEY=%XLABROUTER_CLI_API_KEY%"
     if not defined CLI_API_KEY set "CLI_API_KEY=sk_xlabrouter"
@@ -151,7 +165,17 @@ if "%AUTO_SYNC_CLI%"=="1" (
     set "CODEX_SUBAGENT_MODEL=%XLABROUTER_CODEX_SUBAGENT_MODEL%"
     if not defined CODEX_SUBAGENT_MODEL set "CODEX_SUBAGENT_MODEL=%CODEX_MODEL%"
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $claudeDir=Join-Path $env:USERPROFILE '.claude'; New-Item -ItemType Directory -Force -Path $claudeDir | Out-Null; $settingsPath=Join-Path $claudeDir 'settings.json'; $settings=@{hasCompletedOnboarding=$true; env=@{ANTHROPIC_BASE_URL=$env:CLI_BASE_URL; ANTHROPIC_AUTH_TOKEN=$env:CLI_API_KEY}}; if($env:CLAUDE_OPUS_MODEL){$settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL=$env:CLAUDE_OPUS_MODEL}; if($env:CLAUDE_SONNET_MODEL){$settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL=$env:CLAUDE_SONNET_MODEL}; if($env:CLAUDE_HAIKU_MODEL){$settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL=$env:CLAUDE_HAIKU_MODEL}; $settings | ConvertTo-Json -Depth 8 | Set-Content -Path $settingsPath -Encoding UTF8" >> %LOG_FILE% 2>&1
+    if not exist "%USERPROFILE%\.claude" mkdir "%USERPROFILE%\.claude" >nul 2>&1
+    > "%USERPROFILE%\.claude\settings.json" echo {
+    >> "%USERPROFILE%\.claude\settings.json" echo   "hasCompletedOnboarding": true,
+    >> "%USERPROFILE%\.claude\settings.json" echo   "env": {
+    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_BASE_URL": "%CLI_BASE_URL%",
+    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_AUTH_TOKEN": "%CLI_API_KEY%",
+    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_OPUS_MODEL": "%CLAUDE_OPUS_MODEL%",
+    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_SONNET_MODEL": "%CLAUDE_SONNET_MODEL%",
+    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "%CLAUDE_HAIKU_MODEL%"
+    >> "%USERPROFILE%\.claude\settings.json" echo   }
+    >> "%USERPROFILE%\.claude\settings.json" echo }
     if errorlevel 1 (
         echo [WARN] Failed to auto-write Claude settings. >> %LOG_FILE%
         echo [WARN] Failed to auto-write Claude settings.
@@ -161,7 +185,22 @@ if "%AUTO_SYNC_CLI%"=="1" (
     )
 
     if defined CODEX_MODEL (
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $codexDir=Join-Path $env:USERPROFILE '.codex'; New-Item -ItemType Directory -Force -Path $codexDir | Out-Null; $configPath=Join-Path $codexDir 'config.toml'; $authPath=Join-Path $codexDir 'auth.json'; $lines=@('# XLab Router Configuration for Codex CLI', ('model = \"' + $env:CODEX_MODEL + '\"'), 'model_provider = \"xlabrouter\"', '', '[model_providers.xlabrouter]', 'name = \"xlabrouter\"', ('base_url = \"' + $env:CLI_BASE_URL + '\"'), 'wire_api = \"responses\"', '', '[agents.subagent]', ('model = \"' + $env:CODEX_SUBAGENT_MODEL + '\"')); Set-Content -Path $configPath -Encoding UTF8 -Value $lines; @{OPENAI_API_KEY=$env:CLI_API_KEY} | ConvertTo-Json -Depth 5 | Set-Content -Path $authPath -Encoding UTF8" >> %LOG_FILE% 2>&1
+        if not exist "%USERPROFILE%\.codex" mkdir "%USERPROFILE%\.codex" >nul 2>&1
+        > "%USERPROFILE%\.codex\config.toml" echo # XLab Router Configuration for Codex CLI
+        >> "%USERPROFILE%\.codex\config.toml" echo model = "%CODEX_MODEL%"
+        >> "%USERPROFILE%\.codex\config.toml" echo model_provider = "xlabrouter"
+        >> "%USERPROFILE%\.codex\config.toml" echo.
+        >> "%USERPROFILE%\.codex\config.toml" echo [model_providers.xlabrouter]
+        >> "%USERPROFILE%\.codex\config.toml" echo name = "xlabrouter"
+        >> "%USERPROFILE%\.codex\config.toml" echo base_url = "%CLI_BASE_URL%"
+        >> "%USERPROFILE%\.codex\config.toml" echo wire_api = "responses"
+        >> "%USERPROFILE%\.codex\config.toml" echo.
+        >> "%USERPROFILE%\.codex\config.toml" echo [agents.subagent]
+        >> "%USERPROFILE%\.codex\config.toml" echo model = "%CODEX_SUBAGENT_MODEL%"
+
+        > "%USERPROFILE%\.codex\auth.json" echo {
+        >> "%USERPROFILE%\.codex\auth.json" echo   "OPENAI_API_KEY": "%CLI_API_KEY%"
+        >> "%USERPROFILE%\.codex\auth.json" echo }
         if errorlevel 1 (
             echo [WARN] Failed to auto-write Codex settings. >> %LOG_FILE%
             echo [WARN] Failed to auto-write Codex settings.
@@ -177,7 +216,38 @@ if "%AUTO_SYNC_CLI%"=="1" (
     echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync.
     echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync. >> %LOG_FILE%
 )
+
+set "CLI_SHORTCUT_DIR=%XLABROUTER_SHORTCUT_DIR%"
+if not defined CLI_SHORTCUT_DIR set "CLI_SHORTCUT_DIR=C:\Dev\Work\2000\shortcut"
+
+if not exist "%CLI_SHORTCUT_DIR%" mkdir "%CLI_SHORTCUT_DIR%" >nul 2>&1
+
+set "SELF_BAT=%~f0"
+
+> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo @echo off
+>> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo call "%SELF_BAT%" --sync-cli-only
+>> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo start "" "%%USERPROFILE%%\.claude\settings.json"
+
+> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo @echo off
+>> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo call "%SELF_BAT%" --sync-cli-only
+>> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo start "" "%%USERPROFILE%%\.codex\config.toml"
+
+> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo @echo off
+>> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo call "%SELF_BAT%" --sync-cli-only
+>> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo start "" "%%USERPROFILE%%\.codex\auth.json"
+
+> "%CLI_SHORTCUT_DIR%\setup-claude-codex.cmd" echo @echo off
+>> "%CLI_SHORTCUT_DIR%\setup-claude-codex.cmd" echo call "%SELF_BAT%" --sync-cli-only
+
+echo [OK] Shortcut scripts synced in %CLI_SHORTCUT_DIR%
+echo [OK] Shortcut scripts synced in %CLI_SHORTCUT_DIR% >> %LOG_FILE%
 echo.
+
+if "%SYNC_CLI_ONLY%"=="1" (
+    echo [OK] Sync-only mode finished.
+    echo [OK] Sync-only mode finished. >> %LOG_FILE%
+    exit /b 0
+)
 
 echo [STEP 7/7] Starting development server...
 echo [STEP 7/7] Starting development server... >> %LOG_FILE%
@@ -211,3 +281,9 @@ if not "%DEV_EXIT_CODE%"=="0" (
     pause
     exit /b %DEV_EXIT_CODE%
 )
+
+exit /b 0
+
+:ReadEnvVar
+for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"%~1=" ".env"') do set "%%A=%%B"
+exit /b 0
