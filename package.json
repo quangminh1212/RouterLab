@@ -9,6 +9,7 @@
         "xrouter": "bin/xlab_router.js"
     },
     "scripts": {
+        "postinstall": "node scripts/postinstall.js",
         "dev": "next dev --webpack --port 20128",
         "build": "next build --webpack",
         "start": "node ./bin/xlab_router.js --web",
