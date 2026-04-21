@@ -140,10 +140,16 @@ if exist ".env" call :ReadEnvVar XLABROUTER_CLI_API_KEY
 if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_OPUS_MODEL
 if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_SONNET_MODEL
 if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_HAIKU_MODEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_DEFAULT_MODE
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_EFFORT_LEVEL
+if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_ALWAYS_THINKING
 if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_MODEL
 if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_SUBAGENT_MODEL
 if exist ".env" call :ReadEnvVar XLABROUTER_SHORTCUT_DIR
 
+if defined XLABROUTER_CLAUDE_DEFAULT_MODE set "AUTO_SYNC_CLI=1"
+if defined XLABROUTER_CLAUDE_EFFORT_LEVEL set "AUTO_SYNC_CLI=1"
+if defined XLABROUTER_CLAUDE_ALWAYS_THINKING set "AUTO_SYNC_CLI=1"
 if defined XLABROUTER_CODEX_MODEL set "AUTO_SYNC_CLI=1"
 if defined XLABROUTER_CLAUDE_OPUS_MODEL set "AUTO_SYNC_CLI=1"
 if defined XLABROUTER_CLAUDE_SONNET_MODEL set "AUTO_SYNC_CLI=1"
@@ -161,6 +167,16 @@ if "%AUTO_SYNC_CLI%"=="1" (
     set "CLAUDE_SONNET_MODEL=%XLABROUTER_CLAUDE_SONNET_MODEL%"
     set "CLAUDE_HAIKU_MODEL=%XLABROUTER_CLAUDE_HAIKU_MODEL%"
 
+    set "CLAUDE_DEFAULT_MODE=%XLABROUTER_CLAUDE_DEFAULT_MODE%"
+    if not defined CLAUDE_DEFAULT_MODE set "CLAUDE_DEFAULT_MODE=acceptEdits"
+
+    set "CLAUDE_EFFORT_LEVEL=%XLABROUTER_CLAUDE_EFFORT_LEVEL%"
+    if not defined CLAUDE_EFFORT_LEVEL set "CLAUDE_EFFORT_LEVEL=high"
+    if /I "%CLAUDE_EFFORT_LEVEL%"=="max" set "CLAUDE_EFFORT_LEVEL=high"
+
+    set "CLAUDE_ALWAYS_THINKING=%XLABROUTER_CLAUDE_ALWAYS_THINKING%"
+    if not defined CLAUDE_ALWAYS_THINKING set "CLAUDE_ALWAYS_THINKING=true"
+
     set "CODEX_MODEL=%XLABROUTER_CODEX_MODEL%"
     set "CODEX_SUBAGENT_MODEL=%XLABROUTER_CODEX_SUBAGENT_MODEL%"
     if not defined CODEX_SUBAGENT_MODEL set "CODEX_SUBAGENT_MODEL=%CODEX_MODEL%"
@@ -168,6 +184,9 @@ if "%AUTO_SYNC_CLI%"=="1" (
     if not exist "%USERPROFILE%\.claude" mkdir "%USERPROFILE%\.claude" >nul 2>&1
     > "%USERPROFILE%\.claude\settings.json" echo {
     >> "%USERPROFILE%\.claude\settings.json" echo   "hasCompletedOnboarding": true,
+    >> "%USERPROFILE%\.claude\settings.json" echo   "defaultMode": "%CLAUDE_DEFAULT_MODE%",
+    >> "%USERPROFILE%\.claude\settings.json" echo   "alwaysThinkingEnabled": %CLAUDE_ALWAYS_THINKING%,
+    >> "%USERPROFILE%\.claude\settings.json" echo   "effortLevel": "%CLAUDE_EFFORT_LEVEL%",
     >> "%USERPROFILE%\.claude\settings.json" echo   "env": {
     >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_BASE_URL": "%CLI_BASE_URL%",
     >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_AUTH_TOKEN": "%CLI_API_KEY%",
