@@ -88,7 +88,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
         <div className="px-6 py-4 flex flex-col gap-2">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-9 rounded overflow-hidden bg-sidebar border border-black/5 dark:border-white/5">
+            <div className="relative flex items-center justify-center size-9 rounded overflow-hidden bg-sidebar border border-black/5 dark:border-white/5">
               <Image src="/topup.png" alt="XLab Router" fill sizes="36px" className="object-cover" />
             </div>
             <div className="flex flex-col">
