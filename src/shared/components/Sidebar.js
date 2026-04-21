@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/utils/cn";
@@ -88,7 +89,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         <div className="px-6 py-4 flex flex-col gap-2">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center size-9 rounded overflow-hidden bg-sidebar border border-black/5 dark:border-white/5">
-              <img src="/topup.png" alt="XLab Router" className="w-full h-full object-cover" />
+              <Image src="/topup.png" alt="XLab Router" fill sizes="36px" className="object-cover" />
             </div>
             <div className="flex flex-col">
               <h1 className="text-lg font-semibold tracking-tight text-text-main">
