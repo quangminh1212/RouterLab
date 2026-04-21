@@ -530,7 +530,15 @@ function printTrayLaunchMessage() {
 }
 
 function launchDetachedTrayHost() {
-  const child = spawn(process.execPath, [__filename, "--tray-host"], {
+  const nodeDir = path.dirname(process.execPath);
+  const hiddenNodePath = process.platform === "win32"
+    ? path.join(nodeDir, "nodew.exe")
+    : process.execPath;
+  const executable = process.platform === "win32" && fs.existsSync(hiddenNodePath)
+    ? hiddenNodePath
+    : process.execPath;
+
+  const child = spawn(executable, [__filename, "--tray-host"], {
     cwd: process.cwd(),
     detached: true,
     stdio: "ignore",
