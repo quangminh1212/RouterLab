@@ -10,10 +10,17 @@
     "module": "ESNext",
     "moduleResolution": "bundler"
   },
+  "include": [
+    "src/**/*",
+    "open-sse/**/*",
+    "next-env.d.ts",
+    "*.js",
+    "*.mjs"
+  ],
   "exclude": [
     "node_modules",
     ".next",
-    ".claude/worktrees/**/*",
+    ".claude",
     ".playwright-mcp/**/*"
   ]
 }
