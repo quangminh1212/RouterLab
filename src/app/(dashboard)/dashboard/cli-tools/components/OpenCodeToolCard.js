@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
+import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
 
 export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus }) {
@@ -95,24 +96,38 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
     }
   };
 
+  const buildApplyPayload = () => {
+    const keyToUse = (selectedApiKey && selectedApiKey.trim())
+      ? selectedApiKey
+      : (!cloudEnabled ? "sk_xlabrouter" : selectedApiKey);
+
+    return {
+      baseUrl: getEffectiveBaseUrl(),
+      apiKey: keyToUse,
+      models: selectedModels,
+      activeModel: activeModel === "" ? "" : (activeModel || selectedModels[0]),
+      subagentModel,
+    };
+  };
+
+  const handleDownloadBat = () => {
+    downloadCliApplyBat({
+      appUrl: typeof window !== "undefined" ? window.location.origin : baseUrl,
+      endpoint: "/api/cli-tools/opencode-settings",
+      payload: buildApplyPayload(),
+      toolName: tool.name,
+      filename: "apply-opencode-settings.bat",
+    });
+  };
+
   const handleApply = async () => {
     setApplying(true);
     setMessage(null);
     try {
-      const keyToUse = (selectedApiKey && selectedApiKey.trim())
-        ? selectedApiKey
-        : (!cloudEnabled ? "sk_xlabrouter" : selectedApiKey);
-
       const res = await fetch("/api/cli-tools/opencode-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          baseUrl: getEffectiveBaseUrl(), 
-          apiKey: keyToUse, 
-          models: selectedModels,
-          activeModel: activeModel === "" ? "" : (activeModel || selectedModels[0]),
-          subagentModel: subagentModel
-        }),
+        body: JSON.stringify(buildApplyPayload()),
       });
       const data = await res.json();
       if (res.ok) {
@@ -422,6 +437,9 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleReset} disabled={!status.hasxlabrouter} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadBat} disabled={selectedModels.length === 0}>
+                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config

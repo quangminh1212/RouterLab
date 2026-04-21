@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip } from "@/shared/components";
+import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
 
 export default function ClaudeToolCard({
@@ -135,25 +136,40 @@ export default function ClaudeToolCard({
     return url.endsWith("/v1") ? url : `${url}/v1`;
   };
 
+  const buildApplyPayload = () => {
+    const env = { ANTHROPIC_BASE_URL: getEffectiveBaseUrl() };
+
+    const keyToUse = selectedApiKey?.trim()
+      || (apiKeys?.length > 0 ? apiKeys[0].key : null)
+      || (!cloudEnabled ? "sk_xlabrouter" : null);
+
+    if (keyToUse) {
+      env.ANTHROPIC_AUTH_TOKEN = keyToUse;
+    }
+
+    tool.defaultModels.forEach((model) => {
+      const targetModel = modelMappings[model.alias];
+      if (targetModel && model.envKey) env[model.envKey] = targetModel;
+    });
+
+    return { env };
+  };
+
+  const handleDownloadBat = () => {
+    downloadCliApplyBat({
+      appUrl: typeof window !== "undefined" ? window.location.origin : baseUrl,
+      endpoint: "/api/cli-tools/claude-settings",
+      payload: buildApplyPayload(),
+      toolName: tool.name,
+      filename: "apply-claude-code-settings.bat",
+    });
+  };
+
   const handleApplySettings = async () => {
     setApplying(true);
     setMessage(null);
     try {
-      const env = { ANTHROPIC_BASE_URL: getEffectiveBaseUrl() };
-      
-      // Get key from dropdown, fallback to first key or sk_xlabrouter for localhost
-      const keyToUse = selectedApiKey?.trim() 
-        || (apiKeys?.length > 0 ? apiKeys[0].key : null)
-        || (!cloudEnabled ? "sk_xlabrouter" : null);
-      
-      if (keyToUse) {
-        env.ANTHROPIC_AUTH_TOKEN = keyToUse;
-      }
-      
-      tool.defaultModels.forEach((model) => {
-        const targetModel = modelMappings[model.alias];
-        if (targetModel && model.envKey) env[model.envKey] = targetModel;
-      });
+      const env = buildApplyPayload().env;
       const res = await fetch("/api/cli-tools/claude-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -368,6 +384,9 @@ export default function ClaudeToolCard({
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleResetSettings} disabled={!claudeStatus?.hasxlabrouter} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadBat}>
+                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config

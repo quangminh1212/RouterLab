@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
+import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
 
 export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus }) {
@@ -90,24 +91,38 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
     }
   };
 
+  const buildApplyPayload = () => {
+    const keyToUse = (selectedApiKey && selectedApiKey.trim())
+      ? selectedApiKey
+      : (!cloudEnabled ? "sk_xlabrouter" : selectedApiKey);
+
+    return {
+      baseUrl: getEffectiveBaseUrl(),
+      apiKey: keyToUse,
+      model: selectedModel,
+      subagentModel: subagentModel || selectedModel,
+    };
+  };
+
+  const handleDownloadBat = () => {
+    downloadCliApplyBat({
+      appUrl: typeof window !== "undefined" ? window.location.origin : baseUrl,
+      endpoint: "/api/cli-tools/codex-settings",
+      payload: buildApplyPayload(),
+      toolName: tool.name,
+      filename: "apply-codex-settings.bat",
+    });
+  };
+
   const handleApplySettings = async () => {
     setApplying(true);
     setMessage(null);
     try {
-      // Use sk_xlabrouter for localhost if no key, otherwise use selected key
-      const keyToUse = (selectedApiKey && selectedApiKey.trim()) 
-        ? selectedApiKey 
-        : (!cloudEnabled ? "sk_xlabrouter" : selectedApiKey);
-      
+      const payload = buildApplyPayload();
       const res = await fetch("/api/cli-tools/codex-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          baseUrl: getEffectiveBaseUrl(), 
-          apiKey: keyToUse, 
-          model: selectedModel,
-          subagentModel: subagentModel || selectedModel
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
@@ -363,6 +378,9 @@ model = "${effectiveSubagentModel}"
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleResetSettings} disabled={restoring} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadBat} disabled={(!selectedApiKey && (cloudEnabled && apiKeys.length > 0)) || !selectedModel}>
+                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
