@@ -42,19 +42,22 @@ function ClaudeSettingsSelect({ label, value, options, onChange, className }) {
         aria-label={label}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left",
-          "border-white/10 bg-[#1F1F1F] text-sm text-[#F5F5F5] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-          "transition-colors hover:border-white/20 hover:bg-[#242424] focus:outline-none focus:ring-1 focus:ring-white/15"
+          "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors",
+          "border-black/10 bg-white text-slate-900 hover:border-black/20 hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-black/10",
+          "dark:border-white/10 dark:bg-[#1F1F1F] dark:text-[#F5F5F5] dark:hover:border-white/20 dark:hover:bg-[#242424] dark:focus:ring-white/15"
         )}
       >
         <span className="truncate font-medium">{selectedOption?.label || ""}</span>
-        <span className={cn("material-symbols-outlined text-[18px] text-[#A3A3A3] transition-transform", open && "rotate-180")}>
+        <span className={cn(
+          "material-symbols-outlined text-[18px] text-slate-500 transition-transform dark:text-[#A3A3A3]",
+          open && "rotate-180"
+        )}>
           expand_more
         </span>
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-white/10 bg-[#171717] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-black/10 bg-white p-1 shadow-[0_16px_40px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#171717] dark:shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
           <div role="listbox" aria-label={label} className="flex flex-col gap-0.5">
             {options.map((option) => {
               const isSelected = option.value === value;
@@ -69,14 +72,19 @@ function ClaudeSettingsSelect({ label, value, options, onChange, className }) {
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
+                    "flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left transition-colors",
                     isSelected
-                      ? "bg-white/10 text-white"
-                      : "text-[#D4D4D4] hover:bg-white/5 hover:text-white"
+                      ? "bg-sky-50 text-slate-900 dark:bg-[#21313A] dark:text-white"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-[#D4D4D4] dark:hover:bg-white/5 dark:hover:text-white"
                   )}
                 >
-                  <span>{option.label}</span>
-                  {isSelected && <span className="material-symbols-outlined text-[16px] text-[#D4D4D4]">check</span>}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{option.label}</div>
+                    {option.description && (
+                      <div className="mt-0.5 text-xs text-slate-500 dark:text-[#A3A3A3]">{option.description}</div>
+                    )}
+                  </div>
+                  {isSelected && <span className="material-symbols-outlined mt-0.5 shrink-0 text-[16px] text-sky-600 dark:text-[#D4D4D4]">check</span>}
                 </button>
               );
             })}
@@ -96,10 +104,10 @@ function ClaudeSettingsSwitch({ checked, onChange }) {
       onClick={() => onChange(!checked)}
       className={cn(
         "inline-flex h-6 w-11 items-center rounded-full border p-0.5 transition-all duration-200",
-        "focus:outline-none focus:ring-1 focus:ring-white/15",
+        "focus:outline-none focus:ring-1 focus:ring-black/10 dark:focus:ring-white/15",
         checked
-          ? "border-[#D97706]/40 bg-[#D97706]"
-          : "border-white/10 bg-[#2A2A2A] hover:bg-[#303030]"
+          ? "border-amber-500/40 bg-amber-500"
+          : "border-black/10 bg-slate-300 hover:bg-slate-400 dark:border-white/10 dark:bg-[#2A2A2A] dark:hover:bg-[#303030]"
       )}
     >
       <span
@@ -110,6 +118,13 @@ function ClaudeSettingsSwitch({ checked, onChange }) {
       />
     </button>
   );
+}
+
+
+const VALID_CLAUDE_DEFAULT_MODES = new Set(["default", "acceptEdits", "plan", "auto", "dontAsk", "bypassPermissions"]);
+
+function getInitialDefaultMode(value) {
+  return typeof value === "string" && VALID_CLAUDE_DEFAULT_MODES.has(value) ? value : "acceptEdits";
 }
 
 export default function ClaudeToolCard({
@@ -139,7 +154,8 @@ export default function ClaudeToolCard({
   const [showManualConfigModal, setShowManualConfigModal] = useState(false);
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [ccFilterNaming, setCcFilterNaming] = useState(false);
-  const [claudeDefaultMode, setClaudeDefaultMode] = useState(initialStatus?.settings?.defaultMode || "acceptEdits");
+  const [claudeDefaultMode, setClaudeDefaultMode] = useState(getInitialDefaultMode(initialStatus?.settings?.defaultMode));
+
   const [claudeEffortLevel, setClaudeEffortLevel] = useState(initialStatus?.settings?.effortLevel || "high");
   const [claudeAlwaysThinkingEnabled, setClaudeAlwaysThinkingEnabled] = useState(
     typeof initialStatus?.settings?.alwaysThinkingEnabled === "boolean"
@@ -149,7 +165,26 @@ export default function ClaudeToolCard({
   const hasInitializedModels = useRef(false);
 
   const DEFAULT_MODE_OPTIONS = [
-    { value: "acceptEdits", label: "Accept edits" },
+    {
+      value: "default",
+      label: "Ask before edits",
+      description: "Claude will ask for approval before making each edit",
+    },
+    {
+      value: "acceptEdits",
+      label: "Edit automatically",
+      description: "Claude will edit your selected text or the whole file",
+    },
+    {
+      value: "plan",
+      label: "Plan mode",
+      description: "Claude will explore the code and present a plan before editing",
+    },
+    {
+      value: "bypassPermissions",
+      label: "Bypass permissions",
+      description: "Claude will not ask for approval before running potentially dangerous commands",
+    },
   ];
   const EFFORT_LEVEL_OPTIONS = [
     { value: "low", label: "Low" },
@@ -234,7 +269,7 @@ export default function ClaudeToolCard({
       if (tokenFromFile && apiKeys?.some(k => k.key === tokenFromFile)) {
         setSelectedApiKey(tokenFromFile);
       }
-      setClaudeDefaultMode(claudeStatus.settings?.defaultMode || "acceptEdits");
+      setClaudeDefaultMode(getInitialDefaultMode(claudeStatus.settings?.defaultMode));
       setClaudeEffortLevel(claudeStatus.settings?.effortLevel || "high");
       setClaudeAlwaysThinkingEnabled(
         typeof claudeStatus.settings?.alwaysThinkingEnabled === "boolean"
@@ -347,7 +382,7 @@ export default function ClaudeToolCard({
         setMessage({ type: "success", text: "Settings reset successfully!" });
         tool.defaultModels.forEach((model) => onModelMappingChange(model.alias, model.defaultValue || ""));
         setSelectedApiKey("");
-        setClaudeDefaultMode("acceptEdits");
+        setClaudeDefaultMode(getInitialDefaultMode("acceptEdits"));
         setClaudeEffortLevel("high");
         setClaudeAlwaysThinkingEnabled(true);
         setClaudeStatus((prev) => ({

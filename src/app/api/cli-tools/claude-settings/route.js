@@ -13,7 +13,14 @@ const DEFAULT_CLAUDE_SETTINGS = {
   alwaysThinkingEnabled: true,
   effortLevel: "high",
 };
+const VALID_DEFAULT_MODES = new Set(["default", "acceptEdits", "plan", "auto", "dontAsk", "bypassPermissions"]);
 const VALID_EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh"]);
+
+const normalizeDefaultMode = (value) => {
+  if (typeof value !== "string") return DEFAULT_CLAUDE_SETTINGS.defaultMode;
+  const normalized = value.trim();
+  return VALID_DEFAULT_MODES.has(normalized) ? normalized : DEFAULT_CLAUDE_SETTINGS.defaultMode;
+};
 
 const normalizeEffortLevel = (value) => {
   if (typeof value !== "string") return DEFAULT_CLAUDE_SETTINGS.effortLevel;
@@ -25,7 +32,7 @@ const normalizeEffortLevel = (value) => {
 const buildClaudeSettings = (currentSettings, env, options = {}) => ({
   ...currentSettings,
   hasCompletedOnboarding: true,
-  defaultMode: options.defaultMode || currentSettings.defaultMode || DEFAULT_CLAUDE_SETTINGS.defaultMode,
+  defaultMode: normalizeDefaultMode(options.defaultMode || currentSettings.defaultMode),
   alwaysThinkingEnabled:
     typeof options.alwaysThinkingEnabled === "boolean"
       ? options.alwaysThinkingEnabled
