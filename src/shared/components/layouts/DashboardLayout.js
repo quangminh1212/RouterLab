@@ -31,11 +31,16 @@ function getToastStyle(type) {
   };
 }
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({ children, sidebarData = null }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const notifications = useNotificationStore((state) => state.notifications);
   const removeNotification = useNotificationStore((state) => state.removeNotification);
+
+  const sidebarProps = {
+    initialEnableTranslator: !!sidebarData?.enableTranslator,
+    initialUpdateInfo: sidebarData?.updateInfo || null,
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-bg">
@@ -78,7 +83,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Sidebar - Desktop */}
       <div className="hidden lg:flex">
-        <Sidebar />
+        <Sidebar {...sidebarProps} />
       </div>
 
       {/* Sidebar - Mobile */}
@@ -87,7 +92,7 @@ export default function DashboardLayout({ children }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar {...sidebarProps} onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main content */}

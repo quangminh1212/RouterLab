@@ -153,6 +153,7 @@ let dbHydrated = false;
 let settingsCache = null;
 let settingsCacheAt = 0;
 let settingsCachePromise = null;
+let settingsRefreshPromise = null;
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
@@ -872,25 +873,58 @@ export async function cleanupProviderConnections() {
   return cleaned;
 }
 
+function cloneSettingsSnapshot(settings) {
+  if (!settings || typeof settings !== "object") {
+    return { ...DEFAULT_SETTINGS };
+  }
+  return { ...settings };
+}
+
+async function refreshSettingsSnapshot() {
+  const db = await getDb();
+  settingsCache = cloneSettingsSnapshot(db.data.settings || DEFAULT_SETTINGS);
+  settingsCacheAt = Date.now();
+  return settingsCache;
+}
+
+function refreshSettingsSnapshotInBackground() {
+  if (settingsRefreshPromise) return settingsRefreshPromise;
+
+  settingsRefreshPromise = refreshSettingsSnapshot()
+    .catch((error) => {
+      logger.debug("DB", "Background settings refresh skipped", {
+        message: error?.message || String(error),
+      });
+      return settingsCache;
+    })
+    .finally(() => {
+      settingsRefreshPromise = null;
+    });
+
+  return settingsRefreshPromise;
+}
+
 export async function getSettings() {
   const now = Date.now();
   if (settingsCache && now - settingsCacheAt < getSettingsCacheTtlMs()) {
-    return settingsCache;
+    return cloneSettingsSnapshot(settingsCache);
+  }
+
+  if (settingsCache) {
+    refreshSettingsSnapshotInBackground();
+    return cloneSettingsSnapshot(settingsCache);
   }
 
   if (settingsCachePromise) {
-    return settingsCachePromise;
+    const settings = await settingsCachePromise;
+    return cloneSettingsSnapshot(settings);
   }
 
-  settingsCachePromise = (async () => {
-    const db = await getDb();
-    settingsCache = db.data.settings || { cloudEnabled: false };
-    settingsCacheAt = Date.now();
-    return settingsCache;
-  })();
+  settingsCachePromise = refreshSettingsSnapshot();
 
   try {
-    return await settingsCachePromise;
+    const settings = await settingsCachePromise;
+    return cloneSettingsSnapshot(settings);
   } finally {
     settingsCachePromise = null;
   }
@@ -901,7 +935,7 @@ export async function updateSettings(updates) {
   db.data.settings = { ...db.data.settings, ...updates };
   await safeWrite(db);
 
-  settingsCache = db.data.settings;
+  settingsCache = cloneSettingsSnapshot(db.data.settings);
   settingsCacheAt = Date.now();
   return db.data.settings;
 }

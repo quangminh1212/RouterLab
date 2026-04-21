@@ -46,7 +46,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = PROVIDERS_FETCH_T
   }
 }
 
-export default function CLIToolsPageClient({ machineId }) {
+export default function CLIToolsPageClient() {
   const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTool, setExpandedTool] = useState(null);
@@ -58,14 +58,7 @@ export default function CLIToolsPageClient({ machineId }) {
   const [apiKeys, setApiKeys] = useState([]);
   const [toolStatuses, setToolStatuses] = useState({});
 
-  useEffect(() => {
-    fetchConnections();
-    loadCloudSettings();
-    fetchApiKeys();
-    fetchAllStatuses();
-  }, []);
-
-  const fetchAllStatuses = async () => {
+  async function fetchAllStatuses() {
     try {
       const entries = await Promise.all(
         Object.entries(STATUS_ENDPOINTS).map(async ([toolId, url]) => {
@@ -82,9 +75,9 @@ export default function CLIToolsPageClient({ machineId }) {
     } catch (error) {
       console.log("Error fetching tool statuses:", error);
     }
-  };
+  }
 
-  const loadCloudSettings = async () => {
+  async function loadCloudSettings() {
     try {
       const [settingsRes, tunnelRes] = await Promise.all([
         fetch("/api/settings"),
@@ -103,9 +96,9 @@ export default function CLIToolsPageClient({ machineId }) {
     } catch (error) {
       console.log("Error loading settings:", error);
     }
-  };
+  }
 
-  const fetchApiKeys = async () => {
+  async function fetchApiKeys() {
     try {
       const res = await fetch("/api/keys");
       if (res.ok) {
@@ -115,9 +108,9 @@ export default function CLIToolsPageClient({ machineId }) {
     } catch (error) {
       console.log("Error fetching API keys:", error);
     }
-  };
+  }
 
-  const fetchConnections = async () => {
+  async function fetchConnections() {
     try {
       const res = await fetchWithTimeout("/api/providers");
       const data = await res.json();
@@ -130,9 +123,20 @@ export default function CLIToolsPageClient({ machineId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const getActiveProviders = () => connections.filter(c => c.isActive !== false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchConnections();
+      void loadCloudSettings();
+      void fetchApiKeys();
+      void fetchAllStatuses();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const getActiveProviders = useCallback(() => connections.filter(conn => conn.isActive !== false), [connections]);
 
   const getAllAvailableModels = () => {
     const activeProviders = getActiveProviders();

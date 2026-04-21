@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import PropTypes from "prop-types";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
@@ -14,9 +13,10 @@ const TUNNEL_BENEFITS = [
 
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
-export default function APIPageClient({ machineId }) {
+export default function APIPageClient() {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [keysLoading, setKeysLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyHasLimit, setNewKeyHasLimit] = useState(false);
@@ -65,12 +65,54 @@ export default function APIPageClient({ machineId }) {
     if (tsLogRef.current) tsLogRef.current.scrollTop = tsLogRef.current.scrollHeight;
   }, [tsInstallLog]);
 
-  useEffect(() => {
-    fetchData();
-    loadSettings();
+  function applyTunnelStatus(data = {}) {
+    const tunnelData = data.tunnel || {};
+    const tailscaleData = data.tailscale || {};
+
+    setTunnelUrl(tunnelData.tunnelUrl || "");
+    setTunnelPublicUrl(tunnelData.publicUrl || "");
+    setTunnelEnabled(tunnelData.enabled || false);
+    setTsUrl(tailscaleData.tunnelUrl || "");
+    setTsEnabled(tailscaleData.enabled || false);
+  }
+
+  function applySettingsState(settings = {}) {
+    setRequireApiKey(settings.requireApiKey || false);
+    setRequireLogin(settings.requireLogin !== false);
+    setHasPassword(settings.hasPassword || false);
+    setTunnelDashboardAccess(settings.tunnelDashboardAccess || false);
+  }
+
+  const fetchBootstrap = useCallback(async () => {
+    setTunnelChecking(true);
+    setKeysLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/bootstrap");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load dashboard bootstrap");
+      }
+
+      setKeys(data.keys || []);
+      applySettingsState(data.settings);
+      applyTunnelStatus(data.tunnel);
+    } catch (error) {
+      console.log("Error fetching dashboard bootstrap:", error);
+    } finally {
+      setTunnelChecking(false);
+      setKeysLoading(false);
+      setLoading(false);
+    }
   }, []);
 
-  const loadSettings = async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchBootstrap();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchBootstrap]);
+
+  async function loadSettings() {
     setTunnelChecking(true);
     try {
       const [settingsRes, statusRes] = await Promise.all([
@@ -79,30 +121,18 @@ export default function APIPageClient({ machineId }) {
       ]);
       if (settingsRes.ok) {
         const data = await settingsRes.json();
-        setRequireApiKey(data.requireApiKey || false);
-        setRequireLogin(data.requireLogin !== false);
-        setHasPassword(data.hasPassword || false);
-        setTunnelDashboardAccess(data.tunnelDashboardAccess || false);
+        applySettingsState(data);
       }
       if (statusRes.ok) {
         const data = await statusRes.json();
-        const tEnabled = data.tunnel?.enabled || false;
-        const tUrl = data.tunnel?.tunnelUrl || "";
-        const tPublicUrl = data.tunnel?.publicUrl || "";
-        setTunnelUrl(tUrl);
-        setTunnelPublicUrl(tPublicUrl);
-        setTunnelEnabled(tEnabled);
-        const tsEn = data.tailscale?.enabled || false;
-        const tsUrlVal = data.tailscale?.tunnelUrl || "";
-        setTsUrl(tsUrlVal);
-        setTsEnabled(tsEn);
+        applyTunnelStatus(data);
       }
     } catch (error) {
       console.log("Error loading settings:", error);
     } finally {
       setTunnelChecking(false);
     }
-  };
+  }
 
   const handleTunnelDashboardAccess = async (value) => {
     try {
@@ -131,6 +161,7 @@ export default function APIPageClient({ machineId }) {
   };
 
   const fetchData = async () => {
+    setKeysLoading(true);
     try {
       const keysRes = await fetch("/api/keys");
       const keysData = await keysRes.json();
@@ -140,7 +171,7 @@ export default function APIPageClient({ machineId }) {
     } catch (error) {
       console.log("Error fetching data:", error);
     } finally {
-      setLoading(false);
+      setKeysLoading(false);
     }
   };
 
@@ -575,25 +606,9 @@ export default function APIPageClient({ machineId }) {
     });
   };
 
-  const [baseUrl, setBaseUrl] = useState("/v1");
-
-  // Hydration fix: Only access window on client side
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setBaseUrl(`${window.location.origin}/v1`);
-    }
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-8">
-        <CardSkeleton />
-        <CardSkeleton />
-      </div>
-    );
-  }
-
-  const currentEndpoint = baseUrl;
+  const currentEndpoint = typeof window !== "undefined"
+    ? `${window.location.origin}/v1`
+    : "/v1";
 
   return (
     <div className="flex flex-col gap-8">
@@ -805,7 +820,12 @@ export default function APIPageClient({ machineId }) {
           />
         </div>
 
-        {keys.length === 0 ? (
+        {keysLoading ? (
+          <div className="flex flex-col gap-3">
+            <div className="h-16 rounded-xl bg-black/5 dark:bg-white/5 animate-pulse" />
+            <div className="h-16 rounded-xl bg-black/5 dark:bg-white/5 animate-pulse" />
+          </div>
+        ) : keys.length === 0 ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
               <span className="material-symbols-outlined text-[32px]">vpn_key</span>
@@ -1236,7 +1256,3 @@ function SecurityWarning({ message, action }) {
     </div>
   );
 }
-
-APIPageClient.propTypes = {
-  machineId: PropTypes.string.isRequired,
-};
