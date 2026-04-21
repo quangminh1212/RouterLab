@@ -49,14 +49,24 @@ function getSettingsCacheTtlMs() {
 
 async function loadSettings() {
   const now = Date.now();
-  if (cachedSettings && now - cachedSettingsAt < getSettingsCacheTtlMs()) {
+  const cacheHit = cachedSettings && now - cachedSettingsAt < getSettingsCacheTtlMs();
+
+  if (cacheHit) {
+    if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
+      console.log("[DASHBOARD_GUARD] loadSettings:cacheHit", { age: now - cachedSettingsAt });
+    }
     return cachedSettings;
   }
 
+  const start = Date.now();
   try {
     const settings = await getSettings();
     cachedSettings = settings;
     cachedSettingsAt = now;
+    const durationMs = Date.now() - start;
+    if (durationMs > 100 || process.env.DEBUG_DASHBOARD_PERF === "true") {
+      console.log("[DASHBOARD_GUARD] loadSettings:cacheMiss", { durationMs });
+    }
     return settings;
   } catch {
     return null;
@@ -73,19 +83,26 @@ async function isAuthenticated(request) {
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
   const isLocal = isLocalRequest(request);
+  const start = Date.now();
 
   // Always protected - allow localhost or valid JWT only
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    if (isLocal || await hasValidToken(request))
-      return NextResponse.next();
+    const decision = isLocal || await hasValidToken(request) ? "allow" : "deny";
+    if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
+      console.log("[DASHBOARD_GUARD] proxy:alwaysProtected", { pathname, decision, durationMs: Date.now() - start });
+    }
+    if (decision === "allow") return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Protect sensitive API endpoints (bypass if localhost or requireLogin = false)
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return NextResponse.next();
-    if (isLocal || await isAuthenticated(request))
-      return NextResponse.next();
+    const decision = isLocal || await isAuthenticated(request) ? "allow" : "deny";
+    if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
+      console.log("[DASHBOARD_GUARD] proxy:protectedApi", { pathname, decision, durationMs: Date.now() - start });
+    }
+    if (decision === "allow") return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -115,13 +132,21 @@ export async function proxy(request) {
     }
 
     // If login not required, allow through
-    if (!requireLogin) return NextResponse.next();
+    if (!requireLogin) {
+      if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
+        console.log("[DASHBOARD_GUARD] proxy:dashboard:noLoginRequired", { pathname, durationMs: Date.now() - start });
+      }
+      return NextResponse.next();
+    }
 
     // Verify JWT token
     const token = request.cookies.get("auth_token")?.value;
     if (token) {
       try {
         await jwtVerify(token, SECRET);
+        if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
+          console.log("[DASHBOARD_GUARD] proxy:dashboard:tokenValid", { pathname, durationMs: Date.now() - start });
+        }
         return NextResponse.next();
       } catch {
         return NextResponse.redirect(new URL("/login", request.url));

@@ -199,9 +199,14 @@ export default function UsageStats() {
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
   useEffect(() => {
+    const start = Date.now();
     fetch("/api/providers")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
+        const durationMs = Date.now() - start;
+        if (durationMs > 500 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
+          console.log("[DASHBOARD_CLIENT] usageStats:fetchProviders", { durationMs, count: d?.connections?.length || 0 });
+        }
         const seen = new Set();
         const unique = (d?.connections || []).filter((c) => {
           if (seen.has(c.provider)) return false;
@@ -222,9 +227,14 @@ export default function UsageStats() {
     if (!stats) setLoading(true);
     else setFetching(true);
 
+    const start = Date.now();
     fetch(`/api/usage/stats?period=${period}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
+        const durationMs = Date.now() - start;
+        if (durationMs > 1000 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
+          console.log("[DASHBOARD_CLIENT] usageStats:fetchStats", { period, durationMs });
+        }
         if (data) setStats((prev) => ({ ...prev, ...data }));
       })
       .catch(() => {})
@@ -236,10 +246,20 @@ export default function UsageStats() {
 
   // SSE connection - real-time updates for activeRequests + recentRequests only
   useEffect(() => {
+    const connectStart = Date.now();
     const es = new EventSource("/api/usage/stream");
+    let messageCount = 0;
+
+    es.onopen = () => {
+      const durationMs = Date.now() - connectStart;
+      if (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF) {
+        console.log("[DASHBOARD_CLIENT] usageStats:sse:open", { durationMs });
+      }
+    };
 
     es.onmessage = (e) => {
       try {
+        messageCount++;
         const data = JSON.parse(e.data);
         // Always merge only real-time fields, never overwrite full stats from REST
         setStats((prev) => ({
@@ -255,9 +275,19 @@ export default function UsageStats() {
       }
     };
 
-    es.onerror = () => setLoading(false);
+    es.onerror = (err) => {
+      if (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF) {
+        console.warn("[DASHBOARD_CLIENT] usageStats:sse:error", { messageCount, readyState: es.readyState });
+      }
+      setLoading(false);
+    };
 
-    return () => es.close();
+    return () => {
+      if (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF) {
+        console.log("[DASHBOARD_CLIENT] usageStats:sse:close", { messageCount, durationMs: Date.now() - connectStart });
+      }
+      es.close();
+    };
   }, []);
 
   const toggleSort = useCallback((tableType, field) => {

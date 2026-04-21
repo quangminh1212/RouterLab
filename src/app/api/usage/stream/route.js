@@ -1,28 +1,59 @@
 import { getUsageStats, statsEmitter, getActiveRequests } from "@/lib/usageDb";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request) {
   const encoder = new TextEncoder();
-  const state = { closed: false, keepalive: null, send: null, sendPending: null, cachedStats: null };
+  const traceId = request.headers.get("x-debug-trace-id") || logger.dashboardPerf.traceId("usage-stream");
+  const state = {
+    closed: false,
+    keepalive: null,
+    send: null,
+    sendPending: null,
+    cachedStats: null,
+    updateCount: 0,
+    pendingCount: 0,
+  };
+
+  logger.dashboardPerf.debug("USAGE_STREAM", "stream:open", { traceId }, { verbose: true });
 
   const stream = new ReadableStream({
     async start(controller) {
       // Full stats refresh (heavy) + immediate lightweight push
       state.send = async () => {
         if (state.closed) return;
+        const start = Date.now();
+        state.updateCount += 1;
         try {
-          // Push lightweight update immediately so UI reflects changes fast
+          let quickDurationMs = 0;
           if (state.cachedStats) {
+            const quickStart = Date.now();
             const { activeRequests, recentRequests, errorProvider } = await getActiveRequests();
+            quickDurationMs = Date.now() - quickStart;
             const quickStats = { ...state.cachedStats, activeRequests, recentRequests, errorProvider };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(quickStats)}\n\n`));
           }
-          // Then do full recalc and update cache
+
+          const statsStart = Date.now();
           const stats = await getUsageStats();
+          const statsDurationMs = Date.now() - statsStart;
           state.cachedStats = stats;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(stats)}\n\n`));
-        } catch {
+
+          logger.dashboardPerf.info("USAGE_STREAM", "stream:send", {
+            traceId,
+            durationMs: Date.now() - start,
+            quickDurationMs,
+            statsDurationMs,
+            updateCount: state.updateCount,
+          });
+        } catch (error) {
+          logger.dashboardPerf.error("USAGE_STREAM", "stream:send:error", {
+            traceId,
+            durationMs: Date.now() - start,
+            error: error.message,
+          }, { force: true });
           state.closed = true;
           statsEmitter.off("update", state.send);
           statsEmitter.off("pending", state.sendPending);
@@ -33,11 +64,25 @@ export async function GET() {
       // Lightweight push: only refresh activeRequests + recentRequests on pending changes
       state.sendPending = async () => {
         if (state.closed || !state.cachedStats) return;
+        const start = Date.now();
+        state.pendingCount += 1;
         try {
           const { activeRequests, recentRequests, errorProvider } = await getActiveRequests();
           const stats = { ...state.cachedStats, activeRequests, recentRequests, errorProvider };
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(stats)}\n\n`));
-        } catch {
+
+          logger.dashboardPerf.debug("USAGE_STREAM", "stream:pending", {
+            traceId,
+            durationMs: Date.now() - start,
+            pendingCount: state.pendingCount,
+            activeRequests: Array.isArray(activeRequests) ? activeRequests.length : 0,
+          }, { verbose: true });
+        } catch (error) {
+          logger.dashboardPerf.error("USAGE_STREAM", "stream:pending:error", {
+            traceId,
+            durationMs: Date.now() - start,
+            error: error.message,
+          }, { force: true });
           state.closed = true;
           statsEmitter.off("update", state.send);
           statsEmitter.off("pending", state.sendPending);
@@ -51,7 +96,10 @@ export async function GET() {
       statsEmitter.on("pending", state.sendPending);
 
       state.keepalive = setInterval(() => {
-        if (state.closed) { clearInterval(state.keepalive); return; }
+        if (state.closed) {
+          clearInterval(state.keepalive);
+          return;
+        }
         try {
           controller.enqueue(encoder.encode(": ping\n\n"));
         } catch {
@@ -62,6 +110,11 @@ export async function GET() {
     },
 
     cancel() {
+      logger.dashboardPerf.debug("USAGE_STREAM", "stream:close", {
+        traceId,
+        updateCount: state.updateCount,
+        pendingCount: state.pendingCount,
+      }, { verbose: true });
       state.closed = true;
       statsEmitter.off("update", state.send);
       statsEmitter.off("pending", state.sendPending);

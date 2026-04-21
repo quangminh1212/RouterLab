@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { logger } from "@/lib/logger";
 
 const TUNNEL_BENEFITS = [
   { icon: "public", title: "Access Anywhere", desc: "Use your API from any network" },
@@ -13,6 +14,15 @@ const TUNNEL_BENEFITS = [
 
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
+
+function createDashboardTraceId(prefix) {
+  return logger.dashboardPerf.traceId(prefix);
+}
+
+function logDashboardPerf(level, message, meta = {}, options = {}) {
+  logger.dashboardPerf[level]("DASHBOARD_CLIENT", message, meta, options);
+}
+
 export default function APIPageClient() {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,19 +94,43 @@ export default function APIPageClient() {
   }
 
   const fetchBootstrap = useCallback(async () => {
+    const traceId = createDashboardTraceId("endpoint-bootstrap");
+    const start = performance.now();
     setTunnelChecking(true);
     setKeysLoading(true);
+
+    logDashboardPerf("debug", "fetchBootstrap:start", { traceId }, { verbose: true });
+
     try {
-      const res = await fetch("/api/dashboard/bootstrap");
+      const responseStart = performance.now();
+      const res = await fetch("/api/dashboard/bootstrap", {
+        headers: { "x-debug-trace-id": traceId },
+      });
+      const responseDurationMs = Math.round(performance.now() - responseStart);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to load dashboard bootstrap");
       }
 
+      const applyStart = performance.now();
       setKeys(data.keys || []);
       applySettingsState(data.settings);
       applyTunnelStatus(data.tunnel);
+      const applyStateDurationMs = Math.round(performance.now() - applyStart);
+
+      logDashboardPerf("info", "fetchBootstrap:done", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        responseDurationMs,
+        applyStateDurationMs,
+        keysCount: Array.isArray(data.keys) ? data.keys.length : 0,
+      });
     } catch (error) {
+      logDashboardPerf("error", "fetchBootstrap:error", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        error: error.message,
+      }, { force: true });
       console.log("Error fetching dashboard bootstrap:", error);
     } finally {
       setTunnelChecking(false);
@@ -113,12 +147,27 @@ export default function APIPageClient() {
   }, [fetchBootstrap]);
 
   async function loadSettings() {
+    const traceId = createDashboardTraceId("endpoint-settings");
+    const start = performance.now();
     setTunnelChecking(true);
+
+    logDashboardPerf("debug", "loadSettings:start", { traceId }, { verbose: true });
+
     try {
+      const settingsStart = performance.now();
+      const tunnelStart = performance.now();
       const [settingsRes, statusRes] = await Promise.all([
-        fetch("/api/settings"),
-        fetch("/api/tunnel/status")
+        fetch("/api/settings", {
+          headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:settings" },
+        }),
+        fetch("/api/tunnel/status", {
+          headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:tunnelStatus" },
+        })
       ]);
+      const settingsDurationMs = Math.round(performance.now() - settingsStart);
+      const tunnelStatusDurationMs = Math.round(performance.now() - tunnelStart);
+
+      const applyStart = performance.now();
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         applySettingsState(data);
@@ -127,7 +176,23 @@ export default function APIPageClient() {
         const data = await statusRes.json();
         applyTunnelStatus(data);
       }
+      const applyStateDurationMs = Math.round(performance.now() - applyStart);
+
+      logDashboardPerf("info", "loadSettings:done", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        settingsDurationMs,
+        tunnelStatusDurationMs,
+        applyStateDurationMs,
+        settingsOk: settingsRes.ok,
+        tunnelStatusOk: statusRes.ok,
+      });
     } catch (error) {
+      logDashboardPerf("error", "loadSettings:error", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        error: error.message,
+      }, { force: true });
       console.log("Error loading settings:", error);
     } finally {
       setTunnelChecking(false);
@@ -178,40 +243,59 @@ export default function APIPageClient() {
   // u2500u2500u2500 Cloudflare Tunnel handlers
   // Ping tunnel health until reachable, also check backend status to detect process die
   const pingTunnelHealth = async (url) => {
+    const traceId = createDashboardTraceId("tunnel-health");
+    const start = Date.now();
+    let attempts = 0;
     setTunnelLoading(true);
     setTunnelProgress("Waiting for tunnel ready...");
     const healthUrl = `${url}/api/health`;
-    const start = Date.now();
+
+    logDashboardPerf("debug", "pingTunnelHealth:start", { traceId, url }, { verbose: true });
+
     while (Date.now() - start < TUNNEL_PING_MAX_MS) {
+      attempts += 1;
       await new Promise((r) => setTimeout(r, TUNNEL_PING_INTERVAL_MS));
       try {
         const ping = await fetch(healthUrl, { mode: "no-cors", cache: "no-store" });
         if (ping.ok || ping.type === "opaque") {
+          const durationMs = Date.now() - start;
           setTunnelEnabled(true);
           setTunnelLoading(false);
           setTunnelProgress("");
+          logDashboardPerf("info", "pingTunnelHealth:success", { traceId, durationMs, attempts, url });
           return true;
         }
       } catch { /* not ready yet */ }
       // Every 5 pings (~10s), check if backend process still alive
       if ((Date.now() - start) % 10000 < TUNNEL_PING_INTERVAL_MS) {
+        logDashboardPerf("debug", "pingTunnelHealth:checkpoint", {
+          traceId,
+          elapsedMs: Date.now() - start,
+          attempts,
+        }, { verbose: true });
         try {
-          const statusRes = await fetch("/api/tunnel/status");
+          const statusRes = await fetch("/api/tunnel/status", {
+            headers: { "x-debug-trace-id": traceId, "x-debug-op": "pingTunnelHealth:status" },
+          });
           if (statusRes.ok) {
             const status = await statusRes.json();
             if (!status.tunnel?.enabled) {
+              const durationMs = Date.now() - start;
               setTunnelStatus({ type: "error", message: "Tunnel process stopped unexpectedly." });
               setTunnelLoading(false);
               setTunnelProgress("");
+              logDashboardPerf("warn", "pingTunnelHealth:stopped", { traceId, durationMs, attempts });
               return false;
             }
           }
         } catch { /* ignore */ }
       }
     }
+    const durationMs = Date.now() - start;
     setTunnelStatus({ type: "error", message: "Tunnel created but not reachable. Please try again." });
     setTunnelLoading(false);
     setTunnelProgress("");
+    logDashboardPerf("warn", "pingTunnelHealth:timeout", { traceId, durationMs, attempts, url });
     return false;
   };
 

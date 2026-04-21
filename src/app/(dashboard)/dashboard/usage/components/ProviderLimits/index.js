@@ -33,12 +33,17 @@ export default function ProviderLimits() {
 
   // Fetch all provider connections
   const fetchConnections = useCallback(async () => {
+    const start = Date.now();
     try {
       const response = await fetch("/api/providers/client");
       if (!response.ok) throw new Error("Failed to fetch connections");
 
       const data = await response.json();
       const connectionList = data.connections || [];
+      const durationMs = Date.now() - start;
+      if (durationMs > 500 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
+        console.log("[DASHBOARD_CLIENT] providerLimits:fetchConnections", { durationMs, count: connectionList.length });
+      }
       setConnections(connectionList);
       return connectionList;
     } catch (error) {
@@ -53,6 +58,7 @@ export default function ProviderLimits() {
     setLoading((prev) => ({ ...prev, [connectionId]: true }));
     setErrors((prev) => ({ ...prev, [connectionId]: null }));
 
+    const start = Date.now();
     try {
       console.log(
         `[ProviderLimits] Fetching quota for ${provider} (${connectionId})`,
@@ -92,7 +98,10 @@ export default function ProviderLimits() {
       }
 
       const data = await response.json();
-      console.log(`[ProviderLimits] Got quota for ${provider}:`, data);
+      const durationMs = Date.now() - start;
+      if (durationMs > 1000 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
+        console.log("[DASHBOARD_CLIENT] providerLimits:fetchQuota", { provider, connectionId: connectionId.slice(0, 8), durationMs, hasMessage: Boolean(data.message) });
+      }
 
       // Parse quota data using provider-specific parser
       const parsedQuotas = parseQuotaData(provider, data);
@@ -227,6 +236,7 @@ export default function ProviderLimits() {
     setRefreshingAll(true);
     setCountdown(60);
 
+    const start = Date.now();
     try {
       const conns = await fetchConnections();
 
@@ -237,10 +247,23 @@ export default function ProviderLimits() {
           conn.authType === "oauth",
       );
 
+      const quotaStart = Date.now();
       // Fetch quota for supported OAuth connections only
       await Promise.all(
         oauthConnections.map((conn) => fetchQuota(conn.id, conn.provider)),
       );
+      const quotaDurationMs = Date.now() - quotaStart;
+
+      const durationMs = Date.now() - start;
+      if (durationMs > 2000 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
+        const slowest = oauthConnections.length > 0 ? Math.max(...oauthConnections.map(() => quotaDurationMs / oauthConnections.length)) : 0;
+        console.log("[DASHBOARD_CLIENT] providerLimits:refreshAll", {
+          durationMs,
+          quotaDurationMs,
+          connectionCount: oauthConnections.length,
+          avgPerConnection: oauthConnections.length > 0 ? Math.round(quotaDurationMs / oauthConnections.length) : 0,
+        });
+      }
 
       setLastUpdated(new Date());
     } catch (error) {
