@@ -21,6 +21,8 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
   const [showManualConfigModal, setShowManualConfigModal] = useState(false);
   const [customBaseUrl, setCustomBaseUrl] = useState("");
 
+  const codexConfig = typeof codexStatus?.config === "string" ? codexStatus.config : "";
+
   useEffect(() => {
     if (apiKeys?.length > 0 && !selectedApiKey) {
       setSelectedApiKey(apiKeys[0].key);
@@ -51,20 +53,20 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
 
   // Parse model and subagent settings from config content
   useEffect(() => {
-    if (codexStatus?.config) {
-      const modelMatch = codexStatus.config.match(/^model\s*=\s*"([^"]+)"/m);
+    if (codexConfig) {
+      const modelMatch = codexConfig.match(/^model\s*=\s*"([^"]+)"/m);
       if (modelMatch) setSelectedModel(modelMatch[1]);
-      
+
       // Parse subagent settings
-      const subagentModelMatch = codexStatus.config.match(/\[agents\.subagent\]\s*\n\s*model\s*=\s*"([^"]+)"/m);
+      const subagentModelMatch = codexConfig.match(/\[agents\.subagent\]\s*\n\s*model\s*=\s*"([^"]+)"/m);
       if (subagentModelMatch) setSubagentModel(subagentModelMatch[1]);
     }
-  }, [codexStatus]);
+  }, [codexConfig]);
 
   const getConfigStatus = () => {
     if (!codexStatus?.installed) return null;
-    if (!codexStatus.config) return "not_configured";
-    const hasBaseUrl = codexStatus.config.includes(baseUrl) || codexStatus.config.includes("localhost") || codexStatus.config.includes("127.0.0.1");
+    if (!codexConfig) return "not_configured";
+    const hasBaseUrl = codexConfig.includes(baseUrl) || codexConfig.includes("localhost") || codexConfig.includes("127.0.0.1");
     return hasBaseUrl ? "configured" : "other";
   };
 
@@ -75,7 +77,7 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
     // Ensure URL ends with /v1
     return url.endsWith("/v1") ? url : `${url}/v1`;
   };
-  
+
   const getDisplayUrl = () => customBaseUrl || `${baseUrl}/v1`;
 
   const checkCodexStatus = async () => {
@@ -169,12 +171,12 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
   };
 
   const getManualConfigs = () => {
-    const keyToUse = (selectedApiKey && selectedApiKey.trim()) 
-      ? selectedApiKey 
+    const keyToUse = (selectedApiKey && selectedApiKey.trim())
+      ? selectedApiKey
       : (!cloudEnabled ? "sk_xlabrouter" : "<API_KEY_FROM_DASHBOARD>");
-    
+
     const effectiveSubagentModel = subagentModel || selectedModel;
-    
+
     const configContent = `# XLab Router Configuration for Codex CLI
 model = "${selectedModel}"
 model_provider = "xlabrouter"
@@ -279,8 +281,8 @@ model = "${effectiveSubagentModel}"
 
               <div className="flex flex-col gap-2">
                 {/* Current Base URL */}
-                {codexStatus?.config && (() => {
-                  const parsed = codexStatus.config.match(/base_url\s*=\s*"([^"]+)"/);
+                {codexConfig && (() => {
+                  const parsed = codexConfig.match(/base_url\s*=\s*"([^"]+)"/);
                   const currentBaseUrl = parsed ? parsed[1] : null;
                   return currentBaseUrl ? (
                     <div className="flex items-center gap-2">
