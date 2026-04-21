@@ -1,9 +1,116 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip, Select, Toggle } from "@/shared/components";
+import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip } from "@/shared/components";
+import { cn } from "@/shared/utils/cn";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
+
+function ClaudeSettingsSelect({ label, value, options, onChange, className }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+  const selectedOption = options.find((option) => option.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!wrapperRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className={cn("relative", className)}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left",
+          "border-white/10 bg-[#1F1F1F] text-sm text-[#F5F5F5] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+          "transition-colors hover:border-white/20 hover:bg-[#242424] focus:outline-none focus:ring-1 focus:ring-white/15"
+        )}
+      >
+        <span className="truncate font-medium">{selectedOption?.label || ""}</span>
+        <span className={cn("material-symbols-outlined text-[18px] text-[#A3A3A3] transition-transform", open && "rotate-180")}>
+          expand_more
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-white/10 bg-[#171717] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+          <div role="listbox" aria-label={label} className="flex flex-col gap-0.5">
+            {options.map((option) => {
+              const isSelected = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
+                    isSelected
+                      ? "bg-white/10 text-white"
+                      : "text-[#D4D4D4] hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {isSelected && <span className="material-symbols-outlined text-[16px] text-[#D4D4D4]">check</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClaudeSettingsSwitch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "inline-flex h-6 w-11 items-center rounded-full border p-0.5 transition-all duration-200",
+        "focus:outline-none focus:ring-1 focus:ring-white/15",
+        checked
+          ? "border-[#D97706]/40 bg-[#D97706]"
+          : "border-white/10 bg-[#2A2A2A] hover:bg-[#303030]"
+      )}
+    >
+      <span
+        className={cn(
+          "size-5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition-transform duration-200",
+          checked ? "translate-x-5" : "translate-x-0"
+        )}
+      />
+    </button>
+  );
+}
 
 export default function ClaudeToolCard({
   tool,
@@ -411,41 +518,42 @@ export default function ClaudeToolCard({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Default mode</span>
                   <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                   <div className="flex-1">
-                    <Select
-                      options={DEFAULT_MODE_OPTIONS}
+                    <ClaudeSettingsSelect
+                      label="Default mode"
                       value={claudeDefaultMode}
-                      onChange={(e) => setClaudeDefaultMode(e.target.value)}
-                      selectClassName="py-1.5 px-2 pr-8 text-xs bg-surface border-border"
+                      options={DEFAULT_MODE_OPTIONS}
+                      onChange={setClaudeDefaultMode}
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Effort</span>
                   <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                   <div className="flex-1">
-                    <Select
-                      options={EFFORT_LEVEL_OPTIONS}
+                    <ClaudeSettingsSelect
+                      label="Effort"
                       value={claudeEffortLevel}
-                      onChange={(e) => setClaudeEffortLevel(e.target.value)}
-                      selectClassName="py-1.5 px-2 pr-8 text-xs bg-surface border-border"
+                      options={EFFORT_LEVEL_OPTIONS}
+                      onChange={setClaudeEffortLevel}
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Always thinking</span>
                   <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
-                  <div className="flex-1 px-2 py-1.5">
-                    <Toggle
+                  <div className="flex flex-1 items-center justify-between rounded-xl border border-white/10 bg-[#1F1F1F] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <span className="text-sm font-medium text-[#F5F5F5]">
+                      {claudeAlwaysThinkingEnabled ? "On" : "Off"}
+                    </span>
+                    <ClaudeSettingsSwitch
                       checked={claudeAlwaysThinkingEnabled}
                       onChange={setClaudeAlwaysThinkingEnabled}
-                      label={claudeAlwaysThinkingEnabled ? "Enabled" : "Disabled"}
-                      size="sm"
                     />
                   </div>
                 </div>
