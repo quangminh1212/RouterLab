@@ -8,6 +8,36 @@ import path from "path";
 import os from "os";
 
 const execAsync = promisify(exec);
+const DEFAULT_CLAUDE_SETTINGS = {
+  defaultMode: "acceptEdits",
+  alwaysThinkingEnabled: true,
+  effortLevel: "high",
+};
+const VALID_EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh"]);
+
+const normalizeEffortLevel = (value) => {
+  if (typeof value !== "string") return DEFAULT_CLAUDE_SETTINGS.effortLevel;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "max") return "high";
+  return VALID_EFFORT_LEVELS.has(normalized) ? normalized : DEFAULT_CLAUDE_SETTINGS.effortLevel;
+};
+
+const buildClaudeSettings = (currentSettings, env, options = {}) => ({
+  ...currentSettings,
+  hasCompletedOnboarding: true,
+  defaultMode: options.defaultMode || currentSettings.defaultMode || DEFAULT_CLAUDE_SETTINGS.defaultMode,
+  alwaysThinkingEnabled:
+    typeof options.alwaysThinkingEnabled === "boolean"
+      ? options.alwaysThinkingEnabled
+      : typeof currentSettings.alwaysThinkingEnabled === "boolean"
+        ? currentSettings.alwaysThinkingEnabled
+        : DEFAULT_CLAUDE_SETTINGS.alwaysThinkingEnabled,
+  effortLevel: normalizeEffortLevel(options.effortLevel || currentSettings.effortLevel),
+  env: {
+    ...(currentSettings.env || {}),
+    ...env,
+  },
+});
 
 // Get claude settings path based on OS
 const getClaudeSettingsPath = () => {
@@ -84,8 +114,8 @@ export async function GET() {
 // POST - Backup old fields and write new settings
 export async function POST(request) {
   try {
-    const { env } = await request.json();
-    
+    const { env, defaultMode, effortLevel, alwaysThinkingEnabled } = await request.json();
+
     if (!env || typeof env !== "object") {
       return NextResponse.json(
         { error: "Invalid env object" },
@@ -112,20 +142,16 @@ export async function POST(request) {
 
     // Normalize ANTHROPIC_BASE_URL to ensure /v1 suffix
     if (env.ANTHROPIC_BASE_URL) {
-      env.ANTHROPIC_BASE_URL = env.ANTHROPIC_BASE_URL.endsWith("/v1") 
-        ? env.ANTHROPIC_BASE_URL 
+      env.ANTHROPIC_BASE_URL = env.ANTHROPIC_BASE_URL.endsWith("/v1")
+        ? env.ANTHROPIC_BASE_URL
         : `${env.ANTHROPIC_BASE_URL}/v1`;
     }
 
-    // Merge new env with existing settings
-    const newSettings = {
-      ...currentSettings,
-      hasCompletedOnboarding: true,
-      env: {
-        ...(currentSettings.env || {}),
-        ...env,
-      },
-    };
+    const newSettings = buildClaudeSettings(currentSettings, env, {
+      defaultMode,
+      effortLevel,
+      alwaysThinkingEnabled,
+    });
 
     // Write new settings
     await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));

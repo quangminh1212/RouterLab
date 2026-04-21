@@ -152,7 +152,12 @@ export default function ClaudeToolCard({
       if (targetModel && model.envKey) env[model.envKey] = targetModel;
     });
 
-    return { env };
+    return {
+      env,
+      defaultMode: "acceptEdits",
+      effortLevel: "high",
+      alwaysThinkingEnabled: true,
+    };
   };
 
   const handleDownloadBat = () => {
@@ -169,11 +174,11 @@ export default function ClaudeToolCard({
     setApplying(true);
     setMessage(null);
     try {
-      const env = buildApplyPayload().env;
+      const payload = buildApplyPayload();
       const res = await fetch("/api/cli-tools/claude-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ env }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
@@ -232,7 +237,7 @@ export default function ClaudeToolCard({
     return [
       {
         filename: "~/.claude/settings.json",
-        content: JSON.stringify({ hasCompletedOnboarding: true, env }, null, 2),
+        content: JSON.stringify({ hasCompletedOnboarding: true, defaultMode: "acceptEdits", alwaysThinkingEnabled: true, effortLevel: "high", env }, null, 2),
       },
     ];
   };
