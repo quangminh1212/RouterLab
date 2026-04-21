@@ -308,14 +308,15 @@ async function startWebUI() {
   const runtime = ensureWorkspaceRoot(repoRoot);
   const appRoot = runtime.appRoot;
   const sourceNodeModules = runtime.sourceNodeModules;
+  const installedFromNpm = repoRoot.replace(/\\/g, "/").toLowerCase().includes("/node_modules/xlabrouter");
 
   const requestedMode = (process.env.XLABROUTER_WEB_MODE || "auto").toLowerCase();
   const isNonInteractive = !process.stdout.isTTY;
   const isNpmStart = process.env.npm_lifecycle_event === "start";
-  const runProd = requestedMode === "production"
+  let runProd = requestedMode === "production"
     || requestedMode === "prod"
     || (requestedMode === "auto" && (isNonInteractive || isNpmStart));
-  const modeLabel = runProd ? "production" : "development";
+  let modeLabel = runProd ? "production" : "development";
 
   console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
   console.log(`[INFO] Runtime paths => repoRoot: ${repoRoot} | appRoot: ${appRoot}`);
@@ -339,32 +340,40 @@ async function startWebUI() {
   if (runProd) {
     const buildIdPath = path.join(appRoot, ".next", "BUILD_ID");
     if (!fs.existsSync(buildIdPath)) {
-      console.log("[INFO] Production build not found. Running one-time build...");
-      const build = spawn(process.execPath, [nextBin, "build", "--webpack"], {
-        cwd: appRoot,
-        stdio: "inherit",
-        env: sharedEnv,
-      });
-
-      await new Promise((resolve, reject) => {
-        build.on("error", reject);
-        build.on("exit", (code) => {
-          if (code === 0) resolve();
-          else reject(new Error(`Build failed with exit code ${code || 1}`));
+      if (installedFromNpm) {
+        runProd = false;
+        modeLabel = "development";
+        console.log("[WARN] Published npm package has no production build artifacts. Falling back to development mode.");
+      } else {
+        console.log("[INFO] Production build not found. Running one-time build...");
+        const build = spawn(process.execPath, [nextBin, "build", "--webpack"], {
+          cwd: appRoot,
+          stdio: "inherit",
+          env: sharedEnv,
         });
-      });
+
+        await new Promise((resolve, reject) => {
+          build.on("error", reject);
+          build.on("exit", (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Build failed with exit code ${code || 1}`));
+          });
+        });
+      }
     }
 
-    // Next.js standalone runtime needs static/public assets beside server.js
-    // when running directly via `node .next/standalone/server.js`.
-    copyDirectoryIfExists(
-      path.join(appRoot, ".next", "static"),
-      path.join(appRoot, ".next", "standalone", ".next", "static")
-    );
-    copyDirectoryIfExists(
-      path.join(appRoot, "public"),
-      path.join(appRoot, ".next", "standalone", "public")
-    );
+    if (runProd) {
+      // Next.js standalone runtime needs static/public assets beside server.js
+      // when running directly via `node .next/standalone/server.js`.
+      copyDirectoryIfExists(
+        path.join(appRoot, ".next", "static"),
+        path.join(appRoot, ".next", "standalone", ".next", "static")
+      );
+      copyDirectoryIfExists(
+        path.join(appRoot, "public"),
+        path.join(appRoot, ".next", "standalone", "public")
+      );
+    }
   }
 
   let commandPath;
@@ -382,6 +391,7 @@ async function startWebUI() {
     stdio: ["inherit", "pipe", "pipe"],
     env: sharedEnv,
   });
+
 
   let warmupTriggered = false;
 

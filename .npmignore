@@ -1,6 +1,7 @@
 # Build artifacts
 .next/
 node_modules/
+.claude/
 
 # Development
 .vscode/
@@ -26,7 +27,8 @@ data/
 .gitignore
 
 # Scripts and configs
-scripts/
+scripts/*
+!scripts/check-tailscale.js
 run.bat
 run_*.log
 
