@@ -39,7 +39,7 @@
 │  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
 │   Tool      │
 └──────┬──────┘
-       │ http://localhost:20128/v1
+       │ http://localhost:1212/v1
        ↓
 ┌─────────────────────────────────────────┐
 │           XLab Router (Smart Router)        │
@@ -68,7 +68,9 @@ npm install -g xlabrouter
 xlabrouter
 ```
 
-🎉 Dashboard opens at `http://localhost:20128`
+🎉 XLab Router starts in the system tray and keeps running in the background.
+
+Open the dashboard at `http://localhost:1212`, or run `xlabrouter --web` if you want to keep it in the current terminal.
 
 **2. Connect a FREE provider (no signup needed):**
 
@@ -78,7 +80,7 @@ Dashboard → Providers → Connect **Claude Code** or **Antigravity** → OAuth
 
 ```
 Claude Code/Codex/Gemini CLI/OpenClaw/Cursor/Cline Settings:
-  Endpoint: http://localhost:20128/v1
+  Endpoint: http://localhost:1212/v1
   API Key: [copy from dashboard]
   Model: if/kimi-k2-thinking
 ```

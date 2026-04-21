@@ -549,7 +549,7 @@ async function openPathOrUrl(target) {
 }
 
 async function startTrayHost() {
-  const SysTrayImport = require("node-systray-v2");
+  const SysTrayImport = require("systray2");
   const SysTray = SysTrayImport.default || SysTrayImport;
 
   let shuttingDown = false;
@@ -622,14 +622,14 @@ async function startTrayHost() {
     debug: false,
   });
 
-  tray.onReady(() => {
+  try {
+    await tray.ready();
     console.log(`[INFO] System tray ready for ${launch.baseUrl}`);
-  });
-
-  tray.onError((error) => {
+  } catch (error) {
     console.error(`[ERROR] Tray failed: ${error.message}`);
     cleanup(1);
-  });
+    return;
+  }
 
   tray.onExit(() => {
     cleanup(0);
@@ -653,6 +653,7 @@ async function startTrayHost() {
     }
   });
 
+
   process.on("SIGINT", () => cleanup(130));
   process.on("SIGTERM", () => cleanup(143));
 }
@@ -661,6 +662,8 @@ function startTrayMode() {
   printTrayLaunchMessage();
   launchDetachedTrayHost();
 }
+
+function checkForUpdates() {
   return new Promise((resolve) => {
     console.log(`\n[INFO] Checking for updates...`);
     console.log(`[INFO] Current version: ${pkg.version}`);
@@ -791,13 +794,24 @@ async function showMenu() {
 
 // Handle direct launch modes
 if (command === "--web") {
-  startWebUI();
-} else if (command === "--tray") {
+  startWebUI().catch((err) => {
+    console.error("[ERROR] Web UI failed:", err);
+    process.exit(1);
+  });
+} else if (command === "--tray-host") {
+  startTrayHost().catch((err) => {
+    console.error("[ERROR] Tray host failed:", err);
+    process.exit(1);
+  });
+} else if (command === "--tray" || !command) {
   startTrayMode();
-} else {
-  // Show interactive menu
+} else if (command === "--menu") {
   showMenu().catch((err) => {
     console.error("[ERROR] Menu failed:", err);
     process.exit(1);
   });
+} else {
+  console.error(`[ERROR] Unknown command: ${command}`);
+  console.error("[INFO] Run xlabrouter --help to see available options.");
+  process.exit(1);
 }

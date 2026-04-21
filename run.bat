@@ -258,12 +258,14 @@ echo [INFO] Startup mode: %XLABROUTER_WEB_MODE%
 echo [INFO] Startup mode: %XLABROUTER_WEB_MODE% >> %LOG_FILE%
 echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP%
 echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP% >> %LOG_FILE%
-echo [INFO] Running: node .\bin\xlab_router.js --web
-echo [INFO] Running: node .\bin\xlab_router.js --web >> %LOG_FILE%
+echo [INFO] Running foreground mode: node .\bin\xlab_router.js --web
+echo [INFO] Running foreground mode: node .\bin\xlab_router.js --web >> %LOG_FILE%
 echo [INFO] Server will start on http://localhost:1212
 echo [INFO] Server will start on http://localhost:1212 >> %LOG_FILE%
-echo [INFO] Press Ctrl+C to stop the server
-echo [INFO] Press Ctrl+C to stop the server >> %LOG_FILE%
+echo [INFO] This batch file keeps the server in the current terminal.
+echo [INFO] This batch file keeps the server in the current terminal. >> %LOG_FILE%
+echo [INFO] Use xlabrouter or xrouter if you want background system tray mode.
+echo [INFO] Use xlabrouter or xrouter if you want background system tray mode. >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
 echo [INFO] All server output will be logged to %LOG_FILE% and auto-delete at 100MB
 echo [INFO] Server output is shown below (press Ctrl+C to stop)
