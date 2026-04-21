@@ -187,9 +187,10 @@ if (command === "--help" || command === "-h") {
   console.log("xlab_router - XLab Router CLI");
   console.log("");
   console.log("Usage:");
-  console.log("  xlab_router           Show interactive menu");
+  console.log("  xlab_router           Start in system tray/background mode");
+  console.log("  xlab_router --tray    Start in system tray/background mode");
   console.log("  xlab_router --web     Start Web UI directly (port 1212)");
-  console.log("  xlab_router --tray    Start in system tray mode");
+  console.log("  xlab_router --menu    Show interactive menu");
   console.log("  xlab_router --version Show version");
   console.log("");
   console.log("Environment:");
@@ -302,7 +303,82 @@ async function warmupRoutes(baseUrl) {
   console.log(`[INFO] Warmup completed in ${Date.now() - startedAt}ms`);
 }
 
-async function startWebUI() {
+function readPngDimensions(buffer) {
+  const pngSignature = "89504e470d0a1a0a";
+  if (buffer.subarray(0, 8).toString("hex") !== pngSignature) {
+    throw new Error("Tray icon must be a valid PNG file.");
+  }
+
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+  };
+}
+
+function createIcoFromPngBuffer(buffer) {
+  const { width, height } = readPngDimensions(buffer);
+  const iconDir = Buffer.alloc(6);
+  iconDir.writeUInt16LE(0, 0);
+  iconDir.writeUInt16LE(1, 2);
+  iconDir.writeUInt16LE(1, 4);
+
+  const entry = Buffer.alloc(16);
+  entry.writeUInt8(width >= 256 ? 0 : width, 0);
+  entry.writeUInt8(height >= 256 ? 0 : height, 1);
+  entry.writeUInt8(0, 2);
+  entry.writeUInt8(0, 3);
+  entry.writeUInt16LE(1, 4);
+  entry.writeUInt16LE(32, 6);
+  entry.writeUInt32LE(buffer.length, 8);
+  entry.writeUInt32LE(22, 12);
+
+  return Buffer.concat([iconDir, entry, buffer]);
+}
+
+function ensureTrayIconPath(appRoot) {
+  const pngPath = path.join(appRoot, "images", "topup.png");
+  if (!fs.existsSync(pngPath)) {
+    throw new Error(`Tray icon not found: ${pngPath}`);
+  }
+
+  if (process.platform !== "win32") {
+    return pngPath;
+  }
+
+  const icoPath = path.join(appRoot, ".xlabrouter-tray.ico");
+  const pngStats = fs.statSync(pngPath);
+  const shouldRegenerate = !fs.existsSync(icoPath)
+    || fs.statSync(icoPath).mtimeMs < pngStats.mtimeMs;
+
+  if (shouldRegenerate) {
+    const pngBuffer = fs.readFileSync(pngPath);
+    fs.writeFileSync(icoPath, createIcoFromPngBuffer(pngBuffer));
+  }
+
+  return icoPath;
+}
+
+function getTrayIconBase64(appRoot) {
+  const iconPath = ensureTrayIconPath(appRoot);
+  return fs.readFileSync(iconPath).toString("base64");
+}
+
+function getDashboardUrl() {
+  return `http://localhost:${port}`;
+}
+
+function getLogFilePath(repoRoot) {
+  return path.join(repoRoot, LOG_FILE_NAME);
+}
+
+async function launchWebUIProcess(options = {}) {
+  const {
+    exitOnChildExit = true,
+    onReady,
+    onExit,
+    suppressCtrlCMessage = false,
+  } = options;
+
   const nextBin = require.resolve("next/dist/bin/next");
   const repoRoot = path.resolve(__dirname, "..");
   const runtime = ensureWorkspaceRoot(repoRoot);
@@ -326,9 +402,13 @@ async function startWebUI() {
     console.log(`[INFO] Stopped old process(es) on port ${port}: ${killedPids.join(", ")}`);
   }
 
-  console.log(`[INFO] Visit http://localhost:${port}`);
-  console.log(`[INFO] Logging to ${path.resolve(__dirname, "..", LOG_FILE_NAME)} (auto-delete at 100MB)`);
-  console.log(`[INFO] Press Ctrl+C to stop\n`);
+  console.log(`[INFO] Visit ${getDashboardUrl()}`);
+  console.log(`[INFO] Logging to ${getLogFilePath(repoRoot)} (auto-delete at 100MB)`);
+  if (!suppressCtrlCMessage) {
+    console.log("[INFO] Press Ctrl+C to stop\n");
+  } else {
+    console.log("");
+  }
 
   const sharedEnv = {
     ...process.env,
@@ -363,8 +443,6 @@ async function startWebUI() {
     }
 
     if (runProd) {
-      // Next.js standalone runtime needs static/public assets beside server.js
-      // when running directly via `node .next/standalone/server.js`.
       copyDirectoryIfExists(
         path.join(appRoot, ".next", "static"),
         path.join(appRoot, ".next", "standalone", ".next", "static")
@@ -388,26 +466,26 @@ async function startWebUI() {
 
   const child = spawn(commandPath, commandArgs, {
     cwd: appRoot,
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe"],
     env: sharedEnv,
   });
 
-
   let warmupTriggered = false;
+  let readyTriggered = false;
 
   if (child.stdout) {
     child.stdout.on("data", (chunk) => {
       process.stdout.write(chunk);
 
-      if (!warmupTriggered) {
-        const text = chunk.toString();
-        if (/ready in/i.test(text)) {
-          warmupTriggered = true;
-          const baseUrl = `http://localhost:${port}`;
-          warmupRoutes(baseUrl).catch((error) => {
-            console.log(`[WARN] Warmup failed: ${error.message}`);
-          });
-        }
+      const text = chunk.toString();
+      if (!warmupTriggered && /ready in/i.test(text)) {
+        warmupTriggered = true;
+        readyTriggered = true;
+        const baseUrl = getDashboardUrl();
+        warmupRoutes(baseUrl).catch((error) => {
+          console.log(`[WARN] Warmup failed: ${error.message}`);
+        });
+        onReady?.({ child, repoRoot, appRoot, baseUrl });
       }
     });
   }
@@ -420,22 +498,169 @@ async function startWebUI() {
 
   child.on("error", (err) => {
     console.error("[ERROR] Failed to start XLab Router:", err);
-    process.exit(1);
+    onExit?.(1);
+    if (exitOnChildExit) {
+      process.exit(1);
+    }
   });
 
   child.on("exit", (code) => {
-    process.exit(code || 0);
+    if (!readyTriggered) {
+      onReady?.({ child, repoRoot, appRoot, baseUrl: getDashboardUrl() });
+      readyTriggered = true;
+    }
+    onExit?.(code || 0);
+    if (exitOnChildExit) {
+      process.exit(code || 0);
+    }
   });
+
+  return { child, repoRoot, appRoot, baseUrl: getDashboardUrl() };
+}
+
+async function startWebUI() {
+  await launchWebUIProcess();
+}
+
+function printTrayLaunchMessage() {
+  console.log(`[INFO] XLab Router is starting in the system tray.`);
+  console.log(`[INFO] Dashboard: ${getDashboardUrl()}`);
+  console.log(`[INFO] Use the tray menu to open the dashboard, open logs, or quit.`);
+  console.log(`[INFO] Run xlabrouter --web if you want to keep it in the current terminal.`);
+}
+
+function launchDetachedTrayHost() {
+  const child = spawn(process.execPath, [__filename, "--tray-host"], {
+    cwd: process.cwd(),
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+    env: {
+      ...process.env,
+      XLABROUTER_LAUNCHED_FROM_ALIAS: "1",
+    },
+  });
+  child.unref();
+}
+
+async function openPathOrUrl(target) {
+  const openTarget = require("open");
+  await openTarget(target, { wait: false });
+}
+
+async function startTrayHost() {
+  const SysTrayImport = require("node-systray-v2");
+  const SysTray = SysTrayImport.default || SysTrayImport;
+
+  let shuttingDown = false;
+  let tray;
+  let serverChild;
+
+  const cleanup = (exitCode = 0) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+
+    if (tray) {
+      try {
+        tray.kill(false);
+      } catch (_) {
+      }
+    }
+
+    if (serverChild && !serverChild.killed) {
+      try {
+        serverChild.kill("SIGTERM");
+      } catch (_) {
+      }
+    }
+
+    setTimeout(() => process.exit(exitCode), 250);
+  };
+
+  const launch = await launchWebUIProcess({
+    exitOnChildExit: false,
+    suppressCtrlCMessage: true,
+    onExit: (code) => {
+      if (!shuttingDown) {
+        console.log(`[INFO] Web UI exited with code ${code}. Closing tray host.`);
+        cleanup(code);
+      }
+    },
+  });
+  serverChild = launch.child;
+
+  const icon = getTrayIconBase64(launch.appRoot);
+  tray = new SysTray({
+    menu: {
+      icon,
+      title: "XLab Router",
+      tooltip: `XLab Router ${pkg.version}`,
+      items: [
+        {
+          title: `Dashboard: ${launch.baseUrl}`,
+          tooltip: "Open XLab Router dashboard",
+          checked: false,
+          enabled: true,
+        },
+        {
+          title: `Open Logs: ${path.basename(getLogFilePath(launch.repoRoot))}`,
+          tooltip: "Open log file",
+          checked: false,
+          enabled: true,
+        },
+        {
+          title: "Quit XLab Router",
+          tooltip: "Stop XLab Router and close the tray",
+          checked: false,
+          enabled: true,
+        },
+      ],
+    },
+    copyDir: true,
+    debug: false,
+  });
+
+  tray.onReady(() => {
+    console.log(`[INFO] System tray ready for ${launch.baseUrl}`);
+  });
+
+  tray.onError((error) => {
+    console.error(`[ERROR] Tray failed: ${error.message}`);
+    cleanup(1);
+  });
+
+  tray.onExit(() => {
+    cleanup(0);
+  });
+
+  tray.onClick(async (event) => {
+    try {
+      if (event.seq_id === 0) {
+        await openPathOrUrl(launch.baseUrl);
+        return;
+      }
+      if (event.seq_id === 1) {
+        await openPathOrUrl(getLogFilePath(launch.repoRoot));
+        return;
+      }
+      if (event.seq_id === 2) {
+        cleanup(0);
+      }
+    } catch (error) {
+      console.error(`[WARN] Tray action failed: ${error.message}`);
+    }
+  });
+
+  process.on("SIGINT", () => cleanup(130));
+  process.on("SIGTERM", () => cleanup(143));
 }
 
 function startTrayMode() {
-  console.log(`\n[INFO] Starting XLab Router in system tray mode...`);
-  console.log(`[WARN] System tray mode is not yet implemented.`);
-  console.log(`[INFO] Falling back to Web UI mode...\n`);
-  startWebUI();
+  printTrayLaunchMessage();
+  launchDetachedTrayHost();
 }
-
-function checkForUpdates() {
   return new Promise((resolve) => {
     console.log(`\n[INFO] Checking for updates...`);
     console.log(`[INFO] Current version: ${pkg.version}`);
