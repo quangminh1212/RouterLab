@@ -234,8 +234,45 @@ async function waitForPortToClear(targetPort, retries = 20, delayMs = 250) {
   return false;
 }
 
-async function killProcessOnPort(targetPort) {
-  const pids = await getPidsOnPort(targetPort);
+function escapePowerShellString(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+async function getXLabRouterPids(repoRoot) {
+  const isWin = process.platform === "win32";
+
+  if (isWin) {
+    const escapedRepoRoot = escapePowerShellString(repoRoot);
+    const commandText = `powershell -Command "$repoRoot = '${escapedRepoRoot}'; $repoRegex = [regex]::Escape($repoRoot); Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne ${process.pid} -and ($_.Name -eq 'node.exe' -or $_.Name -eq 'nodew.exe') -and $_.CommandLine -and $_.CommandLine -match $repoRegex -and ($_.CommandLine -match 'xlab_router\\.js' -or $_.CommandLine -match '\\.next[\\/]+standalone[\\/]+server\\.js') } | Select-Object -ExpandProperty ProcessId | Sort-Object -Unique"`;
+    const { stdout } = await execCommand(commandText);
+    return String(stdout || "")
+      .split(/\r?\n/)
+      .map((line) => Number.parseInt(line.trim(), 10))
+      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+  }
+
+  const { stdout } = await execCommand("ps -ax -o pid= -o command=");
+  return String(stdout || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(\d+)\s+(.*)$/);
+      if (!match) return null;
+      const pid = Number.parseInt(match[1], 10);
+      const commandLine = match[2] || "";
+      if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return null;
+      if (!commandLine.includes(repoRoot)) return null;
+      if (!commandLine.includes("xlab_router.js") && !commandLine.includes("/.next/standalone/server.js")) return null;
+      return pid;
+    })
+    .filter((pid) => Number.isInteger(pid));
+}
+
+async function stopOldXLabRouterProcesses(targetPort, repoRoot) {
+  const portPids = await getPidsOnPort(targetPort);
+  const routerPids = await getXLabRouterPids(repoRoot);
+  const pids = [...new Set([...portPids, ...routerPids])].filter((pid) => pid !== process.pid);
   if (pids.length === 0) {
     return [];
   }
@@ -251,7 +288,9 @@ async function killProcessOnPort(targetPort) {
 
   await sleep(500);
 
-  const remainingPids = await getPidsOnPort(targetPort);
+  const remainingRouterPids = await getXLabRouterPids(repoRoot);
+  const remainingPortPids = await getPidsOnPort(targetPort);
+  const remainingPids = [...new Set([...remainingRouterPids, ...remainingPortPids])].filter((pid) => pids.includes(pid));
   for (const pid of remainingPids) {
     try {
       process.kill(pid, "SIGKILL");
@@ -262,9 +301,14 @@ async function killProcessOnPort(targetPort) {
     }
   }
 
-  const isCleared = await waitForPortToClear(targetPort);
-  if (!isCleared) {
+  const isPortCleared = await waitForPortToClear(targetPort);
+  if (!isPortCleared) {
     throw new Error(`Port ${targetPort} is still busy after stopping old processes.`);
+  }
+
+  const leftoverRouterPids = await getXLabRouterPids(repoRoot);
+  if (leftoverRouterPids.length > 0) {
+    throw new Error(`Old XLab Router process is still running: ${leftoverRouterPids.join(", ")}`);
   }
 
   return killedPids;
@@ -397,7 +441,7 @@ async function launchWebUIProcess(options = {}) {
   console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
   console.log(`[INFO] Runtime paths => repoRoot: ${repoRoot} | appRoot: ${appRoot}`);
 
-  const killedPids = await killProcessOnPort(port);
+  const killedPids = await stopOldXLabRouterProcesses(port, repoRoot);
   if (killedPids.length > 0) {
     console.log(`[INFO] Stopped old process(es) on port ${port}: ${killedPids.join(", ")}`);
   }
