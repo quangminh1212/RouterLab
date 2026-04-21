@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip } from "@/shared/components";
+import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip, Select, Toggle } from "@/shared/components";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
 
@@ -32,7 +32,24 @@ export default function ClaudeToolCard({
   const [showManualConfigModal, setShowManualConfigModal] = useState(false);
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [ccFilterNaming, setCcFilterNaming] = useState(false);
+  const [claudeDefaultMode, setClaudeDefaultMode] = useState(initialStatus?.settings?.defaultMode || "acceptEdits");
+  const [claudeEffortLevel, setClaudeEffortLevel] = useState(initialStatus?.settings?.effortLevel || "high");
+  const [claudeAlwaysThinkingEnabled, setClaudeAlwaysThinkingEnabled] = useState(
+    typeof initialStatus?.settings?.alwaysThinkingEnabled === "boolean"
+      ? initialStatus.settings.alwaysThinkingEnabled
+      : true
+  );
   const hasInitializedModels = useRef(false);
+
+  const DEFAULT_MODE_OPTIONS = [
+    { value: "acceptEdits", label: "Accept edits" },
+  ];
+  const EFFORT_LEVEL_OPTIONS = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+    { value: "xhigh", label: "XHigh" },
+  ];
 
   const getConfigStatus = () => {
     if (!claudeStatus?.installed) return null;
@@ -95,7 +112,7 @@ export default function ClaudeToolCard({
     if (claudeStatus?.installed && !hasInitializedModels.current) {
       hasInitializedModels.current = true;
       const env = claudeStatus.settings?.env || {};
-      
+
       tool.defaultModels.forEach((model) => {
         if (model.envKey) {
           const value = env[model.envKey] || model.defaultValue || "";
@@ -110,8 +127,16 @@ export default function ClaudeToolCard({
       if (tokenFromFile && apiKeys?.some(k => k.key === tokenFromFile)) {
         setSelectedApiKey(tokenFromFile);
       }
+      setClaudeDefaultMode(claudeStatus.settings?.defaultMode || "acceptEdits");
+      setClaudeEffortLevel(claudeStatus.settings?.effortLevel || "high");
+      setClaudeAlwaysThinkingEnabled(
+        typeof claudeStatus.settings?.alwaysThinkingEnabled === "boolean"
+          ? claudeStatus.settings.alwaysThinkingEnabled
+          : true
+      );
     }
   }, [claudeStatus, apiKeys, tool.defaultModels, onModelMappingChange]);
+
 
   const checkClaudeStatus = async () => {
     setCheckingClaude(true);
@@ -154,9 +179,9 @@ export default function ClaudeToolCard({
 
     return {
       env,
-      defaultMode: "acceptEdits",
-      effortLevel: "high",
-      alwaysThinkingEnabled: true,
+      defaultMode: claudeDefaultMode,
+      effortLevel: claudeEffortLevel,
+      alwaysThinkingEnabled: claudeAlwaysThinkingEnabled,
     };
   };
 
@@ -183,7 +208,18 @@ export default function ClaudeToolCard({
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings applied successfully!" });
-        setClaudeStatus(prev => ({ ...prev, hasBackup: true, settings: { ...prev?.settings, env } }));
+        setClaudeStatus((prev) => ({
+          ...prev,
+          hasBackup: true,
+          settings: {
+            ...(prev?.settings || {}),
+            hasCompletedOnboarding: true,
+            defaultMode: payload.defaultMode,
+            alwaysThinkingEnabled: payload.alwaysThinkingEnabled,
+            effortLevel: payload.effortLevel,
+            env: payload.env,
+          },
+        }));
       } else {
         setMessage({ type: "error", text: data.error || "Failed to apply settings" });
       }
@@ -204,6 +240,30 @@ export default function ClaudeToolCard({
         setMessage({ type: "success", text: "Settings reset successfully!" });
         tool.defaultModels.forEach((model) => onModelMappingChange(model.alias, model.defaultValue || ""));
         setSelectedApiKey("");
+        setClaudeDefaultMode("acceptEdits");
+        setClaudeEffortLevel("high");
+        setClaudeAlwaysThinkingEnabled(true);
+        setClaudeStatus((prev) => ({
+          ...prev,
+          hasxlabrouter: false,
+          settings: prev?.settings
+            ? {
+                ...prev.settings,
+                env: Object.fromEntries(
+                  Object.entries(prev.settings.env || {}).filter(
+                    ([key]) => ![
+                      "ANTHROPIC_BASE_URL",
+                      "ANTHROPIC_AUTH_TOKEN",
+                      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+                      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                      "API_TIMEOUT_MS",
+                    ].includes(key)
+                  )
+                ),
+              }
+            : prev?.settings,
+        }));
       } else {
         setMessage({ type: "error", text: data.error || "Failed to reset settings" });
       }
@@ -237,7 +297,7 @@ export default function ClaudeToolCard({
     return [
       {
         filename: "~/.claude/settings.json",
-        content: JSON.stringify({ hasCompletedOnboarding: true, defaultMode: "acceptEdits", alwaysThinkingEnabled: true, effortLevel: "high", env }, null, 2),
+        content: JSON.stringify({ hasCompletedOnboarding: true, defaultMode: claudeDefaultMode, alwaysThinkingEnabled: claudeAlwaysThinkingEnabled, effortLevel: claudeEffortLevel, env }, null, 2),
       },
     ];
   };
@@ -349,6 +409,45 @@ export default function ClaudeToolCard({
                       {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_xlabrouter (default)"}
                     </span>
                   )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Default mode</span>
+                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <div className="flex-1">
+                    <Select
+                      options={DEFAULT_MODE_OPTIONS}
+                      value={claudeDefaultMode}
+                      onChange={(e) => setClaudeDefaultMode(e.target.value)}
+                      selectClassName="py-1.5 px-2 pr-8 text-xs bg-surface border-border"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Effort</span>
+                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <div className="flex-1">
+                    <Select
+                      options={EFFORT_LEVEL_OPTIONS}
+                      value={claudeEffortLevel}
+                      onChange={(e) => setClaudeEffortLevel(e.target.value)}
+                      selectClassName="py-1.5 px-2 pr-8 text-xs bg-surface border-border"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Always thinking</span>
+                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <div className="flex-1 px-2 py-1.5">
+                    <Toggle
+                      checked={claudeAlwaysThinkingEnabled}
+                      onChange={setClaudeAlwaysThinkingEnabled}
+                      label={claudeAlwaysThinkingEnabled ? "Enabled" : "Disabled"}
+                      size="sm"
+                    />
+                  </div>
                 </div>
 
                 {/* Model Mappings */}
