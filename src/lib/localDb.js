@@ -7,7 +7,7 @@ import lockfile from "proper-lockfile";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { logger } from "@/lib/logger.js";
 
-const DEFAULT_MITM_ROUTER_BASE = "http://localhost:20128";
+const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
 const LEGACY_CLOUD_HOST_REGEX = /(^|\.)9router\.com$/i;
 const REPLACEMENT_CLOUD_HOST = "xlabrouter.com";
 

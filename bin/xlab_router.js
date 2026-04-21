@@ -175,7 +175,7 @@ function setupFileLogging() {
 setupFileLogging();
 
 const command = process.argv[2];
-const port = process.env.PORT || 20128;
+const port = process.env.PORT || 1212;
 const hostname = DEFAULT_HOSTNAME;
 
 if (command === "--version" || command === "-v") {
@@ -188,7 +188,7 @@ if (command === "--help" || command === "-h") {
   console.log("");
   console.log("Usage:");
   console.log("  xlab_router           Show interactive menu");
-  console.log("  xlab_router --web     Start Web UI directly (port 20128)");
+  console.log("  xlab_router --web     Start Web UI directly (port 1212)");
   console.log("  xlab_router --tray    Start in system tray mode");
   console.log("  xlab_router --version Show version");
   console.log("");

@@ -15,7 +15,7 @@ const { isCertExpired } = require("./cert/rootCA");
 const { MITM_DIR } = require("./paths");
 const { log, err } = require("./logger");
 
-const DEFAULT_MITM_ROUTER_BASE = "http://localhost:20128";
+const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
 
 function shellQuoteSingle(str) {
   if (str == null || str === "") return "''";

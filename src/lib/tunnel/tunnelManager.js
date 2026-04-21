@@ -60,7 +60,7 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
   }
 }
 
-export async function enableTunnel(localPort = 20128) {
+export async function enableTunnel(localPort = 1212) {
   manualDisabled = false;
 
   if (isCloudflaredRunning()) {
@@ -170,7 +170,7 @@ export async function getTunnelStatus() {
 
 // ─── Tailscale Funnel ─────────────────────────────────────────────────────────
 
-export async function enableTailscale(localPort = 20128) {
+export async function enableTailscale(localPort = 1212) {
   // Ensure daemon is running (needs sudo for TUN mode)
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
   await startDaemonWithPassword(sudoPass);

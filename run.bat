@@ -35,13 +35,13 @@ goto :AUTO_SYNC_CLI
 
 :CONTINUE_NORMAL
 
-echo [STEP 1/6] Checking for existing server on port 20128...
-echo [STEP 1/6] Checking for existing server on port 20128... >> %LOG_FILE%
-netstat -ano | findstr /R /C:":20128 .*LISTENING" >nul 2>&1
+echo [STEP 1/6] Checking for existing server on port 1212...
+echo [STEP 1/6] Checking for existing server on port 1212... >> %LOG_FILE%
+netstat -ano | findstr /R /C:":1212 .*LISTENING" >nul 2>&1
 if not errorlevel 1 (
-    echo [WARN] Port 20128 is in use. Stopping existing process...
-    echo [WARN] Port 20128 is in use. Stopping existing process... >> %LOG_FILE%
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":20128 .*LISTENING"') do (
+    echo [WARN] Port 1212 is in use. Stopping existing process...
+    echo [WARN] Port 1212 is in use. Stopping existing process... >> %LOG_FILE%
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
         echo [INFO] Killing process ID: %%a
         echo [INFO] Killing process ID: %%a >> %LOG_FILE%
         taskkill /F /PID %%a >nul 2>&1
@@ -50,8 +50,8 @@ if not errorlevel 1 (
     echo [OK] Existing process stopped.
     echo [OK] Existing process stopped. >> %LOG_FILE%
 ) else (
-    echo [OK] Port 20128 is free.
-    echo [OK] Port 20128 is free. >> %LOG_FILE%
+    echo [OK] Port 1212 is free.
+    echo [OK] Port 1212 is free. >> %LOG_FILE%
 )
 echo.
 
@@ -151,7 +151,7 @@ if defined XLABROUTER_CLAUDE_HAIKU_MODEL set "AUTO_SYNC_CLI=1"
 
 if "%AUTO_SYNC_CLI%"=="1" (
     set "CLI_BASE_URL=%XLABROUTER_CLI_BASE_URL%"
-    if not defined CLI_BASE_URL set "CLI_BASE_URL=http://localhost:20128/v1"
+    if not defined CLI_BASE_URL set "CLI_BASE_URL=http://localhost:1212/v1"
     if /I not "!CLI_BASE_URL:~-3!"=="/v1" set "CLI_BASE_URL=!CLI_BASE_URL!/v1"
 
     set "CLI_API_KEY=%XLABROUTER_CLI_API_KEY%"
@@ -260,8 +260,8 @@ echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP%
 echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP% >> %LOG_FILE%
 echo [INFO] Running: node .\bin\xlab_router.js --web
 echo [INFO] Running: node .\bin\xlab_router.js --web >> %LOG_FILE%
-echo [INFO] Server will start on http://localhost:20128
-echo [INFO] Server will start on http://localhost:20128 >> %LOG_FILE%
+echo [INFO] Server will start on http://localhost:1212
+echo [INFO] Server will start on http://localhost:1212 >> %LOG_FILE%
 echo [INFO] Press Ctrl+C to stop the server
 echo [INFO] Press Ctrl+C to stop the server >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%

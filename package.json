@@ -9,10 +9,10 @@
         "xrouter": "bin/xlab_router.js"
     },
     "scripts": {
-        "dev": "next dev --webpack --port 20128",
+        "dev": "next dev --webpack --port 1212",
         "build": "next build --webpack",
         "start": "node ./bin/xlab_router.js --web",
-        "dev:bun": "bun --bun next dev --webpack --port 20128",
+        "dev:bun": "bun --bun next dev --webpack --port 1212",
         "build:bun": "bun --bun next build --webpack",
         "start:bun": "bun ./.next/standalone/server.js",
         "postinstall": "node scripts/check-tailscale.js"

@@ -20,7 +20,7 @@ export default function DefaultToolCard({ toolId, tool, isExpanded, onToggle, ba
       : (!cloudEnabled ? "sk_xlabrouter" : "your-api-key");
     
     // Add /v1 suffix only if not already present (DRY - avoid duplicate)
-    const normalizedBaseUrl = baseUrl || "http://localhost:20128";
+    const normalizedBaseUrl = baseUrl || "http://localhost:1212";
     const baseUrlWithV1 = normalizedBaseUrl.endsWith("/v1") 
       ? normalizedBaseUrl 
       : `${normalizedBaseUrl}/v1`;
