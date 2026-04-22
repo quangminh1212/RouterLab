@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useNotificationStore } from "@/store/notificationStore";
 import Sidebar from "../Sidebar";
@@ -33,12 +33,24 @@ function getToastStyle(type) {
 
 export default function DashboardLayout({ children, sidebarData = null }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [enableTranslator, setEnableTranslator] = useState(false);
   const pathname = usePathname();
   const notifications = useNotificationStore((state) => state.notifications);
   const removeNotification = useNotificationStore((state) => state.removeNotification);
 
+  useEffect(() => {
+    if (sidebarData?.enableTranslator !== undefined) {
+      setEnableTranslator(sidebarData.enableTranslator);
+      return;
+    }
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => setEnableTranslator(!!data.enableTranslator))
+      .catch(() => {});
+  }, [sidebarData]);
+
   const sidebarProps = {
-    initialEnableTranslator: !!sidebarData?.enableTranslator,
+    initialEnableTranslator: enableTranslator,
     initialUpdateInfo: sidebarData?.updateInfo || null,
   };
 
