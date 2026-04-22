@@ -28,23 +28,70 @@ import {
 const BASE64_BLOCK_SIZE = 4;
 
 /**
+ * Decode JWT payload if token is JWT-like.
+ * @param {string} token
+ * @returns {object|undefined}
+ */
+function decodeJwtPayload(token) {
+  try {
+    if (!token || typeof token !== "string") return undefined;
+    const parts = token.split(".");
+    if (parts.length !== 3) return undefined;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const missingPadding = (BASE64_BLOCK_SIZE - (base64.length % BASE64_BLOCK_SIZE)) % BASE64_BLOCK_SIZE;
+    const padded = base64 + "=".repeat(missingPadding);
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Extract stable identity fields from token claims and fetched user info.
+ * @param {object} options
+ * @returns {{email?: string, displayName?: string, username?: string, claims?: object}}
+ */
+function extractIdentity({ accessToken, idToken, userInfo, fallbackDisplayName, fallbackUsername }) {
+  const accessClaims = decodeJwtPayload(accessToken);
+  const idClaims = decodeJwtPayload(idToken);
+  const claims = idClaims || accessClaims;
+
+  const email = userInfo?.email || userInfo?.public_email || userInfo?.mail || userInfo?.userPrincipalName
+    || idClaims?.email || idClaims?.upn || idClaims?.preferred_username || idClaims?.["https://api.openai.com/profile"]?.email
+    || accessClaims?.email || accessClaims?.upn || accessClaims?.preferred_username || accessClaims?.["https://api.openai.com/profile"]?.email
+    || undefined;
+
+  const displayName = userInfo?.name || userInfo?.displayName || userInfo?.nickname
+    || idClaims?.name || accessClaims?.name
+    || fallbackDisplayName
+    || undefined;
+
+  const username = userInfo?.login || userInfo?.username
+    || idClaims?.preferred_username || idClaims?.username || idClaims?.login
+    || accessClaims?.preferred_username || accessClaims?.username || accessClaims?.login
+    || fallbackUsername
+    || undefined;
+
+  return { email, displayName, username, claims };
+}
+
+/**
  * Decode JWT access token and extract a stable account identifier for display/upsert.
  * @param {string} accessToken
  * @returns {string|undefined}
  */
 function extractEmailFromAccessToken(accessToken) {
-  try {
-    if (!accessToken || typeof accessToken !== "string") return undefined;
-    const parts = accessToken.split(".");
-    if (parts.length !== 3) return undefined;
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const missingPadding = (BASE64_BLOCK_SIZE - (base64.length % BASE64_BLOCK_SIZE)) % BASE64_BLOCK_SIZE;
-    const padded = base64 + "=".repeat(missingPadding);
-    const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
-    return payload.email || payload.preferred_username || payload.sub || undefined;
-  } catch {
-    return undefined;
-  }
+  const identity = extractIdentity({ accessToken });
+  return identity.email || identity.username || identity.claims?.sub || undefined;
+}
+
+function withIdentity(base, identity) {
+  return {
+    ...base,
+    ...(identity?.email ? { email: identity.email } : {}),
+    ...(identity?.displayName ? { displayName: identity.displayName } : {}),
+    ...(identity?.username ? { username: identity.username } : {}),
+  };
 }
 
 // Provider configurations
@@ -98,12 +145,15 @@ const PROVIDERS = {
 
       return await response.json();
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      scope: tokens.scope,
-    }),
+    mapTokens: (tokens, extra) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token, userInfo: extra?.userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        scope: tokens.scope,
+      }, identity);
+    },
   },
 
   codex: {
@@ -150,12 +200,15 @@ const PROVIDERS = {
 
       return await response.json();
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      idToken: tokens.id_token,
-      expiresIn: tokens.expires_in,
-    }),
+    mapTokens: (tokens, extra) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token, userInfo: extra?.userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        idToken: tokens.id_token,
+        expiresIn: tokens.expires_in,
+      }, identity);
+    },
   },
 
   "gemini-cli": {
@@ -230,14 +283,16 @@ const PROVIDERS = {
 
       return { userInfo, projectId };
     },
-    mapTokens: (tokens, extra) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      scope: tokens.scope,
-      email: extra?.userInfo?.email,
-      projectId: extra?.projectId,
-    }),
+    mapTokens: (tokens, extra) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token, userInfo: extra?.userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        scope: tokens.scope,
+        projectId: extra?.projectId,
+      }, identity);
+    },
   },
 
   antigravity: {
@@ -349,14 +404,16 @@ const PROVIDERS = {
 
       return { userInfo, projectId };
     },
-    mapTokens: (tokens, extra) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      scope: tokens.scope,
-      email: extra?.userInfo?.email,
-      projectId: extra?.projectId,
-    }),
+    mapTokens: (tokens, extra) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token, userInfo: extra?.userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        scope: tokens.scope,
+        projectId: extra?.projectId,
+      }, identity);
+    },
   },
 
   iflow: {
@@ -570,12 +627,15 @@ const PROVIDERS = {
         data: await response.json(),
       };
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      providerSpecificData: { resourceUrl: tokens.resource_url },
-    }),
+    mapTokens: (tokens) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        providerSpecificData: { resourceUrl: tokens.resource_url },
+      }, identity);
+    },
   },
 
   github: {
@@ -655,19 +715,22 @@ const PROVIDERS = {
 
       return { copilotToken, userInfo };
     },
-    mapTokens: (tokens, extra) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      providerSpecificData: {
-        copilotToken: extra?.copilotToken?.token,
-        copilotTokenExpiresAt: extra?.copilotToken?.expires_at,
-        githubUserId: extra?.userInfo?.id,
-        githubLogin: extra?.userInfo?.login,
-        githubName: extra?.userInfo?.name,
-        githubEmail: extra?.userInfo?.email,
-      },
-    }),
+    mapTokens: (tokens, extra) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, userInfo: extra?.userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        providerSpecificData: {
+          copilotToken: extra?.copilotToken?.token,
+          copilotTokenExpiresAt: extra?.copilotToken?.expires_at,
+          githubUserId: extra?.userInfo?.id,
+          githubLogin: extra?.userInfo?.login,
+          githubName: extra?.userInfo?.name,
+          githubEmail: extra?.userInfo?.email,
+        },
+      }, identity);
+    },
   },
 
   kiro: {
@@ -796,12 +859,14 @@ const PROVIDERS = {
       };
     },
     mapTokens: (tokens) => {
-      const email = extractEmailFromAccessToken(tokens.access_token);
-      const mapped = {
+      const identity = extractIdentity({
+        accessToken: tokens.access_token,
+        fallbackDisplayName: tokens?.profile_arn
+      });
+      return withIdentity({
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresIn: tokens.expires_in,
-        email,
         providerSpecificData: {
           profileArn: tokens?.profile_arn || null,
           clientId: tokens._clientId,
@@ -810,8 +875,7 @@ const PROVIDERS = {
           authMethod: tokens._authMethod || "builder-id",
           startUrl: tokens._startUrl || KIRO_CONFIG.startUrl,
         },
-      };
-      return mapped;
+      }, identity);
     },
   },
 
@@ -820,15 +884,18 @@ const PROVIDERS = {
     flowType: "import_token",
     // Cursor uses import token flow - tokens are extracted from local SQLite database
     // No OAuth flow needed, handled by /api/oauth/cursor/import route
-    mapTokens: (tokens) => ({
-      accessToken: tokens.accessToken,
-      refreshToken: null, // Cursor doesn't have public refresh endpoint
-      expiresIn: tokens.expiresIn || 86400,
-      providerSpecificData: {
-        machineId: tokens.machineId,
-        authMethod: "imported",
-      },
-    }),
+    mapTokens: (tokens) => {
+      const identity = extractIdentity({ accessToken: tokens.accessToken });
+      return withIdentity({
+        accessToken: tokens.accessToken,
+        refreshToken: null, // Cursor doesn't have public refresh endpoint
+        expiresIn: tokens.expiresIn || 86400,
+        providerSpecificData: {
+          machineId: tokens.machineId,
+          authMethod: "imported",
+        },
+      }, identity);
+    },
   },
 
   "kimi-coding": {
@@ -875,11 +942,14 @@ const PROVIDERS = {
       }
       return { ok: response.ok, data };
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-    }),
+    mapTokens: (tokens) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+      }, identity);
+    },
   },
 
   kilocode: {
@@ -1042,20 +1112,28 @@ const PROVIDERS = {
       const user = userRes.ok ? await userRes.json() : {};
       return { ...tokens, _user: user, _baseUrl: baseUrl, _clientId: clientId };
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      scope: tokens.scope,
-      providerSpecificData: {
-        username: tokens._user?.username || "",
-        email: tokens._user?.email || tokens._user?.public_email || "",
-        name: tokens._user?.name || "",
-        baseUrl: tokens._baseUrl,
-        clientId: tokens._clientId,
-        authKind: "oauth",
-      },
-    }),
+    mapTokens: (tokens) => {
+      const userInfo = {
+        username: tokens._user?.username,
+        email: tokens._user?.email || tokens._user?.public_email,
+        name: tokens._user?.name,
+      };
+      const identity = extractIdentity({ accessToken: tokens.access_token, userInfo });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        scope: tokens.scope,
+        providerSpecificData: {
+          username: tokens._user?.username || "",
+          email: tokens._user?.email || tokens._user?.public_email || "",
+          name: tokens._user?.name || "",
+          baseUrl: tokens._baseUrl,
+          clientId: tokens._clientId,
+          authKind: "oauth",
+        },
+      }, identity);
+    },
   },
 
   // CodeBuddy (Tencent) - Browser OAuth Polling Flow
@@ -1124,12 +1202,15 @@ const PROVIDERS = {
       if (data.code === 11217) return { ok: true, data: { error: "authorization_pending" } };
       return { ok: false, data: { error: data.msg || "unknown_error" } };
     },
-    mapTokens: (tokens) => ({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: 86400,
-      providerSpecificData: {},
-    }),
+    mapTokens: (tokens) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, idToken: tokens.id_token });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: 86400,
+        providerSpecificData: {},
+      }, identity);
+    },
   },
 };
 
