@@ -565,6 +565,7 @@ export async function getUsageStats(period = "all") {
   const stats = {
     totalRequests: lifetimeTotalRequests,
     totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0,
+    rpm: 0,
     byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
     last10Minutes: [],
     pending: pendingRequests,
@@ -615,6 +616,7 @@ export async function getUsageStats(period = "all") {
 
   // Determine if we use dailySummary (7d/30d/60d/all) or live history (24h)
   const useDailySummary = period !== "24h";
+  let periodTotalRequests = 0;
 
   if (useDailySummary) {
     // Collect relevant date keys
@@ -631,6 +633,7 @@ export async function getUsageStats(period = "all") {
 
     for (const dateKey of dateKeys) {
       const day = dailySummary[dateKey];
+      periodTotalRequests += day.requests || 0;
       stats.totalPromptTokens += day.promptTokens || 0;
       stats.totalCompletionTokens += day.completionTokens || 0;
       stats.totalCost += day.cost || 0;
@@ -716,6 +719,7 @@ export async function getUsageStats(period = "all") {
     // 24h: use live history (original logic)
     const cutoff = Date.now() - PERIOD_MS["24h"];
     const filtered = history.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+    periodTotalRequests = filtered.length;
 
     for (const entry of filtered) {
       const promptTokens = entry.tokens?.prompt_tokens || 0;
@@ -791,12 +795,32 @@ export async function getUsageStats(period = "all") {
     }
   }
 
+  stats.totalRequests = period === "all" ? lifetimeTotalRequests : periodTotalRequests;
+
+  const periodMinutes = {
+    "24h": 24 * 60,
+    "7d": 7 * 24 * 60,
+    "30d": 30 * 24 * 60,
+    "60d": 60 * 24 * 60,
+  };
+
+  if (period === "all") {
+    const allDates = Object.keys(dailySummary).sort();
+    if (allDates.length > 0) {
+      const firstDate = new Date(allDates[0]);
+      const minutesSinceFirst = Math.max(1, Math.floor((Date.now() - firstDate.getTime()) / 60000));
+      stats.rpm = stats.totalRequests / minutesSinceFirst;
+    }
+  } else if (periodMinutes[period]) {
+    stats.rpm = stats.totalRequests / periodMinutes[period];
+  }
+
   return stats;
 }
 
 /**
  * Get time-series chart data for a given period
- * @param {"24h"|"7d"|"30d"|"60d"} period
+ * @param {"24h"|"7d"|"30d"|"60d"|"all"} period
  * @returns {Promise<Array<{label: string, tokens: number, cost: number}>>}
  */
 export async function getChartData(period = "7d") {
@@ -804,6 +828,21 @@ export async function getChartData(period = "7d") {
   const history = db.data.history || [];
   const dailySummary = db.data.dailySummary || {};
   const now = Date.now();
+
+  if (period === "all") {
+    return Object.keys(dailySummary)
+      .sort()
+      .map((dateKey) => {
+        const dayData = dailySummary[dateKey] || {};
+        const [year, month, day] = dateKey.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return {
+          label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          tokens: (dayData.promptTokens || 0) + (dayData.completionTokens || 0),
+          cost: dayData.cost || 0,
+        };
+      });
+  }
 
   // 24h: bucket by hour from live history
   if (period === "24h") {
