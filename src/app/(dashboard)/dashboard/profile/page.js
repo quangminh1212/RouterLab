@@ -2,14 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, Toggle, Input } from "@/shared/components";
+import { Skeleton } from "@/shared/components/Loading";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
 
+const INITIAL_SECTION_LOADING = {
+  security: true,
+  routing: true,
+  network: true,
+  observability: true,
+};
+
 export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [settings, setSettings] = useState({ fallbackStrategy: "fill-first" });
-  const [loading, setLoading] = useState(true);
+  const [sectionLoading, setSectionLoading] = useState(INITIAL_SECTION_LOADING);
+  const [settingsLoadError, setSettingsLoadError] = useState(false);
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [passStatus, setPassStatus] = useState({ type: "", message: "" });
   const [passLoading, setPassLoading] = useState(false);
@@ -29,19 +38,61 @@ export default function ProfilePage() {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => {
-        setSettings(data);
-        setProxyForm({
-          outboundProxyEnabled: data?.outboundProxyEnabled === true,
-          outboundProxyUrl: data?.outboundProxyUrl || "",
-          outboundNoProxy: data?.outboundNoProxy || "",
-        });
-        setLoading(false);
+        applySettings(data);
       })
       .catch((err) => {
         console.error("Failed to fetch settings:", err);
-        setLoading(false);
+        setSectionLoading({
+          security: false,
+          routing: false,
+          network: false,
+          observability: false,
+        });
+        setSettingsLoadError(true);
       });
   }, []);
+
+  const InlineSettingSkeleton = ({ wide = false }) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className={cn("h-3 w-48", wide && "w-64 max-w-full")} />
+      </div>
+      <Skeleton className="h-6 w-11 rounded-full" />
+    </div>
+  );
+
+  const applySettings = (data) => {
+    setSettings(data);
+    setProxyForm({
+      outboundProxyEnabled: data?.outboundProxyEnabled === true,
+      outboundProxyUrl: data?.outboundProxyUrl || "",
+      outboundNoProxy: data?.outboundNoProxy || "",
+    });
+    setSectionLoading({
+      security: false,
+      routing: false,
+      network: false,
+      observability: false,
+    });
+    setSettingsLoadError(false);
+  };
+
+  const patchSettings = async (body) => {
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to update settings");
+    }
+
+    setSettings((prev) => ({ ...prev, ...data }));
+    return data;
+  };
 
   const updateOutboundProxy = async (e) => {
     e.preventDefault();
@@ -50,24 +101,13 @@ export default function ProfilePage() {
     setProxyStatus({ type: "", message: "" });
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          outboundProxyUrl: proxyForm.outboundProxyUrl,
-          outboundNoProxy: proxyForm.outboundNoProxy,
-        }),
+      await patchSettings({
+        outboundProxyUrl: proxyForm.outboundProxyUrl,
+        outboundNoProxy: proxyForm.outboundNoProxy,
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        setSettings((prev) => ({ ...prev, ...data }));
-        setProxyStatus({ type: "success", message: "Proxy settings applied" });
-      } else {
-        setProxyStatus({ type: "error", message: data.error || "Failed to update proxy settings" });
-      }
+      setProxyStatus({ type: "success", message: "Proxy settings applied" });
     } catch (err) {
-      setProxyStatus({ type: "error", message: "An error occurred" });
+      setProxyStatus({ type: "error", message: err.message || "An error occurred" });
     } finally {
       setProxyLoading(false);
     }
@@ -116,25 +156,14 @@ export default function ProfilePage() {
     setProxyStatus({ type: "", message: "" });
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outboundProxyEnabled }),
+      const data = await patchSettings({ outboundProxyEnabled });
+      setProxyForm((prev) => ({ ...prev, outboundProxyEnabled: data?.outboundProxyEnabled === true }));
+      setProxyStatus({
+        type: "success",
+        message: outboundProxyEnabled ? "Proxy enabled" : "Proxy disabled",
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        setSettings((prev) => ({ ...prev, ...data }));
-        setProxyForm((prev) => ({ ...prev, outboundProxyEnabled: data?.outboundProxyEnabled === true }));
-        setProxyStatus({
-          type: "success",
-          message: outboundProxyEnabled ? "Proxy enabled" : "Proxy disabled",
-        });
-      } else {
-        setProxyStatus({ type: "error", message: data.error || "Failed to update proxy settings" });
-      }
     } catch (err) {
-      setProxyStatus({ type: "error", message: "An error occurred" });
+      setProxyStatus({ type: "error", message: err.message || "An error occurred" });
     } finally {
       setProxyLoading(false);
     }
@@ -151,25 +180,14 @@ export default function ProfilePage() {
     setPassStatus({ type: "", message: "" });
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword: passwords.current,
-          newPassword: passwords.new,
-        }),
+      await patchSettings({
+        currentPassword: passwords.current,
+        newPassword: passwords.new,
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setPassStatus({ type: "success", message: "Password updated successfully" });
-        setPasswords({ current: "", new: "", confirm: "" });
-      } else {
-        setPassStatus({ type: "error", message: data.error || "Failed to update password" });
-      }
+      setPassStatus({ type: "success", message: "Password updated successfully" });
+      setPasswords({ current: "", new: "", confirm: "" });
     } catch (err) {
-      setPassStatus({ type: "error", message: "An error occurred" });
+      setPassStatus({ type: "error", message: err.message || "An error occurred" });
     } finally {
       setPassLoading(false);
     }
@@ -177,14 +195,7 @@ export default function ProfilePage() {
 
   const updateFallbackStrategy = async (strategy) => {
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fallbackStrategy: strategy }),
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, fallbackStrategy: strategy }));
-      }
+      await patchSettings({ fallbackStrategy: strategy });
     } catch (err) {
       console.error("Failed to update settings:", err);
     }
@@ -192,14 +203,7 @@ export default function ProfilePage() {
 
   const updateComboStrategy = async (strategy) => {
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comboStrategy: strategy }),
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, comboStrategy: strategy }));
-      }
+      await patchSettings({ comboStrategy: strategy });
     } catch (err) {
       console.error("Failed to update combo strategy:", err);
     }
@@ -210,14 +214,7 @@ export default function ProfilePage() {
     if (isNaN(numLimit) || numLimit < 1) return;
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stickyRoundRobinLimit: numLimit }),
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, stickyRoundRobinLimit: numLimit }));
-      }
+      await patchSettings({ stickyRoundRobinLimit: numLimit });
     } catch (err) {
       console.error("Failed to update sticky limit:", err);
     }
@@ -225,14 +222,7 @@ export default function ProfilePage() {
 
   const updateRequireLogin = async (requireLogin) => {
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requireLogin }),
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, requireLogin }));
-      }
+      await patchSettings({ requireLogin });
     } catch (err) {
       console.error("Failed to update require login:", err);
     }
@@ -240,14 +230,7 @@ export default function ProfilePage() {
 
   const updateObservabilityEnabled = async (enabled) => {
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enableObservability: enabled }),
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, enableObservability: enabled }));
-      }
+      await patchSettings({ enableObservability: enabled });
     } catch (err) {
       console.error("Failed to update enableObservability:", err);
     }
@@ -258,7 +241,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/settings");
       if (!res.ok) return;
       const data = await res.json();
-      setSettings(data);
+      applySettings(data);
     } catch (err) {
       console.error("Failed to reload settings:", err);
     }
@@ -368,7 +351,38 @@ export default function ProfilePage() {
     }
   };
 
+  const securityLoading = sectionLoading.security;
+  const routingLoading = sectionLoading.routing;
+  const networkLoading = sectionLoading.network;
+  const observabilityLoading = sectionLoading.observability;
   const observabilityEnabled = settings.enableObservability === true;
+  const requireLoginEnabled = settings.requireLogin === true;
+  const roundRobinEnabled = settings.fallbackStrategy === "round-robin";
+  const outboundProxyEnabled = settings.outboundProxyEnabled === true;
+  const showSettingsFallbackNotice = settingsLoadError;
+  const stickyRoundRobinLimit = settings.stickyRoundRobinLimit || 3;
+  const comboRoundRobinEnabled = settings.comboStrategy === "round-robin";
+
+  const renderFallbackNotice = () => (
+    showSettingsFallbackNotice ? (
+      <p className="text-sm text-amber-600 dark:text-amber-400">
+        Showing default values while settings reload in the background.
+      </p>
+    ) : null
+  );
+
+  const renderInlineSkeleton = (wide = false) => <InlineSettingSkeleton wide={wide} />;
+
+  const disableSecurityControls = securityLoading || passLoading;
+  const disableRoutingControls = routingLoading;
+  const disableNetworkControls = networkLoading || proxyLoading;
+  const disableObservabilityControls = observabilityLoading;
+
+  const showSecurityForm = !securityLoading && requireLoginEnabled;
+  const showStickyLimit = !routingLoading && roundRobinEnabled;
+  const showProxyForm = !networkLoading && outboundProxyEnabled;
+
+  void isDark;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -471,12 +485,19 @@ export default function ProfilePage() {
                 </p>
               </div>
               <Toggle
-                checked={settings.requireLogin === true}
-                onChange={() => updateRequireLogin(!settings.requireLogin)}
-                disabled={loading}
+                checked={requireLoginEnabled}
+                onChange={() => updateRequireLogin(!requireLoginEnabled)}
+                disabled={disableSecurityControls}
               />
             </div>
-            {settings.requireLogin === true && (
+            {securityLoading ? (
+              <div className="pt-4 border-t border-border/50 flex flex-col gap-4">
+                {renderInlineSkeleton(true)}
+                {renderInlineSkeleton(true)}
+              </div>
+            ) : null}
+            {renderFallbackNotice()}
+            {showSecurityForm && (
               <form onSubmit={handlePasswordChange} className="flex flex-col gap-4 pt-4 border-t border-border/50">
                 {settings.hasPassword && (
                   <div className="flex flex-col gap-2">
@@ -553,14 +574,21 @@ export default function ProfilePage() {
                 </p>
               </div>
               <Toggle
-                checked={settings.fallbackStrategy === "round-robin"}
-                onChange={() => updateFallbackStrategy(settings.fallbackStrategy === "round-robin" ? "fill-first" : "round-robin")}
-                disabled={loading}
+                checked={roundRobinEnabled}
+                onChange={() => updateFallbackStrategy(roundRobinEnabled ? "fill-first" : "round-robin")}
+                disabled={disableRoutingControls}
               />
             </div>
+            {routingLoading ? (
+              <div className="pt-2 border-t border-border/50 flex flex-col gap-4">
+                {renderInlineSkeleton(true)}
+                {renderInlineSkeleton(true)}
+              </div>
+            ) : null}
+            {renderFallbackNotice()}
 
             {/* Sticky Round Robin Limit */}
-            {settings.fallbackStrategy === "round-robin" && (
+            {showStickyLimit && (
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
                 <div>
                   <p className="font-medium">Sticky Limit</p>
@@ -572,34 +600,38 @@ export default function ProfilePage() {
                   type="number"
                   min="1"
                   max="10"
-                  value={settings.stickyRoundRobinLimit || 3}
+                  value={stickyRoundRobinLimit}
                   onChange={(e) => updateStickyLimit(e.target.value)}
-                  disabled={loading}
+                  disabled={disableRoutingControls}
                   className="w-20 text-center"
                 />
               </div>
             )}
 
             {/* Combo Round Robin */}
-            <div className="flex items-center justify-between pt-4 border-t border-border/50">
-              <div>
-                <p className="font-medium">Combo Round Robin</p>
-                <p className="text-sm text-text-muted">
-                  Cycle through providers in combos instead of always starting with first
-                </p>
+            {!routingLoading && (
+              <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                <div>
+                  <p className="font-medium">Combo Round Robin</p>
+                  <p className="text-sm text-text-muted">
+                    Cycle through providers in combos instead of always starting with first
+                  </p>
+                </div>
+                <Toggle
+                  checked={comboRoundRobinEnabled}
+                  onChange={() => updateComboStrategy(comboRoundRobinEnabled ? "fallback" : "round-robin")}
+                  disabled={disableRoutingControls}
+                />
               </div>
-              <Toggle
-                checked={settings.comboStrategy === "round-robin"}
-                onChange={() => updateComboStrategy(settings.comboStrategy === "round-robin" ? "fallback" : "round-robin")}
-                disabled={loading}
-              />
-            </div>
+            )}
 
-            <p className="text-xs text-text-muted italic pt-2 border-t border-border/50">
-              {settings.fallbackStrategy === "round-robin"
-                ? `Currently distributing requests across all available accounts with ${settings.stickyRoundRobinLimit || 3} calls per account.`
-                : "Currently using accounts in priority order (Fill First)."}
-            </p>
+            {!routingLoading && (
+              <p className="text-xs text-text-muted italic pt-2 border-t border-border/50">
+                {roundRobinEnabled
+                  ? `Currently distributing requests across all available accounts with ${stickyRoundRobinLimit} calls per account.`
+                  : "Currently using accounts in priority order (Fill First)."}
+              </p>
+            )}
           </div>
         </Card>
 
@@ -619,13 +651,20 @@ export default function ProfilePage() {
                 <p className="text-sm text-text-muted">Enable proxy for OAuth + provider outbound requests.</p>
               </div>
               <Toggle
-                checked={settings.outboundProxyEnabled === true}
-                onChange={() => updateOutboundProxyEnabled(!(settings.outboundProxyEnabled === true))}
-                disabled={loading || proxyLoading}
+                checked={outboundProxyEnabled}
+                onChange={() => updateOutboundProxyEnabled(!outboundProxyEnabled)}
+                disabled={disableNetworkControls}
               />
             </div>
+            {networkLoading ? (
+              <div className="pt-2 border-t border-border/50 flex flex-col gap-4">
+                {renderInlineSkeleton(true)}
+                {renderInlineSkeleton(true)}
+              </div>
+            ) : null}
+            {renderFallbackNotice()}
 
-            {settings.outboundProxyEnabled === true && (
+            {showProxyForm && (
               <form onSubmit={updateOutboundProxy} className="flex flex-col gap-4 pt-2 border-t border-border/50">
                 <div className="flex flex-col gap-2">
                   <label className="font-medium">Proxy URL</label>
@@ -633,7 +672,7 @@ export default function ProfilePage() {
                     placeholder="http://127.0.0.1:7897"
                     value={proxyForm.outboundProxyUrl}
                     onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundProxyUrl: e.target.value }))}
-                    disabled={loading || proxyLoading}
+                    disabled={disableNetworkControls}
                   />
                   <p className="text-sm text-text-muted">Leave empty to inherit existing env proxy (if any).</p>
                 </div>
@@ -644,7 +683,7 @@ export default function ProfilePage() {
                     placeholder="localhost,127.0.0.1"
                     value={proxyForm.outboundNoProxy}
                     onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundNoProxy: e.target.value }))}
-                    disabled={loading || proxyLoading}
+                    disabled={disableNetworkControls}
                   />
                   <p className="text-sm text-text-muted">Comma-separated hostnames/domains to bypass the proxy.</p>
                 </div>
@@ -654,7 +693,7 @@ export default function ProfilePage() {
                     type="button"
                     variant="secondary"
                     loading={proxyTestLoading}
-                    disabled={loading || proxyLoading}
+                    disabled={disableNetworkControls}
                     onClick={testOutboundProxy}
                   >
                     Test proxy URL
@@ -682,18 +721,22 @@ export default function ProfilePage() {
             </div>
             <h3 className="text-lg font-semibold">Observability</h3>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Enable Observability</p>
-              <p className="text-sm text-text-muted">
-                Record request details for inspection in the logs view
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Enable Observability</p>
+                <p className="text-sm text-text-muted">
+                  Record request details for inspection in the logs view
+                </p>
+              </div>
+              <Toggle
+                checked={observabilityEnabled}
+                onChange={updateObservabilityEnabled}
+                disabled={disableObservabilityControls}
+              />
             </div>
-            <Toggle
-              checked={observabilityEnabled}
-              onChange={updateObservabilityEnabled}
-              disabled={loading}
-            />
+            {observabilityLoading ? renderInlineSkeleton(true) : null}
+            {renderFallbackNotice()}
           </div>
         </Card>
 
