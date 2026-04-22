@@ -7,7 +7,15 @@ import { getExecutor } from "open-sse/executors/index.js";
 import { logger } from "@/lib/logger";
 
 // Detect auth-expired messages returned by usage providers instead of throwing
-const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
+const AUTH_EXPIRED_PATTERNS = [
+  "expired",
+  "authentication",
+  "unauthorized",
+  "401",
+  "re-authorize",
+  "rejected the current token",
+  "authentication expired",
+];
 function isAuthExpiredMessage(usage) {
   if (!usage?.message) return false;
   const msg = usage.message.toLowerCase();
