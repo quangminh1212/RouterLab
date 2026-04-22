@@ -317,7 +317,6 @@ export default function ProfilePage() {
         throw new Error(data.error || "Failed to import database");
       }
 
-      await reloadSettings();
       const importMode = data?.importMode;
       if (importMode === "usage") {
         setDbStatus({ type: "success", message: "Usage backup imported successfully" });
@@ -326,6 +325,8 @@ export default function ProfilePage() {
       } else {
         setDbStatus({ type: "success", message: "Database backup imported successfully" });
       }
+
+      reloadSettings();
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Invalid backup file" });
     } finally {
