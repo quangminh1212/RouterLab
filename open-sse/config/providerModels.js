@@ -268,6 +268,11 @@ export const PROVIDER_MODELS = {
     { id: "text-embedding-004", name: "Text Embedding 004 (Legacy)", type: "embedding" },
   ],
   openrouter: [
+    // Image models
+    { id: "openai/dall-e-3", name: "DALL-E 3 (OpenRouter)", type: "image" },
+    { id: "openai/gpt-image-1", name: "GPT Image 1 (OpenRouter)", type: "image" },
+    { id: "google/imagen-3.0-generate-002", name: "Imagen 3.0 (OpenRouter)", type: "image" },
+    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell (OpenRouter)", type: "image" },
     // Embedding models
     { id: "openai/text-embedding-3-large", name: "OpenAI Text Embedding 3 Large", type: "embedding" },
     { id: "openai/text-embedding-3-small", name: "OpenAI Text Embedding 3 Small", type: "embedding" },
