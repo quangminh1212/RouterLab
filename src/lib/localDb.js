@@ -563,7 +563,9 @@ export async function createProviderConnection(data) {
 
   let connectionName = data.name || null;
   if (!connectionName && data.authType === "oauth") {
-    if (data.email) {
+    if (data.displayName) {
+      connectionName = data.displayName;
+    } else if (data.email) {
       connectionName = data.email;
     } else {
       const existingCount = db.data.providerConnections.filter(

@@ -1,16 +1,46 @@
 import { NextResponse } from "next/server";
 import { getProviderConnections } from "@/lib/localDb";
 
+const BASE64_BLOCK_SIZE = 4;
+
+function extractAccountLabelFromAccessToken(accessToken) {
+  try {
+    if (!accessToken || typeof accessToken !== "string") return undefined;
+    const parts = accessToken.split(".");
+    if (parts.length !== 3) return undefined;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const missingPadding = (BASE64_BLOCK_SIZE - (base64.length % BASE64_BLOCK_SIZE)) % BASE64_BLOCK_SIZE;
+    const padded = base64 + "=".repeat(missingPadding);
+    const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    return payload.email || payload.preferred_username || payload.sub || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isGenericAccountName(name) {
+  return typeof name === "string" && /^Account\s+\d+$/i.test(name.trim());
+}
+
 // GET /api/providers/client - List all connections for client (includes sensitive fields for sync)
 export async function GET() {
   try {
     const connections = await getProviderConnections();
-    
+
     // Include sensitive fields for sync to cloud (only accessible from same origin)
-    const clientConnections = connections.map(c => ({
-      ...c,
-      // Don't hide sensitive fields here since this is for internal sync
-    }));
+    const clientConnections = connections.map((c) => {
+      const inferredLabel = extractAccountLabelFromAccessToken(c.accessToken);
+      const displayName = isGenericAccountName(c.name)
+        ? c.email || c.displayName || c.username || inferredLabel || c.name
+        : c.email || c.displayName || c.username || c.name;
+
+      return {
+        ...c,
+        email: c.email || inferredLabel,
+        displayName,
+        // Don't hide sensitive fields here since this is for internal sync
+      };
+    });
 
     return NextResponse.json({ connections: clientConnections });
   } catch (error) {
