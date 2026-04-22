@@ -155,6 +155,7 @@ let settingsCache = null;
 let settingsCacheAt = 0;
 let settingsCachePromise = null;
 let settingsRefreshPromise = null;
+let dbRefreshPromise = null;
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
@@ -218,11 +219,19 @@ async function withFileLock(db, operation) {
 
   const startedAt = Date.now();
   const releaseLocal = await localMutex.acquire();
+  const queueWaitMs = Date.now() - startedAt;
   let release = null;
+  let fileLockWaitMs = 0;
+  let operationMs = 0;
   try {
     logger.debug("DB", "Acquiring file lock");
+    const fileLockStartedAt = Date.now();
     release = await lockfile.lock(DB_FILE, LOCK_OPTIONS);
+    fileLockWaitMs = Date.now() - fileLockStartedAt;
+
+    const operationStartedAt = Date.now();
     await operation();
+    operationMs = Date.now() - operationStartedAt;
     logger.debug("DB", "File lock operation completed");
   } catch (error) {
     if (error.code === "ELOCKED") {
@@ -239,6 +248,9 @@ async function withFileLock(db, operation) {
     if (durationMs >= getDbSlowLockWarnMs()) {
       logger.warn("DB", "Slow DB lock operation", {
         durationMs,
+        queueWaitMs,
+        fileLockWaitMs,
+        operationMs,
         refreshIntervalMs: getDbRefreshIntervalMs(),
       });
     }
@@ -249,6 +261,41 @@ async function safeRead(db) {
   await withFileLock(db, () => db.read());
   dbLastReadAt = Date.now();
   dbHydrated = true;
+}
+
+async function refreshDbSnapshot(db, { force = false } = {}) {
+  const now = Date.now();
+  if (!force && dbHydrated && now - dbLastReadAt < getDbRefreshIntervalMs()) {
+    return;
+  }
+
+  if (dbRefreshPromise) {
+    await dbRefreshPromise;
+    return;
+  }
+
+  dbRefreshPromise = (async () => {
+    const refreshNow = Date.now();
+    const shouldRefresh = force || refreshNow - dbLastReadAt >= getDbRefreshIntervalMs();
+    if (!shouldRefresh) return;
+
+    if (dbHydrated) {
+      const refreshed = await tryRefreshReadNonBlocking(db);
+      if (!refreshed) {
+        dbLastReadAt = refreshNow;
+        logger.debug("DB", "Skip refresh due to active DB lock, using in-memory snapshot");
+      }
+      return;
+    }
+
+    await safeRead(db);
+  })();
+
+  try {
+    await dbRefreshPromise;
+  } finally {
+    dbRefreshPromise = null;
+  }
 }
 
 async function tryRefreshReadNonBlocking(db) {
@@ -302,27 +349,15 @@ export async function getDb() {
     dbInstance = new Low(new JSONFile(DB_FILE), cloneDefaultData());
   }
 
-  const now = Date.now();
-  const shouldRefresh = now - dbLastReadAt >= getDbRefreshIntervalMs();
-  if (shouldRefresh) {
-    try {
-      if (dbHydrated) {
-        const refreshed = await tryRefreshReadNonBlocking(dbInstance);
-        if (!refreshed) {
-          dbLastReadAt = now;
-          logger.debug("DB", "Skip refresh due to active DB lock, using in-memory snapshot");
-        }
-      } else {
-        await safeRead(dbInstance);
-      }
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
-        dbInstance.data = cloneDefaultData();
-        await safeWrite(dbInstance);
-      } else {
-        throw error;
-      }
+  try {
+    await refreshDbSnapshot(dbInstance);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
+      dbInstance.data = cloneDefaultData();
+      await safeWrite(dbInstance);
+    } else {
+      throw error;
     }
   }
 
