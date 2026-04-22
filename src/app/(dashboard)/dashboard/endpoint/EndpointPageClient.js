@@ -847,16 +847,16 @@ export default function APIPageClient() {
           <div className="mt-4 flex flex-col gap-2">
             {!requireApiKey && (
               <SecurityWarning
-                message="Require API key is disabled â€” your endpoint is publicly accessible without authentication."
-                action={{ label: "Enable", href: "#require-api-key" }}
+                message=”Require API key is disabled — your endpoint is publicly accessible without authentication.”
+                action={{ label: “Enable”, href: “#require-api-key” }}
               />
             )}
             {(!requireLogin || !hasPassword) && (
               <SecurityWarning
                 message={
                   !requireLogin
-                    ? "Require login is disabled â€” anyone can access your dashboard via tunnel."
-                    : "Dashboard uses the default password â€” change it in Profile settings."
+                    ? “Require login is disabled — anyone can access your dashboard via tunnel.”
+                    : “Dashboard uses the default password — change it in Profile settings.”
                 }
                 action={{
                   label: !requireLogin ? "Enable" : "Change password",
@@ -1014,7 +1014,7 @@ export default function APIPageClient() {
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium text-text-main">Limit cost</p>
-              <p className="text-xs text-text-muted">Báº­t Ä‘á»ƒ giá»›i háº¡n tá»•ng chi phÃ­ cho key nÃ y</p>
+              <p className="text-xs text-text-muted">Bật để giới hạn tổng chi phí cho key này</p>
             </div>
             <Toggle
               checked={newKeyHasLimit}
@@ -1037,7 +1037,7 @@ export default function APIPageClient() {
               value={newKeyCostLimit}
               onChange={(e) => setNewKeyCostLimit(e.target.value)}
               placeholder="10.00"
-              hint="Khi tá»•ng chi phÃ­ Ä‘áº¡t ngÆ°á»¡ng nÃ y, key sáº½ tá»± bá»‹ tá»« chá»‘i"
+              hint="Khi tổng chi phí đạt ngưỡng này, key sẽ tự bị từ chối"
               error={createKeyError || undefined}
             />
           )}

@@ -270,29 +270,25 @@ if "%SYNC_CLI_ONLY%"=="1" (
 
 echo [STEP 7/7] Starting development server...
 echo [STEP 7/7] Starting development server... >> %LOG_FILE%
-set "XLABROUTER_WEB_MODE=production"
-set "NODE_ENV=production"
-set "XLABROUTER_FAST_STARTUP=1"
-echo [INFO] Startup mode: %XLABROUTER_WEB_MODE%
-echo [INFO] Startup mode: %XLABROUTER_WEB_MODE% >> %LOG_FILE%
-echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP%
-echo [INFO] Fast startup: %XLABROUTER_FAST_STARTUP% >> %LOG_FILE%
-echo [INFO] Running foreground mode: node .\bin\xlab_router.js --web
-echo [INFO] Running foreground mode: node .\bin\xlab_router.js --web >> %LOG_FILE%
+set "NODE_ENV=development"
+echo [INFO] Startup mode: development (hot reload enabled)
+echo [INFO] Startup mode: development (hot reload enabled) >> %LOG_FILE%
+echo [INFO] Running: npm run dev
+echo [INFO] Running: npm run dev >> %LOG_FILE%
 echo [INFO] Server will start on http://localhost:1212
 echo [INFO] Server will start on http://localhost:1212 >> %LOG_FILE%
+echo [INFO] Hot reload is enabled - file changes will auto-restart
+echo [INFO] Hot reload is enabled - file changes will auto-restart >> %LOG_FILE%
 echo [INFO] This batch file keeps the server in the current terminal.
 echo [INFO] This batch file keeps the server in the current terminal. >> %LOG_FILE%
-echo [INFO] Use xlabrouter or xrouter if you want background system tray mode.
-echo [INFO] Use xlabrouter or xrouter if you want background system tray mode. >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
 echo [INFO] All server output will be logged to %LOG_FILE% and auto-delete at 100MB
 echo [INFO] Server output is shown below (press Ctrl+C to stop)
 echo ========================================
 echo.
 
-echo [INFO] Starting node .\bin\xlab_router.js --web... >> %LOG_FILE%
-node .\bin\xlab_router.js --web
+echo [INFO] Starting npm run dev... >> %LOG_FILE%
+call npm run dev
 set DEV_EXIT_CODE=%ERRORLEVEL%
 
 if not "%DEV_EXIT_CODE%"=="0" (
