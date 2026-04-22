@@ -94,10 +94,49 @@ export default function APIPageClient() {
     setTunnelDashboardAccess(settings.tunnelDashboardAccess || false);
   }
 
+  const fetchTunnelStatus = useCallback(async () => {
+    const traceId = createDashboardTraceId("endpoint-tunnel-status");
+    const start = performance.now();
+    setTunnelChecking(true);
+
+    logDashboardPerf("debug", "fetchTunnelStatus:start", { traceId }, { verbose: true });
+
+    try {
+      const responseStart = performance.now();
+      const res = await fetch("/api/tunnel/status", {
+        headers: { "x-debug-trace-id": traceId, "x-debug-op": "fetchTunnelStatus" },
+      });
+      const responseDurationMs = Math.round(performance.now() - responseStart);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load tunnel status");
+      }
+
+      const applyStart = performance.now();
+      applyTunnelStatus(data);
+      const applyStateDurationMs = Math.round(performance.now() - applyStart);
+
+      logDashboardPerf("info", "fetchTunnelStatus:done", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        responseDurationMs,
+        applyStateDurationMs,
+      });
+    } catch (error) {
+      logDashboardPerf("error", "fetchTunnelStatus:error", {
+        traceId,
+        durationMs: Math.round(performance.now() - start),
+        error: error.message,
+      }, { force: true });
+      console.log("Error fetching tunnel status:", error);
+    } finally {
+      setTunnelChecking(false);
+    }
+  }, []);
+
   const fetchBootstrap = useCallback(async () => {
     const traceId = createDashboardTraceId("endpoint-bootstrap");
     const start = performance.now();
-    setTunnelChecking(true);
     setKeysLoading(true);
 
     logDashboardPerf("debug", "fetchBootstrap:start", { traceId }, { verbose: true });
@@ -116,7 +155,6 @@ export default function APIPageClient() {
       const applyStart = performance.now();
       setKeys(data.keys || []);
       applySettingsState(data.settings);
-      applyTunnelStatus(data.tunnel);
       const applyStateDurationMs = Math.round(performance.now() - applyStart);
 
       logDashboardPerf("info", "fetchBootstrap:done", {
@@ -126,6 +164,8 @@ export default function APIPageClient() {
         applyStateDurationMs,
         keysCount: Array.isArray(data.keys) ? data.keys.length : 0,
       });
+
+      void fetchTunnelStatus();
     } catch (error) {
       logDashboardPerf("error", "fetchBootstrap:error", {
         traceId,
@@ -134,11 +174,10 @@ export default function APIPageClient() {
       }, { force: true });
       console.log("Error fetching dashboard bootstrap:", error);
     } finally {
-      setTunnelChecking(false);
       setKeysLoading(false);
       setLoading(false);
     }
-  }, []);
+  }, [fetchTunnelStatus]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

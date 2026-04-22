@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { getApiKeys, getSettings } from "@/lib/localDb";
-import { getTunnelStatus, getTailscaleStatus } from "@/lib/tunnel/tunnelManager";
-import { getDownloadStatus } from "@/lib/tunnel/cloudflared";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -26,15 +24,8 @@ export async function GET(request) {
 
     const settings = settingsStep.result;
 
-    const [tunnelStep, tailscaleStep] = await Promise.all([
-      timedStep("tunnel", () => getTunnelStatus(settings)),
-      timedStep("tailscale", () => getTailscaleStatus(settings)),
-    ]);
-
     const durationMs = Date.now() - start;
     const keys = keysStep.result;
-    const tunnel = tunnelStep.result;
-    const tailscale = tailscaleStep.result;
 
     logger.dashboardPerf.info("DASHBOARD_API", "bootstrap:done", {
       traceId,
@@ -43,8 +34,6 @@ export async function GET(request) {
       steps: {
         keysMs: keysStep.durationMs,
         settingsMs: settingsStep.durationMs,
-        tunnelMs: tunnelStep.durationMs,
-        tailscaleMs: tailscaleStep.durationMs,
       },
     });
 
@@ -55,11 +44,6 @@ export async function GET(request) {
         requireLogin: settings.requireLogin !== false,
         hasPassword: !!settings.password,
         tunnelDashboardAccess: settings.tunnelDashboardAccess || false,
-      },
-      tunnel: {
-        tunnel,
-        tailscale,
-        download: getDownloadStatus(),
       },
     });
   } catch (error) {
