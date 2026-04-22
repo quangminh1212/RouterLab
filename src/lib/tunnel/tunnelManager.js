@@ -15,7 +15,7 @@ const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
 const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
   ? Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS)
-  : 5000;
+  : 30000;
 
 let isReconnecting = false;
 let exitHandlerRegistered = false;
@@ -247,6 +247,17 @@ export async function getTailscaleStatus(settingsOverride) {
       ...cachedTailscaleStatus,
       enabled: settings.tailscaleEnabled === true && cachedTailscaleStatus.running,
       tunnelUrl: settings.tailscaleUrl || cachedTailscaleStatus.tunnelUrl || "",
+    };
+  }
+
+  // Skip expensive check if tailscale is not enabled
+  if (settings.tailscaleEnabled !== true) {
+    cachedTailscaleStatus = { running: false, tunnelUrl: "" };
+    cachedTailscaleStatusAt = Date.now();
+    return {
+      enabled: false,
+      tunnelUrl: "",
+      running: false
     };
   }
 

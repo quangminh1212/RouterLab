@@ -17,7 +17,7 @@ const GITHUB_BASE_URL = "https://github.com/cloudflare/cloudflared/releases/late
 // Cache for isCloudflaredRunning to avoid repeated process.kill checks
 let cachedCloudflaredRunning = null;
 let cachedCloudflaredRunningAt = 0;
-const CLOUDFLARED_RUNNING_CACHE_TTL_MS = 3000; // 3s cache
+const CLOUDFLARED_RUNNING_CACHE_TTL_MS = 30000; // 30s cache
 
 const PLATFORM_MAPPINGS = {
   darwin: {
@@ -172,7 +172,7 @@ async function _ensureCloudflared() {
   await downloadFile(url, downloadDest);
 
   if (isArchive) {
-    execSync(`tar -xzf "${downloadDest}" -C "${BIN_DIR}"`, { stdio: "pipe", windowsHide: true });
+    execSync(`tar -xzf "${downloadDest}" -C "${BIN_DIR}"`, { stdio: "pipe", windowsHide: true, timeout: 10000 });
     fs.unlinkSync(downloadDest);
   } else {
     fs.renameSync(downloadDest, BIN_PATH);
@@ -383,7 +383,7 @@ export function killCloudflared() {
 
   // Kill any remaining cloudflared processes
   try {
-    execSync("pkill -f cloudflared 2>/dev/null || true", { stdio: "ignore", windowsHide: true });
+    execSync("pkill -f cloudflared 2>/dev/null || true", { stdio: "ignore", windowsHide: true, timeout: 3000 });
   } catch (e) { /* ignore */ }
 }
 

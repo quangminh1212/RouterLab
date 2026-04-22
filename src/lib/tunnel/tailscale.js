@@ -20,7 +20,7 @@ const SOCKET_FLAG = IS_WINDOWS ? [] : ["--socket", TAILSCALE_SOCKET];
 // Cache for isTailscaleRunning to avoid repeated execSync calls
 let cachedTailscaleRunning = null;
 let cachedTailscaleRunningAt = 0;
-const TAILSCALE_RUNNING_CACHE_TTL_MS = 3000; // 3s cache
+const TAILSCALE_RUNNING_CACHE_TTL_MS = 30000; // 30s cache
 
 // Well-known Windows install path
 const WINDOWS_TAILSCALE_BIN = "C:\\Program Files\\Tailscale\\tailscale.exe";
@@ -76,7 +76,7 @@ export function isTailscaleRunning() {
     return false;
   }
   try {
-    const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel status --json 2>/dev/null`, { encoding: "utf8", windowsHide: true });
+    const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel status --json 2>/dev/null`, { encoding: "utf8", windowsHide: true, timeout: 2000 });
     const json = JSON.parse(out);
     const running = Object.keys(json.AllowFunnel || {}).length > 0;
     cachedTailscaleRunning = running;
@@ -94,7 +94,7 @@ export function getTailscaleFunnelUrl(port) {
   const bin = getTailscaleBin();
   if (!bin) return null;
   try {
-    const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} status --json`, { encoding: "utf8", windowsHide: true });
+    const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} status --json`, { encoding: "utf8", windowsHide: true, timeout: 3000 });
     const json = JSON.parse(out);
     const dnsName = json.Self?.DNSName?.replace(/\.$/, "");
     if (dnsName) return `https://${dnsName}`;
@@ -433,7 +433,7 @@ export async function startFunnel(port) {
   if (!bin) throw new Error("Tailscale not installed");
 
   // Reset any existing funnel
-  try { execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel --bg reset`, { stdio: "ignore", windowsHide: true }); } catch (e) { /* ignore */ }
+  try { execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel --bg reset`, { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch (e) { /* ignore */ }
 
   return new Promise((resolve, reject) => {
     const child = spawn(bin, tsArgs("funnel", "--bg", `${port}`), {
@@ -508,7 +508,7 @@ export async function startFunnel(port) {
 export function stopFunnel() {
   const bin = getTailscaleBin();
   if (!bin) return;
-  try { execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel --bg reset`, { stdio: "ignore", windowsHide: true }); } catch (e) { /* ignore */ }
+  try { execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel --bg reset`, { stdio: "ignore", windowsHide: true, timeout: 3000 }); } catch (e) { /* ignore */ }
 }
 
 /** Kill tailscaled daemon (runs as root, needs sudo) */
