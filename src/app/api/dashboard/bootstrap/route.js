@@ -19,16 +19,20 @@ export async function GET(request) {
   logger.dashboardPerf.debug("DASHBOARD_API", "bootstrap:start", { traceId }, { verbose: true });
 
   try {
-    const [keysStep, settingsStep, tunnelStep, tailscaleStep] = await Promise.all([
+    const [keysStep, settingsStep] = await Promise.all([
       timedStep("keys", () => getApiKeys()),
       timedStep("settings", () => getSettings()),
-      timedStep("tunnel", () => getTunnelStatus()),
-      timedStep("tailscale", () => getTailscaleStatus()),
+    ]);
+
+    const settings = settingsStep.result;
+
+    const [tunnelStep, tailscaleStep] = await Promise.all([
+      timedStep("tunnel", () => getTunnelStatus(settings)),
+      timedStep("tailscale", () => getTailscaleStatus(settings)),
     ]);
 
     const durationMs = Date.now() - start;
     const keys = keysStep.result;
-    const settings = settingsStep.result;
     const tunnel = tunnelStep.result;
     const tailscale = tailscaleStep.result;
 

@@ -43,7 +43,7 @@ let cachedSettingsAt = 0;
 
 function getSettingsCacheTtlMs() {
   const raw = Number(process.env.GUARD_SETTINGS_CACHE_MS);
-  if (!Number.isFinite(raw) || raw < 0) return 1000;
+  if (!Number.isFinite(raw) || raw < 0) return 5000;
   return raw;
 }
 

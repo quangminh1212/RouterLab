@@ -13,11 +13,19 @@ const WORKER_URL = TUNNEL_WORKER_URL || (TUNNEL_PUBLIC_DOMAIN ? `https://${TUNNE
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
+const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
+  ? Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS)
+  : 5000;
 
 let isReconnecting = false;
 let exitHandlerRegistered = false;
 let reconnectTimeoutId = null;
 let manualDisabled = false;
+let cachedTunnelStatus = null;
+let cachedTunnelStatusAt = 0;
+let cachedTailscaleStatus = null;
+let cachedTailscaleStatusAt = 0;
+
 
 export function isTunnelManuallyDisabled() {
   return manualDisabled;
@@ -35,6 +43,10 @@ function getMachineId() {
   } catch (e) {
     return crypto.randomUUID().replace(/-/g, "").substring(0, 16);
   }
+}
+
+function shouldUseCachedStatus(cachedAt) {
+  return cachedAt > 0 && Date.now() - cachedAt < STATUS_CACHE_TTL_MS;
 }
 
 // ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
@@ -152,12 +164,25 @@ export async function disableTunnel() {
   return { success: true };
 }
 
-export async function getTunnelStatus() {
+export async function getTunnelStatus(settingsOverride) {
   const state = loadState();
-  const running = isCloudflaredRunning();
-  const settings = await getSettings();
+  const settings = settingsOverride || await getSettings();
   const shortId = state?.shortId || "";
   const publicUrl = shortId && TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
+
+  if (shouldUseCachedStatus(cachedTunnelStatusAt)) {
+    return {
+      ...cachedTunnelStatus,
+      enabled: settings.tunnelEnabled === true && cachedTunnelStatus.running,
+      tunnelUrl: state?.tunnelUrl || cachedTunnelStatus.tunnelUrl || "",
+      shortId,
+      publicUrl,
+    };
+  }
+
+  const running = isCloudflaredRunning();
+  cachedTunnelStatus = { running, tunnelUrl: state?.tunnelUrl || "" };
+  cachedTunnelStatusAt = Date.now();
 
   return {
     enabled: settings.tunnelEnabled === true && running,
@@ -214,9 +239,21 @@ export async function disableTailscale() {
   return { success: true };
 }
 
-export async function getTailscaleStatus() {
-  const settings = await getSettings();
+export async function getTailscaleStatus(settingsOverride) {
+  const settings = settingsOverride || await getSettings();
+
+  if (shouldUseCachedStatus(cachedTailscaleStatusAt)) {
+    return {
+      ...cachedTailscaleStatus,
+      enabled: settings.tailscaleEnabled === true && cachedTailscaleStatus.running,
+      tunnelUrl: settings.tailscaleUrl || cachedTailscaleStatus.tunnelUrl || "",
+    };
+  }
+
   const running = isTailscaleRunning();
+  cachedTailscaleStatus = { running, tunnelUrl: settings.tailscaleUrl || "" };
+  cachedTailscaleStatusAt = Date.now();
+
   return {
     enabled: settings.tailscaleEnabled === true && running,
     tunnelUrl: settings.tailscaleUrl || "",
