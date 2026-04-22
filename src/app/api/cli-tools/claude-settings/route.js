@@ -14,7 +14,7 @@ const DEFAULT_CLAUDE_SETTINGS = {
   effortLevel: "high",
 };
 const VALID_DEFAULT_MODES = new Set(["default", "acceptEdits", "plan", "auto", "dontAsk", "bypassPermissions"]);
-const VALID_EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh"]);
+const VALID_EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
 
 const normalizeDefaultMode = (value) => {
   if (typeof value !== "string") return DEFAULT_CLAUDE_SETTINGS.defaultMode;
@@ -25,7 +25,6 @@ const normalizeDefaultMode = (value) => {
 const normalizeEffortLevel = (value) => {
   if (typeof value !== "string") return DEFAULT_CLAUDE_SETTINGS.effortLevel;
   const normalized = value.trim().toLowerCase();
-  if (normalized === "max") return "high";
   return VALID_EFFORT_LEVELS.has(normalized) ? normalized : DEFAULT_CLAUDE_SETTINGS.effortLevel;
 };
 
