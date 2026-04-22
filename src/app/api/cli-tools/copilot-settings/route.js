@@ -146,3 +146,19 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to reset copilot settings" }, { status: 500 });
   }
 }
+
+export const getCopilotSettingsBackup = async () => ({
+  configPath: getConfigPath(),
+  config: await readConfig(),
+});
+
+export const restoreCopilotSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (payload.config !== null && !Array.isArray(payload.config)) {
+    throw new Error("Invalid Copilot settings backup");
+  }
+
+  const configPath = getConfigPath();
+  await fs.mkdir(path.dirname(configPath), { recursive: true });
+  await fs.writeFile(configPath, JSON.stringify(payload.config || [], null, 2));
+};

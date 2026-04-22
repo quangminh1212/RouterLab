@@ -278,3 +278,54 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to reset openclaw settings" }, { status: 500 });
   }
 }
+
+const readAgentModelsBackup = async (agentDir) => {
+  try {
+    const content = await fs.readFile(path.join(agentDir, "models.json"), "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+};
+
+export const getOpenClawSettingsBackup = async () => {
+  const settings = await readSettings();
+  const agentList = Array.isArray(settings?.agents?.list) ? settings.agents.list : [];
+  const agentModels = {};
+
+  await Promise.all(
+    agentList.map(async (agent) => {
+      if (!agent?.id || !agent?.agentDir) return;
+      agentModels[agent.id] = {
+        agentDir: agent.agentDir,
+        models: await readAgentModelsBackup(agent.agentDir),
+      };
+    })
+  );
+
+  return {
+    settingsPath: getOpenClawSettingsPath(),
+    settings,
+    agentModels,
+  };
+};
+
+export const restoreOpenClawSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (payload.settings !== null && typeof payload.settings !== "object") {
+    throw new Error("Invalid OpenClaw settings backup");
+  }
+
+  await fs.mkdir(getOpenClawDir(), { recursive: true });
+  await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(payload.settings || {}, null, 2));
+
+  if (payload.agentModels && typeof payload.agentModels === "object") {
+    await Promise.all(
+      Object.values(payload.agentModels).map(async (entry) => {
+        if (!entry?.agentDir || !entry?.models || typeof entry.models !== "object") return;
+        await fs.mkdir(entry.agentDir, { recursive: true });
+        await fs.writeFile(path.join(entry.agentDir, "models.json"), JSON.stringify(entry.models, null, 2));
+      })
+    );
+  }
+};

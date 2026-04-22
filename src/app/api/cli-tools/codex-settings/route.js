@@ -215,7 +215,7 @@ export async function DELETE() {
       const existingAuth = await fs.readFile(authPath, "utf-8");
       const authData = JSON.parse(existingAuth);
       delete authData.OPENAI_API_KEY;
-      
+
       // Write back or delete if empty
       if (Object.keys(authData).length === 0) {
         await fs.unlink(authPath);
@@ -233,3 +233,32 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to reset codex settings" }, { status: 500 });
   }
 }
+
+export const getCodexSettingsBackup = async () => ({
+  configPath: getCodexConfigPath(),
+  authPath: getCodexAuthPath(),
+  config: await readConfig(),
+  auth: await (async () => {
+    try {
+      const content = await fs.readFile(getCodexAuthPath(), "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  })(),
+});
+
+export const restoreCodexSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+
+  const codexDir = getCodexDir();
+  await fs.mkdir(codexDir, { recursive: true });
+
+  if (typeof payload.config === "string") {
+    await fs.writeFile(getCodexConfigPath(), payload.config);
+  }
+
+  if (payload.auth && typeof payload.auth === "object") {
+    await fs.writeFile(getCodexAuthPath(), JSON.stringify(payload.auth, null, 2));
+  }
+};

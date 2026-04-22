@@ -211,3 +211,18 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to reset droid settings" }, { status: 500 });
   }
 }
+
+export const getDroidSettingsBackup = async () => ({
+  settingsPath: getDroidSettingsPath(),
+  settings: await readSettings(),
+});
+
+export const restoreDroidSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (payload.settings !== null && typeof payload.settings !== "object") {
+    throw new Error("Invalid Droid settings backup");
+  }
+
+  await fs.mkdir(getDroidDir(), { recursive: true });
+  await fs.writeFile(getDroidSettingsPath(), JSON.stringify(payload.settings || {}, null, 2));
+};

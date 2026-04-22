@@ -257,3 +257,18 @@ export async function DELETE(request) {
     return NextResponse.json({ error: "Failed to reset opencode settings" }, { status: 500 });
   }
 }
+
+export const getOpenCodeSettingsBackup = async () => ({
+  configPath: getConfigPath(),
+  config: await readConfig(),
+});
+
+export const restoreOpenCodeSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (payload.config !== null && typeof payload.config !== "object") {
+    throw new Error("Invalid OpenCode settings backup");
+  }
+
+  await fs.mkdir(getConfigDir(), { recursive: true });
+  await fs.writeFile(getConfigPath(), JSON.stringify(payload.config || {}, null, 2));
+};

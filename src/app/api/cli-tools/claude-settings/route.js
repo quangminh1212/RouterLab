@@ -73,7 +73,7 @@ const checkClaudeInstalled = async () => {
 };
 
 // Read current settings
-const readSettings = async () => {
+export const readSettings = async () => {
   try {
     const settingsPath = getClaudeSettingsPath();
     const content = await fs.readFile(settingsPath, "utf-8");
@@ -85,6 +85,35 @@ const readSettings = async () => {
     throw error;
   }
 };
+
+export const writeSettings = async (settings) => {
+  const settingsPath = getClaudeSettingsPath();
+  const claudeDir = path.dirname(settingsPath);
+  await fs.mkdir(claudeDir, { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+};
+
+export const getClaudeSettingsBackup = async () => ({
+  settingsPath: getClaudeSettingsPath(),
+  settings: await readSettings(),
+});
+
+export const restoreClaudeSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (!("settings" in payload)) return;
+  if (payload.settings !== null && typeof payload.settings !== "object") {
+    throw new Error("Invalid Claude settings backup");
+  }
+
+  await writeSettings(payload.settings || {});
+};
+
+export const clearClaudeSettings = async () => {
+  await writeSettings({});
+};
+
+export const buildClaudeSettingsPayload = (currentSettings, env, options = {}) =>
+  buildClaudeSettings(currentSettings, env, options);
 
 // GET - Check claude CLI and read current settings
 export async function GET() {
