@@ -130,8 +130,8 @@ if not exist ".env" (
 echo.
 
 :AUTO_SYNC_CLI
-echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)...
-echo [STEP 6/7] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG_FILE%
+echo [STEP 6/8] Auto-configuring Claude/Codex CLI settings (optional)...
+echo [STEP 6/8] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG_FILE%
 
 set "AUTO_SYNC_CLI=0"
 
@@ -268,8 +268,23 @@ if "%SYNC_CLI_ONLY%"=="1" (
     exit /b 0
 )
 
-echo [STEP 7/7] Starting development server...
-echo [STEP 7/7] Starting development server... >> %LOG_FILE%
+echo [STEP 7/8] Building project...
+echo [STEP 7/8] Building project... >> %LOG_FILE%
+echo [INFO] Running: npm run build
+echo [INFO] Running: npm run build >> %LOG_FILE%
+call npm run build >> %LOG_FILE% 2>&1
+if errorlevel 1 (
+    echo [ERROR] Build failed! Check %LOG_FILE% for details.
+    echo [ERROR] Build failed! >> %LOG_FILE%
+    pause
+    exit /b 1
+)
+echo [OK] Build completed successfully.
+echo [OK] Build completed successfully. >> %LOG_FILE%
+echo.
+
+echo [STEP 8/8] Starting development server with hot reload...
+echo [STEP 8/8] Starting development server with hot reload... >> %LOG_FILE%
 set "NODE_ENV=development"
 echo [INFO] Startup mode: development (hot reload enabled)
 echo [INFO] Startup mode: development (hot reload enabled) >> %LOG_FILE%
