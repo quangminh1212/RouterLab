@@ -13,6 +13,7 @@ const ALIAS_TO_PROVIDER_ID = {
   kmc: "kimi-coding",
   cl: "cline",
   oc: "opencode",
+  ocg: "opencode-go",
   gw: "grok-web",
   "grok-web": "grok-web",
   pw: "perplexity-web",
