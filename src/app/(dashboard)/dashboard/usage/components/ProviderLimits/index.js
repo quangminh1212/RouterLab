@@ -12,6 +12,11 @@ import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
 
 const REFRESH_INTERVAL_MS = 60000; // 60 seconds
 
+const getConnectionLabel = (connection) => {
+  if (!connection) return "";
+  return connection.email || connection.displayName || connection.username || connection.name || "";
+};
+
 export default function ProviderLimits() {
   const [connections, setConnections] = useState([]);
   const [quotaData, setQuotaData] = useState({});
@@ -484,6 +489,7 @@ export default function ProviderLimits() {
           const quota = quotaData[conn.id];
           const isLoading = loading[conn.id];
           const error = errors[conn.id];
+          const connectionLabel = getConnectionLabel(conn);
 
           // Use table layout for all providers
           const isInactive = conn.isActive === false;
@@ -513,9 +519,9 @@ export default function ProviderLimits() {
                       <h3 className="text-sm font-semibold text-text-primary capitalize truncate">
                         {conn.provider}
                       </h3>
-                      {conn.name && (
+                      {connectionLabel && (
                         <p className="text-xs text-text-muted truncate">
-                          {conn.name}
+                          {connectionLabel}
                         </p>
                       )}
                     </div>
