@@ -844,23 +844,23 @@ export default function APIPageClient() {
 
         {/* Security warnings when tunnel or tailscale is active */}
         {(tunnelEnabled || tsEnabled) && (
-          <div className=”mt-4 flex flex-col gap-2”>
+          <div className="mt-4 flex flex-col gap-2">
             {!requireApiKey && (
               <SecurityWarning
-                message=”Require API key is disabled - your endpoint is publicly accessible without authentication.”
-                action={{ label: “Enable”, href: “#require-api-key” }}
+                message="Require API key is disabled - your endpoint is publicly accessible without authentication."
+                action={{ label: "Enable", href: "#require-api-key" }}
               />
             )}
             {(!requireLogin || !hasPassword) && (
               <SecurityWarning
                 message={
                   !requireLogin
-                    ? “Require login is disabled - anyone can access your dashboard via tunnel.”
-                    : “Dashboard uses the default password - change it in Profile settings.”
+                    ? "Require login is disabled - anyone can access your dashboard via tunnel."
+                    : "Dashboard uses the default password - change it in Profile settings."
                 }
                 action={{
-                  label: !requireLogin ? “Enable” : “Change password”,
-                  href: “/dashboard/profile”,
+                  label: !requireLogin ? "Enable" : "Change password",
+                  href: "/dashboard/profile",
                 }}
               />
             )}
