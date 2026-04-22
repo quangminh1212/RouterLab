@@ -29,6 +29,11 @@ const CLAUDE_API_HEADERS = {
 // Shared baseUrls
 const KIMI_CODING_BASE_URL = "https://api.kimi.com/coding/v1/messages";
 
+export function resolveOllamaLocalHost(connection) {
+  const rawHost = connection?.baseUrl?.trim() || connection?.providerSpecificData?.baseUrl?.trim() || "http://localhost:11434";
+  return rawHost.replace(/\/$/, "").replace(/\/api(?:\/chat|\/tags)?$/, "");
+}
+
 export const PROVIDERS = {
   claude: {
     baseUrl: "https://api.anthropic.com/v1/messages",

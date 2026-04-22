@@ -3,6 +3,7 @@ import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
+import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import {
   GEMINI_CONFIG,
   ANTIGRAVITY_CONFIG,
@@ -49,7 +50,7 @@ const OAUTH_TEST_CONFIG = {
     method: "GET",
     authHeader: "Authorization",
     authPrefix: "Bearer ",
-    extraHeaders: { "User-Agent": "xlabrouter", "Accept": "application/vnd.github+json" },
+    extraHeaders: { "User-Agent": "9Router", "Accept": "application/vnd.github+json" },
   },
   iflow: {
     // iFlow getUserInfo requires accessToken as query param, not header
@@ -495,9 +496,9 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
       }
       case "ollama-local": {
-        // No auth required for local Ollama
-        const res = await fetch("http://localhost:11434/api/tags");
-        return { valid: res.ok, error: res.ok ? null : "Ollama not running on localhost:11434" };
+        const host = resolveOllamaLocalHost(connection);
+        const res = await fetch(`${host}/api/tags`);
+        return { valid: res.ok, error: res.ok ? null : `Ollama not reachable at ${host}` };
       }
       case "deepgram": {
         const res = await fetchWithConnectionProxy("https://api.deepgram.com/v1/projects", { headers: { Authorization: `Token ${connection.apiKey}` } }, effectiveProxy);
@@ -581,7 +582,7 @@ export async function testSingleConnection(id) {
   const start = Date.now();
   let result;
 
-  if (connection.authType === "apikey") {
+  if (connection.authType === "apikey" || connection.authType === "cookie") {
     result = await testApiKeyConnection(connection, effectiveProxy);
   } else {
     result = await testOAuthConnection(connection, effectiveProxy);

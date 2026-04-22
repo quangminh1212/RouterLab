@@ -686,6 +686,29 @@ export async function deleteModelAlias(alias) {
   await safeWrite(db);
 }
 
+export async function getCustomModels() {
+  const db = await getDb();
+  return db.data.customModels || [];
+}
+
+export async function addCustomModel({ providerAlias, id, type, name }) {
+  const db = await getDb();
+  if (!db.data.customModels) db.data.customModels = [];
+  const model = { providerAlias, id, type: type || "llm", name: name || id };
+  db.data.customModels.push(model);
+  await safeWrite(db);
+  return model;
+}
+
+export async function deleteCustomModel({ providerAlias, id, type }) {
+  const db = await getDb();
+  if (!db.data.customModels) return;
+  db.data.customModels = db.data.customModels.filter(
+    (m) => !(m.providerAlias === providerAlias && m.id === id && m.type === (type || "llm"))
+  );
+  await safeWrite(db);
+}
+
 export async function getMitmAlias(toolName) {
   const db = await getDb();
   const all = db.data.mitmAlias || {};
