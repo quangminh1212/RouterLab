@@ -157,13 +157,13 @@ let settingsRefreshPromise = null;
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
-  if (!Number.isFinite(raw) || raw < 0) return 5000;
+  if (!Number.isFinite(raw) || raw < 0) return 30000; // was 5000ms — refresh less frequently
   return raw;
 }
 
 function getSettingsCacheTtlMs() {
   const raw = Number(process.env.SETTINGS_CACHE_TTL_MS);
-  if (!Number.isFinite(raw) || raw < 0) return 60000;
+  if (!Number.isFinite(raw) || raw < 0) return 300000; // was 60000ms (1min) — now 5min (settings rarely change)
   return raw;
 }
 
@@ -174,7 +174,7 @@ function getDbSlowLockWarnMs() {
 }
 
 const LOCK_OPTIONS = {
-  retries: { retries: 15, minTimeout: 50, maxTimeout: 3000 },
+  retries: { retries: 15, minTimeout: 50, maxTimeout: 1000 }, // was 3000ms — faster lock recovery
   stale: 10000,
 };
 

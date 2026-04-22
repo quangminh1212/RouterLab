@@ -17,29 +17,24 @@ function bootstrapServerInits() {
   if (globalThis[globalKey]) return;
   globalThis[globalKey] = true;
 
-  const delayRaw = Number(process.env.APP_BOOTSTRAP_DELAY_MS);
-  const bootstrapDelayMs = Number.isFinite(delayRaw) && delayRaw >= 0 ? delayRaw : 5000;
+  Promise.allSettled([
+    import("@/lib/initCloudSync"),
+    import("@/lib/network/initOutboundProxy"),
+  ]).then((results) => {
+    if (results[0]?.status === "fulfilled") {
+      logger.info("APP", "Cloud sync module loaded");
+    } else {
+      logger.warn("APP", "Cloud sync module failed to load");
+    }
 
-  setTimeout(() => {
-    Promise.allSettled([
-      import("@/lib/initCloudSync"),
-      import("@/lib/network/initOutboundProxy"),
-    ]).then((results) => {
-      if (results[0]?.status === "fulfilled") {
-        logger.info("APP", "Cloud sync module loaded");
-      } else {
-        logger.warn("APP", "Cloud sync module failed to load");
-      }
-
-      if (results[1]?.status === "fulfilled") {
-        logger.info("APP", "Outbound proxy module loaded");
-      } else {
-        logger.warn("APP", "Outbound proxy module failed to load");
-      }
-    }).catch(() => {
-      logger.warn("APP", "Server bootstrap initialization failed");
-    });
-  }, bootstrapDelayMs);
+    if (results[1]?.status === "fulfilled") {
+      logger.info("APP", "Outbound proxy module loaded");
+    } else {
+      logger.warn("APP", "Outbound proxy module failed to load");
+    }
+  }).catch(() => {
+    logger.warn("APP", "Server bootstrap initialization failed");
+  });
 }
 
 bootstrapServerInits();
