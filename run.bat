@@ -283,13 +283,24 @@ echo [INFO] This batch file keeps the server in the current terminal.
 echo [INFO] This batch file keeps the server in the current terminal. >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
 echo [INFO] All server output will be logged to %LOG_FILE% and auto-delete at 100MB
-echo [INFO] Server output is shown below (press Ctrl+C to stop)
+echo [INFO] Server output is shown below (press Ctrl+C to stop and cleanup)
 echo ========================================
 echo.
 
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
 call npm run dev
 set DEV_EXIT_CODE=%ERRORLEVEL%
+
+echo.
+echo [INFO] Cleaning up port 1212...
+echo [INFO] Cleaning up port 1212... >> %LOG_FILE%
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
+    echo [INFO] Killing process ID: %%a
+    echo [INFO] Killing process ID: %%a >> %LOG_FILE%
+    taskkill /F /PID %%a >nul 2>&1
+)
+echo [OK] Port 1212 cleaned up.
+echo [OK] Port 1212 cleaned up. >> %LOG_FILE%
 
 if not "%DEV_EXIT_CODE%"=="0" (
     echo.
