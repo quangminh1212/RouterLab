@@ -20,6 +20,7 @@ function bootstrapServerInits() {
   Promise.allSettled([
     import("@/lib/initCloudSync"),
     import("@/lib/network/initOutboundProxy"),
+    import("@/lib/rtk/initRtk"),
   ]).then((results) => {
     if (results[0]?.status === "fulfilled") {
       logger.info("APP", "Cloud sync module loaded");
@@ -31,6 +32,12 @@ function bootstrapServerInits() {
       logger.info("APP", "Outbound proxy module loaded");
     } else {
       logger.warn("APP", "Outbound proxy module failed to load");
+    }
+
+    if (results[2]?.status === "fulfilled") {
+      logger.info("APP", "RTK module loaded");
+    } else {
+      logger.warn("APP", "RTK module failed to load");
     }
   }).catch(() => {
     logger.warn("APP", "Server bootstrap initialization failed");
