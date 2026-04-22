@@ -439,6 +439,18 @@ export const PROVIDER_MODELS = {
     { id: "qwen/qwen3-next-80b-a3b-instruct-maas", name: "Qwen3 Next 80B Instruct (Vertex)" },
     { id: "zai-org/glm-5-maas", name: "GLM-5 (Vertex)" },
   ],
+  nanobanana: [
+    { id: "nanobanana-flash", name: "NanoBanana Flash", type: "image" },
+    { id: "nanobanana-pro", name: "NanoBanana Pro", type: "image" },
+  ],
+  sdwebui: [
+    { id: "stable-diffusion-v1-5", name: "Stable Diffusion v1.5", type: "image" },
+    { id: "sdxl-base-1.0", name: "SDXL Base 1.0", type: "image" },
+  ],
+  huggingface: [
+    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell", type: "image" },
+    { id: "stabilityai/stable-diffusion-xl-base-1.0", name: "Stable Diffusion XL", type: "image" },
+  ],
 
   // TTS entries are loaded from ttsModels.js via buildTtsProviderModels()
   ...buildTtsProviderModels(),
