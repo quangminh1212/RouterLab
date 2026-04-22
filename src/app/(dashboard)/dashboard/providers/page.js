@@ -17,7 +17,6 @@ import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import {
   FREE_PROVIDERS,
   FREE_TIER_PROVIDERS,
-  WEB_COOKIE_PROVIDERS,
   OPENAI_COMPATIBLE_PREFIX,
   ANTHROPIC_COMPATIBLE_PREFIX,
 } from "@/shared/constants/providers";
@@ -268,7 +267,7 @@ export default function ProvidersPage() {
               <span
                 className={`material-symbols-outlined text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`}
               >
-                play_arrow
+                {testingMode === "oauth" ? "sync" : "play_arrow"}
               </span>
               {testingMode === "oauth" ? "Testing..." : "Test All"}
             </button>
@@ -308,7 +307,7 @@ export default function ProvidersPage() {
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
             >
-              play_arrow
+              {testingMode === "free" ? "sync" : "play_arrow"}
             </span>
             {testingMode === "free" ? "Testing..." : "Test All"}
           </button>
@@ -357,7 +356,7 @@ export default function ProvidersPage() {
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`}
             >
-              play_arrow
+              {testingMode === "apikey" ? "sync" : "play_arrow"}
             </span>
             {testingMode === "apikey" ? "Testing..." : "Test All"}
           </button>
@@ -378,27 +377,6 @@ export default function ProvidersPage() {
         </div>
       </div>
 
-      {/* Web Cookie Providers — use browser subscription cookie instead of API key */}
-      {/* <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            Web Cookie Providers{" "}
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(WEB_COOKIE_PROVIDERS).map(([key, info]) => (
-            <ApiKeyProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "apikey")}
-              authType="apikey"
-              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
-            />
-          ))}
-        </div>
-      </div> */}
-
       {/* API Key Compatible Providers — dynamic (OpenAI/Anthropic compatible) */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -417,7 +395,7 @@ export default function ProvidersPage() {
                 title="Test all Compatible connections"
               >
                 <span className={`material-symbols-outlined text-[14px]${testingMode === "compatible" ? " animate-spin" : ""}`}>
-                  play_arrow
+                  {testingMode === "compatible" ? "sync" : "play_arrow"}
                 </span>
                 {testingMode === "compatible" ? "Testing..." : "Test All"}
               </button>

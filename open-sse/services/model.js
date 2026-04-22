@@ -13,7 +13,6 @@ const ALIAS_TO_PROVIDER_ID = {
   kmc: "kimi-coding",
   cl: "cline",
   oc: "opencode",
-  ocg: "opencode-go",
   // TTS providers
   el: "elevenlabs",
   // API Key providers
@@ -54,11 +53,6 @@ const ALIAS_TO_PROVIDER_ID = {
   vertex: "vertex",
   vxp: "vertex-partner",
   "vertex-partner": "vertex-partner",
-  // Web cookie providers
-  gw: "grok-web",
-  "grok-web": "grok-web",
-  pw: "perplexity-web",
-  "perplexity-web": "perplexity-web",
 };
 
 /**

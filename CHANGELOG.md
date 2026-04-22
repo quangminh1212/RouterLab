@@ -1,24 +1,9 @@
-# v0.3.98 (2026-04-22)
-
-## Features
-- Add RTK — filter context (ls/grep/find/.....) before sending to LLM to save tokens
-
-# v0.3.97 (2026-04-22)
-
-## Features
-- Add OpenCode Go provider and support for custom models
-- Add Text To Image provider
-- Support custom host URL for remote Ollama servers
-
-## Fixes
-- Fix copy to clipboard issue
-
-# v1.0.5 (2026-04-18) - XLab Router Fork
+# v1.0.5 (2026-04-18)
 
 ## Fixes
 - Remove BOM (Byte Order Mark) from package.json to fix JSON parsing error on startup.
 
-# v1.0.4 (2026-04-18) - XLab Router Fork
+# v1.0.4 (2026-04-18)
 
 ## Improvements
 - Update package dependencies for improved stability and release the global CLI package as v1.0.4.

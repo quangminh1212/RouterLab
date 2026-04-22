@@ -3,16 +3,18 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 export default function ManualConfigModal({ isOpen, onClose, title = "Manual Configuration", configs = [] }) {
-  const { copy } = useCopyToClipboard();
   const [copiedIndex, setCopiedIndex] = useState(null);
 
-  const copyConfig = (text, index) => {
-    copy(text, `manualconfig-${index}`);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
+  const copyToClipboard = async (text, index) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.log("Failed to copy:", err);
+    }
   };
 
   return (
@@ -25,7 +27,7 @@ export default function ManualConfigModal({ isOpen, onClose, title = "Manual Con
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyConfig(config.content, index)}
+                onClick={() => copyToClipboard(config.content, index)}
               >
                 <span className="material-symbols-outlined text-[14px] mr-1">
                   {copiedIndex === index ? "check" : "content_copy"}

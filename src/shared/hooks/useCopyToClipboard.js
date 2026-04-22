@@ -53,7 +53,6 @@ export function useCopyToClipboard(resetDelay = 2000) {
 
     if (!success) return false;
 
-
     setCopied(id);
 
     if (timeoutRef.current) {
