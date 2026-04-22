@@ -237,6 +237,7 @@ export const PROVIDER_MODELS = {
     { id: "tts-1", name: "TTS-1", type: "tts" },
     { id: "tts-1-hd", name: "TTS-1 HD", type: "tts" },
     { id: "gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "tts" },
+    { id: "gpt-4o-search-preview", name: "GPT-4o Search Preview", type: "webSearch" },
   ],
   anthropic: [
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
@@ -266,6 +267,7 @@ export const PROVIDER_MODELS = {
     { id: "gemini-embedding-001", name: "Gemini Embedding 001", type: "embedding" },
     { id: "text-embedding-005", name: "Text Embedding 005", type: "embedding" },
     { id: "text-embedding-004", name: "Text Embedding 004 (Legacy)", type: "embedding" },
+    { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Search", type: "webSearch" },
   ],
   openrouter: [
     // Image models
@@ -303,12 +305,14 @@ export const PROVIDER_MODELS = {
     { id: "kimi-k2.5", name: "Kimi K2.5" },
     { id: "kimi-k2.5-thinking", name: "Kimi K2.5 Thinking" },
     { id: "kimi-latest", name: "Kimi Latest" },
+    { id: "kimi-search", name: "Kimi Search", type: "webSearch" },
   ],
   minimax: [
     { id: "MiniMax-M2.7", name: "MiniMax M2.7" },
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
     { id: "minimax-image-01", name: "MiniMax Image 01", type: "image" },
+    { id: "minimax-search", name: "MiniMax Search", type: "webSearch" },
   ],
   blackbox: [
     { id: "gpt-4o", name: "GPT-4o" },
@@ -368,6 +372,7 @@ export const PROVIDER_MODELS = {
     { id: "grok-4-fast-reasoning", name: "Grok 4 Fast Reasoning" },
     { id: "grok-code-fast-1", name: "Grok Code Fast" },
     { id: "grok-3", name: "Grok 3" },
+    { id: "grok-4-search", name: "Grok 4 Search", type: "webSearch" },
   ],
   mistral: [
     { id: "mistral-large-latest", name: "Mistral Large 3" },
@@ -377,6 +382,8 @@ export const PROVIDER_MODELS = {
   perplexity: [
     { id: "sonar-pro", name: "Sonar Pro" },
     { id: "sonar", name: "Sonar" },
+    { id: "sonar-pro", name: "Sonar Pro", type: "webSearch" },
+    { id: "sonar", name: "Sonar", type: "webSearch" },
   ],
   together: [
     { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo" },
@@ -408,6 +415,21 @@ export const PROVIDER_MODELS = {
   ],
   nebius: [
     { id: "meta-llama/Llama-3.3-70B-Instruct", name: "Llama 3.3 70B Instruct" },
+  ],
+  tavily: [
+    { id: "tavily-search", name: "Tavily Search", type: "webSearch" },
+  ],
+  "brave-search": [
+    { id: "brave-web-search", name: "Brave Web Search", type: "webSearch" },
+  ],
+  serper: [
+    { id: "google-search", name: "Google Search", type: "webSearch" },
+  ],
+  exa: [
+    { id: "exa-search", name: "Exa Search", type: "webSearch" },
+  ],
+  searxng: [
+    { id: "searxng-search", name: "SearXNG Search", type: "webSearch" },
   ],
   siliconflow: [
     { id: "deepseek-ai/DeepSeek-V3.2", name: "DeepSeek V3.2" },
