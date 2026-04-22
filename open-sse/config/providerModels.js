@@ -225,6 +225,10 @@ export const PROVIDER_MODELS = {
     { id: "o4-mini", name: "O4 Mini" },
     { id: "o1", name: "O1" },
     { id: "o1-mini", name: "O1 Mini" },
+    // Image models
+    { id: "gpt-image-1", name: "GPT Image 1", type: "image" },
+    { id: "dall-e-3", name: "DALL-E 3", type: "image" },
+    { id: "dall-e-2", name: "DALL-E 2", type: "image" },
     // Embedding models
     { id: "text-embedding-3-large", name: "Text Embedding 3 Large", type: "embedding" },
     { id: "text-embedding-3-small", name: "Text Embedding 3 Small", type: "embedding" },
@@ -243,7 +247,9 @@ export const PROVIDER_MODELS = {
     // Gemini 3.1 series
     { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
     { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite Preview" },
-    { id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image Preview" },
+    { id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image Preview", type: "image" },
+    { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview", type: "image" },
+    { id: "gemini-2.5-flash-image", name: "Gemini 2.5 Flash Image", type: "image" },
     // Gemini 3 series
     { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
     // Gemini 2.5 series
@@ -297,6 +303,7 @@ export const PROVIDER_MODELS = {
     { id: "MiniMax-M2.7", name: "MiniMax M2.7" },
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
+    { id: "minimax-image-01", name: "MiniMax Image 01", type: "image" },
   ],
   blackbox: [
     { id: "gpt-4o", name: "GPT-4o" },
