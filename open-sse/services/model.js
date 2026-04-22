@@ -13,6 +13,10 @@ const ALIAS_TO_PROVIDER_ID = {
   kmc: "kimi-coding",
   cl: "cline",
   oc: "opencode",
+  gw: "grok-web",
+  "grok-web": "grok-web",
+  pw: "perplexity-web",
+  "perplexity-web": "perplexity-web",
   // TTS providers
   el: "elevenlabs",
   // API Key providers

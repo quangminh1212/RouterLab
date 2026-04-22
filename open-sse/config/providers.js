@@ -343,4 +343,14 @@ export const PROVIDERS = {
     format: "openai",
     headers: {}
   },
+  "grok-web": {
+    baseUrl: "https://grok.com/rest/app-chat/conversations/new",
+    format: "grok-web",
+    authType: "cookie"
+  },
+  "perplexity-web": {
+    baseUrl: "https://www.perplexity.ai/rest/sse/perplexity_ask",
+    format: "perplexity-web",
+    authType: "cookie"
+  },
 };

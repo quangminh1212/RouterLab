@@ -177,6 +177,29 @@ export const PROVIDER_MODELS = {
     { id: "minimax-m2.7", name: "MiniMax M2.7", targetFormat: "claude" },
     { id: "minimax-m2.5", name: "MiniMax M2.5", targetFormat: "claude" },
   ],
+  "grok-web": [
+    { id: "grok-3", name: "Grok 3" },
+    { id: "grok-3-mini", name: "Grok 3 Mini (Thinking)" },
+    { id: "grok-3-thinking", name: "Grok 3 Thinking" },
+    { id: "grok-4", name: "Grok 4" },
+    { id: "grok-4-mini", name: "Grok 4 Mini (Thinking)" },
+    { id: "grok-4-thinking", name: "Grok 4 Thinking" },
+    { id: "grok-4-heavy", name: "Grok 4 Heavy (SuperGrok)" },
+    { id: "grok-4.1-mini", name: "Grok 4.1 Mini (Thinking)" },
+    { id: "grok-4.1-fast", name: "Grok 4.1 Fast" },
+    { id: "grok-4.1-expert", name: "Grok 4.1 Expert" },
+    { id: "grok-4.1-thinking", name: "Grok 4.1 Thinking" },
+    { id: "grok-4.2", name: "Grok 4.2 (4.20 Beta)" },
+  ],
+  "perplexity-web": [
+    { id: "pplx-auto", name: "Perplexity Auto (Free)" },
+    { id: "pplx-sonar", name: "Perplexity Sonar" },
+    { id: "pplx-gpt", name: "GPT-5.4 (via Perplexity)" },
+    { id: "pplx-gemini", name: "Gemini 3.1 Pro (via Perplexity)" },
+    { id: "pplx-sonnet", name: "Claude Sonnet 4.6 (via Perplexity)" },
+    { id: "pplx-opus", name: "Claude Opus 4.6 (via Perplexity)" },
+    { id: "pplx-nemotron", name: "Nemotron 3 Super (via Perplexity)" },
+  ],
 
   // API Key Providers (alias = id)
   openai: [

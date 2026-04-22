@@ -4,8 +4,13 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 
-export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, proxyPools, onSave, onClose }) {
+export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, proxyPools, onSave, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
+  const isCookie = authType === "cookie";
+  const credentialLabel = isCookie ? "Cookie Value" : "API Key";
+  const credentialPlaceholder = isCookie
+    ? (provider === "grok-web" ? "sso=xxxxx... or just the raw value" : "eyJhbGciOi...")
+    : "";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -73,7 +78,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   if (!provider) return null;
 
   return (
-    <Modal isOpen={isOpen} title={`Add ${providerName || provider} API Key`} onClose={onClose}>
+    <Modal isOpen={isOpen} title={`Add ${providerName || provider} ${credentialLabel}`} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <Input
           label="Name"
@@ -83,10 +88,11 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         />
         <div className="flex gap-2">
           <Input
-            label="API Key"
+            label={credentialLabel}
             type="password"
             value={formData.apiKey}
             onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+            placeholder={credentialPlaceholder}
             className="flex-1"
           />
           <div className="pt-6">
@@ -100,9 +106,14 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             {validationResult === "success" ? "Valid" : "Invalid"}
           </Badge>
         )}
+        {authHint && (
+          <p className="text-xs text-text-muted">
+            {authHint}
+          </p>
+        )}
         {isCompatible && (
           <p className="text-xs text-text-muted">
-            {isAnthropic 
+            {isAnthropic
               ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
               : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
             }
@@ -155,6 +166,8 @@ AddApiKeyModal.propTypes = {
   providerName: PropTypes.string,
   isCompatible: PropTypes.bool,
   isAnthropic: PropTypes.bool,
+  authType: PropTypes.string,
+  authHint: PropTypes.string,
   proxyPools: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string,
     name: PropTypes.string,
