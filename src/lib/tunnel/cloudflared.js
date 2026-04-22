@@ -14,6 +14,11 @@ const BIN_PATH = path.join(BIN_DIR, BIN_NAME);
 
 const GITHUB_BASE_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download";
 
+// Cache for isCloudflaredRunning to avoid repeated process.kill checks
+let cachedCloudflaredRunning = null;
+let cachedCloudflaredRunningAt = 0;
+const CLOUDFLARED_RUNNING_CACHE_TTL_MS = 3000; // 3s cache
+
 const PLATFORM_MAPPINGS = {
   darwin: {
     x64: "cloudflared-darwin-amd64.tgz",
@@ -383,12 +388,25 @@ export function killCloudflared() {
 }
 
 export function isCloudflaredRunning() {
+  // Return cached result if still valid
+  if (cachedCloudflaredRunning !== null && Date.now() - cachedCloudflaredRunningAt < CLOUDFLARED_RUNNING_CACHE_TTL_MS) {
+    return cachedCloudflaredRunning;
+  }
+
   const pid = loadPid();
-  if (!pid) return false;
+  if (!pid) {
+    cachedCloudflaredRunning = false;
+    cachedCloudflaredRunningAt = Date.now();
+    return false;
+  }
   try {
     process.kill(pid, 0);
+    cachedCloudflaredRunning = true;
+    cachedCloudflaredRunningAt = Date.now();
     return true;
   } catch (e) {
+    cachedCloudflaredRunning = false;
+    cachedCloudflaredRunningAt = Date.now();
     return false;
   }
 }

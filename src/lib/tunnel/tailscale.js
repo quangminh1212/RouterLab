@@ -17,6 +17,11 @@ const TAILSCALE_DIR = path.join(DATA_DIR, "tailscale");
 export const TAILSCALE_SOCKET = path.join(TAILSCALE_DIR, "tailscaled.sock");
 const SOCKET_FLAG = IS_WINDOWS ? [] : ["--socket", TAILSCALE_SOCKET];
 
+// Cache for isTailscaleRunning to avoid repeated execSync calls
+let cachedTailscaleRunning = null;
+let cachedTailscaleRunningAt = 0;
+const TAILSCALE_RUNNING_CACHE_TTL_MS = 3000; // 3s cache
+
 // Well-known Windows install path
 const WINDOWS_TAILSCALE_BIN = "C:\\Program Files\\Tailscale\\tailscale.exe";
 
@@ -59,13 +64,27 @@ export function isTailscaleLoggedIn() {
 }
 
 export function isTailscaleRunning() {
+  // Return cached result if still valid
+  if (cachedTailscaleRunning !== null && Date.now() - cachedTailscaleRunningAt < TAILSCALE_RUNNING_CACHE_TTL_MS) {
+    return cachedTailscaleRunning;
+  }
+
   const bin = getTailscaleBin();
-  if (!bin) return false;
+  if (!bin) {
+    cachedTailscaleRunning = false;
+    cachedTailscaleRunningAt = Date.now();
+    return false;
+  }
   try {
     const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} funnel status --json 2>/dev/null`, { encoding: "utf8", windowsHide: true });
     const json = JSON.parse(out);
-    return Object.keys(json.AllowFunnel || {}).length > 0;
+    const running = Object.keys(json.AllowFunnel || {}).length > 0;
+    cachedTailscaleRunning = running;
+    cachedTailscaleRunningAt = Date.now();
+    return running;
   } catch (e) {
+    cachedTailscaleRunning = false;
+    cachedTailscaleRunningAt = Date.now();
     return false;
   }
 }
