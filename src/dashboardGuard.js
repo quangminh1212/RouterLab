@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
+import { getConsistentMachineId } from "@/shared/utils/machineId";
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
 );
+
+const CLI_TOKEN_HEADER = "x-9r-cli-token";
+const CLI_TOKEN_SALT = "9r-cli-auth";
+
+let cachedCliToken = null;
+async function getCliToken() {
+  if (!cachedCliToken) cachedCliToken = await getConsistentMachineId(CLI_TOKEN_SALT);
+  return cachedCliToken;
+}
+
+async function hasValidCliToken(request) {
+  const token = request.headers.get(CLI_TOKEN_HEADER);
+  if (!token) return false;
+  return token === await getCliToken();
+}
 
 // Always require JWT token regardless of requireLogin setting
 const ALWAYS_PROTECTED = [
@@ -19,12 +35,6 @@ const PROTECTED_API_PATHS = [
   "/api/providers/client",
   "/api/provider-nodes/validate",
 ];
-
-function isLocalRequest(request) {
-  const host = request.headers.get("host") || "";
-  const hostname = host.split(":")[0];
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
 
 async function hasValidToken(request) {
   const token = request.cookies.get("auth_token")?.value;
@@ -82,12 +92,11 @@ async function isAuthenticated(request) {
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
-  const isLocal = isLocalRequest(request);
   const start = Date.now();
 
-  // Always protected - allow localhost or valid JWT only
+  // Always protected - require valid JWT or local CLI token (machineId-based)
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    const decision = isLocal || await hasValidToken(request) ? "allow" : "deny";
+    const decision = await hasValidCliToken(request) || await hasValidToken(request) ? "allow" : "deny";
     if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
       console.log("[DASHBOARD_GUARD] proxy:alwaysProtected", { pathname, decision, durationMs: Date.now() - start });
     }
@@ -95,10 +104,10 @@ export async function proxy(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Protect sensitive API endpoints (bypass if localhost or requireLogin = false)
+  // Protect sensitive API endpoints (allow CLI token, JWT, or requireLogin=false)
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return NextResponse.next();
-    const decision = isLocal || await isAuthenticated(request) ? "allow" : "deny";
+    const decision = await hasValidCliToken(request) || await isAuthenticated(request) ? "allow" : "deny";
     if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
       console.log("[DASHBOARD_GUARD] proxy:protectedApi", { pathname, decision, durationMs: Date.now() - start });
     }
