@@ -845,7 +845,7 @@ export default function APIPageClient() {
     const hasCostLimit = Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0;
     setEditingKey(key);
     setEditAllowedModels(Array.isArray(key.allowedModels) ? key.allowedModels.join(", ") : "");
-    setEditRpmLimit(Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0 ? String(Math.floor(Number(key.rpmLimit))) : "");
+    setEditRpmLimit(Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0 ? String(Math.floor(Number(key.rpmLimit))) : "20");
     setEditHasCostLimit(hasCostLimit);
     setEditCostLimit(hasCostLimit ? String(Number(key.costLimit)) : "");
     setEditKeyError("");
@@ -1461,7 +1461,7 @@ export default function APIPageClient() {
             step="1"
             value={editRpmLimit}
             onChange={(e) => setEditRpmLimit(e.target.value)}
-            placeholder="Leave empty for unlimited"
+            placeholder="20"
             hint="Requests per minute"
           />
 
