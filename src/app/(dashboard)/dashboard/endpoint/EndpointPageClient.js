@@ -1208,116 +1208,117 @@ export default function APIPageClient() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="space-y-3">
             {keys.map((key) => {
-              const keyLimits = getKeyLimits(key);
-              const cardModels = getModelsListForCard(key);
-              const visibleModels = getVisibleModels(cardModels);
-              const hiddenModelsCount = getHiddenModelsCount(cardModels);
+              const visibleModels = Array.isArray(key.allowedModels) && key.allowedModels.length > 0
+                ? key.allowedModels.slice(0, 2)
+                : [];
+              const hiddenCount = Array.isArray(key.allowedModels) && key.allowedModels.length > 2
+                ? key.allowedModels.length - 2
+                : 0;
 
               return (
                 <div
                   key={key.id}
-                  className={`group rounded-xl border border-border bg-sidebar/30 p-4 transition ${key.isActive === false ? "opacity-60" : ""}`}
+                  className={`group flex items-start justify-between gap-4 rounded-lg border border-border bg-surface/50 p-3 transition ${key.isActive === false ? "opacity-60" : ""}`}
                 >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-text-main">{key.name}</p>
-                        {getPausedLabel(key) && (
-                          <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[11px] font-medium text-orange-500">
-                            Paused
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <code className="rounded-lg bg-black/5 px-2.5 py-1 font-mono text-xs text-text-muted dark:bg-white/5">
-                          {getDisplayKey(key)}
-                        </code>
-                        <button
-                          onClick={() => toggleKeyVisibility(key.id)}
-                          className="rounded-lg p-1.5 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
-                          title={getVisibilityButtonTitle(key.id)}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            {visibleKeys.has(key.id) ? "visibility_off" : "visibility"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => copy(key.key, key.id)}
-                          className="rounded-lg p-1.5 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
-                          title={getCopyButtonTitle(key.id)}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            {copied === key.id ? "check" : "content_copy"}
-                          </span>
-                        </button>
-                      </div>
-
-                      <p className="mt-2 text-xs text-text-muted">
-                        Created {formatCreatedDate(key.createdAt)}
-                      </p>
-
-                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                        {keyLimits.map((item) => (
-                          <div key={item.label} className="rounded-lg border border-border bg-surface/70 px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-wide text-text-muted">{item.label}</p>
-                            <p className="mt-1 text-sm font-medium text-text-main">{item.value}</p>
-                          </div>
-                        ))}
-                        <div className="rounded-lg border border-border bg-surface/70 px-3 py-2 sm:col-span-1">
-                          <p className="text-[11px] uppercase tracking-wide text-text-muted">Models</p>
-                          <p className="mt-1 text-sm font-medium text-text-main truncate" title={Array.isArray(key.allowedModels) ? key.allowedModels.join(", ") : "All models"}>
-                            {getModelsChipLabel(key)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {visibleModels.map((model) => (
-                          <span key={model} className="inline-flex max-w-full items-center rounded-full border border-border bg-surface/80 px-3 py-1 text-xs text-text-main">
-                            <span className="truncate max-w-[240px]">{model}</span>
-                          </span>
-                        ))}
-                        {hiddenModelsCount > 0 && (
-                          <span className="inline-flex items-center rounded-full border border-border bg-surface/80 px-3 py-1 text-xs text-text-muted">
-                            +{hiddenModelsCount} more
-                          </span>
-                        )}
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-sm font-medium text-text-main">{key.name}</p>
+                      {key.isActive === false && (
+                        <span className="rounded-md bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-500">
+                          Paused
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 lg:pt-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <code className="rounded bg-black/5 px-2 py-0.5 font-mono text-xs text-text-muted dark:bg-white/5">
+                        {visibleKeys.has(key.id) ? key.key : maskKey(key.key)}
+                      </code>
                       <button
-                        onClick={() => openEditKeyModal(key)}
-                        className="rounded-lg p-2 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
-                        title={getEditButtonTitle()}
+                        onClick={() => toggleKeyVisibility(key.id)}
+                        className="rounded p-1 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                        title={visibleKeys.has(key.id) ? "Hide" : "Show"}
                       >
-                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                        <span className="material-symbols-outlined text-[14px]">
+                          {visibleKeys.has(key.id) ? "visibility_off" : "visibility"}
+                        </span>
                       </button>
-                      <Toggle
-                        size="sm"
-                        checked={key.isActive ?? true}
-                        onChange={(checked) => {
-                          if (key.isActive && !checked) {
-                            if (confirm(`Pause API key "${key.name}"?\n\nThis key will stop working immediately but can be resumed later.`)) {
-                              handleToggleKey(key.id, checked);
-                            }
-                          } else {
+                      <button
+                        onClick={() => copy(key.key, key.id)}
+                        className="rounded p-1 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {copied === key.id ? "check" : "content_copy"}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+                      <span>
+                        Chi Phí: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                          ? `$${Number(key.costLimit).toFixed(2)}`
+                          : "Unlimited"}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        RPM: {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
+                          ? Math.floor(Number(key.rpmLimit))
+                          : "Unlimited"}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Models: {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
+                          ? `${key.allowedModels.length} model${key.allowedModels.length > 1 ? "s" : ""}`
+                          : "All"}
+                      </span>
+                    </div>
+
+                    {visibleModels.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {visibleModels.map((model) => (
+                          <span key={model} className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                            {model}
+                          </span>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <span className="inline-flex items-center rounded-md bg-black/5 px-2 py-0.5 text-xs text-text-muted dark:bg-white/5">
+                            +{hiddenCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditKeyModal(key)}
+                      className="rounded p-1.5 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                      title="Edit"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <Toggle
+                      size="sm"
+                      checked={key.isActive ?? true}
+                      onChange={(checked) => {
+                        if (key.isActive && !checked) {
+                          if (confirm(`Pause "${key.name}"?`)) {
                             handleToggleKey(key.id, checked);
                           }
-                        }}
-                        title={getToggleTitle(key)}
-                      />
-                      <button
-                        onClick={() => handleDeleteKey(key.id)}
-                        className="rounded-lg p-2 text-red-500 transition hover:bg-red-500/10"
-                        title={getDeleteButtonTitle()}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </div>
+                        } else {
+                          handleToggleKey(key.id, checked);
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => handleDeleteKey(key.id)}
+                      className="rounded p-1.5 text-red-500 transition hover:bg-red-500/10"
+                      title="Delete"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -1410,26 +1411,31 @@ export default function APIPageClient() {
         onClose={closeEditKeyModal}
       >
         <div className="flex flex-col gap-4">
-          <div className="rounded-lg border border-border p-3">
-            <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-text-main">Allowed Models</p>
-                <p className="text-xs text-text-muted">Dùng cùng kiểu chọn model như Claude Code. Để trống để cho phép tất cả.</p>
+                <p className="text-xs text-text-muted">Để trống để cho phép tất cả.</p>
               </div>
-              <Button size="sm" variant="secondary" icon="add" onClick={() => setShowAllowedModelsModal(true)}>
+              <button
+                type="button"
+                onClick={() => setShowAllowedModelsModal(true)}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/10"
+              >
+                <span className="material-symbols-outlined text-[14px]">add</span>
                 Add model
-              </Button>
+              </button>
             </div>
 
             {allowedModelsList.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 rounded-lg bg-sidebar/40 p-2">
                 {allowedModelsList.map((model) => (
-                  <span key={model} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-sidebar/60 px-3 py-1 text-xs text-text-main">
-                    <span className="truncate max-w-[280px]">{model}</span>
+                  <span key={model} className="inline-flex max-w-full items-center gap-1 rounded-md bg-background px-2 py-1 text-xs text-text-main">
+                    <span className="truncate max-w-[240px]">{model}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveAllowedModel(model)}
-                      className="rounded-full text-text-muted transition hover:text-red-500"
+                      className="rounded text-text-muted transition hover:text-red-500"
                       title="Remove model"
                     >
                       <span className="material-symbols-outlined text-[14px]">close</span>
@@ -1438,17 +1444,13 @@ export default function APIPageClient() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-text-muted">
-                All models are allowed.
-              </div>
+              <p className="text-xs text-text-muted">All models are allowed.</p>
             )}
 
             <Input
-              className="mt-3"
               value={getAllowedModelsInputValue()}
               onChange={(e) => setAllowedModelsInputValue(e.target.value)}
               placeholder="gpt-4.1, claude-sonnet-4-5, gemini-2.5-pro"
-              hint="Bạn vẫn có thể dán danh sách phân tách bằng dấu phẩy nếu muốn."
             />
           </div>
 
