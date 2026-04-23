@@ -33,6 +33,12 @@ export default function APIPageClient() {
   const [newKeyCostLimit, setNewKeyCostLimit] = useState("");
   const [createKeyError, setCreateKeyError] = useState("");
   const [createdKey, setCreatedKey] = useState(null);
+  const [editingKey, setEditingKey] = useState(null);
+  const [editKeyError, setEditKeyError] = useState("");
+  const [editAllowedModels, setEditAllowedModels] = useState("");
+  const [editRpmLimit, setEditRpmLimit] = useState("");
+  const [editHasCostLimit, setEditHasCostLimit] = useState(false);
+  const [editCostLimit, setEditCostLimit] = useState("");
 
   const [requireApiKey, setRequireApiKey] = useState(false);
   const [requireLogin, setRequireLogin] = useState(true);
@@ -715,6 +721,82 @@ export default function APIPageClient() {
     }
   };
 
+  const openEditKeyModal = (key) => {
+    const hasCostLimit = Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0;
+    setEditingKey(key);
+    setEditAllowedModels(Array.isArray(key.allowedModels) ? key.allowedModels.join(", ") : "");
+    setEditRpmLimit(Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0 ? String(Math.floor(Number(key.rpmLimit))) : "");
+    setEditHasCostLimit(hasCostLimit);
+    setEditCostLimit(hasCostLimit ? String(Number(key.costLimit)) : "");
+    setEditKeyError("");
+  };
+
+  const closeEditKeyModal = () => {
+    setEditingKey(null);
+    setEditAllowedModels("");
+    setEditRpmLimit("");
+    setEditHasCostLimit(false);
+    setEditCostLimit("");
+    setEditKeyError("");
+  };
+
+  const handleUpdateKeyLimits = async () => {
+    if (!editingKey) return;
+
+    setEditKeyError("");
+
+    let normalizedRpmLimit = null;
+    if (editRpmLimit.trim()) {
+      const rpm = Number(editRpmLimit);
+      if (!Number.isFinite(rpm) || rpm <= 0) {
+        setEditKeyError("RPM limit must be a positive number");
+        return;
+      }
+      normalizedRpmLimit = Math.floor(rpm);
+    }
+
+    let normalizedCostLimit = null;
+    if (editHasCostLimit) {
+      const limit = Number(editCostLimit);
+      if (!Number.isFinite(limit) || limit <= 0) {
+        setEditKeyError("Cost limit must be a positive number");
+        return;
+      }
+      normalizedCostLimit = Number(limit.toFixed(2));
+    }
+
+    const normalizedAllowedModels = editAllowedModels
+      .split(",")
+      .map((model) => model.trim())
+      .filter(Boolean);
+
+    try {
+      const res = await fetch(`/api/keys/${editingKey.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hasCostLimit: editHasCostLimit,
+          costLimit: editHasCostLimit ? normalizedCostLimit : null,
+          rpmLimit: normalizedRpmLimit,
+          allowedModels: normalizedAllowedModels.length > 0 ? normalizedAllowedModels : null,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setKeys(prev => prev.map(k => (k.id === editingKey.id ? data.key : k)));
+        closeEditKeyModal();
+      } else {
+        setEditKeyError(data.error || "Failed to update key limits");
+      }
+    } catch (error) {
+      console.log("Error updating key limits:", error);
+      setEditKeyError("Failed to update key limits");
+    }
+  };
+
+
+
   const handleToggleKey = async (id, isActive) => {
     try {
       const res = await fetch(`/api/keys/${id}`, {
@@ -1044,16 +1126,35 @@ export default function APIPageClient() {
                   <p className="text-xs text-text-muted mt-1">
                     Created {new Date(key.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="text-xs text-text-muted mt-1">
-                    {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
-                      ? `Limit: $${Number(key.costLimit).toFixed(2)}`
-                      : "No limit"}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-text-muted">
+                    <span>
+                      {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                        ? `Cost: $${Number(key.costLimit).toFixed(2)}`
+                        : "Cost: unlimited"}
+                    </span>
+                    <span>
+                      {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
+                        ? `RPM: ${Math.floor(Number(key.rpmLimit))}`
+                        : "RPM: unlimited"}
+                    </span>
+                    <span className="truncate max-w-[360px]">
+                      {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
+                        ? `Models: ${key.allowedModels.join(", ")}`
+                        : "Models: all"}
+                    </span>
+                  </div>
                   {key.isActive === false && (
                     <p className="text-xs text-orange-500 mt-1">Paused</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditKeyModal(key)}
+                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                    title="Edit limits"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
                   <Toggle
                     size="sm"
                     checked={key.isActive ?? true}
@@ -1151,6 +1252,78 @@ export default function APIPageClient() {
               variant="ghost"
               fullWidth
             >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+
+      {/* Edit Key Limits Modal */}
+      <Modal
+        isOpen={!!editingKey}
+        title="Edit Key Limits"
+        onClose={closeEditKeyModal}
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Allowed Models"
+            value={editAllowedModels}
+            onChange={(e) => setEditAllowedModels(e.target.value)}
+            placeholder="gpt-4.1, claude-sonnet-4-5, gemini-2.5-pro"
+            hint="Comma-separated. Leave empty to allow all models."
+          />
+
+          <Input
+            label="RPM Limit"
+            type="number"
+            min="1"
+            step="1"
+            value={editRpmLimit}
+            onChange={(e) => setEditRpmLimit(e.target.value)}
+            placeholder="Leave empty for unlimited"
+            hint="Requests per minute"
+          />
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <p className="text-sm font-medium text-text-main">Limit cost</p>
+              <p className="text-xs text-text-muted">Enable to cap total spend for this key</p>
+            </div>
+            <Toggle
+              checked={editHasCostLimit}
+              onChange={(checked) => {
+                setEditHasCostLimit(checked);
+                if (!checked) {
+                  setEditCostLimit("");
+                  setEditKeyError("");
+                }
+              }}
+            />
+          </div>
+
+          {editHasCostLimit && (
+            <Input
+              label="Cost Limit (USD)"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={editCostLimit}
+              onChange={(e) => setEditCostLimit(e.target.value)}
+              placeholder="10.00"
+              error={editKeyError || undefined}
+            />
+          )}
+
+          {editKeyError && !editHasCostLimit && (
+            <p className="text-xs text-red-500">{editKeyError}</p>
+          )}
+
+          <div className="flex gap-2">
+            <Button onClick={handleUpdateKeyLimits} fullWidth>
+              Save
+            </Button>
+            <Button onClick={closeEditKeyModal} variant="ghost" fullWidth>
               Cancel
             </Button>
           </div>
