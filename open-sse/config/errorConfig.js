@@ -10,7 +10,8 @@ export const ERROR_TYPES = {
   500: { type: "server_error", code: "internal_server_error" },
   502: { type: "server_error", code: "bad_gateway" },
   503: { type: "server_error", code: "service_unavailable" },
-  504: { type: "server_error", code: "gateway_timeout" }
+  504: { type: "server_error", code: "gateway_timeout" },
+  529: { type: "server_error", code: "overloaded" }
 };
 
 // Default error messages per status code (client-facing)
@@ -25,7 +26,8 @@ export const DEFAULT_ERROR_MESSAGES = {
   500: "Internal server error",
   502: "Bad gateway - upstream provider error",
   503: "Service temporarily unavailable",
-  504: "Gateway timeout"
+  504: "Gateway timeout",
+  529: "Server temporarily overloaded"
 };
 
 // Exponential backoff config for rate limits
@@ -55,14 +57,17 @@ const COOLDOWN = {
  */
 export const ERROR_RULES = [
   // --- Text-based rules (checked first, order = priority) ---
-  { text: "no credentials",           cooldownMs: COOLDOWN.long },
-  { text: "request not allowed",      cooldownMs: COOLDOWN.short },
+  { text: "no credentials",            cooldownMs: COOLDOWN.long },
+  { text: "request not allowed",       cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
-  { text: "rate limit",               backoff: true },
-  { text: "too many requests",        backoff: true },
-  { text: "quota exceeded",           backoff: true },
-  { text: "capacity",                 backoff: true },
-  { text: "overloaded",               backoff: true },
+  { text: "rate limit",                backoff: true },
+  { text: "too many requests",         backoff: true },
+  { text: "quota exceeded",            backoff: true },
+  { text: "capacity",                  backoff: true },
+  { text: "overloaded",                backoff: true },
+  { text: "currently overloaded",      backoff: true },
+  { text: "servers are currently overloaded", backoff: true },
+  { text: "service overloaded",        backoff: true },
 
   // --- Status-based rules (fallback when text doesn't match) ---
   { status: 401, cooldownMs: COOLDOWN.long },
@@ -70,6 +75,7 @@ export const ERROR_RULES = [
   { status: 403, cooldownMs: COOLDOWN.long },
   { status: 404, cooldownMs: COOLDOWN.long },
   { status: 429, backoff: true },
+  { status: 529, backoff: true },
 ];
 
 // Backward compat: COOLDOWN_MS object (used by index.js re-export)
@@ -80,3 +86,4 @@ export const COOLDOWN_MS = {
   transient: TRANSIENT_COOLDOWN_MS,
   requestNotAllowed: COOLDOWN.short,
 };
+
