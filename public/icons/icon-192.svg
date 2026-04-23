@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="24" fill="#0a0a0a"/>
-  <text x="96" y="120" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#ffffff" text-anchor="middle">9R</text>
+  <rect width="192" height="192" rx="24" fill="url(#gradient)"/>
+  <path d="M48 72L96 48L144 72V120L96 144L48 120V72Z" stroke="white" stroke-width="8" fill="none" stroke-linejoin="round"/>
+  <circle cx="96" cy="96" r="16" fill="white"/>
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#187878"/>
+      <stop offset="1" stop-color="#145f5f"/>
+    </linearGradient>
+  </defs>
 </svg>
