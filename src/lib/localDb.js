@@ -120,7 +120,7 @@ function ensureDbShape(data) {
       }
     }
 
-    // Migrate existing API keys to have isActive and costLimit
+    // Migrate existing API keys to have isActive and limits
     if (key === "apiKeys" && Array.isArray(next.apiKeys)) {
       for (const apiKey of next.apiKeys) {
         if (apiKey.isActive === undefined || apiKey.isActive === null) {
@@ -139,6 +139,41 @@ function ensureDbShape(data) {
           } else if (normalizedLimit !== apiKey.costLimit) {
             apiKey.costLimit = Number(normalizedLimit.toFixed(2));
             changed = true;
+          }
+        }
+
+        if (apiKey.allowedModels === undefined) {
+          apiKey.allowedModels = null;
+          changed = true;
+        } else if (apiKey.allowedModels !== null) {
+          if (!Array.isArray(apiKey.allowedModels)) {
+            apiKey.allowedModels = null;
+            changed = true;
+          } else {
+            const sanitizedModels = apiKey.allowedModels
+              .map((m) => (typeof m === "string" ? m.trim() : ""))
+              .filter(Boolean);
+            if (sanitizedModels.length !== apiKey.allowedModels.length) {
+              apiKey.allowedModels = sanitizedModels.length > 0 ? sanitizedModels : null;
+              changed = true;
+            }
+          }
+        }
+
+        if (apiKey.rpmLimit === undefined) {
+          apiKey.rpmLimit = null;
+          changed = true;
+        } else if (apiKey.rpmLimit !== null) {
+          const normalizedRpm = Number(apiKey.rpmLimit);
+          if (!Number.isFinite(normalizedRpm) || normalizedRpm <= 0) {
+            apiKey.rpmLimit = null;
+            changed = true;
+          } else {
+            const normalizedInt = Math.floor(normalizedRpm);
+            if (normalizedInt !== apiKey.rpmLimit) {
+              apiKey.rpmLimit = normalizedInt;
+              changed = true;
+            }
           }
         }
       }
@@ -799,7 +834,7 @@ function generateShortKey() {
   return result;
 }
 
-export async function createApiKey(name, machineId, costLimit = null) {
+export async function createApiKey(name, machineId, costLimit = null, allowedModels = null, rpmLimit = null) {
   if (!machineId) throw new Error("machineId is required");
 
   const db = await getDb();
@@ -815,6 +850,8 @@ export async function createApiKey(name, machineId, costLimit = null) {
     machineId: machineId,
     isActive: true,
     costLimit: costLimit, // null = unlimited, number = USD
+    allowedModels: Array.isArray(allowedModels) && allowedModels.length > 0 ? allowedModels : null,
+    rpmLimit: Number.isFinite(Number(rpmLimit)) && Number(rpmLimit) > 0 ? Math.floor(Number(rpmLimit)) : null,
     createdAt: now,
   };
 
@@ -892,10 +929,25 @@ async function getApiKeySpentCost(apiKey) {
   return map.get(apiKey) || 0;
 }
 
-export async function validateApiKey(key) {
+export async function validateApiKey(key, requestContext = {}) {
   const db = await getDb();
   const found = db.data.apiKeys.find(k => k.key === key);
   if (!found || found.isActive === false) return false;
+
+  // Check model whitelist
+  if (requestContext.model && Array.isArray(found.allowedModels) && found.allowedModels.length > 0) {
+    if (!found.allowedModels.includes(requestContext.model)) {
+      return false;
+    }
+  }
+
+  // Check RPM limit
+  if (found.rpmLimit && Number.isFinite(found.rpmLimit) && found.rpmLimit > 0) {
+    const recentCount = await getApiKeyRequestCountLastMinute(key);
+    if (recentCount >= found.rpmLimit) {
+      return false;
+    }
+  }
 
   // costLimit: null/undefined => unlimited
   const limit = Number(found.costLimit);
@@ -904,6 +956,21 @@ export async function validateApiKey(key) {
 
   const spent = await getApiKeySpentCost(key);
   return spent < limit;
+}
+
+async function getApiKeyRequestCountLastMinute(apiKey) {
+  try {
+    const { getUsageDb } = await import("@/lib/usageDb");
+    const db = await getUsageDb();
+    const history = db.data.history || [];
+    const oneMinuteAgo = Date.now() - 60000;
+    return history.filter(entry =>
+      entry.apiKey === apiKey &&
+      new Date(entry.timestamp).getTime() >= oneMinuteAgo
+    ).length;
+  } catch {
+    return 0;
+  }
 }
 
 export async function cleanupProviderConnections() {

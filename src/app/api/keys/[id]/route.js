@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
 
+function sanitizeAllowedModels(value) {
+  if (value === null) return null;
+  if (!Array.isArray(value)) return null;
+  const models = value
+    .map((model) => (typeof model === "string" ? model.trim() : ""))
+    .filter(Boolean);
+  return models.length > 0 ? models : null;
+}
+
+function sanitizeRpmLimit(value) {
+  if (value === null || value === "") return null;
+  const rpm = Number(value);
+  if (!Number.isFinite(rpm) || rpm <= 0) return NaN;
+  return Math.floor(rpm);
+}
+
 // GET /api/keys/[id] - Get single key
 export async function GET(request, { params }) {
   try {
@@ -21,7 +37,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { isActive, hasCostLimit, costLimit } = body;
+    const { isActive, hasCostLimit, costLimit, allowedModels, rpmLimit } = body;
 
     const existing = await getApiKeyById(id);
     if (!existing) {
@@ -45,6 +61,21 @@ export async function PUT(request, { params }) {
       } else {
         updateData.costLimit = null;
       }
+    }
+
+    if (allowedModels !== undefined) {
+      if (allowedModels !== null && !Array.isArray(allowedModels)) {
+        return NextResponse.json({ error: "allowedModels must be an array" }, { status: 400 });
+      }
+      updateData.allowedModels = sanitizeAllowedModels(allowedModels);
+    }
+
+    if (rpmLimit !== undefined) {
+      const normalizedRpmLimit = sanitizeRpmLimit(rpmLimit);
+      if (Number.isNaN(normalizedRpmLimit)) {
+        return NextResponse.json({ error: "RPM limit must be a positive number" }, { status: 400 });
+      }
+      updateData.rpmLimit = normalizedRpmLimit;
     }
 
     const updated = await updateApiKey(id, updateData);
