@@ -8,6 +8,7 @@ const nextConfig = {
     unoptimized: true
   },
   env: {},
+  turbopack: {},
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

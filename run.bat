@@ -268,19 +268,10 @@ if "%SYNC_CLI_ONLY%"=="1" (
     exit /b 0
 )
 
-echo [STEP 7/8] Building project...
-echo [STEP 7/8] Building project... >> %LOG_FILE%
-echo [INFO] Running: npm run build
-echo [INFO] Running: npm run build >> %LOG_FILE%
-call npm run build >> %LOG_FILE% 2>&1
-if errorlevel 1 (
-    echo [ERROR] Build failed! Check %LOG_FILE% for details.
-    echo [ERROR] Build failed! >> %LOG_FILE%
-    pause
-    exit /b 1
-)
-echo [OK] Build completed successfully.
-echo [OK] Build completed successfully. >> %LOG_FILE%
+echo [STEP 7/8] Skipping production build for development mode...
+echo [STEP 7/8] Skipping production build for development mode... >> %LOG_FILE%
+echo [INFO] Build step removed to speed up startup and route switching in dev.
+echo [INFO] Build step removed to speed up startup and route switching in dev. >> %LOG_FILE%
 echo.
 
 echo [STEP 8/8] Starting development server with hot reload...
