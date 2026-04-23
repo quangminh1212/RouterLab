@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, Button, Input, Modal, CardSkeleton, Toggle } from "@/shared/components";
+import { Card, Button, Input, Modal, CardSkeleton, Toggle, ModelSelectModal } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { logger } from "@/lib/logger";
 
@@ -39,6 +39,9 @@ export default function APIPageClient() {
   const [editRpmLimit, setEditRpmLimit] = useState("");
   const [editHasCostLimit, setEditHasCostLimit] = useState(false);
   const [editCostLimit, setEditCostLimit] = useState("");
+  const [modelAliases, setModelAliases] = useState({});
+  const [activeProviders, setActiveProviders] = useState([]);
+  const [showAllowedModelsModal, setShowAllowedModelsModal] = useState(false);
 
   const [requireApiKey, setRequireApiKey] = useState(false);
   const [requireLogin, setRequireLogin] = useState(true);
@@ -163,6 +166,8 @@ export default function APIPageClient() {
       applySettingsState(data.settings);
       const applyStateDurationMs = Math.round(performance.now() - applyStart);
 
+      void fetchModelPickerData();
+
       logDashboardPerf("info", "fetchBootstrap:done", {
         traceId,
         durationMs: Math.round(performance.now() - start),
@@ -284,6 +289,121 @@ export default function APIPageClient() {
       console.log("Error updating rtkEnabled:", error);
     }
   };
+
+  const fetchModelPickerData = useCallback(async () => {
+    try {
+      const [providersRes, aliasesRes] = await Promise.all([
+        fetch("/api/providers"),
+        fetch("/api/models/alias"),
+      ]);
+
+      if (providersRes.ok) {
+        const providersData = await providersRes.json();
+        setActiveProviders(providersData.connections || []);
+      }
+
+      if (aliasesRes.ok) {
+        const aliasesData = await aliasesRes.json();
+        setModelAliases(aliasesData.aliases || {});
+      }
+    } catch (error) {
+      console.log("Error fetching model picker data:", error);
+    }
+  }, []);
+
+  const getAllowedModelsList = useCallback((value) => (
+    value
+      .split(",")
+      .map((model) => model.trim())
+      .filter(Boolean)
+  ), []);
+
+  const getAllowedModelsSummary = useCallback((value) => {
+    const models = Array.isArray(value) ? value : getAllowedModelsList(value || "");
+    if (models.length === 0) return "All models";
+    if (models.length <= 2) return models.join(", ");
+    return `${models.slice(0, 2).join(", ")} +${models.length - 2}`;
+  }, [getAllowedModelsList]);
+
+  const handleAddAllowedModel = useCallback((model) => {
+    const value = typeof model === "string" ? model : model?.value;
+    if (!value) return;
+
+    setEditAllowedModels((prev) => {
+      const next = getAllowedModelsList(prev);
+      if (next.includes(value)) return prev;
+      return [...next, value].join(", ");
+    });
+  }, [getAllowedModelsList]);
+
+  const handleRemoveAllowedModel = useCallback((modelToRemove) => {
+    setEditAllowedModels((prev) => getAllowedModelsList(prev)
+      .filter((model) => model !== modelToRemove)
+      .join(", "));
+  }, [getAllowedModelsList]);
+
+  const allowedModelsList = getAllowedModelsList(editAllowedModels);
+
+  const formatAllowedModels = useCallback((models) => {
+    if (!Array.isArray(models) || models.length === 0) return ["All models"];
+    return models;
+  }, []);
+
+  const formatLimitValue = useCallback((label, value) => ({ label, value }), []);
+
+  const getVisibleModels = useCallback((models) => {
+    if (!Array.isArray(models) || models.length === 0) return [];
+    return models.slice(0, 2);
+  }, []);
+
+  const getHiddenModelsCount = useCallback((models) => {
+    if (!Array.isArray(models) || models.length <= 2) return 0;
+    return models.length - 2;
+  }, []);
+
+  const formatCreatedDate = useCallback((value) => new Date(value).toLocaleDateString(), []);
+
+  const maskKey = (fullKey) => {
+    if (!fullKey) return "";
+    return fullKey.length > 8 ? fullKey.slice(0, 8) + "..." : fullKey;
+  };
+
+  const getDisplayKey = useCallback((key) => (visibleKeys.has(key.id) ? key.key : maskKey(key.key)), [visibleKeys]);
+
+  const getKeyLimits = useCallback((key) => ([
+    formatLimitValue(
+      "Cost",
+      Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+        ? `$${Number(key.costLimit).toFixed(2)}`
+        : "Unlimited"
+    ),
+    formatLimitValue(
+      "RPM",
+      Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
+        ? `${Math.floor(Number(key.rpmLimit))}`
+        : "Unlimited"
+    ),
+  ]), [formatLimitValue]);
+
+  const getModelsChipLabel = useCallback((key) => getAllowedModelsSummary(key.allowedModels || []), [getAllowedModelsSummary]);
+
+  const getModelsListForCard = useCallback((key) => formatAllowedModels(key.allowedModels), [formatAllowedModels]);
+
+  const getPausedLabel = useCallback((key) => key.isActive === false, []);
+
+  const getEditButtonTitle = useCallback(() => "Edit limits", []);
+
+  const getToggleTitle = useCallback((key) => (key.isActive ? "Pause key" : "Resume key"), []);
+
+  const getDeleteButtonTitle = useCallback(() => "Delete key", []);
+
+  const getCopyButtonTitle = useCallback((keyId) => (copied === keyId ? "Copied" : "Copy key"), [copied]);
+
+  const getVisibilityButtonTitle = useCallback((keyId) => (visibleKeys.has(keyId) ? "Hide key" : "Show key"), [visibleKeys]);
+
+  const getAllowedModelsInputValue = useCallback(() => allowedModelsList.join(", "), [allowedModelsList]);
+
+  const setAllowedModelsInputValue = useCallback((value) => setEditAllowedModels(value), []);
 
   const fetchData = async () => {
     setKeysLoading(true);
@@ -812,11 +932,6 @@ export default function APIPageClient() {
     }
   };
 
-  const maskKey = (fullKey) => {
-    if (!fullKey) return "";
-    return fullKey.length > 8 ? fullKey.slice(0, 8) + "..." : fullKey;
-  };
-
   const toggleKeyVisibility = (keyId) => {
     setVisibleKeys(prev => {
       const next = new Set(prev);
@@ -1093,91 +1208,120 @@ export default function APIPageClient() {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {keys.map((key) => (
-              <div
-                key={key.id}
-                className={`group flex items-center justify-between py-3 border-b border-black/[0.03] dark:border-white/[0.03] last:border-b-0 ${key.isActive === false ? "opacity-60" : ""}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{key.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="text-xs text-text-muted font-mono">
-                      {visibleKeys.has(key.id) ? key.key : maskKey(key.key)}
-                    </code>
-                    <button
-                      onClick={() => toggleKeyVisibility(key.id)}
-                      className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
-                      title={visibleKeys.has(key.id) ? "Hide key" : "Show key"}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {visibleKeys.has(key.id) ? "visibility_off" : "visibility"}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => copy(key.key, key.id)}
-                      className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {copied === key.id ? "check" : "content_copy"}
-                      </span>
-                    </button>
+          <div className="grid gap-3">
+            {keys.map((key) => {
+              const keyLimits = getKeyLimits(key);
+              const cardModels = getModelsListForCard(key);
+              const visibleModels = getVisibleModels(cardModels);
+              const hiddenModelsCount = getHiddenModelsCount(cardModels);
+
+              return (
+                <div
+                  key={key.id}
+                  className={`group rounded-xl border border-border bg-sidebar/30 p-4 transition ${key.isActive === false ? "opacity-60" : ""}`}
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-text-main">{key.name}</p>
+                        {getPausedLabel(key) && (
+                          <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[11px] font-medium text-orange-500">
+                            Paused
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <code className="rounded-lg bg-black/5 px-2.5 py-1 font-mono text-xs text-text-muted dark:bg-white/5">
+                          {getDisplayKey(key)}
+                        </code>
+                        <button
+                          onClick={() => toggleKeyVisibility(key.id)}
+                          className="rounded-lg p-1.5 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                          title={getVisibilityButtonTitle(key.id)}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {visibleKeys.has(key.id) ? "visibility_off" : "visibility"}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => copy(key.key, key.id)}
+                          className="rounded-lg p-1.5 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                          title={getCopyButtonTitle(key.id)}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {copied === key.id ? "check" : "content_copy"}
+                          </span>
+                        </button>
+                      </div>
+
+                      <p className="mt-2 text-xs text-text-muted">
+                        Created {formatCreatedDate(key.createdAt)}
+                      </p>
+
+                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                        {keyLimits.map((item) => (
+                          <div key={item.label} className="rounded-lg border border-border bg-surface/70 px-3 py-2">
+                            <p className="text-[11px] uppercase tracking-wide text-text-muted">{item.label}</p>
+                            <p className="mt-1 text-sm font-medium text-text-main">{item.value}</p>
+                          </div>
+                        ))}
+                        <div className="rounded-lg border border-border bg-surface/70 px-3 py-2 sm:col-span-1">
+                          <p className="text-[11px] uppercase tracking-wide text-text-muted">Models</p>
+                          <p className="mt-1 text-sm font-medium text-text-main truncate" title={Array.isArray(key.allowedModels) ? key.allowedModels.join(", ") : "All models"}>
+                            {getModelsChipLabel(key)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {visibleModels.map((model) => (
+                          <span key={model} className="inline-flex max-w-full items-center rounded-full border border-border bg-surface/80 px-3 py-1 text-xs text-text-main">
+                            <span className="truncate max-w-[240px]">{model}</span>
+                          </span>
+                        ))}
+                        {hiddenModelsCount > 0 && (
+                          <span className="inline-flex items-center rounded-full border border-border bg-surface/80 px-3 py-1 text-xs text-text-muted">
+                            +{hiddenModelsCount} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 lg:pt-1">
+                      <button
+                        onClick={() => openEditKeyModal(key)}
+                        className="rounded-lg p-2 text-text-muted transition hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
+                        title={getEditButtonTitle()}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <Toggle
+                        size="sm"
+                        checked={key.isActive ?? true}
+                        onChange={(checked) => {
+                          if (key.isActive && !checked) {
+                            if (confirm(`Pause API key "${key.name}"?\n\nThis key will stop working immediately but can be resumed later.`)) {
+                              handleToggleKey(key.id, checked);
+                            }
+                          } else {
+                            handleToggleKey(key.id, checked);
+                          }
+                        }}
+                        title={getToggleTitle(key)}
+                      />
+                      <button
+                        onClick={() => handleDeleteKey(key.id)}
+                        className="rounded-lg p-2 text-red-500 transition hover:bg-red-500/10"
+                        title={getDeleteButtonTitle()}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-text-muted mt-1">
-                    Created {new Date(key.createdAt).toLocaleDateString()}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-text-muted">
-                    <span>
-                      {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
-                        ? `Cost: $${Number(key.costLimit).toFixed(2)}`
-                        : "Cost: unlimited"}
-                    </span>
-                    <span>
-                      {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
-                        ? `RPM: ${Math.floor(Number(key.rpmLimit))}`
-                        : "RPM: unlimited"}
-                    </span>
-                    <span className="truncate max-w-[360px]">
-                      {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
-                        ? `Models: ${key.allowedModels.join(", ")}`
-                        : "Models: all"}
-                    </span>
-                  </div>
-                  {key.isActive === false && (
-                    <p className="text-xs text-orange-500 mt-1">Paused</p>
-                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openEditKeyModal(key)}
-                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
-                    title="Edit limits"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                  </button>
-                  <Toggle
-                    size="sm"
-                    checked={key.isActive ?? true}
-                    onChange={(checked) => {
-                      if (key.isActive && !checked) {
-                        if (confirm(`Pause API key "${key.name}"?\n\nThis key will stop working immediately but can be resumed later.`)) {
-                          handleToggleKey(key.id, checked);
-                        }
-                      } else {
-                        handleToggleKey(key.id, checked);
-                      }
-                    }}
-                    title={key.isActive ? "Pause key" : "Resume key"}
-                  />
-                  <button
-                    onClick={() => handleDeleteKey(key.id)}
-                    className="p-2 hover:bg-red-500/10 rounded text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
@@ -1266,13 +1410,47 @@ export default function APIPageClient() {
         onClose={closeEditKeyModal}
       >
         <div className="flex flex-col gap-4">
-          <Input
-            label="Allowed Models"
-            value={editAllowedModels}
-            onChange={(e) => setEditAllowedModels(e.target.value)}
-            placeholder="gpt-4.1, claude-sonnet-4-5, gemini-2.5-pro"
-            hint="Comma-separated. Leave empty to allow all models."
-          />
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-text-main">Allowed Models</p>
+                <p className="text-xs text-text-muted">Dùng cùng kiểu chọn model như Claude Code. Để trống để cho phép tất cả.</p>
+              </div>
+              <Button size="sm" variant="secondary" icon="add" onClick={() => setShowAllowedModelsModal(true)}>
+                Add model
+              </Button>
+            </div>
+
+            {allowedModelsList.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {allowedModelsList.map((model) => (
+                  <span key={model} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-sidebar/60 px-3 py-1 text-xs text-text-main">
+                    <span className="truncate max-w-[280px]">{model}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAllowedModel(model)}
+                      className="rounded-full text-text-muted transition hover:text-red-500"
+                      title="Remove model"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-text-muted">
+                All models are allowed.
+              </div>
+            )}
+
+            <Input
+              className="mt-3"
+              value={getAllowedModelsInputValue()}
+              onChange={(e) => setAllowedModelsInputValue(e.target.value)}
+              placeholder="gpt-4.1, claude-sonnet-4-5, gemini-2.5-pro"
+              hint="Bạn vẫn có thể dán danh sách phân tách bằng dấu phẩy nếu muốn."
+            />
+          </div>
 
           <Input
             label="RPM Limit"
@@ -1329,6 +1507,16 @@ export default function APIPageClient() {
           </div>
         </div>
       </Modal>
+
+      <ModelSelectModal
+        isOpen={showAllowedModelsModal}
+        onClose={() => setShowAllowedModelsModal(false)}
+        onSelect={handleAddAllowedModel}
+        selectedModel={null}
+        activeProviders={activeProviders}
+        title="Add Allowed Model"
+        modelAliases={modelAliases}
+      />
 
       {/* Created Key Modal */}
       <Modal
