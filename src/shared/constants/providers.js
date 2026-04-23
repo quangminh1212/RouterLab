@@ -1,5 +1,83 @@
 // Provider definitions
 
+const PROVIDER_ICON_IDS = new Set([
+  "alicode-intl",
+  "alicode",
+  "anthropic-m",
+  "anthropic",
+  "antigravity",
+  "assemblyai",
+  "blackbox",
+  "cartesia",
+  "cerebras",
+  "chutes",
+  "claude",
+  "cline",
+  "codex",
+  "cohere",
+  "comfyui",
+  "continue",
+  "copilot",
+  "cursor",
+  "deepgram",
+  "deepseek",
+  "droid",
+  "edge-tts",
+  "elevenlabs",
+  "fireworks",
+  "gemini-cli",
+  "gemini",
+  "github",
+  "glm-cn",
+  "glm",
+  "google-tts",
+  "groq",
+  "huggingface",
+  "hyperbolic",
+  "iflow",
+  "kilocode",
+  "kimi-coding",
+  "kimi",
+  "kiro",
+  "local-device",
+  "minimax-cn",
+  "minimax",
+  "mistral",
+  "nanobanana",
+  "nebius",
+  "nvidia",
+  "oai-cc",
+  "oai-r",
+  "ollama-local",
+  "ollama",
+  "openai",
+  "openclaw",
+  "opencode-go",
+  "opencode",
+  "openrouter",
+  "perplexity",
+  "playht",
+  "qwen",
+  "roo",
+  "sdwebui",
+  "siliconflow",
+  "together",
+  "vertex-partner",
+  "vertex",
+  "xai",
+]);
+
+export function getProviderIconPath(providerId, fallback = "/providers/openai.png") {
+  if (!providerId) return fallback;
+  return PROVIDER_ICON_IDS.has(providerId) ? `/providers/${providerId}.png` : fallback;
+}
+
+export function hasProviderIcon(providerId) {
+  return PROVIDER_ICON_IDS.has(providerId);
+}
+
+// Provider definitions
+
 // Free Providers (kiro first, iflow last)
 export const FREE_PROVIDERS = {
   kiro: { id: "kiro", alias: "kr", name: "Kiro AI", icon: "psychology_alt", color: "#FF6B35" },

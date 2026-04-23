@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, ModelSelectModal } from "@/shared/components";
 import Image from "next/image";
+import { getProviderIconPath } from "@/shared/constants/providers";
 
 export default function DefaultToolCard({ toolId, tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders = [], cloudEnabled = false, tunnelEnabled = false }) {
   const [copiedField, setCopiedField] = useState(null);
@@ -247,7 +248,7 @@ export default function DefaultToolCard({ toolId, tool, isExpanded, onToggle, ba
     }
     return (
       <Image
-        src={`/providers/${toolId}.png`}
+        src={getProviderIconPath(toolId)}
         alt={tool.name}
         width={32}
         height={32}

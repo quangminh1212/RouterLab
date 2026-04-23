@@ -5,6 +5,7 @@ import Card from "@/shared/components/Card";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import Badge from "@/shared/components/Badge";
 import QuotaProgressBar from "./QuotaProgressBar";
+import { getProviderIconPath } from "@/shared/constants/providers";
 import { calculatePercentage } from "./utils";
 
 const planVariants = {
@@ -63,7 +64,7 @@ export default function ProviderLimitCard({
             style={{ backgroundColor: `${providerColor}15` }}
           >
             <ProviderIcon
-              src={`/providers/${provider}.png`}
+              src={getProviderIconPath(provider)}
               alt={provider || "Provider"}
               size={40}
               className="object-contain rounded-lg"
