@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.15",
+    "version": "1.0.16",
     "description": "xlabrouter web dashboard",
     "private": false,
     "license": "ISC",
@@ -32,7 +32,7 @@
         "marked": "^18.0.1",
         "monaco-editor": "^0.55.1",
         "next": "^16.2.4",
-    "node-forge": "^1.4.0",
+        "node-forge": "^1.4.0",
         "node-machine-id": "^1.1.12",
         "systray2": "^2.1.4",
         "open": "^11.0.0",
