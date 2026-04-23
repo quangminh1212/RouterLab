@@ -431,6 +431,13 @@ export const PROVIDER_MODELS = {
   searxng: [
     { id: "searxng-search", name: "SearXNG Search", type: "webSearch" },
   ],
+  deepgram: [
+    { id: "nova-3", name: "Nova-3", type: "stt" },
+    { id: "nova-2", name: "Nova-2", type: "stt" },
+  ],
+  assemblyai: [
+    { id: "universal", name: "Universal", type: "stt" },
+  ],
   siliconflow: [
     { id: "deepseek-ai/DeepSeek-V3.2", name: "DeepSeek V3.2" },
     { id: "deepseek-ai/DeepSeek-V3.1", name: "DeepSeek V3.1" },
