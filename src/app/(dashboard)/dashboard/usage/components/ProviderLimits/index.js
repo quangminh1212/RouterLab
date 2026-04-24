@@ -17,6 +17,11 @@ const getConnectionLabel = (connection) => {
   return connection.email || connection.displayName || connection.username || connection.name || "";
 };
 
+const formatUsedTotal = (value) => {
+  if (!Number.isFinite(value)) return "0";
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+};
+
 export default function ProviderLimits() {
   const [connections, setConnections] = useState([]);
   const [quotaData, setQuotaData] = useState({});
@@ -494,6 +499,11 @@ export default function ProviderLimits() {
           // Use table layout for all providers
           const isInactive = conn.isActive === false;
           const rowBusy = deletingId === conn.id || togglingId === conn.id;
+          const totalUsed = (quota?.quotas || []).reduce(
+            (sum, item) => sum + (Number(item?.used) || 0),
+            0,
+          );
+          const hasQuotaRows = Boolean(quota?.quotas?.length);
 
           return (
             <Card
@@ -522,6 +532,11 @@ export default function ProviderLimits() {
                       {connectionLabel && (
                         <p className="text-xs text-text-muted truncate">
                           {connectionLabel}
+                        </p>
+                      )}
+                      {hasQuotaRows && (
+                        <p className="text-[11px] text-text-muted truncate">
+                          Đã dùng: {formatUsedTotal(totalUsed)}
                         </p>
                       )}
                     </div>
