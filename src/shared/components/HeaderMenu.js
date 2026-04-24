@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
@@ -7,44 +7,43 @@ import { useTheme } from "@/shared/hooks/useTheme";
 import { ConfirmModal } from "./Modal";
 import { UPDATER_CONFIG } from "@/shared/constants/config";
 import { downloadCliSetupScript } from "@/lib/cliToolBat";
-import ChangelogModal from "./ChangelogModal";
-import NineRemotePromoModal from "./NineRemotePromoModal";
 import LanguageSwitcher from "./LanguageSwitcher";
+import RamConfigModal from "./RamConfigModal";
 
 const LOCALE_INFO = {
-  "en": { name: "English", flag: "🇺🇸" },
-  "vi": { name: "Tiếng Việt", flag: "🇻🇳" },
-  "zh-CN": { name: "简体中文", flag: "🇨🇳" },
-  "zh-TW": { name: "繁體中文", flag: "🇹🇼" },
-  "ja": { name: "日本語", flag: "🇯🇵" },
-  "pt-BR": { name: "Português (BR)", flag: "🇧🇷" },
-  "pt-PT": { name: "Português (PT)", flag: "🇵🇹" },
-  "ko": { name: "한국어", flag: "🇰🇷" },
-  "es": { name: "Español", flag: "🇪🇸" },
-  "de": { name: "Deutsch", flag: "🇩🇪" },
-  "fr": { name: "Français", flag: "🇫🇷" },
-  "he": { name: "עברית", flag: "🇮🇱" },
-  "ar": { name: "العربية", flag: "🇸🇦" },
-  "ru": { name: "Русский", flag: "🇷🇺" },
-  "pl": { name: "Polski", flag: "🇵🇱" },
-  "cs": { name: "Čeština", flag: "🇨🇿" },
-  "nl": { name: "Nederlands", flag: "🇳🇱" },
-  "tr": { name: "Türkçe", flag: "🇹🇷" },
-  "uk": { name: "Українська", flag: "🇺🇦" },
-  "tl": { name: "Tagalog", flag: "🇵🇭" },
-  "id": { name: "Indonesia", flag: "🇮🇩" },
-  "th": { name: "ไทย", flag: "🇹🇭" },
-  "hi": { name: "हिन्दी", flag: "🇮🇳" },
-  "bn": { name: "বাংলা", flag: "🇧🇩" },
-  "ur": { name: "اردو", flag: "🇵🇰" },
-  "ro": { name: "Română", flag: "🇷🇴" },
-  "sv": { name: "Svenska", flag: "🇸🇪" },
-  "it": { name: "Italiano", flag: "🇮🇹" },
-  "el": { name: "Ελληνικά", flag: "🇬🇷" },
-  "hu": { name: "Magyar", flag: "🇭🇺" },
-  "fi": { name: "Suomi", flag: "🇫🇮" },
-  "da": { name: "Dansk", flag: "🇩🇰" },
-  "no": { name: "Norsk", flag: "🇳🇴" },
+  "en": { name: "English", flag: "ðŸ‡ºðŸ‡¸" },
+  "vi": { name: "Tiáº¿ng Viá»‡t", flag: "ðŸ‡»ðŸ‡³" },
+  "zh-CN": { name: "ç®€ä½“ä¸­æ–‡", flag: "ðŸ‡¨ðŸ‡³" },
+  "zh-TW": { name: "ç¹é«”ä¸­æ–‡", flag: "ðŸ‡¹ðŸ‡¼" },
+  "ja": { name: "æ—¥æœ¬èªž", flag: "ðŸ‡¯ðŸ‡µ" },
+  "pt-BR": { name: "PortuguÃªs (BR)", flag: "ðŸ‡§ðŸ‡·" },
+  "pt-PT": { name: "PortuguÃªs (PT)", flag: "ðŸ‡µðŸ‡¹" },
+  "ko": { name: "í•œêµ­ì–´", flag: "ðŸ‡°ðŸ‡·" },
+  "es": { name: "EspaÃ±ol", flag: "ðŸ‡ªðŸ‡¸" },
+  "de": { name: "Deutsch", flag: "ðŸ‡©ðŸ‡ª" },
+  "fr": { name: "FranÃ§ais", flag: "ðŸ‡«ðŸ‡·" },
+  "he": { name: "×¢×‘×¨×™×ª", flag: "ðŸ‡®ðŸ‡±" },
+  "ar": { name: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©", flag: "ðŸ‡¸ðŸ‡¦" },
+  "ru": { name: "Ð ÑƒÑÑÐºÐ¸Ð¹", flag: "ðŸ‡·ðŸ‡º" },
+  "pl": { name: "Polski", flag: "ðŸ‡µðŸ‡±" },
+  "cs": { name: "ÄŒeÅ¡tina", flag: "ðŸ‡¨ðŸ‡¿" },
+  "nl": { name: "Nederlands", flag: "ðŸ‡³ðŸ‡±" },
+  "tr": { name: "TÃ¼rkÃ§e", flag: "ðŸ‡¹ðŸ‡·" },
+  "uk": { name: "Ð£ÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ°", flag: "ðŸ‡ºðŸ‡¦" },
+  "tl": { name: "Tagalog", flag: "ðŸ‡µðŸ‡­" },
+  "id": { name: "Indonesia", flag: "ðŸ‡®ðŸ‡©" },
+  "th": { name: "à¹„à¸—à¸¢", flag: "ðŸ‡¹ðŸ‡­" },
+  "hi": { name: "à¤¹à¤¿à¤¨à¥à¤¦à¥€", flag: "ðŸ‡®ðŸ‡³" },
+  "bn": { name: "à¦¬à¦¾à¦‚à¦²à¦¾", flag: "ðŸ‡§ðŸ‡©" },
+  "ur": { name: "Ø§Ø±Ø¯Ùˆ", flag: "ðŸ‡µðŸ‡°" },
+  "ro": { name: "RomÃ¢nÄƒ", flag: "ðŸ‡·ðŸ‡´" },
+  "sv": { name: "Svenska", flag: "ðŸ‡¸ðŸ‡ª" },
+  "it": { name: "Italiano", flag: "ðŸ‡®ðŸ‡¹" },
+  "el": { name: "Î•Î»Î»Î·Î½Î¹ÎºÎ¬", flag: "ðŸ‡¬ðŸ‡·" },
+  "hu": { name: "Magyar", flag: "ðŸ‡­ðŸ‡º" },
+  "fi": { name: "Suomi", flag: "ðŸ‡«ðŸ‡®" },
+  "da": { name: "Dansk", flag: "ðŸ‡©ðŸ‡°" },
+  "no": { name: "Norsk", flag: "ðŸ‡³ðŸ‡´" },
 };
 
 function getLocaleFromCookie() {
@@ -140,10 +139,9 @@ UpdateProgress.propTypes = {
 
 export default function HeaderMenu({ onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [changelogOpen, setChangelogOpen] = useState(false);
-  const [remoteOpen, setRemoteOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [ramConfigOpen, setRamConfigOpen] = useState(false);
   const [locale, setLocale] = useState("en");
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -287,15 +285,11 @@ export default function HeaderMenu({ onLogout }) {
 
         {isOpen && (
           <div className="absolute right-0 top-full mt-2 w-60 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden py-1">
-            <MenuItem
-              icon="history"
-              label="Change Log"
-              onClick={() => { close(); setChangelogOpen(true); }}
-            />
+
             <MenuItem
               icon="language"
               label={LOCALE_INFO[locale]?.name || locale}
-              trailing={LOCALE_INFO[locale]?.flag || "🌐"}
+              trailing={LOCALE_INFO[locale]?.flag || "ðŸŒ"}
               onClick={() => { close(); setLangOpen(true); }}
             />
             <MenuItem
@@ -304,10 +298,11 @@ export default function HeaderMenu({ onLogout }) {
               onClick={() => { toggleTheme(); close(); }}
             />
             <MenuItem
-              icon="computer"
-              label="Remote"
-              onClick={() => { close(); setRemoteOpen(true); }}
+              icon="memory"
+              label="RAM"
+              onClick={() => { close(); setRamConfigOpen(true); }}
             />
+
             {updateInfo && (
               <MenuItem
                 icon="system_update"
@@ -346,9 +341,8 @@ export default function HeaderMenu({ onLogout }) {
         )}
       </div>
 
-      <ChangelogModal isOpen={changelogOpen} onClose={() => setChangelogOpen(false)} />
-      <NineRemotePromoModal isOpen={remoteOpen} onClose={() => setRemoteOpen(false)} />
       <LanguageSwitcher hideTrigger isOpen={langOpen} onClose={() => setLangOpen(false)} />
+      <RamConfigModal isOpen={ramConfigOpen} onClose={() => setRamConfigOpen(false)} />
 
       <ConfirmModal
         isOpen={showUpdateModal}
