@@ -198,6 +198,12 @@ function getDbRefreshIntervalMs() {
   return raw;
 }
 
+function getDbBlockingRefreshIntervalMs() {
+  const raw = Number(process.env.DB_BLOCKING_REFRESH_INTERVAL_MS);
+  if (!Number.isFinite(raw) || raw < 0) return 3000;
+  return raw;
+}
+
 function getSettingsCacheTtlMs() {
   const raw = Number(process.env.SETTINGS_CACHE_TTL_MS);
   if (!Number.isFinite(raw) || raw < 0) return 300000; // was 60000ms (1min) — now 5min (settings rarely change)
@@ -364,6 +370,15 @@ async function refreshDbSnapshot(db, { force = false } = {}) {
         dbLastReadAt = refreshNow;
         logger.debug("DB", "Skip refresh due to active DB lock, using in-memory snapshot");
       }
+      return;
+    }
+
+    const shouldUseNonBlockingBootstrap = !force && (refreshNow - dbLastReadAt) >= getDbBlockingRefreshIntervalMs();
+    if (shouldUseNonBlockingBootstrap) {
+      const refreshed = await tryRefreshReadNonBlocking(db);
+      if (refreshed) return;
+
+      logger.warn("DB", "Bootstrap refresh skipped due to active DB lock, serving in-memory snapshot");
       return;
     }
 
