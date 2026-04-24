@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
+import { cn } from "@/shared/utils/cn";
 import PropTypes from "prop-types";
 
 const RAM_PRESETS = [
@@ -16,6 +17,18 @@ export default function RamConfigModal({ isOpen, onClose }) {
   const [customRam, setCustomRam] = useState("");
   const [useCustom, setUseCustom] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -70,8 +83,17 @@ export default function RamConfigModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-surface border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Overlay */}
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal content */}
+      <div className={cn(
+        "relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-md"
+      )}>
         <div className="px-6 py-4 border-b border-black/10 dark:border-white/10">
           <h2 className="text-lg font-semibold text-text-main">Cấu hình RAM</h2>
         </div>
