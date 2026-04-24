@@ -133,6 +133,18 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
   const contentType = providerResponse.headers.get("content-type") || "";
   let responseBody;
 
+  // Early detection: if content-type is HTML/plain text (not SSE), fail fast with retryable error
+  if (contentType.includes("text/html") ||
+      (contentType.includes("text/plain") && !contentType.includes("text/event-stream"))) {
+    appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
+    console.error(`[ChatCore] Bad content-type from ${provider}: ${contentType}`);
+    return {
+      ...createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Upstream provider returned invalid content-type: ${contentType}`),
+      retryable: true,
+      badUpstream: true
+    };
+  }
+
   if (contentType.includes("text/event-stream")) {
     const sseText = await providerResponse.text();
     const parsed = parseSSEToOpenAIResponse(sseText, model);
@@ -147,7 +159,11 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     } catch (err) {
       appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
       console.error(`[ChatCore] Failed to parse JSON from ${provider}:`, err.message);
-      return createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`);
+      return {
+        ...createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`),
+        retryable: true,
+        badUpstream: true
+      };
     }
   }
 

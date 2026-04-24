@@ -141,100 +141,150 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     log?.debug?.("PROXY", `${provider.toUpperCase()} | ${model} | conn=${connectionName} | no_proxy=${proxyOptions.connectionNoProxy}`);
   }
 
-  // Execute request
-  let providerResponse, providerUrl, providerHeaders, finalBody;
-  try {
-    const result = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
-    providerResponse = result.response;
-    providerUrl = result.url;
-    providerHeaders = result.headers;
-    finalBody = result.transformedBody;
-    reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
-  } catch (error) {
-    trackPendingRequest(model, provider, connectionId, false, true);
-    appendRequestLog({ model, provider, connectionId, status: `FAILED ${error.name === "AbortError" ? 499 : HTTP_STATUS.BAD_GATEWAY}` }).catch(() => {});
-    saveRequestDetail(buildRequestDetail({
-      provider, model, connectionId,
-      latency: { ttft: 0, total: Date.now() - requestStartTime },
-      tokens: { prompt_tokens: 0, completion_tokens: 0 },
-      request: extractRequestConfig(body, stream),
-      providerRequest: translatedBody || null,
-      response: { error: error.message || String(error), status: error.name === "AbortError" ? 499 : 502, thinking: null },
-      status: "error"
-    })).catch(() => {});
-
-    if (error.name === "AbortError") {
-      streamController.handleError(error);
-      return createErrorResult(499, "Request aborted");
-    }
-    const errMsg = formatProviderError(error, provider, model, HTTP_STATUS.BAD_GATEWAY);
-    console.log(`${COLORS.red}[ERROR] ${errMsg}${COLORS.reset}`);
-    return createErrorResult(HTTP_STATUS.BAD_GATEWAY, errMsg);
-  }
-
-  // Handle 401/403 - try token refresh (skip for noAuth providers)
-  if (!executor.noAuth && (providerResponse.status === HTTP_STATUS.UNAUTHORIZED || providerResponse.status === HTTP_STATUS.FORBIDDEN)) {
-    try {
-      const newCredentials = await refreshWithRetry(() => executor.refreshCredentials(credentials, log), 3, log);
-      if (newCredentials?.accessToken || newCredentials?.copilotToken) {
-        log?.info?.("TOKEN", `${provider.toUpperCase()} | refreshed`);
-        Object.assign(credentials, newCredentials);
-        if (onCredentialsRefreshed) {
-          try { await onCredentialsRefreshed(newCredentials); } catch (e) { log?.warn?.("TOKEN", `onCredentialsRefreshed failed: ${e.message}`); }
-        }
-        try {
-          const retryResult = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
-          if (retryResult.response.ok) { providerResponse = retryResult.response; providerUrl = retryResult.url; }
-        } catch { log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`); }
-      } else {
-        log?.warn?.("TOKEN", `${provider.toUpperCase()} | refresh failed`);
-      }
-    } catch (e) {
-      log?.warn?.("TOKEN", `${provider.toUpperCase()} | refresh threw: ${e.message}`);
-    }
-  }
-
-  // Provider returned error
-  if (!providerResponse.ok) {
-    trackPendingRequest(model, provider, connectionId, false, true);
-    const { statusCode, message, resetsAtMs } = await parseUpstreamError(providerResponse, executor);
-    appendRequestLog({ model, provider, connectionId, status: `FAILED ${statusCode}` }).catch(() => {});
-    saveRequestDetail(buildRequestDetail({
-      provider, model, connectionId,
-      latency: { ttft: 0, total: Date.now() - requestStartTime },
-      tokens: { prompt_tokens: 0, completion_tokens: 0 },
-      request: extractRequestConfig(body, stream),
-      providerRequest: finalBody || translatedBody || null,
-      response: { error: message, status: statusCode, thinking: null },
-      status: "error"
-    })).catch(() => {});
-
-    const errMsg = formatProviderError(new Error(message), provider, model, statusCode);
-    console.log(`${COLORS.red}[ERROR] ${errMsg}${COLORS.reset}`);
-    reqLogger.logError(new Error(message), finalBody || translatedBody);
-    return createErrorResult(statusCode, errMsg, resetsAtMs);
-  }
-
-  const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => {});
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);
 
-  // Provider forced streaming but client wants JSON
-  if (!clientRequestedStreaming && providerRequiresStreaming) {
-    const result = await handleForcedSSEToJson({ ...sharedCtx, providerResponse, sourceFormat, trackDone, appendLog });
-    if (result) { streamController.handleComplete(); return result; }
-  }
+  // Execute request (with short retry for transient/bad-upstream responses)
+  let providerResponse, providerUrl, providerHeaders, finalBody;
+  let upstreamRetryCount = 0;
+  const MAX_UPSTREAM_RETRIES = 1;
+  const RETRY_DELAY_MS = 150;
+  const waitRetry = () => new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
 
-  // True non-streaming response
-  if (!stream) {
-    const result = await handleNonStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat, reqLogger, toolNameMap, trackDone, appendLog });
-    streamController.handleComplete();
-    return result;
-  }
+  while (true) {
+    try {
+      const result = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
+      providerResponse = result.response;
+      providerUrl = result.url;
+      providerHeaders = result.headers;
+      finalBody = result.transformedBody;
+      reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        trackPendingRequest(model, provider, connectionId, false, true);
+        appendRequestLog({ model, provider, connectionId, status: "FAILED 499" }).catch(() => {});
+        saveRequestDetail(buildRequestDetail({
+          provider, model, connectionId,
+          latency: { ttft: 0, total: Date.now() - requestStartTime },
+          tokens: { prompt_tokens: 0, completion_tokens: 0 },
+          request: extractRequestConfig(body, stream),
+          providerRequest: translatedBody || null,
+          response: { error: error.message || String(error), status: 499, thinking: null },
+          status: "error"
+        })).catch(() => {});
+        streamController.handleError(error);
+        return createErrorResult(499, "Request aborted");
+      }
 
-  // Streaming response
-  const { onStreamComplete } = buildOnStreamComplete({ ...sharedCtx });
-  return handleStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat, userAgent, reqLogger, toolNameMap, streamController, onStreamComplete });
+      if (upstreamRetryCount < MAX_UPSTREAM_RETRIES) {
+        upstreamRetryCount++;
+        log?.warn?.("RETRY", `${provider.toUpperCase()} | ${model} | execute error, retry ${upstreamRetryCount}/${MAX_UPSTREAM_RETRIES}`);
+        await waitRetry();
+        continue;
+      }
+
+      trackPendingRequest(model, provider, connectionId, false, true);
+      appendRequestLog({ model, provider, connectionId, status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` }).catch(() => {});
+      saveRequestDetail(buildRequestDetail({
+        provider, model, connectionId,
+        latency: { ttft: 0, total: Date.now() - requestStartTime },
+        tokens: { prompt_tokens: 0, completion_tokens: 0 },
+        request: extractRequestConfig(body, stream),
+        providerRequest: translatedBody || null,
+        response: { error: error.message || String(error), status: 502, thinking: null },
+        status: "error"
+      })).catch(() => {});
+
+      const errMsg = formatProviderError(error, provider, model, HTTP_STATUS.BAD_GATEWAY);
+      console.log(`${COLORS.red}[ERROR] ${errMsg}${COLORS.reset}`);
+      return createErrorResult(HTTP_STATUS.BAD_GATEWAY, errMsg);
+    }
+
+    // Handle 401/403 - try token refresh (skip for noAuth providers)
+    if (!executor.noAuth && (providerResponse.status === HTTP_STATUS.UNAUTHORIZED || providerResponse.status === HTTP_STATUS.FORBIDDEN)) {
+      try {
+        const newCredentials = await refreshWithRetry(() => executor.refreshCredentials(credentials, log), 3, log);
+        if (newCredentials?.accessToken || newCredentials?.copilotToken) {
+          log?.info?.("TOKEN", `${provider.toUpperCase()} | refreshed`);
+          Object.assign(credentials, newCredentials);
+          if (onCredentialsRefreshed) {
+            try { await onCredentialsRefreshed(newCredentials); } catch (e) { log?.warn?.("TOKEN", `onCredentialsRefreshed failed: ${e.message}`); }
+          }
+          try {
+            const retryResult = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
+            if (retryResult.response.ok) {
+              providerResponse = retryResult.response;
+              providerUrl = retryResult.url;
+              providerHeaders = retryResult.headers;
+              finalBody = retryResult.transformedBody;
+              reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
+            }
+          } catch { log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`); }
+        } else {
+          log?.warn?.("TOKEN", `${provider.toUpperCase()} | refresh failed`);
+        }
+      } catch (e) {
+        log?.warn?.("TOKEN", `${provider.toUpperCase()} | refresh threw: ${e.message}`);
+      }
+    }
+
+    // Provider returned error
+    if (!providerResponse.ok) {
+      const { statusCode, message, resetsAtMs, isRetryable } = await parseUpstreamError(providerResponse, executor);
+
+      if (isRetryable && upstreamRetryCount < MAX_UPSTREAM_RETRIES) {
+        upstreamRetryCount++;
+        log?.warn?.("RETRY", `${provider.toUpperCase()} | ${model} | upstream ${statusCode}, retry ${upstreamRetryCount}/${MAX_UPSTREAM_RETRIES}`);
+        await waitRetry();
+        continue;
+      }
+
+      trackPendingRequest(model, provider, connectionId, false, true);
+      appendRequestLog({ model, provider, connectionId, status: `FAILED ${statusCode}` }).catch(() => {});
+      saveRequestDetail(buildRequestDetail({
+        provider, model, connectionId,
+        latency: { ttft: 0, total: Date.now() - requestStartTime },
+        tokens: { prompt_tokens: 0, completion_tokens: 0 },
+        request: extractRequestConfig(body, stream),
+        providerRequest: finalBody || translatedBody || null,
+        response: { error: message, status: statusCode, thinking: null },
+        status: "error"
+      })).catch(() => {});
+
+      const errMsg = formatProviderError(new Error(message), provider, model, statusCode);
+      console.log(`${COLORS.red}[ERROR] ${errMsg}${COLORS.reset}`);
+      reqLogger.logError(new Error(message), finalBody || translatedBody);
+      return createErrorResult(statusCode, errMsg, resetsAtMs);
+    }
+
+    const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess };
+
+    // Provider forced streaming but client wants JSON
+    if (!clientRequestedStreaming && providerRequiresStreaming) {
+      const result = await handleForcedSSEToJson({ ...sharedCtx, providerResponse, sourceFormat, trackDone, appendLog });
+      if (result) { streamController.handleComplete(); return result; }
+    }
+
+    // True non-streaming response
+    if (!stream) {
+      const result = await handleNonStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat, reqLogger, toolNameMap, trackDone, appendLog });
+
+      if (!result.success && result.retryable && upstreamRetryCount < MAX_UPSTREAM_RETRIES) {
+        upstreamRetryCount++;
+        log?.warn?.("RETRY", `${provider.toUpperCase()} | ${model} | invalid non-streaming payload, retry ${upstreamRetryCount}/${MAX_UPSTREAM_RETRIES}`);
+        trackPendingRequest(model, provider, connectionId, true);
+        await waitRetry();
+        continue;
+      }
+
+      streamController.handleComplete();
+      return result;
+    }
+
+    // Streaming response
+    const { onStreamComplete } = buildOnStreamComplete({ ...sharedCtx });
+    return handleStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat, userAgent, reqLogger, toolNameMap, streamController, onStreamComplete });
+  }
 }
 
 export function isTokenExpiringSoon(expiresAt, bufferMs = 5 * 60 * 1000) {
