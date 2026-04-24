@@ -18,8 +18,8 @@ const getConnectionLabel = (connection) => {
 };
 
 const formatUsedTotal = (value) => {
-  if (!Number.isFinite(value)) return "0";
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (!Number.isFinite(value)) return "0 credits";
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits`;
 };
 
 export default function ProviderLimits() {
