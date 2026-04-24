@@ -143,6 +143,7 @@ export default function HeaderMenu({ onLogout }) {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [remoteOpen, setRemoteOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const [locale, setLocale] = useState("en");
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -194,6 +195,7 @@ export default function HeaderMenu({ onLogout }) {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsOpen(false);
+        setDownloadOpen(false);
       }
     };
     if (isOpen) {
@@ -202,7 +204,10 @@ export default function HeaderMenu({ onLogout }) {
     }
   }, [isOpen]);
 
-  const close = () => setIsOpen(false);
+  const close = () => {
+    setIsOpen(false);
+    setDownloadOpen(false);
+  };
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -267,7 +272,13 @@ export default function HeaderMenu({ onLogout }) {
     <>
       <div className="relative" ref={menuRef}>
         <button
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={() => {
+            setIsOpen((v) => {
+              const next = !v;
+              if (!next) setDownloadOpen(false);
+              return next;
+            });
+          }}
           className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
           title="Menu"
         >
@@ -306,14 +317,25 @@ export default function HeaderMenu({ onLogout }) {
             )}
             <MenuItem
               icon="download"
-              label="Download Setup (.bat)"
-              onClick={() => { close(); handleDownloadSetup("windows"); }}
+              label="Download Setup"
+              onClick={() => setDownloadOpen((v) => !v)}
             />
-            <MenuItem
-              icon="terminal"
-              label="Download Setup (.sh)"
-              onClick={() => { close(); handleDownloadSetup("unix"); }}
-            />
+            {downloadOpen && (
+              <div className="px-2 pb-2">
+                <button
+                  onClick={() => { close(); handleDownloadSetup("windows"); }}
+                  className="flex w-full rounded-lg px-3 py-2 text-sm text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex-1 text-left">Windows (.bat)</span>
+                </button>
+                <button
+                  onClick={() => { close(); handleDownloadSetup("unix"); }}
+                  className="flex w-full rounded-lg px-3 py-2 text-sm text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex-1 text-left">macOS / Linux (.sh)</span>
+                </button>
+              </div>
+            )}
             <MenuItem
               icon="logout"
               label="Logout"
