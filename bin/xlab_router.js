@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
@@ -10,6 +10,19 @@ const https = require("https");
 const LOG_FILE_NAME = "log.txt";
 const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
 const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "0.0.0.0";
+function readRamConfig() {
+  try {
+    const configPath = path.join(__dirname, "..", ".ram-config.json");
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, "utf8");
+      const config = JSON.parse(data);
+      return config.ram || 2048;
+    }
+  } catch (error) {
+    // Ignore errors, use default
+  }
+  return 2048;
+}
 
 function copyDirectoryIfExists(sourceDir, targetDir) {
   if (!fs.existsSync(sourceDir)) {
@@ -454,11 +467,13 @@ async function launchWebUIProcess(options = {}) {
     console.log("");
   }
 
+  const ramMB = readRamConfig();
   const sharedEnv = {
     ...process.env,
     PORT: String(port),
     HOSTNAME: hostname,
     NODE_PATH: sourceNodeModules,
+    NODE_OPTIONS: `--max-old-space-size=${ramMB}`,
   };
 
   if (runProd) {
