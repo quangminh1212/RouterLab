@@ -215,6 +215,50 @@ const LOCK_OPTIONS = {
   stale: 10000,
 };
 
+const RPM_WINDOW_SECONDS = 60;
+
+if (!global._apiKeyRpmState) {
+  global._apiKeyRpmState = new Map();
+}
+
+const apiKeyRpmState = global._apiKeyRpmState;
+
+function getOrCreateApiKeyRpmBuckets(apiKey) {
+  let state = apiKeyRpmState.get(apiKey);
+  if (!state) {
+    state = {
+      counts: new Array(RPM_WINDOW_SECONDS).fill(0),
+      slots: new Array(RPM_WINDOW_SECONDS).fill(0),
+      total: 0,
+      lastSeenSec: 0,
+    };
+    apiKeyRpmState.set(apiKey, state);
+  }
+  return state;
+}
+
+function cleanupApiKeyRpmBucket(state, nowSec) {
+  for (let i = 0; i < RPM_WINDOW_SECONDS; i++) {
+    const slotSec = state.slots[i];
+    if (!slotSec || nowSec - slotSec < RPM_WINDOW_SECONDS) continue;
+    if (state.counts[i] > 0) {
+      state.total -= state.counts[i];
+      state.counts[i] = 0;
+    }
+    state.slots[i] = 0;
+  }
+  if (state.total < 0) state.total = 0;
+}
+
+function maybeCleanupApiKeyRpmMap(nowSec) {
+  if (apiKeyRpmState.size <= 500) return;
+  for (const [apiKey, state] of apiKeyRpmState.entries()) {
+    if (state.total > 0) continue;
+    if (nowSec - (state.lastSeenSec || 0) < 3600) continue;
+    apiKeyRpmState.delete(apiKey);
+  }
+}
+
 class LocalMutex {
   constructor() {
     this._queue = [];
@@ -941,9 +985,9 @@ export async function validateApiKey(key, requestContext = {}) {
     }
   }
 
-  // Check RPM limit
+  // Check RPM limit (before recording)
   if (found.rpmLimit && Number.isFinite(found.rpmLimit) && found.rpmLimit > 0) {
-    const recentCount = await getApiKeyRequestCountLastMinute(key);
+    const recentCount = getApiKeyRequestCountLastMinute(key);
     if (recentCount >= found.rpmLimit) {
       return false;
     }
@@ -952,25 +996,98 @@ export async function validateApiKey(key, requestContext = {}) {
   // costLimit: null/undefined => unlimited
   const limit = Number(found.costLimit);
   const hasLimit = Number.isFinite(limit) && limit > 0;
-  if (!hasLimit) return true;
+  if (hasLimit) {
+    const spent = await getApiKeySpentCost(key);
+    if (spent >= limit) return false;
+  }
 
-  const spent = await getApiKeySpentCost(key);
-  return spent < limit;
+  // Passed all checks — record request immediately
+  recordApiKeyRequest(key);
+  return true;
 }
 
-async function getApiKeyRequestCountLastMinute(apiKey) {
-  try {
-    const { getUsageDb } = await import("@/lib/usageDb");
-    const db = await getUsageDb();
-    const history = db.data.history || [];
-    const oneMinuteAgo = Date.now() - 60000;
-    return history.filter(entry =>
-      entry.apiKey === apiKey &&
-      new Date(entry.timestamp).getTime() >= oneMinuteAgo
-    ).length;
-  } catch {
-    return 0;
+function getApiKeyRequestCountLastMinute(apiKey) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const state = getOrCreateApiKeyRpmBuckets(apiKey);
+  cleanupApiKeyRpmBucket(state, nowSec);
+  state.lastSeenSec = nowSec;
+  maybeCleanupApiKeyRpmMap(nowSec);
+  return state.total;
+}
+
+export function recordApiKeyRequest(apiKey, timestamp = Date.now()) {
+  if (!apiKey) return;
+  const nowSec = Math.floor(timestamp / 1000);
+  const state = getOrCreateApiKeyRpmBuckets(apiKey);
+  cleanupApiKeyRpmBucket(state, nowSec);
+
+  const index = nowSec % RPM_WINDOW_SECONDS;
+  if (state.slots[index] !== nowSec) {
+    if (state.counts[index] > 0) {
+      state.total -= state.counts[index];
+    }
+    state.slots[index] = nowSec;
+    state.counts[index] = 0;
   }
+
+  state.counts[index] += 1;
+  state.total += 1;
+  state.lastSeenSec = nowSec;
+  maybeCleanupApiKeyRpmMap(nowSec);
+}
+
+export function rollbackApiKeyRequest(apiKey, timestamp = Date.now()) {
+  if (!apiKey) return;
+  const nowSec = Math.floor(timestamp / 1000);
+  const state = apiKeyRpmState.get(apiKey);
+  if (!state) return;
+
+  cleanupApiKeyRpmBucket(state, nowSec);
+  const index = nowSec % RPM_WINDOW_SECONDS;
+  if (state.slots[index] !== nowSec || state.counts[index] <= 0) return;
+
+  state.counts[index] -= 1;
+  state.total -= 1;
+  if (state.total < 0) state.total = 0;
+  state.lastSeenSec = nowSec;
+}
+
+export function clearApiKeyRequestWindow(apiKey) {
+  if (!apiKey) return;
+  apiKeyRpmState.delete(apiKey);
+}
+
+export function hydrateApiKeyRequestWindow(apiKey, timestamps = []) {
+  if (!apiKey || !Array.isArray(timestamps) || timestamps.length === 0) return;
+  clearApiKeyRequestWindow(apiKey);
+  for (const timestamp of timestamps) {
+    const numericTs = Number(timestamp);
+    if (!Number.isFinite(numericTs)) continue;
+    recordApiKeyRequest(apiKey, numericTs);
+  }
+}
+
+export function getApiKeyRpmSnapshot(apiKey) {
+  if (!apiKey) return 0;
+  return getApiKeyRequestCountLastMinute(apiKey);
+}
+
+export function preloadApiKeyRequestWindow(apiKey, count = 0) {
+  if (!apiKey || !Number.isFinite(count) || count <= 0) return;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const state = getOrCreateApiKeyRpmBuckets(apiKey);
+  cleanupApiKeyRpmBucket(state, nowSec);
+  const index = nowSec % RPM_WINDOW_SECONDS;
+  if (state.slots[index] !== nowSec) {
+    if (state.counts[index] > 0) {
+      state.total -= state.counts[index];
+    }
+    state.slots[index] = nowSec;
+    state.counts[index] = 0;
+  }
+  state.counts[index] += count;
+  state.total += count;
+  state.lastSeenSec = nowSec;
 }
 
 export async function cleanupProviderConnections() {
