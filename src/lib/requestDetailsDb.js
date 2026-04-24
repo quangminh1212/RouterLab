@@ -12,6 +12,7 @@ const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 const DEFAULT_MAX_JSON_SIZE = 5 * 1024; // 5KB default, configurable via settings
 const CONFIG_CACHE_TTL_MS = 5000;
 const MAX_TOTAL_DB_SIZE = 50 * 1024 * 1024; // 50MB hard limit for total DB file
+const MAX_BUFFER_SIZE = 200;
 const DB_FILE = isCloud ? null : path.join(DATA_DIR, "request-details.json");
 
 if (!isCloud && !fs.existsSync(DATA_DIR)) {
@@ -106,6 +107,18 @@ function generateDetailId(model) {
   return `${timestamp}-${random}-${modelPart}`;
 }
 
+function trimBufferedDetail(detail) {
+  return {
+    ...detail,
+    latency: detail?.latency || {},
+    tokens: detail?.tokens || {},
+    request: detail?.request || {},
+    providerRequest: detail?.providerRequest || {},
+    providerResponse: detail?.providerResponse || {},
+    response: detail?.response || {},
+  };
+}
+
 async function flushToDatabase() {
   if (isCloud || isFlushing || writeBuffer.length === 0) return;
 
@@ -183,7 +196,13 @@ export async function saveRequestDetail(detail) {
   const config = await getObservabilityConfig();
   if (!config.enabled) return;
 
-  writeBuffer.push(detail);
+  // Hard limit: force flush if buffer is full
+  if (writeBuffer.length >= MAX_BUFFER_SIZE) {
+    console.warn(`[requestDetailsDb] Buffer full (${writeBuffer.length}), forcing flush`);
+    await flushToDatabase();
+  }
+
+  writeBuffer.push(trimBufferedDetail(detail));
 
   if (writeBuffer.length >= config.batchSize) {
     await flushToDatabase();

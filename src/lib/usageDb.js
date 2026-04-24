@@ -116,6 +116,24 @@ if (!global._pendingTimers) global._pendingTimers = {};
 const pendingTimers = global._pendingTimers;
 
 const PENDING_TIMEOUT_MS = 60 * 1000; // 1 minute
+const MAX_HISTORY = 10000;
+const PENDING_TIMERS_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+// Periodic cleanup for orphaned timers
+if (!global._pendingTimersCleanupInterval) {
+  global._pendingTimersCleanupInterval = setInterval(() => {
+    const keys = Object.keys(pendingTimers);
+    if (keys.length > 100) {
+      console.log(`[usageDb] Cleaning up ${keys.length} pending timers`);
+      for (const key of keys) {
+        clearTimeout(pendingTimers[key]);
+        delete pendingTimers[key];
+      }
+    }
+  }, PENDING_TIMERS_CLEANUP_INTERVAL_MS);
+  // Prevent interval from blocking process exit
+  global._pendingTimersCleanupInterval.unref();
+}
 
 /**
  * Track a pending request
@@ -293,6 +311,9 @@ export async function saveRequestUsage(entry) {
     if (!Array.isArray(db.data.history)) {
       db.data.history = [];
     }
+    if (db.data.history.length >= MAX_HISTORY) {
+      db.data.history.splice(0, db.data.history.length - MAX_HISTORY + 1);
+    }
     if (typeof db.data.totalRequestsLifetime !== "number") {
       db.data.totalRequestsLifetime = db.data.history.length;
     }
@@ -314,7 +335,6 @@ export async function saveRequestUsage(entry) {
     if (!db.data.dailySummary) db.data.dailySummary = {};
     aggregateEntryToDailySummary(db.data.dailySummary, entry);
 
-    const MAX_HISTORY = 10000;
     if (db.data.history.length > MAX_HISTORY) {
       db.data.history.splice(0, db.data.history.length - MAX_HISTORY);
     }
