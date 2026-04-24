@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { ConfirmModal } from "./Modal";
+import { UPDATER_CONFIG } from "@/shared/constants/config";
+import { downloadCliSetupScript } from "@/lib/cliToolBat";
 import ChangelogModal from "./ChangelogModal";
 import NineRemotePromoModal from "./NineRemotePromoModal";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -53,6 +56,11 @@ function getLocaleFromCookie() {
   return normalizeLocale(value);
 }
 
+function getActiveApiKey(keys = []) {
+  const active = keys.find((k) => k?.isActive !== false && typeof k?.key === "string" && k.key.trim());
+  return active?.key || "";
+}
+
 function MenuItem({ icon, label, onClick, trailing, danger }) {
   return (
     <button
@@ -80,18 +88,107 @@ MenuItem.propTypes = {
   danger: PropTypes.bool,
 };
 
+function UpdateProgress({ status, latestVersion, installCmd }) {
+  const phase = status?.phase || "connecting";
+  const done = status?.done === true;
+  const success = status?.success === true;
+  const attempt = status?.attempt || 0;
+  const maxRetries = status?.maxRetries || 0;
+
+  let statusText = "Connecting to updater...";
+  if (!done && phase === "waitingForExit") statusText = "Waiting for app processes to exit...";
+  if (!done && phase === "installing") statusText = attempt > 1
+    ? `Installing v${latestVersion || "latest"} (attempt ${attempt}/${maxRetries})...`
+    : `Installing v${latestVersion || "latest"} from npm...`;
+  if (done && success) statusText = `Installed v${latestVersion || "latest"} successfully.`;
+  if (done && !success) statusText = status?.error || "Installation failed.";
+
+  return (
+    <div className="text-center p-8 max-w-lg">
+      <div className="flex items-center justify-center size-16 rounded-full bg-blue-500/20 text-blue-400 mx-auto mb-4">
+        <span className={`material-symbols-outlined text-[32px] ${done ? "" : "animate-spin"}`}>
+          {done && success ? "check_circle" : done && !success ? "error" : "progress_activity"}
+        </span>
+      </div>
+      <h2 className="text-xl font-semibold text-white mb-2">
+        {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating 9Router"}
+      </h2>
+      <p className="text-text-muted mb-4">{statusText}</p>
+      {done && !success && (
+        <div className="rounded-lg bg-black/40 border border-white/10 p-3 mb-4">
+          <p className="text-xs text-white/60 mb-2">Run manually:</p>
+          <code className="text-xs text-amber-400">{installCmd}</code>
+        </div>
+      )}
+      {done && (
+        <button
+          onClick={() => globalThis.location.reload()}
+          className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+        >
+          Reload Page
+        </button>
+      )}
+    </div>
+  );
+}
+
+UpdateProgress.propTypes = {
+  status: PropTypes.object,
+  latestVersion: PropTypes.string,
+  installCmd: PropTypes.string.isRequired,
+};
+
 export default function HeaderMenu({ onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [remoteOpen, setRemoteOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [locale, setLocale] = useState("en");
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [isDisconnected, setIsDisconnected] = useState(false);
   const { toggleTheme, isDark } = useTheme();
   const menuRef = useRef(null);
+
+  const INSTALL_CMD = UPDATER_CONFIG.installCmd;
+  const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
 
   useEffect(() => {
     setLocale(getLocaleFromCookie());
   }, [langOpen]);
+
+  useEffect(() => {
+    fetch("/api/version")
+      .then(res => res.json())
+      .then(data => { if (data.hasUpdate) setUpdateInfo(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isUpdating || !isDisconnected) return;
+    let stopped = false;
+
+    const tick = async () => {
+      try {
+        const res = await fetch(STATUS_URL, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!stopped) setUpdateStatus(data);
+        }
+      } catch {
+        // ignore while updater starts
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, UPDATER_CONFIG.statusPollIntervalMs);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [isUpdating, isDisconnected, STATUS_URL]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -106,6 +203,65 @@ export default function HeaderMenu({ onLogout }) {
   }, [isOpen]);
 
   const close = () => setIsOpen(false);
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    setShowUpdateModal(false);
+    try {
+      const res = await fetch("/api/version/update", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Update failed. Please run the install command manually.");
+        setIsUpdating(false);
+        return;
+      }
+      setIsDisconnected(true);
+    } catch {
+      setIsDisconnected(true);
+    }
+  };
+
+  const handleDownloadSetup = async (os) => {
+    try {
+      const [statusRes, bootstrapRes] = await Promise.all([
+        fetch("/api/tunnel/status", { cache: "no-store" }),
+        fetch("/api/dashboard/bootstrap", { cache: "no-store" }),
+      ]);
+
+      if (!statusRes.ok || !bootstrapRes.ok) {
+        alert("Failed to load tunnel/setup data.");
+        return;
+      }
+
+      const statusData = await statusRes.json();
+      const bootstrapData = await bootstrapRes.json();
+      const endpointBase = statusData?.tunnel?.publicUrl || statusData?.tunnel?.tunnelUrl || statusData?.tailscale?.tunnelUrl;
+      const apiKey = getActiveApiKey(bootstrapData?.keys || []);
+
+      if (!endpointBase) {
+        alert("No tunnel endpoint available. Please enable Tunnel or Tailscale first.");
+        return;
+      }
+
+      if (!apiKey) {
+        alert("No active API key found. Please create or activate an API key first.");
+        return;
+      }
+
+      const endpoint = `${endpointBase.replace(/\/+$/, "")}/v1`;
+      const filename = os === "windows" ? "setup-9router-cli.bat" : "setup-9router-cli.sh";
+
+      downloadCliSetupScript({
+        endpoint,
+        apiKey,
+        os,
+        installCmd: INSTALL_CMD,
+        filename,
+      });
+    } catch {
+      alert("Failed to generate setup script.");
+    }
+  };
 
   return (
     <>
@@ -141,6 +297,23 @@ export default function HeaderMenu({ onLogout }) {
               label="Remote"
               onClick={() => { close(); setRemoteOpen(true); }}
             />
+            {updateInfo && (
+              <MenuItem
+                icon="system_update"
+                label={`Update v${updateInfo.latestVersion}`}
+                onClick={() => { close(); setShowUpdateModal(true); }}
+              />
+            )}
+            <MenuItem
+              icon="download"
+              label="Download Setup (.bat)"
+              onClick={() => { close(); handleDownloadSetup("windows"); }}
+            />
+            <MenuItem
+              icon="terminal"
+              label="Download Setup (.sh)"
+              onClick={() => { close(); handleDownloadSetup("unix"); }}
+            />
             <MenuItem
               icon="logout"
               label="Logout"
@@ -154,6 +327,44 @@ export default function HeaderMenu({ onLogout }) {
       <ChangelogModal isOpen={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <NineRemotePromoModal isOpen={remoteOpen} onClose={() => setRemoteOpen(false)} />
       <LanguageSwitcher hideTrigger isOpen={langOpen} onClose={() => setLangOpen(false)} />
+
+      <ConfirmModal
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        onConfirm={handleUpdate}
+        title="Update 9Router"
+        message={`This will close 9Router and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
+        confirmText="Update"
+        cancelText="Cancel"
+        variant="primary"
+        loading={isUpdating}
+      />
+
+      {isDisconnected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+          {isUpdating ? (
+            <UpdateProgress
+              status={updateStatus}
+              latestVersion={updateInfo?.latestVersion}
+              installCmd={INSTALL_CMD}
+            />
+          ) : (
+            <div className="text-center p-8">
+              <div className="flex items-center justify-center size-16 rounded-full bg-red-500/20 text-red-500 mx-auto mb-4">
+                <span className="material-symbols-outlined text-[32px]">power_off</span>
+              </div>
+              <h2 className="text-xl font-semibold text-white mb-2">Server Disconnected</h2>
+              <p className="text-text-muted mb-6">The proxy server has been stopped.</p>
+              <button
+                onClick={() => globalThis.location.reload()}
+                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+              >
+                Reload Page
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
