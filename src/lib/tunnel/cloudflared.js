@@ -187,6 +187,7 @@ async function _ensureCloudflared() {
 
 let cloudflaredProcess = null;
 let unexpectedExitHandler = null;
+let suppressUnexpectedExitOnce = false;
 
 /** Register a callback to be called when cloudflared exits unexpectedly after connecting */
 export function setUnexpectedExitHandler(handler) {
@@ -242,6 +243,8 @@ export async function spawnCloudflared(tunnelToken) {
       cloudflaredProcess = null;
       clearPid();
       const wasConnected = resolved; // true = already connected successfully
+      const wasSuppressed = suppressUnexpectedExitOnce;
+      suppressUnexpectedExitOnce = false;
       if (!resolved) {
         resolved = true;
         clearTimeout(timeout);
@@ -251,7 +254,7 @@ export async function spawnCloudflared(tunnelToken) {
         }
       }
       // Only notify on unexpected exit AFTER successful connection
-      if (wasConnected && unexpectedExitHandler) {
+      if (wasConnected && !wasSuppressed && unexpectedExitHandler) {
         unexpectedExitHandler();
       }
     });
@@ -352,6 +355,8 @@ export async function spawnQuickTunnel(localPort, onUrlUpdate) {
     child.on("exit", (code) => {
       cloudflaredProcess = null;
       clearPid();
+      const wasSuppressed = suppressUnexpectedExitOnce;
+      suppressUnexpectedExitOnce = false;
       if (!resolved) {
         resolved = true;
         clearTimeout(timeout);
@@ -359,13 +364,17 @@ export async function spawnQuickTunnel(localPort, onUrlUpdate) {
         reject(new Error(`cloudflared exited with code ${code}`));
         return;
       }
-      if (unexpectedExitHandler) unexpectedExitHandler();
+      if (!wasSuppressed && unexpectedExitHandler) unexpectedExitHandler();
       cleanup();
     });
   });
 }
 
 export function killCloudflared() {
+  suppressUnexpectedExitOnce = true;
+  cachedCloudflaredRunning = false;
+  cachedCloudflaredRunningAt = Date.now();
+
   if (cloudflaredProcess) {
     try {
       cloudflaredProcess.kill();
