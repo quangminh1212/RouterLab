@@ -94,12 +94,6 @@ function withIdentity(base, identity) {
   };
 }
 
-function extractEmailFromAccessToken(accessToken) {
-  const payload = decodeJwtPayload(accessToken);
-  if (!payload) return undefined;
-  return payload.email || payload.preferred_username || payload.sub || undefined;
-}
-
 // Extract codex account info from id_token
 export function extractCodexAccountInfo(idToken) {
   const payload = decodeJwtPayload(idToken);
