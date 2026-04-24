@@ -157,7 +157,9 @@ export async function POST(request) {
       authData = JSON.parse(existingAuth);
     } catch { /* No existing auth */ }
     
+    // Force apikey mode (keep existing tokens untouched for ChatGPT login reuse)
     authData.OPENAI_API_KEY = apiKey;
+    authData.auth_mode = "apikey";
     await fs.writeFile(authPath, JSON.stringify(authData, null, 2));
 
     return NextResponse.json({

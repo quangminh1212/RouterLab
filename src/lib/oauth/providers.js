@@ -94,6 +94,24 @@ function withIdentity(base, identity) {
   };
 }
 
+function extractEmailFromAccessToken(accessToken) {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return undefined;
+  return payload.email || payload.preferred_username || payload.sub || undefined;
+}
+
+// Extract codex account info from id_token
+export function extractCodexAccountInfo(idToken) {
+  const payload = decodeJwtPayload(idToken);
+  if (!payload) return {};
+  const chatgpt = payload["https://api.openai.com/auth"] || {};
+  return {
+    email: payload.email,
+    chatgptAccountId: chatgpt.chatgpt_account_id,
+    chatgptPlanType: chatgpt.chatgpt_plan_type,
+  };
+}
+
 // Provider configurations
 const PROVIDERS = {
   claude: {
@@ -1336,4 +1354,42 @@ export async function pollForToken(providerName, deviceCode, codeVerifier, extra
   }
 
   return { success: false, error: result.data.error, errorDescription: result.data.error_description };
+}
+
+// Run-once guard across the process lifetime
+let codexBackfillDone = false;
+
+// Backfill email + chatgpt account info for existing codex OAuth connections missing them
+export async function backfillCodexEmails() {
+  if (codexBackfillDone) return;
+  codexBackfillDone = true;
+  try {
+    const { getProviderConnections, updateProviderConnection } = await import("@/lib/localDb");
+    const connections = await getProviderConnections();
+    const targets = connections.filter((c) => {
+      if (c.provider !== "codex" || c.authType !== "oauth" || !c.idToken) return false;
+      const hasEmail = !!c.email;
+      const hasAccountInfo = !!c.providerSpecificData?.chatgptAccountId;
+      return !hasEmail || !hasAccountInfo;
+    });
+    for (const conn of targets) {
+      const info = extractCodexAccountInfo(conn.idToken);
+      if (!info.email && !info.chatgptAccountId) continue;
+      const patch = {};
+      if (!conn.email && info.email) patch.email = info.email;
+      if (info.chatgptAccountId || info.chatgptPlanType) {
+        patch.providerSpecificData = {
+          ...(conn.providerSpecificData || {}),
+          chatgptAccountId: info.chatgptAccountId,
+          chatgptPlanType: info.chatgptPlanType,
+        };
+      }
+      if (Object.keys(patch).length) {
+        await updateProviderConnection(conn.id, patch);
+      }
+    }
+  } catch (err) {
+    codexBackfillDone = false;
+    console.log("backfillCodexEmails failed:", err?.message || err);
+  }
 }
