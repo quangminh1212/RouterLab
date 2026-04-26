@@ -88,10 +88,8 @@ export default function AIPluginsPageClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [storeStatus, setStoreStatus] = useState([]);
-  const [syncCommands, setSyncCommands] = useState([]);
   const [editModal, setEditModal] = useState({ open: false, store: null, index: -1 });
 
   useEffect(() => {
@@ -238,45 +236,14 @@ export default function AIPluginsPageClient() {
     }
   };
 
-  const syncPluginsToClaude = async () => {
-    setSyncing(true);
-    setStatus({ type: "", message: "" });
-    try {
-      const selectedPlugins = plugins.filter((plugin) => plugin.enabled);
-      const enabledStores = stores.filter((store) => store.enabled);
-      if (enabledStores.length === 0) {
-        setStatus({ type: "error", message: "No enabled plugin stores" });
-        return;
-      }
-
-      const res = await fetch("/api/ai-plugins/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pluginStores: enabledStores, plugins: selectedPlugins }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to sync plugins");
-
-      setSyncCommands(Array.isArray(data.commands) ? data.commands : []);
-      setStatus({
-        type: "success",
-        message: `Synced ${data.syncedStores || 0} store(s), ${data.syncedPlugins || 0} plugin(s) -> ${data.path || ".claude/settings.json"}`,
-      });
-    } catch (error) {
-      setStatus({ type: "error", message: error?.message || "Sync failed" });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-text-main">AI Plugins</h1>
-          <p className="text-text-muted mt-1">Plugin store manager: discover marketplaces, integrate selected plugins into XLab Router, and optionally sync to Claude Code.</p>
+          <p className="text-text-muted mt-1">Plugin store manager: discover marketplaces and integrate selected plugins into XLab Router.</p>
           <p className="text-xs text-text-muted mt-2">
-            <strong>Note:</strong> XLab Router keeps selected plugins locally. CLI sync only writes Claude Code config when needed.
+            <strong>Note:</strong> Plugins are stored locally in XLab Router settings and no CLI config is written.
           </p>
         </div>
 
@@ -287,18 +254,10 @@ export default function AIPluginsPageClient() {
               <p className="text-sm text-text-muted mt-1">
                 Keep selected plugins in XLab Router settings for local AI integration. Currently integrated: {integratedPluginsCount}.
               </p>
-              <p className="text-xs text-text-muted mt-2">
-                Optional Claude Code sync writes marketplaces to <code>.claude/settings.json</code> via <code>extraKnownMarketplaces</code> and selected plugins to <code>enabledPlugins</code>.
-              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" size="sm" loading={saving} disabled={loading || saving || syncing || selectedPluginsCount === 0} onClick={integratePluginsToXLab}>
-                Add to XLab
-              </Button>
-              <Button variant="secondary" size="sm" loading={syncing} disabled={loading || saving || syncing} onClick={syncPluginsToClaude}>
-                Sync Claude Code
-              </Button>
-            </div>
+            <Button variant="primary" size="sm" loading={saving} disabled={loading || saving || selectedPluginsCount === 0} onClick={integratePluginsToXLab}>
+              Add to XLab
+            </Button>
           </div>
         </Card>
 
@@ -359,7 +318,7 @@ export default function AIPluginsPageClient() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="auth, github, database, observability..."
               />
-              <Button variant="secondary" loading={searching} disabled={loading || saving || syncing} onClick={searchPlugins}>
+              <Button variant="secondary" loading={searching} disabled={loading || saving} onClick={searchPlugins}>
                 Search Stores
               </Button>
             </div>
@@ -401,16 +360,6 @@ export default function AIPluginsPageClient() {
 
         {status.message ? <p className={cn("text-sm", status.type === "error" ? "text-red-500" : "text-green-500")}>{status.message}</p> : null}
 
-        {syncCommands.length > 0 ? (
-          <Card>
-            <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-text-main">Generated CLI commands</h3>
-              <pre className="overflow-auto rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 text-xs text-text-main">
-                {syncCommands.join("\n")}
-              </pre>
-            </div>
-          </Card>
-        ) : null}
       </div>
 
       {editModal.open && (

@@ -101,33 +101,16 @@ function getSourceUrl(server) {
   return "https://github.com/modelcontextprotocol/servers";
 }
 
-const CLI_TARGETS = [
-  {
-    id: "codex",
-    label: "Codex",
-    description: "Codex CLI and IDE share ~/.codex/config.toml (OpenAI MCP format).",
-    setup: "codex mcp add <name> -- <command> <args...>",
-  },
-  {
-    id: "claude",
-    label: "Claude Code",
-    description: "Claude Code uses project .mcp.json (or claude mcp add commands).",
-    setup: "claude mcp add <name> -- <command> <args...>",
-  },
-];
-
 export default function MCPServersPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [syncingTarget, setSyncingTarget] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [editModal, setEditModal] = useState({ open: false, server: null, index: -1 });
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState("");
-  const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [registryQuery, setRegistryQuery] = useState("");
   const [registryLoading, setRegistryLoading] = useState(false);
   const [registryResults, setRegistryResults] = useState([]);
@@ -241,38 +224,6 @@ export default function MCPServersPageClient() {
     setJsonError("");
   };
 
-  const syncToCli = async (target) => {
-    setSyncingTarget(target);
-    setStatus({ type: "", message: "" });
-    try {
-      const activeServers = servers.filter((server) => server.enabled);
-      if (activeServers.length === 0) {
-        setStatus({ type: "error", message: "No enabled MCP servers to sync" });
-        return;
-      }
-
-      const res = await fetch("/api/cli-tools/mcp-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target, mcpServers: activeServers }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to sync MCP servers");
-
-      const targets = Object.keys(data?.result || {}).join(", ") || target;
-      const paths = Object.values(data?.result || {}).map((item) => item.path).filter(Boolean).join(" | ");
-      setStatus({
-        type: "success",
-        message: `Synced ${activeServers.length} MCP server(s) to ${targets}${paths ? `: ${paths}` : ""}`,
-      });
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Sync failed" });
-    } finally {
-      setSyncingTarget("");
-    }
-  };
-
-  const activeServerCount = servers.filter((server) => server.enabled).length;
   const installedServerIds = useMemo(() => new Set(servers.map((server) => server.id)), [servers]);
 
   const searchRegistry = async () => {
@@ -353,7 +304,7 @@ export default function MCPServersPageClient() {
               </Button>
             </div>
             <p className="text-xs text-text-muted">
-              Import servers directly into XLab Router. CLI sync is optional and only needed when you want Codex/Claude Code to use the same MCP config.
+              Import servers directly into XLab Router for local AI integration.
             </p>
             {registrySources.length > 0 ? (
               <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
@@ -394,37 +345,6 @@ export default function MCPServersPageClient() {
         </Card>
 
         <div>
-          <Card className="mb-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-text-main">CLI integration</h2>
-                <p className="text-sm text-text-muted mt-1">
-                  Sync {activeServerCount} enabled MCP server(s) into the selected CLI config only.
-                </p>
-                <div className="grid gap-2 mt-3 text-xs text-text-muted md:grid-cols-2">
-                  {CLI_TARGETS.map((target) => (
-                    <div key={target.id} className="rounded-lg border border-border-subtle bg-bg-main/30 p-3">
-                      <p className="font-medium text-text-main">{target.label.replace("Sync ", "")}</p>
-                      <p className="mt-1">{target.description}</p>
-                      <code className="mt-2 block rounded bg-bg-main px-2 py-1 text-[11px] text-text-main">{target.setup}</code>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={syncingTarget !== ""}
-                  disabled={loading || saving || Boolean(syncingTarget)}
-                  onClick={() => setSyncModalOpen(true)}
-                >
-                  Sync
-                </Button>
-              </div>
-            </div>
-          </Card>
-
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-sm font-semibold text-text-main">Servers</h2>
             <div className="flex items-center gap-2">
@@ -515,46 +435,6 @@ export default function MCPServersPageClient() {
           ) : null}
         </div>
       </div>
-
-      {syncModalOpen && (
-        <Modal isOpen={syncModalOpen} onClose={() => setSyncModalOpen(false)} title="Sync MCP to CLI">
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-text-muted">Choose target CLI to sync enabled MCP servers.</p>
-            {CLI_TARGETS.map((target) => (
-              <button
-                key={target.id}
-                type="button"
-                className="w-full rounded-lg border border-black/10 dark:border-white/10 p-3 text-left hover:border-primary/60 transition-colors"
-                onClick={async () => {
-                  setSyncModalOpen(false);
-                  await syncToCli(target.id);
-                }}
-                disabled={Boolean(syncingTarget)}
-              >
-                <p className="text-sm font-medium text-text-main">{target.label}</p>
-                <p className="text-xs text-text-muted mt-1">{target.description}</p>
-              </button>
-            ))}
-            <button
-              type="button"
-              className="w-full rounded-lg border border-primary/40 bg-primary/10 p-3 text-left hover:bg-primary/20 transition-colors"
-              onClick={async () => {
-                setSyncModalOpen(false);
-                await syncToCli("all");
-              }}
-              disabled={Boolean(syncingTarget)}
-            >
-              <p className="text-sm font-medium text-text-main">All CLI</p>
-              <p className="text-xs text-text-muted mt-1">Sync to both Codex and Claude Code.</p>
-            </button>
-            <div className="flex justify-end pt-2">
-              <Button variant="secondary" size="sm" onClick={() => setSyncModalOpen(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {editModal.open && (
         <Modal isOpen={editModal.open} onClose={closeEditModal} title={editModal.index >= 0 ? "Edit Server" : "Add Server"}>
@@ -655,13 +535,13 @@ export default function MCPServersPageClient() {
               placeholder={'{ "X-API-Key": "${API_KEY}" }'}
             />
             <Input
-              label="Bearer Token Env (Codex HTTP)"
+              label="Bearer Token Env"
               value={editModal.server.bearerTokenEnvVar || ""}
               onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, bearerTokenEnvVar: e.target.value } }))}
               placeholder="OPENAI_API_KEY"
             />
             <Input
-              label="env_vars allow list (Codex)"
+              label="Env vars allow list"
               value={(editModal.server.envVars || []).join(", ")}
               onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, envVars: toStringArray(e.target.value) } }))}
               placeholder="OPENAI_API_KEY, GITHUB_TOKEN"
@@ -692,7 +572,7 @@ export default function MCPServersPageClient() {
               placeholder="Optional bearer token for HTTP MCP"
             />
             <Toggle
-              label="Required (Codex startup fail if unavailable)"
+              label="Required (startup fail if unavailable)"
               checked={Boolean(editModal.server.required)}
               onChange={(checked) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, required: checked } }))}
             />
