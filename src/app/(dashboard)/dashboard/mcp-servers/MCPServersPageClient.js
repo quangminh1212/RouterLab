@@ -38,6 +38,7 @@ export default function MCPServersPageClient() {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncingTarget, setSyncingTarget] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [editModal, setEditModal] = useState({ open: false, server: null, index: -1 });
 
@@ -109,6 +110,32 @@ export default function MCPServersPageClient() {
     });
   };
 
+  const syncToCli = async (target) => {
+    setSyncingTarget(target);
+    setStatus({ type: "", message: "" });
+    try {
+      const activeServers = servers.filter((server) => server.enabled);
+      if (activeServers.length === 0) {
+        setStatus({ type: "error", message: "No enabled MCP servers to sync" });
+        return;
+      }
+
+      const res = await fetch("/api/cli-tools/mcp-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target, mcpServers: activeServers }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to sync MCP servers");
+
+      setStatus({ type: "success", message: `Synced ${activeServers.length} MCP server(s) to ${target}` });
+    } catch (err) {
+      setStatus({ type: "error", message: err.message || "Sync failed" });
+    } finally {
+      setSyncingTarget("");
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex flex-col gap-6">
@@ -123,6 +150,46 @@ export default function MCPServersPageClient() {
         </div>
 
         <div>
+          <Card className="mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-text-main">CLI integration</h2>
+                <p className="text-sm text-text-muted mt-1">
+                  Sync enabled MCP servers into Codex and Claude Code config.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={syncingTarget === "codex"}
+                  disabled={loading || saving || Boolean(syncingTarget)}
+                  onClick={() => syncToCli("codex")}
+                >
+                  Sync Codex
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={syncingTarget === "claude"}
+                  disabled={loading || saving || Boolean(syncingTarget)}
+                  onClick={() => syncToCli("claude")}
+                >
+                  Sync Claude Code
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={syncingTarget === "all"}
+                  disabled={loading || saving || Boolean(syncingTarget)}
+                  onClick={() => syncToCli("all")}
+                >
+                  Sync all CLI
+                </Button>
+              </div>
+            </div>
+          </Card>
+
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-text-main">Servers</h2>
             <Button variant="ghost" size="sm" icon="add" onClick={addServer} disabled={saving}>
