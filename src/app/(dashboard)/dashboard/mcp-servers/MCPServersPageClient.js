@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, CardSkeleton, Toggle, Modal, Input } from "@/shared/components";
+import { CardSkeleton, Input, Modal, Toggle } from "@/shared/components";
 import { cn } from "@/shared/utils/cn";
 
 const EMPTY_AI_INTEGRATIONS = {
@@ -10,6 +10,229 @@ const EMPTY_AI_INTEGRATIONS = {
   mcpServers: [],
   plugins: [],
 };
+
+const SOURCE_OPTIONS = [
+  { id: "all", label: "All sources" },
+  { id: "xlab-ready", label: "XLab ready" },
+  { id: "mcpmarket", label: "MCPMarket" },
+];
+
+const MCP_CATALOG = [
+  {
+    id: "context7",
+    name: "Context7 Docs",
+    category: "Coding",
+    source: "xlab-ready",
+    icon: "menu_book",
+    description: "Pull up-to-date docs and code examples for libraries and frameworks.",
+    command: "npx",
+    args: ["-y", "@upstash/context7-mcp@latest"],
+    npmPackage: "@upstash/context7-mcp",
+    sourceUrl: "https://github.com/upstash/context7",
+    env: {},
+  },
+  {
+    id: "playwright",
+    name: "Playwright Browser",
+    category: "Browser Automation",
+    source: "xlab-ready",
+    icon: "travel_explore",
+    description: "Control a browser, inspect pages, fill forms, and collect screenshots.",
+    command: "npx",
+    args: ["-y", "@playwright/mcp@latest", "--headless"],
+    npmPackage: "@playwright/mcp",
+    sourceUrl: "https://github.com/microsoft/playwright-mcp",
+    env: {},
+  },
+  {
+    id: "firecrawl",
+    name: "Firecrawl",
+    category: "Web Scraping",
+    source: "mcpmarket",
+    icon: "local_fire_department",
+    description: "Scrape, crawl, and search websites for clean LLM-ready content.",
+    command: "npx",
+    args: ["-y", "firecrawl-mcp"],
+    npmPackage: "firecrawl-mcp",
+    sourceUrl: "https://github.com/firecrawl/firecrawl-mcp-server",
+    env: { FIRECRAWL_API_KEY: "" },
+    requiredEnv: ["FIRECRAWL_API_KEY"],
+  },
+  {
+    id: "browserbase",
+    name: "Browserbase",
+    category: "Browser Automation",
+    source: "mcpmarket",
+    icon: "cloud_queue",
+    description: "Run cloud browser automation sessions with Browserbase and Stagehand.",
+    command: "npx",
+    args: ["@browserbasehq/mcp-server-browserbase"],
+    npmPackage: "@browserbasehq/mcp-server-browserbase",
+    sourceUrl: "https://github.com/browserbase/mcp-server-browserbase",
+    env: { BROWSERBASE_API_KEY: "", BROWSERBASE_PROJECT_ID: "", GEMINI_API_KEY: "" },
+    requiredEnv: ["BROWSERBASE_API_KEY", "BROWSERBASE_PROJECT_ID"],
+  },
+  {
+    id: "github",
+    name: "GitHub",
+    category: "Coding",
+    source: "xlab-ready",
+    icon: "code",
+    description: "Work with repositories, issues, pull requests, and code search.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-github@latest"],
+    npmPackage: "@modelcontextprotocol/server-github",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
+    env: { GITHUB_PERSONAL_ACCESS_TOKEN: "" },
+    requiredEnv: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+  },
+  {
+    id: "filesystem",
+    name: "Filesystem",
+    category: "Local Tools",
+    source: "xlab-ready",
+    icon: "folder_open",
+    description: "Read and write files inside a configured project directory.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem@latest", "${PROJECT_DIR}"],
+    npmPackage: "@modelcontextprotocol/server-filesystem",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+    env: { PROJECT_DIR: "" },
+    requiredEnv: ["PROJECT_DIR"],
+  },
+  {
+    id: "memory",
+    name: "Memory Graph",
+    category: "Local Tools",
+    source: "xlab-ready",
+    icon: "account_tree",
+    description: "Store and retrieve local knowledge graph memory for agents.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-memory@latest"],
+    npmPackage: "@modelcontextprotocol/server-memory",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    env: {},
+  },
+  {
+    id: "sequential-thinking",
+    name: "Sequential Thinking",
+    category: "Reasoning",
+    source: "xlab-ready",
+    icon: "psychology",
+    description: "Break complex tasks into structured dynamic reasoning steps.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
+    npmPackage: "@modelcontextprotocol/server-sequential-thinking",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    env: {},
+  },
+  {
+    id: "brave-search",
+    name: "Brave Search",
+    category: "Search",
+    source: "xlab-ready",
+    icon: "search",
+    description: "Search the web with Brave Search API from MCP tools.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-brave-search@latest"],
+    npmPackage: "@modelcontextprotocol/server-brave-search",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search",
+    env: { BRAVE_API_KEY: "" },
+    requiredEnv: ["BRAVE_API_KEY"],
+  },
+  {
+    id: "tavily",
+    name: "Tavily Search",
+    category: "Search",
+    source: "xlab-ready",
+    icon: "manage_search",
+    description: "Use Tavily web search for agent research and answer grounding.",
+    command: "npx",
+    args: ["-y", "tavily-mcp@latest"],
+    npmPackage: "tavily-mcp",
+    sourceUrl: "https://github.com/tavily-ai/tavily-mcp",
+    env: { TAVILY_API_KEY: "" },
+    requiredEnv: ["TAVILY_API_KEY"],
+  },
+  {
+    id: "postgres",
+    name: "Postgres",
+    category: "Database",
+    source: "xlab-ready",
+    icon: "database",
+    description: "Expose a PostgreSQL database safely through MCP tools.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-postgres@latest", "${POSTGRES_CONNECTION_STRING}"],
+    npmPackage: "@modelcontextprotocol/server-postgres",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/postgres",
+    env: { POSTGRES_CONNECTION_STRING: "" },
+    requiredEnv: ["POSTGRES_CONNECTION_STRING"],
+  },
+  {
+    id: "puppeteer",
+    name: "Puppeteer Browser",
+    category: "Browser Automation",
+    source: "xlab-ready",
+    icon: "smart_display",
+    description: "Automate Chromium pages through Puppeteer-backed MCP tools.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-puppeteer@latest"],
+    npmPackage: "@modelcontextprotocol/server-puppeteer",
+    sourceUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    env: {},
+  },
+  {
+    id: "openai-docs",
+    name: "OpenAI Developer Docs",
+    category: "Coding",
+    source: "xlab-ready",
+    icon: "article",
+    description: "Connect OpenAI developer documentation as an MCP endpoint.",
+    endpoint: "https://developers.openai.com/mcp",
+    sourceUrl: "https://developers.openai.com/codex/mcp",
+    env: {},
+  },
+  {
+    id: "elevenlabs",
+    name: "ElevenLabs",
+    category: "Media",
+    source: "mcpmarket",
+    icon: "graphic_eq",
+    description: "Use text-to-speech and audio APIs from ElevenLabs workflows.",
+    command: "npx",
+    args: ["-y", "elevenlabs-mcp"],
+    npmPackage: "elevenlabs-mcp",
+    sourceUrl: "https://mcpmarket.com/",
+    env: { ELEVENLABS_API_KEY: "" },
+    requiredEnv: ["ELEVENLABS_API_KEY"],
+  },
+  {
+    id: "fastapi",
+    name: "FastAPI",
+    category: "API Development",
+    source: "mcpmarket",
+    icon: "api",
+    description: "Expose FastAPI endpoints as MCP tools for local app workflows.",
+    command: "python",
+    args: ["-m", "fastapi_mcp"],
+    sourceUrl: "https://mcpmarket.com/",
+    env: { FASTAPI_APP: "" },
+    requiredEnv: ["FASTAPI_APP"],
+  },
+  {
+    id: "excel",
+    name: "Excel",
+    category: "Productivity",
+    source: "mcpmarket",
+    icon: "grid_on",
+    description: "Manipulate spreadsheet files without opening Microsoft Excel.",
+    command: "npx",
+    args: ["-y", "excel-mcp-server"],
+    npmPackage: "excel-mcp-server",
+    sourceUrl: "https://mcpmarket.com/",
+    env: {},
+  },
+];
 
 function cloneAiIntegrations(value) {
   const source = value && typeof value === "object" ? value : EMPTY_AI_INTEGRATIONS;
@@ -48,17 +271,7 @@ function stringifyJsonObject(value) {
   return Object.keys(object).length > 0 ? JSON.stringify(object, null, 2) : "";
 }
 
-function toSlug(value, fallback = "server") {
-  const source = typeof value === "string" && value.trim() ? value.trim() : fallback;
-  const slug = source
-    .replace(/[^a-zA-Z0-9_-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
-  return slug || fallback;
-}
-
-function normalizeServer(item, index) {
+function normalizeServer(item, index = 0) {
   const id = typeof item?.id === "string" && item.id.trim() ? item.id.trim() : `server-${index + 1}`;
   return {
     id,
@@ -84,37 +297,49 @@ function normalizeServer(item, index) {
   };
 }
 
-function inferNpmPackage(server) {
-  if (server?.npmPackage) return server.npmPackage;
-  const packageArg = (server?.args || []).find((item) => typeof item === "string" && item.includes("@latest"));
-  return packageArg ? packageArg.replace(/@latest$/, "") : "";
+function catalogToServer(item) {
+  return normalizeServer({
+    id: item.id,
+    name: item.name,
+    source: item.category,
+    sourceUrl: item.sourceUrl,
+    npmPackage: item.npmPackage || "",
+    endpoint: item.endpoint || "",
+    command: item.command || "",
+    args: item.args || [],
+    env: item.env || {},
+    headers: {},
+    enabledTools: [],
+    disabledTools: [],
+    envVars: item.requiredEnv || [],
+    enabled: true,
+  });
 }
 
-function getNpmUrl(server) {
-  const packageName = inferNpmPackage(server);
-  return packageName ? `https://www.npmjs.com/package/${packageName}` : "https://www.npmjs.com/search?q=mcp%20server";
+function needsConfig(server, catalogItem) {
+  const required = catalogItem?.requiredEnv || server?.envVars || [];
+  return required.some((key) => !server?.env?.[key]);
 }
 
-function getSourceUrl(server) {
-  if (server?.sourceUrl) return server.sourceUrl;
-  if (server?.endpoint?.startsWith("http")) return server.endpoint;
-  return "https://github.com/modelcontextprotocol/servers";
+function commandSummary(server) {
+  if (server.command) return `${server.command} ${server.args.join(" ")}`.trim();
+  if (server.endpoint) return server.endpoint;
+  return server.source || server.id;
 }
 
 export default function MCPServersPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
   const [servers, setServers] = useState([]);
+  const [query, setQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("xlab-ready");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingServerId, setSavingServerId] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [editModal, setEditModal] = useState({ open: false, server: null, index: -1 });
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState("");
-  const [registryQuery, setRegistryQuery] = useState("");
-  const [registryLoading, setRegistryLoading] = useState(false);
-  const [registryResults, setRegistryResults] = useState([]);
-  const [registrySources, setRegistrySources] = useState([]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -124,41 +349,88 @@ export default function MCPServersPageClient() {
         setAiForm(next);
         setServers(next.mcpServers.map(normalizeServer));
       })
-      .catch(() => setStatus({ type: "error", message: "Failed to load settings" }))
+      .catch(() => setStatus({ type: "error", message: "Failed to load MCP servers" }))
       .finally(() => setLoading(false));
   }, []);
 
-  const saveServers = async (newServers) => {
-    setSaving(true);
+  const serverById = useMemo(() => new Map(servers.map((server, index) => [server.id, { server, index }])), [servers]);
+
+  const categoryOptions = useMemo(() => {
+    const sourceFiltered = sourceFilter === "all" ? MCP_CATALOG : MCP_CATALOG.filter((item) => item.source === sourceFilter);
+    return ["all", ...Array.from(new Set(sourceFiltered.map((item) => item.category))).sort()];
+  }, [sourceFilter]);
+
+  const filteredCatalog = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+    return MCP_CATALOG.filter((item) => {
+      const matchesSource = sourceFilter === "all" || item.source === sourceFilter;
+      const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
+      const text = `${item.name} ${item.description} ${item.category} ${item.id}`.toLowerCase();
+      return matchesSource && matchesCategory && (!keyword || text.includes(keyword));
+    });
+  }, [categoryFilter, query, sourceFilter]);
+
+  const groupedCatalog = useMemo(() => {
+    const groups = new Map();
+    for (const item of filteredCatalog) {
+      if (!groups.has(item.category)) groups.set(item.category, []);
+      groups.get(item.category).push(item);
+    }
+    return Array.from(groups.entries());
+  }, [filteredCatalog]);
+
+  const customServers = useMemo(
+    () => servers.filter((server) => !MCP_CATALOG.some((item) => item.id === server.id)),
+    [servers]
+  );
+
+  const saveServers = async (newServers, successMessage = "Saved successfully") => {
+    const nextForm = { ...aiForm, mcpServers: newServers };
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aiIntegrations: nextForm }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Failed to save settings");
+    setAiForm(nextForm);
+    setServers(newServers);
+    setStatus({ type: "success", message: successMessage });
+  };
+
+  const toggleCatalogServer = async (item) => {
+    setSavingServerId(item.id);
     setStatus({ type: "", message: "" });
     try {
-      const nextForm = { ...aiForm, mcpServers: newServers };
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aiIntegrations: nextForm }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to save settings");
-
-      setAiForm(nextForm);
-      setServers(newServers);
-      setStatus({ type: "success", message: "Saved successfully" });
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Save failed" });
+      const existing = serverById.get(item.id);
+      const updated = [...servers];
+      if (existing) {
+        updated[existing.index] = { ...existing.server, enabled: !existing.server.enabled };
+      } else {
+        updated.push(catalogToServer(item));
+      }
+      const nextEnabled = existing ? !existing.server.enabled : true;
+      const message = nextEnabled
+        ? `${item.name} enabled${needsConfig(updated[existing?.index ?? updated.length - 1], item) ? ". Add required env to finish setup." : ""}`
+        : `${item.name} disabled`;
+      await saveServers(updated, message);
+    } catch (error) {
+      setStatus({ type: "error", message: error?.message || "Failed to update MCP server" });
     } finally {
-      setSaving(false);
+      setSavingServerId("");
     }
   };
 
-  const toggleServer = async (index) => {
-    const updated = [...servers];
-    updated[index] = { ...updated[index], enabled: !updated[index].enabled };
-    await saveServers(updated);
+  const openEditModal = (server, index) => {
+    setEditModal({ open: true, server: { ...server, env: { ...server.env }, headers: { ...server.headers } }, index });
+    setJsonMode(false);
+    setJsonText(JSON.stringify(server, null, 2));
+    setJsonError("");
   };
 
-  const openEditModal = (server, index) => {
-    setEditModal({ open: true, server: { ...server }, index });
+  const addCustomServer = () => {
+    const server = normalizeServer({ id: `custom-${servers.length + 1}`, name: "Custom MCP Server", command: "npx", args: ["-y", ""], env: {}, enabled: true }, servers.length);
+    setEditModal({ open: true, server, index: -1 });
     setJsonMode(false);
     setJsonText(JSON.stringify(server, null, 2));
     setJsonError("");
@@ -173,424 +445,262 @@ export default function MCPServersPageClient() {
 
   const saveEditModal = async () => {
     setJsonError("");
-    let serverToSave = editModal.server;
-
-    if (jsonMode) {
-      try {
+    try {
+      let serverToSave = editModal.server;
+      if (jsonMode) {
         const parsed = JSON.parse(jsonText);
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
           setJsonError("JSON must be an object");
           return;
         }
         serverToSave = parsed;
-      } catch (err) {
-        setJsonError(err.message || "Invalid JSON");
-        return;
       }
-    }
 
-    const updated = [...servers];
-    if (editModal.index >= 0) {
-      updated[editModal.index] = normalizeServer(serverToSave, editModal.index);
-    } else {
-      updated.push(normalizeServer(serverToSave, updated.length));
-    }
-    await saveServers(updated);
-    closeEditModal();
-  };
-
-  const addServer = () => {
-    const emptyServer = {
-      id: "",
-      name: "",
-      source: "",
-      endpoint: "",
-      apiKey: "",
-      command: "",
-      args: [],
-      env: {},
-      headers: {},
-      enabledTools: [],
-      disabledTools: [],
-      envVars: [],
-      cwd: "",
-      bearerTokenEnvVar: "",
-      required: false,
-      enabled: false,
-    };
-    setEditModal({ open: true, server: emptyServer, index: -1 });
-    setJsonMode(false);
-    setJsonText(JSON.stringify(emptyServer, null, 2));
-    setJsonError("");
-  };
-
-  const installedServerIds = useMemo(() => new Set(servers.map((server) => server.id)), [servers]);
-
-  const searchRegistry = async () => {
-    setRegistryLoading(true);
-    try {
-      const res = await fetch("/api/mcp-registry/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: registryQuery }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to search MCP registry");
-      setRegistryResults(Array.isArray(data.results) ? data.results : []);
-      setRegistrySources(Array.isArray(data.sources) ? data.sources : []);
+      const updated = [...servers];
+      if (editModal.index >= 0) updated[editModal.index] = normalizeServer(serverToSave, editModal.index);
+      else updated.push(normalizeServer(serverToSave, updated.length));
+      await saveServers(updated, "MCP server saved");
+      closeEditModal();
     } catch (error) {
-      setStatus({ type: "error", message: error?.message || "MCP registry search failed" });
-    } finally {
-      setRegistryLoading(false);
+      if (jsonMode) setJsonError(error?.message || "Invalid JSON");
+      else setStatus({ type: "error", message: error?.message || "Save failed" });
     }
-  };
-
-  const importRegistryServer = async (item) => {
-    const fallbackId = `server-${servers.length + 1}`;
-    const normalized = normalizeServer({
-      id: toSlug(item.name || item.id || item.endpoint || item.packageName, fallbackId),
-      name: item.name,
-      source: item.source,
-      sourceUrl: item.sourceUrl,
-      npmPackage: item.packageName,
-      endpoint: item.endpoint,
-      command: item.packageName ? "npx" : "",
-      args: item.packageName ? ["-y", `${item.packageName}@latest`] : [],
-      env: {},
-      headers: {},
-      enabled: false,
-    }, servers.length);
-
-    const duplicate = servers.some((server) => {
-      const sameEndpoint = normalized.endpoint && server.endpoint === normalized.endpoint;
-      const samePackage = normalized.npmPackage && inferNpmPackage(server) === normalized.npmPackage;
-      const sameId = server.id === normalized.id;
-      return sameEndpoint || samePackage || sameId;
-    });
-
-    if (duplicate) {
-      setStatus({ type: "error", message: "Server already exists in XLab Router" });
-      return;
-    }
-
-    await saveServers([...servers, normalized]);
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-main">MCP servers</h1>
-          <p className="text-text-muted mt-1">
-            Connect external tools and data sources.{" "}
-            <a href="#" className="text-primary hover:underline">
-              Learn more.
-            </a>
+          <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make MCP work your way</h1>
+          <p className="text-text-muted mt-2">
+            Enable ready-to-use MCP servers inside XLab Router. Presets are curated from XLab defaults and MCPMarket.
           </p>
+          <a href="https://mcpmarket.com/" target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm text-primary hover:underline">
+            Browse MCPMarket reference
+          </a>
         </div>
 
-        <Card>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <Input
-                className="flex-1"
-                label="MCP Server Market"
-                value={registryQuery}
-                onChange={(e) => setRegistryQuery(e.target.value)}
-                placeholder="Search Official MCP Registry + Smithery (search, filesystem, github...)"
-              />
-              <Button variant="secondary" loading={registryLoading} disabled={loading || saving || registryLoading} onClick={searchRegistry}>
-                Search Market
-              </Button>
+        <div className="flex flex-wrap gap-3">
+          <Input
+            className="flex-1 min-w-[260px]"
+            label="Search MCP servers"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search filesystem, browser, github, firecrawl..."
+          />
+
+          <div className="min-w-[220px]">
+            <label className="text-sm font-medium text-text-main">Source</label>
+            <select
+              value={sourceFilter}
+              onChange={(event) => {
+                setSourceFilter(event.target.value);
+                setCategoryFilter("all");
+              }}
+              className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
+            >
+              {SOURCE_OPTIONS.map((item) => (
+                <option key={item.id} value={item.id} className="bg-[#111]">
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[220px]">
+            <label className="text-sm font-medium text-text-main">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
+            >
+              {categoryOptions.map((item) => (
+                <option key={item} value={item} className="bg-[#111]">
+                  {item === "all" ? "All" : item}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.02]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-text-muted">Enabled MCP servers</p>
+              <p className="text-xl font-semibold text-text-main">{servers.filter((server) => server.enabled).length}/{servers.length || MCP_CATALOG.length}</p>
             </div>
-            <p className="text-xs text-text-muted">
-              Import servers directly into XLab Router for local AI integration.
-            </p>
-            {registrySources.length > 0 ? (
-              <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
-                {registrySources.map((source) => (
-                  <span key={source.name} className={cn("rounded border px-2 py-1", source.ok ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400")}>
-                    {source.name}: {source.ok ? `${source.count} result(s)` : source.error}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {registryResults.length > 0 ? (
-              <div className="flex flex-col gap-2 max-h-[420px] overflow-auto pr-1">
-                {registryResults.map((item) => {
-                  const importId = toSlug(item.name || item.id || item.endpoint || item.packageName, "server");
-                  const alreadyInstalled = installedServerIds.has(importId) || servers.some((server) => (item.endpoint && server.endpoint === item.endpoint) || (item.packageName && inferNpmPackage(server) === item.packageName));
-                  return (
-                    <Card key={item.id} className="!p-4">
-                      <div className="flex items-start justify-between gap-4">
+            <button
+              type="button"
+              onClick={addCustomServer}
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 px-3 py-2 text-sm text-text-main hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              Add custom
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <CardSkeleton />
+        ) : groupedCatalog.length === 0 ? (
+          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No MCP servers match current filters.</div>
+        ) : (
+          <div className="space-y-8">
+            {groupedCatalog.map(([category, items]) => (
+              <section key={category} className="space-y-3">
+                <h2 className="text-[30px] font-semibold text-text-main">{category}</h2>
+                <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
+                  {items.map((item) => {
+                    const existing = serverById.get(item.id);
+                    const server = existing?.server;
+                    const enabled = server?.enabled === true;
+                    const configNeeded = server ? needsConfig(server, item) : Boolean(item.requiredEnv?.length);
+                    const saving = savingServerId === item.id;
+                    return (
+                      <div key={item.id} className="flex items-start gap-4 px-4 py-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                          <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                        </div>
+
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-text-main truncate">{item.name}</p>
-                            {item.verified ? <span className="rounded bg-green-500/10 px-2 py-0.5 text-[11px] text-green-400">verified</span> : null}
-                            <span className="rounded bg-bg-main px-2 py-0.5 text-[11px] text-text-muted">{item.source}</span>
+                            <p className="text-lg font-semibold text-text-main">{item.name}</p>
+                            {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                            {configNeeded ? <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-500">Needs setup</span> : <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">Ready</span>}
                           </div>
-                          <p className="mt-1 line-clamp-2 text-xs text-text-muted">{item.description || "No description"}</p>
-                          <p className="mt-2 truncate text-[11px] text-text-muted">{item.installHint || item.endpoint || item.packageName}</p>
+                          <p className="text-sm text-text-muted line-clamp-2">{item.description}</p>
+                          <p className="mt-2 truncate font-mono text-xs text-text-muted">{commandSummary(server || catalogToServer(item))}</p>
                         </div>
-                        <Button variant="primary" size="sm" disabled={saving || alreadyInstalled} onClick={() => importRegistryServer(item)}>
-                          {alreadyInstalled ? "Added" : "Add to XLab"}
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        </Card>
 
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-sm font-semibold text-text-main">Servers</h2>
-            <div className="flex items-center gap-2">
-              <a
-                href="https://www.npmjs.com/search?q=mcp%20server"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-muted hover:text-text-main hover:border-primary/50"
-              >
-                <span className="material-symbols-outlined text-[16px]">storefront</span>
-                NPM MCP Market
-              </a>
-              <a
-                href="https://github.com/modelcontextprotocol/servers"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-muted hover:text-text-main hover:border-primary/50"
-              >
-                <span className="material-symbols-outlined text-[16px]">hub</span>
-                Official MCP Sources
-              </a>
-              <Button variant="ghost" size="sm" icon="add" onClick={addServer} disabled={saving}>
-                Add server
-              </Button>
-            </div>
-          </div>
-
-          {loading ? (
-            <CardSkeleton />
-          ) : servers.length === 0 ? (
-            <Card>
-              <p className="text-sm text-text-muted text-center py-8">No servers configured</p>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {servers.map((server, index) => (
-                <Card key={`${server.id}-${index}`} className="!p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-text-main">{server.name}</span>
-                      <p className="text-xs text-text-muted mt-1">
-                        {server.command ? `${server.command} ${server.args.join(" ")}` : server.endpoint || server.source || server.id}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <a
-                          href={getNpmUrl(server)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main hover:border-primary/50"
-                        >
-                          npm
-                        </a>
-                        <a
-                          href={getSourceUrl(server)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main hover:border-primary/50"
-                        >
-                          source
-                        </a>
+                        <div className="mt-1 flex items-center gap-2">
+                          {server ? (
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(server, existing.index)}
+                              className="flex h-9 w-9 items-center justify-center rounded-full border border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+                              title="Configure MCP server"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">settings</span>
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => toggleCatalogServer(item)}
+                            disabled={saving || Boolean(savingServerId)}
+                            className={cn(
+                              "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                              enabled
+                                ? "border-green-500/40 bg-green-500/10 text-green-500"
+                                : "border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
+                              (saving || Boolean(savingServerId)) && "opacity-60"
+                            )}
+                            title={enabled ? "Disable MCP server" : "Enable MCP server"}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">{enabled ? "check" : "add"}</span>
+                          </button>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {customServers.length > 0 ? (
+          <section className="space-y-3">
+            <h2 className="text-[30px] font-semibold text-text-main">Custom</h2>
+            <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
+              {customServers.map((server) => {
+                const index = servers.findIndex((item) => item.id === server.id);
+                return (
+                  <div key={server.id} className="flex items-center gap-4 px-4 py-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-semibold text-text-main">{server.name}</p>
+                      <p className="truncate font-mono text-xs text-text-muted">{commandSummary(server)}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(server, index)}
-                        disabled={saving}
-                        className={cn(
-                          "text-text-muted hover:text-text-main transition-colors",
-                          saving && "opacity-50 cursor-not-allowed"
-                        )}
-                        aria-label="Settings"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">settings</span>
-                      </button>
-                      <Toggle checked={server.enabled} onChange={() => toggleServer(index)} disabled={saving} size="md" />
-                    </div>
+                    <button type="button" onClick={() => openEditModal(server, index)} className="text-text-muted hover:text-text-main">
+                      <span className="material-symbols-outlined text-[20px]">settings</span>
+                    </button>
+                    <Toggle
+                      checked={server.enabled}
+                      onChange={async () => {
+                        const updated = [...servers];
+                        updated[index] = { ...server, enabled: !server.enabled };
+                        try {
+                          await saveServers(updated, `${server.name} ${server.enabled ? "disabled" : "enabled"}`);
+                        } catch (error) {
+                          setStatus({ type: "error", message: error?.message || "Failed to update MCP server" });
+                        }
+                      }}
+                      size="md"
+                    />
                   </div>
-                </Card>
-              ))}
+                );
+              })}
             </div>
-          )}
+          </section>
+        ) : null}
 
-          {status.message ? (
-            <p className={cn("text-sm mt-3", status.type === "error" ? "text-red-500" : "text-green-500")}>
-              {status.message}
-            </p>
-          ) : null}
-        </div>
+        {status.message ? <p className={cn("text-sm", status.type === "error" ? "text-red-500" : "text-green-500")}>{status.message}</p> : null}
       </div>
 
       {editModal.open && (
-        <Modal isOpen={editModal.open} onClose={closeEditModal} title={editModal.index >= 0 ? "Edit Server" : "Add Server"}>
+        <Modal isOpen={editModal.open} onClose={closeEditModal} title={editModal.index >= 0 ? "Configure MCP Server" : "Add Custom MCP Server"}>
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-black/10 dark:border-white/10">
+            <div className="flex items-center justify-between border-b border-black/10 pb-2 dark:border-white/10">
               <span className="text-sm text-text-muted">Edit mode</span>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className={cn("px-3 py-1.5 text-xs rounded transition-colors", !jsonMode ? "bg-primary text-white" : "bg-surface text-text-muted hover:text-text-main")}
-                  onClick={() => { setJsonMode(false); setJsonError(""); }}
-                >
+                <button type="button" className={cn("rounded px-3 py-1.5 text-xs", !jsonMode ? "bg-primary text-white" : "bg-surface text-text-muted")} onClick={() => { setJsonMode(false); setJsonError(""); }}>
                   Form
                 </button>
-                <button
-                  type="button"
-                  className={cn("px-3 py-1.5 text-xs rounded transition-colors", jsonMode ? "bg-primary text-white" : "bg-surface text-text-muted hover:text-text-main")}
-                  onClick={() => { setJsonMode(true); setJsonText(JSON.stringify(editModal.server, null, 2)); setJsonError(""); }}
-                >
+                <button type="button" className={cn("rounded px-3 py-1.5 text-xs", jsonMode ? "bg-primary text-white" : "bg-surface text-text-muted")} onClick={() => { setJsonMode(true); setJsonText(JSON.stringify(editModal.server, null, 2)); setJsonError(""); }}>
                   JSON
                 </button>
               </div>
             </div>
 
             {jsonMode ? (
-              <>
+              <div>
                 <textarea
                   value={jsonText}
-                  onChange={(e) => setJsonText(e.target.value)}
-                  className="min-h-[420px] w-full rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 font-mono text-sm text-text-main focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  onChange={(event) => setJsonText(event.target.value)}
+                  className="min-h-[360px] w-full rounded-lg border border-black/10 bg-transparent p-3 font-mono text-xs text-text-main outline-none focus:border-primary dark:border-white/10"
                   spellCheck={false}
-                  placeholder='{"id": "my-server", "name": "My Server", ...}'
                 />
-                {jsonError && <p className="text-sm text-red-500">{jsonError}</p>}
-              </>
+                {jsonError ? <p className="mt-2 text-sm text-red-500">{jsonError}</p> : null}
+              </div>
             ) : (
               <>
-            <Input
-              label="ID"
-              value={editModal.server.id}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, id: e.target.value } }))}
-              placeholder="context7"
-              required
-            />
-            <Input
-              label="Name"
-              value={editModal.server.name}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, name: e.target.value } }))}
-              placeholder="Context7 Docs"
-              required
-            />
-            <Input
-              label="Source"
-              value={editModal.server.source}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, source: e.target.value } }))}
-              placeholder="documentation"
-            />
-            <Input
-              label="NPM package"
-              value={editModal.server.npmPackage || ""}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, npmPackage: e.target.value } }))}
-              placeholder="@modelcontextprotocol/server-filesystem"
-            />
-            <Input
-              label="Source URL"
-              value={editModal.server.sourceUrl || ""}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, sourceUrl: e.target.value } }))}
-              placeholder="https://github.com/modelcontextprotocol/servers"
-            />
-            <Input
-              label="Endpoint"
-              value={editModal.server.endpoint}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, endpoint: e.target.value } }))}
-              placeholder="https://mcp.example.com/mcp"
-            />
-            <Input
-              label="Command"
-              value={editModal.server.command}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, command: e.target.value } }))}
-              placeholder="npx / python / docker"
-            />
-            <Input
-              label="Args"
-              value={(editModal.server.args || []).join(", ")}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, args: toStringArray(e.target.value) } }))}
-              placeholder={'-y, @upstash/context7-mcp@latest'}
-            />
-            <Input
-              label="Env JSON"
-              value={stringifyJsonObject(editModal.server.env)}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, env: parseJsonObject(e.target.value) } }))}
-              placeholder={'{ "API_KEY": "${API_KEY}" }'}
-            />
-            <Input
-              label="Headers JSON"
-              value={stringifyJsonObject(editModal.server.headers)}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, headers: parseJsonObject(e.target.value) } }))}
-              placeholder={'{ "X-API-Key": "${API_KEY}" }'}
-            />
-            <Input
-              label="Bearer Token Env"
-              value={editModal.server.bearerTokenEnvVar || ""}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, bearerTokenEnvVar: e.target.value } }))}
-              placeholder="OPENAI_API_KEY"
-            />
-            <Input
-              label="Env vars allow list"
-              value={(editModal.server.envVars || []).join(", ")}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, envVars: toStringArray(e.target.value) } }))}
-              placeholder="OPENAI_API_KEY, GITHUB_TOKEN"
-            />
-            <Input
-              label="Enabled tools"
-              value={(editModal.server.enabledTools || []).join(", ")}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, enabledTools: toStringArray(e.target.value) } }))}
-              placeholder="search, fetch"
-            />
-            <Input
-              label="Disabled tools"
-              value={(editModal.server.disabledTools || []).join(", ")}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, disabledTools: toStringArray(e.target.value) } }))}
-              placeholder="delete_all"
-            />
-            <Input
-              label="Working directory"
-              value={editModal.server.cwd || ""}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, cwd: e.target.value } }))}
-              placeholder="C:/Dev/Work/2000/Dev"
-            />
-            <Input
-              label="API Key"
-              type="password"
-              value={editModal.server.apiKey}
-              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, apiKey: e.target.value } }))}
-              placeholder="Optional bearer token for HTTP MCP"
-            />
-            <Toggle
-              label="Required (startup fail if unavailable)"
-              checked={Boolean(editModal.server.required)}
-              onChange={(checked) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, required: checked } }))}
-            />
-            <Toggle
-              label="Enabled"
-              checked={editModal.server.enabled}
-              onChange={(checked) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, enabled: checked } }))}
-            />
+                <Input label="Name" value={editModal.server?.name || ""} onChange={(event) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, name: event.target.value } }))} />
+                <Input label="Command" value={editModal.server?.command || ""} onChange={(event) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, command: event.target.value } }))} placeholder="npx" />
+                <Input label="Args" value={(editModal.server?.args || []).join("\n")} onChange={(event) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, args: toStringArray(event.target.value) } }))} placeholder="-y&#10;@modelcontextprotocol/server-memory@latest" />
+                <Input label="Endpoint" value={editModal.server?.endpoint || ""} onChange={(event) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, endpoint: event.target.value } }))} placeholder="https://example.com/mcp" />
+                <div>
+                  <label className="text-sm font-medium text-text-main">Environment JSON</label>
+                  <textarea
+                    value={stringifyJsonObject(editModal.server?.env)}
+                    onChange={(event) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, env: parseJsonObject(event.target.value) } }))}
+                    className="mt-2 min-h-[120px] w-full rounded-lg border border-black/10 bg-transparent p-3 font-mono text-xs text-text-main outline-none focus:border-primary dark:border-white/10"
+                    placeholder={`{\n  "API_KEY": ""\n}`}
+                    spellCheck={false}
+                  />
+                </div>
+                <label className="flex items-center justify-between rounded-lg border border-black/10 p-3 dark:border-white/10">
+                  <span className="text-sm text-text-main">Enabled</span>
+                  <Toggle checked={editModal.server?.enabled === true} onChange={() => setEditModal((prev) => ({ ...prev, server: { ...prev.server, enabled: !prev.server?.enabled } }))} size="md" />
+                </label>
               </>
             )}
 
-            <div className="flex gap-2 pt-2">
-              <Button variant="secondary" onClick={closeEditModal} fullWidth>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={closeEditModal} className="rounded-lg border border-black/10 px-4 py-2 text-sm text-text-muted hover:text-text-main dark:border-white/10">
                 Cancel
-              </Button>
-              <Button variant="primary" onClick={saveEditModal} loading={saving} fullWidth>
+              </button>
+              <button type="button" onClick={saveEditModal} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
                 Save
-              </Button>
+              </button>
             </div>
           </div>
         </Modal>
