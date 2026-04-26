@@ -1,5 +1,5 @@
-import AiSourcesPageClient from "../ai-integrations/AiSourcesPageClient";
+import MCPServersPageClient from "./MCPServersPageClient";
 
 export default function MCPServersPage() {
-  return <AiSourcesPageClient group="mcpServers" />;
+  return <MCPServersPageClient />;
 }
