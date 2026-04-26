@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, CardSkeleton, Toggle, Modal, Input } from "@/shared/components";
 import { cn } from "@/shared/utils/cn";
 
@@ -46,6 +46,16 @@ function parseJsonObject(value) {
 function stringifyJsonObject(value) {
   const object = asPlainObject(value);
   return Object.keys(object).length > 0 ? JSON.stringify(object, null, 2) : "";
+}
+
+function toSlug(value, fallback = "server") {
+  const source = typeof value === "string" && value.trim() ? value.trim() : fallback;
+  const slug = source
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+  return slug || fallback;
 }
 
 function normalizeServer(item, index) {
@@ -118,6 +128,10 @@ export default function MCPServersPageClient() {
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [registryQuery, setRegistryQuery] = useState("");
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [registryResults, setRegistryResults] = useState([]);
+  const [registrySources, setRegistrySources] = useState([]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -259,6 +273,57 @@ export default function MCPServersPageClient() {
   };
 
   const activeServerCount = servers.filter((server) => server.enabled).length;
+  const installedServerIds = useMemo(() => new Set(servers.map((server) => server.id)), [servers]);
+
+  const searchRegistry = async () => {
+    setRegistryLoading(true);
+    try {
+      const res = await fetch("/api/mcp-registry/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: registryQuery }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to search MCP registry");
+      setRegistryResults(Array.isArray(data.results) ? data.results : []);
+      setRegistrySources(Array.isArray(data.sources) ? data.sources : []);
+    } catch (error) {
+      setStatus({ type: "error", message: error?.message || "MCP registry search failed" });
+    } finally {
+      setRegistryLoading(false);
+    }
+  };
+
+  const importRegistryServer = async (item) => {
+    const fallbackId = `server-${servers.length + 1}`;
+    const normalized = normalizeServer({
+      id: toSlug(item.name || item.id || item.endpoint || item.packageName, fallbackId),
+      name: item.name,
+      source: item.source,
+      sourceUrl: item.sourceUrl,
+      npmPackage: item.packageName,
+      endpoint: item.endpoint,
+      command: item.packageName ? "npx" : "",
+      args: item.packageName ? ["-y", `${item.packageName}@latest`] : [],
+      env: {},
+      headers: {},
+      enabled: false,
+    }, servers.length);
+
+    const duplicate = servers.some((server) => {
+      const sameEndpoint = normalized.endpoint && server.endpoint === normalized.endpoint;
+      const samePackage = normalized.npmPackage && inferNpmPackage(server) === normalized.npmPackage;
+      const sameId = server.id === normalized.id;
+      return sameEndpoint || samePackage || sameId;
+    });
+
+    if (duplicate) {
+      setStatus({ type: "error", message: "Server already exists in XLab Router" });
+      return;
+    }
+
+    await saveServers([...servers, normalized]);
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -272,6 +337,61 @@ export default function MCPServersPageClient() {
             </a>
           </p>
         </div>
+
+        <Card>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <Input
+                className="flex-1"
+                label="MCP Server Market"
+                value={registryQuery}
+                onChange={(e) => setRegistryQuery(e.target.value)}
+                placeholder="Search Official MCP Registry + Smithery (search, filesystem, github...)"
+              />
+              <Button variant="secondary" loading={registryLoading} disabled={loading || saving || registryLoading} onClick={searchRegistry}>
+                Search Market
+              </Button>
+            </div>
+            <p className="text-xs text-text-muted">
+              Import servers directly into XLab Router. CLI sync is optional and only needed when you want Codex/Claude Code to use the same MCP config.
+            </p>
+            {registrySources.length > 0 ? (
+              <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
+                {registrySources.map((source) => (
+                  <span key={source.name} className={cn("rounded border px-2 py-1", source.ok ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400")}>
+                    {source.name}: {source.ok ? `${source.count} result(s)` : source.error}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {registryResults.length > 0 ? (
+              <div className="flex flex-col gap-2 max-h-[420px] overflow-auto pr-1">
+                {registryResults.map((item) => {
+                  const importId = toSlug(item.name || item.id || item.endpoint || item.packageName, "server");
+                  const alreadyInstalled = installedServerIds.has(importId) || servers.some((server) => (item.endpoint && server.endpoint === item.endpoint) || (item.packageName && inferNpmPackage(server) === item.packageName));
+                  return (
+                    <Card key={item.id} className="!p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium text-text-main truncate">{item.name}</p>
+                            {item.verified ? <span className="rounded bg-green-500/10 px-2 py-0.5 text-[11px] text-green-400">verified</span> : null}
+                            <span className="rounded bg-bg-main px-2 py-0.5 text-[11px] text-text-muted">{item.source}</span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-xs text-text-muted">{item.description || "No description"}</p>
+                          <p className="mt-2 truncate text-[11px] text-text-muted">{item.installHint || item.endpoint || item.packageName}</p>
+                        </div>
+                        <Button variant="primary" size="sm" disabled={saving || alreadyInstalled} onClick={() => importRegistryServer(item)}>
+                          {alreadyInstalled ? "Added" : "Add to XLab"}
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        </Card>
 
         <div>
           <Card className="mb-6">
