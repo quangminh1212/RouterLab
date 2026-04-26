@@ -31,13 +31,21 @@ const debugItems = [
 ];
 
 const systemItems = [
-  { href: "/dashboard/power-up", label: "Power Up", icon: "rocket_launch" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
+];
+
+const POWER_UP_ITEMS = [
+  { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
+  { href: "/dashboard/ai-plugins", label: "AI Plugins", icon: "extension" },
+  { href: "/dashboard/ai-skills", label: "AI Skills", icon: "psychology" },
 ];
 
 export default function Sidebar({ onClose }) {
   const pathname = usePathname();
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [powerUpOpen, setPowerUpOpen] = useState(() =>
+    POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href))
+  );
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
@@ -72,6 +80,8 @@ export default function Sidebar({ onClose }) {
     }
     return pathname.startsWith(href);
   };
+
+  const isPowerUpActive = POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href));
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -233,6 +243,43 @@ export default function Sidebar({ onClose }) {
                   >
                     <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
                     <span className="text-sm">{kind.label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Power Up accordion */}
+            <button
+              onClick={() => setPowerUpOpen((v) => !v)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                isPowerUpActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+              )}
+            >
+              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+              <span className="text-sm font-medium flex-1 text-left">Power Up</span>
+              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                expand_more
+              </span>
+            </button>
+            {powerUpOpen && (
+              <div className="pl-4">
+                {POWER_UP_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
+                      pathname.startsWith(item.href)
+                        ? "bg-primary/10 text-primary"
+                        : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
+                    <span className="text-sm">{item.label}</span>
                   </Link>
                 ))}
               </div>
