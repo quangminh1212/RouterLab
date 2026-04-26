@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { getProviderNodeById } from "@/models";
-import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
+import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
+import { PROVIDER_ENDPOINTS } from "@/shared/constants/config";
 
 // POST /api/providers/validate - Validate API key with provider
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { provider, apiKey } = body;
+    const { provider, apiKey, providerSpecificData } = body;
 
     if (!provider || (!apiKey && provider !== "ollama-local")) {
       return NextResponse.json({ error: "Provider and API key required" }, { status: 400 });
@@ -28,6 +30,37 @@ export async function POST(request) {
           headers: { "Authorization": `Bearer ${apiKey}` },
         });
         isValid = res.ok;
+        return NextResponse.json({
+          valid: isValid,
+          error: isValid ? null : "Invalid API key",
+        });
+      }
+
+      // Custom Embedding nodes: probe /models (most embedding APIs are OpenAI-compatible)
+      if (isCustomEmbeddingProvider(provider)) {
+        const node = await getProviderNodeById(provider);
+        if (!node) {
+          return NextResponse.json({ error: "Custom Embedding node not found" }, { status: 404 });
+        }
+        const baseUrl = node.baseUrl?.replace(/\/$/, "");
+        const modelsRes = await fetch(`${baseUrl}/models`, {
+          headers: { "Authorization": `Bearer ${apiKey}` },
+        });
+        if (modelsRes.ok) {
+          return NextResponse.json({ valid: true });
+        }
+        // Auth errors are definitive
+        if (modelsRes.status === 401 || modelsRes.status === 403) {
+          return NextResponse.json({ valid: false, error: "Invalid API key" });
+        }
+        // Fallback: probe /embeddings with a common test model — many providers lack /models
+        const embedRes = await fetch(`${baseUrl}/embeddings`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "test", input: "ping" }),
+        });
+        // 401/403 = bad key; anything else (including 400 "model not found") means key works
+        isValid = embedRes.status !== 401 && embedRes.status !== 403;
         return NextResponse.json({
           valid: isValid,
           error: isValid ? null : "Invalid API key",
@@ -179,16 +212,16 @@ export async function POST(request) {
           }
           break;
         }
-        case "volcengine-ark": {
-          const testModel = getDefaultModel(provider);
-          const res = await fetch("https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions", {
+        case "volcengine-ark":
+        case "byteplus": {
+          const res = await fetch(PROVIDER_ENDPOINTS[provider], {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${apiKey}`,
               "content-type": "application/json",
             },
             body: JSON.stringify({
-              model: testModel,
+              model: getDefaultModel(provider),
               max_tokens: 1,
               messages: [{ role: "user", content: "test" }],
             }),
@@ -229,7 +262,7 @@ export async function POST(request) {
             siliconflow: "https://api.siliconflow.cn/v1/models",
             hyperbolic: "https://api.hyperbolic.xyz/v1/models",
             ollama: "https://ollama.com/api/tags",
-            "ollama-local": "http://localhost:11434/api/tags",
+            "ollama-local": `${resolveOllamaLocalHost({ providerSpecificData })}/api/tags`,
             assemblyai: "https://api.assemblyai.com/v1/account",
             nanobanana: "https://api.nanobananaapi.ai/v1/models",
             chutes: "https://llm.chutes.ai/v1/models",
@@ -317,6 +350,7 @@ export async function POST(request) {
 
         case "grok-web": {
           const token = apiKey.startsWith("sso=") ? apiKey.slice(4) : apiKey;
+          // Cloudflare-bypass: send POST with same browser fingerprint headers as GrokWebExecutor
           const randomHex = (n) => {
             const a = new Uint8Array(n);
             crypto.getRandomValues(a);
@@ -358,6 +392,7 @@ export async function POST(request) {
               forceSideBySide: false, isAsyncChat: false, disableSelfHarmShortCircuit: false,
             }),
           });
+          // Cookie valid = any non-401/403 response (200, 400, 429 all mean cookie accepted)
           if (res.status === 401 || res.status === 403) {
             isValid = false;
             error = "Invalid SSO cookie — re-paste from grok.com DevTools → Cookies → sso";
@@ -388,27 +423,17 @@ export async function POST(request) {
             body: JSON.stringify({
               query_str: "ping",
               params: {
-                query_str: "ping",
-                search_focus: "internet",
-                mode: "concise",
-                model_preference: "pplx_pro",
-                sources: ["web"],
-                attachments: [],
-                frontend_uuid: crypto.randomUUID(),
-                frontend_context_uuid: crypto.randomUUID(),
-                version: "2.18",
-                language: "en-US",
-                timezone: tz,
-                search_recency_filter: null,
-                is_incognito: true,
-                use_schematized_api: true,
-                last_backend_uuid: null,
+                query_str: "ping", search_focus: "internet", mode: "concise", model_preference: "pplx_pro",
+                sources: ["web"], attachments: [],
+                frontend_uuid: crypto.randomUUID(), frontend_context_uuid: crypto.randomUUID(),
+                version: "2.18", language: "en-US", timezone: tz,
+                search_recency_filter: null, is_incognito: true, use_schematized_api: true, last_backend_uuid: null,
               },
             }),
           });
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid Perplexity session cookie — re-paste __Secure-next-auth.session-token";
+            error = "Invalid session cookie — re-paste __Secure-next-auth.session-token from perplexity.ai";
           } else {
             isValid = true;
           }

@@ -36,6 +36,10 @@ export const PROVIDER_MODELS = {
     { id: "gpt-5.1", name: "GPT 5.1" },
     { id: "gpt-5-codex", name: "GPT 5 Codex" },
     { id: "gpt-5-codex-mini", name: "GPT 5 Codex Mini" },
+    // Image models (uses image_generation tool, requires Plus/Pro plan)
+    { id: "gpt-5.4-image", name: "GPT 5.4 Image", type: "image", capabilities: ["text2img", "edit"], params: ["size", "quality", "background", "image_detail", "output_format"] },
+    { id: "gpt-5.3-image", name: "GPT 5.3 Image", type: "image", capabilities: ["text2img", "edit"], params: ["size", "quality", "background", "image_detail", "output_format"] },
+    { id: "gpt-5.2-image", name: "GPT 5.2 Image", type: "image", capabilities: ["text2img", "edit"], params: ["size", "quality", "background", "image_detail", "output_format"] },
   ],
   gc: [  // Gemini CLI
     { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
@@ -79,39 +83,34 @@ export const PROVIDER_MODELS = {
     { id: "gpt-4o", name: "GPT-4o" },
     { id: "gpt-4o-mini", name: "GPT-4o mini" },
     { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-5", name: "GPT-5" },
     { id: "gpt-5-mini", name: "GPT-5 Mini" },
-    { id: "gpt-5-codex", name: "GPT-5 Codex" },
-    { id: "gpt-5.1", name: "GPT-5.1" },
-    { id: "gpt-5.1-codex", name: "GPT-5.1 Codex" },
-    { id: "gpt-5.1-codex-mini", name: "GPT-5.1 Codex Mini" },
-    { id: "gpt-5.1-codex-max", name: "GPT-5.1 Codex Max" },
     { id: "gpt-5.2", name: "GPT-5.2" },
     { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },
     { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
     { id: "gpt-5.4", name: "GPT-5.4" },
+    { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
     // GitHub Copilot - Anthropic models
     { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
-    { id: "claude-opus-4.1", name: "Claude Opus 4.1" },
     { id: "claude-opus-4.5", name: "Claude Opus 4.5" },
     { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
     { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
     { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
     { id: "claude-opus-4.6", name: "Claude Opus 4.6" },
+    { id: "claude-opus-4.7", name: "Claude Opus 4.7" },
     // GitHub Copilot - Google models
     { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
     { id: "gemini-3-flash-preview", name: "Gemini 3 Flash" },
-    { id: "gemini-3-pro-preview", name: "Gemini 3 Pro" },
+    { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro" },
     // GitHub Copilot - Other models
     { id: "grok-code-fast-1", name: "Grok Code Fast 1" },
     { id: "oswe-vscode-prime", name: "Raptor Mini" },
+    { id: "goldeneye-free-auto", name: "GoldenEye" },
   ],
   kr: [  // Kiro AI
     // { id: "claude-opus-4.5", name: "Claude Opus 4.5" },
     { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
     { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
     { id: "deepseek-3.2", name: "DeepSeek 3.2", strip: ["image", "audio"] },
-    { id: "deepseek-3.1", name: "DeepSeek 3.1", strip: ["image", "audio"] },
     { id: "qwen3-coder-next", name: "Qwen3 Coder Next", strip: ["image", "audio"] },
     { id: "glm-5", name: "GLM 5" },
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
@@ -147,6 +146,18 @@ export const PROVIDER_MODELS = {
     { id: "deepseek/deepseek-chat", name: "DeepSeek Chat" },
     { id: "deepseek/deepseek-reasoner", name: "DeepSeek Reasoner" },
   ],
+  "opencode-go": [  // OpenCode Go subscription (API key)
+    { id: "kimi-k2.6", name: "Kimi K2.6" },
+    { id: "kimi-k2.5", name: "Kimi K2.5" },
+    { id: "glm-5.1", name: "GLM 5.1" },
+    { id: "glm-5", name: "GLM 5" },
+    { id: "qwen3.5-plus", name: "Qwen 3.5 Plus" },
+    { id: "qwen3.6-plus", name: "Qwen 3.6 Plus" },
+    { id: "mimo-v2-pro", name: "MiMo V2 Pro" },
+    { id: "mimo-v2-omni", name: "MiMo V2 Omni" },
+    { id: "minimax-m2.7", name: "MiniMax M2.7", targetFormat: "claude" },
+    { id: "minimax-m2.5", name: "MiniMax M2.5", targetFormat: "claude" },
+  ],
   oc: [  // OpenCode
     // { id: "nemotron-3-super-free", name: "Nemotron 3 Super" },
     // { id: "qwen3.6-plus-free", name: "Qwen 3.6 Plus" },
@@ -164,42 +175,6 @@ export const PROVIDER_MODELS = {
     { id: "google/gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
     { id: "google/gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite Preview" },
     { id: "kwaipilot/kat-coder-pro", name: "KAT Coder Pro" },
-  ],
-
-  "opencode-go": [
-    { id: "kimi-k2.6", name: "Kimi K2.6" },
-    { id: "kimi-k2.5", name: "Kimi K2.5" },
-    { id: "glm-5.1", name: "GLM 5.1" },
-    { id: "glm-5", name: "GLM 5" },
-    { id: "qwen3.5-plus", name: "Qwen 3.5 Plus" },
-    { id: "qwen3.6-plus", name: "Qwen 3.6 Plus" },
-    { id: "mimo-v2-pro", name: "MiMo V2 Pro" },
-    { id: "mimo-v2-omni", name: "MiMo V2 Omni" },
-    { id: "minimax-m2.7", name: "MiniMax M2.7", targetFormat: "claude" },
-    { id: "minimax-m2.5", name: "MiniMax M2.5", targetFormat: "claude" },
-  ],
-  "grok-web": [
-    { id: "grok-3", name: "Grok 3" },
-    { id: "grok-3-mini", name: "Grok 3 Mini (Thinking)" },
-    { id: "grok-3-thinking", name: "Grok 3 Thinking" },
-    { id: "grok-4", name: "Grok 4" },
-    { id: "grok-4-mini", name: "Grok 4 Mini (Thinking)" },
-    { id: "grok-4-thinking", name: "Grok 4 Thinking" },
-    { id: "grok-4-heavy", name: "Grok 4 Heavy (SuperGrok)" },
-    { id: "grok-4.1-mini", name: "Grok 4.1 Mini (Thinking)" },
-    { id: "grok-4.1-fast", name: "Grok 4.1 Fast" },
-    { id: "grok-4.1-expert", name: "Grok 4.1 Expert" },
-    { id: "grok-4.1-thinking", name: "Grok 4.1 Thinking" },
-    { id: "grok-4.2", name: "Grok 4.2 (4.20 Beta)" },
-  ],
-  "perplexity-web": [
-    { id: "pplx-auto", name: "Perplexity Auto (Free)" },
-    { id: "pplx-sonar", name: "Perplexity Sonar" },
-    { id: "pplx-gpt", name: "GPT-5.4 (via Perplexity)" },
-    { id: "pplx-gemini", name: "Gemini 3.1 Pro (via Perplexity)" },
-    { id: "pplx-sonnet", name: "Claude Sonnet 4.6 (via Perplexity)" },
-    { id: "pplx-opus", name: "Claude Opus 4.6 (via Perplexity)" },
-    { id: "pplx-nemotron", name: "Nemotron 3 Super (via Perplexity)" },
   ],
 
   // API Key Providers (alias = id)
@@ -226,10 +201,6 @@ export const PROVIDER_MODELS = {
     { id: "o4-mini", name: "O4 Mini" },
     { id: "o1", name: "O1" },
     { id: "o1-mini", name: "O1 Mini" },
-    // Image models
-    { id: "gpt-image-1", name: "GPT Image 1", type: "image" },
-    { id: "dall-e-3", name: "DALL-E 3", type: "image" },
-    { id: "dall-e-2", name: "DALL-E 2", type: "image" },
     // Embedding models
     { id: "text-embedding-3-large", name: "Text Embedding 3 Large", type: "embedding" },
     { id: "text-embedding-3-small", name: "Text Embedding 3 Small", type: "embedding" },
@@ -238,7 +209,10 @@ export const PROVIDER_MODELS = {
     { id: "tts-1", name: "TTS-1", type: "tts" },
     { id: "tts-1-hd", name: "TTS-1 HD", type: "tts" },
     { id: "gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "tts" },
-    { id: "gpt-4o-search-preview", name: "GPT-4o Search Preview", type: "webSearch" },
+    // Image models
+    { id: "gpt-image-1", name: "GPT Image 1", type: "image", params: ["n", "size", "quality", "response_format"] },
+    { id: "dall-e-3", name: "DALL-E 3", type: "image", params: ["size", "quality", "style", "response_format"] },
+    { id: "dall-e-2", name: "DALL-E 2", type: "image", params: ["n", "size", "response_format"] },
   ],
   anthropic: [
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
@@ -249,9 +223,6 @@ export const PROVIDER_MODELS = {
     // Gemini 3.1 series
     { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
     { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite Preview" },
-    { id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image Preview", type: "image" },
-    { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview", type: "image" },
-    { id: "gemini-2.5-flash-image", name: "Gemini 2.5 Flash Image", type: "image" },
     // Gemini 3 series
     { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
     // Gemini 2.5 series
@@ -268,14 +239,12 @@ export const PROVIDER_MODELS = {
     { id: "gemini-embedding-001", name: "Gemini Embedding 001", type: "embedding" },
     { id: "text-embedding-005", name: "Text Embedding 005", type: "embedding" },
     { id: "text-embedding-004", name: "Text Embedding 004 (Legacy)", type: "embedding" },
-    { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Search", type: "webSearch" },
+    // Image models (Nano Banana)
+    { id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image (Nano Banana 2)", type: "image", params: [] },
+    { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image (Nano Banana Pro)", type: "image", params: [] },
+    { id: "gemini-2.5-flash-image", name: "Gemini 2.5 Flash Image (Nano Banana)", type: "image", params: [] },
   ],
   openrouter: [
-    // Image models
-    { id: "openai/dall-e-3", name: "DALL-E 3 (OpenRouter)", type: "image" },
-    { id: "openai/gpt-image-1", name: "GPT Image 1 (OpenRouter)", type: "image" },
-    { id: "google/imagen-3.0-generate-002", name: "Imagen 3.0 (OpenRouter)", type: "image" },
-    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell (OpenRouter)", type: "image" },
     // Embedding models
     { id: "openai/text-embedding-3-large", name: "OpenAI Text Embedding 3 Large", type: "embedding" },
     { id: "openai/text-embedding-3-small", name: "OpenAI Text Embedding 3 Small", type: "embedding" },
@@ -288,6 +257,11 @@ export const PROVIDER_MODELS = {
     { id: "openai/gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "tts" },
     { id: "openai/tts-1-hd",        name: "TTS-1 HD",        type: "tts" },
     { id: "openai/tts-1",           name: "TTS-1",           type: "tts" },
+    // Image models
+    { id: "openai/dall-e-3", name: "DALL-E 3 (via OpenRouter)", type: "image", params: ["size", "quality", "style", "response_format"] },
+    { id: "openai/gpt-image-1", name: "GPT Image 1 (via OpenRouter)", type: "image", params: ["n", "size", "quality", "response_format"] },
+    { id: "google/imagen-3.0-generate-002", name: "Imagen 3 (via OpenRouter)", type: "image", params: ["n", "size"] },
+    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell (via OpenRouter)", type: "image", params: ["n", "size"] },
   ],
   glm: [
     { id: "glm-5.1", name: "GLM 5.1" },
@@ -306,14 +280,13 @@ export const PROVIDER_MODELS = {
     { id: "kimi-k2.5", name: "Kimi K2.5" },
     { id: "kimi-k2.5-thinking", name: "Kimi K2.5 Thinking" },
     { id: "kimi-latest", name: "Kimi Latest" },
-    { id: "kimi-search", name: "Kimi Search", type: "webSearch" },
   ],
   minimax: [
     { id: "MiniMax-M2.7", name: "MiniMax M2.7" },
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
-    { id: "minimax-image-01", name: "MiniMax Image 01", type: "image" },
-    { id: "minimax-search", name: "MiniMax Search", type: "webSearch" },
+    // Image models
+    { id: "minimax-image-01", name: "MiniMax Image 01", type: "image", params: ["n", "size", "response_format"] },
   ],
   blackbox: [
     { id: "gpt-4o", name: "GPT-4o" },
@@ -371,6 +344,15 @@ export const PROVIDER_MODELS = {
     { id: "GLM-4.7", name: "GLM-4.7" },
     { id: "DeepSeek-V3.2", name: "DeepSeek-V3.2" },
   ],
+  byteplus: [
+    { id: "seed-2-0-pro-260328", name: "Seed 2.0 Pro" },
+    { id: "seed-2-0-code-preview-260328", name: "Seed 2.0 Code Preview" },
+    { id: "seed-2-0-mini-260215", name: "Seed 2.0 Mini" },
+    { id: "seed-2-0-lite-260228", name: "Seed 2.0 Lite" },
+    { id: "kimi-k2-thinking-251104", name: "Kimi K2 Thinking" },
+    { id: "glm-4-7-251222", name: "GLM 4.7" },
+    { id: "gpt-oss-120b-250805", name: "GPT-OSS-120B" },
+  ],
   deepseek: [
     { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
     { id: "deepseek-chat", name: "DeepSeek V3.2 Chat" },
@@ -387,7 +369,6 @@ export const PROVIDER_MODELS = {
     { id: "grok-4-fast-reasoning", name: "Grok 4 Fast Reasoning" },
     { id: "grok-code-fast-1", name: "Grok Code Fast" },
     { id: "grok-3", name: "Grok 3" },
-    { id: "grok-4-search", name: "Grok 4 Search", type: "webSearch" },
   ],
   mistral: [
     { id: "mistral-large-latest", name: "Mistral Large 3" },
@@ -397,8 +378,6 @@ export const PROVIDER_MODELS = {
   perplexity: [
     { id: "sonar-pro", name: "Sonar Pro" },
     { id: "sonar", name: "Sonar" },
-    { id: "sonar-pro", name: "Sonar Pro", type: "webSearch" },
-    { id: "sonar", name: "Sonar", type: "webSearch" },
   ],
   together: [
     { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo" },
@@ -430,28 +409,6 @@ export const PROVIDER_MODELS = {
   ],
   nebius: [
     { id: "meta-llama/Llama-3.3-70B-Instruct", name: "Llama 3.3 70B Instruct" },
-  ],
-  tavily: [
-    { id: "tavily-search", name: "Tavily Search", type: "webSearch" },
-  ],
-  "brave-search": [
-    { id: "brave-web-search", name: "Brave Web Search", type: "webSearch" },
-  ],
-  serper: [
-    { id: "google-search", name: "Google Search", type: "webSearch" },
-  ],
-  exa: [
-    { id: "exa-search", name: "Exa Search", type: "webSearch" },
-  ],
-  searxng: [
-    { id: "searxng-search", name: "SearXNG Search", type: "webSearch" },
-  ],
-  deepgram: [
-    { id: "nova-3", name: "Nova-3", type: "stt" },
-    { id: "nova-2", name: "Nova-2", type: "stt" },
-  ],
-  assemblyai: [
-    { id: "universal", name: "Universal", type: "stt" },
   ],
   siliconflow: [
     { id: "deepseek-ai/DeepSeek-V3.2", name: "DeepSeek V3.2" },
@@ -495,21 +452,50 @@ export const PROVIDER_MODELS = {
     { id: "qwen/qwen3-next-80b-a3b-instruct-maas", name: "Qwen3 Next 80B Instruct (Vertex)" },
     { id: "zai-org/glm-5-maas", name: "GLM-5 (Vertex)" },
   ],
-  nanobanana: [
-    { id: "nanobanana-flash", name: "NanoBanana Flash", type: "image" },
-    { id: "nanobanana-pro", name: "NanoBanana Pro", type: "image" },
+  "grok-web": [
+    { id: "grok-3", name: "Grok 3" },
+    { id: "grok-3-mini", name: "Grok 3 Mini (Thinking)" },
+    { id: "grok-3-thinking", name: "Grok 3 Thinking" },
+    { id: "grok-4", name: "Grok 4" },
+    { id: "grok-4-mini", name: "Grok 4 Mini (Thinking)" },
+    { id: "grok-4-thinking", name: "Grok 4 Thinking" },
+    { id: "grok-4-heavy", name: "Grok 4 Heavy (SuperGrok)" },
+    { id: "grok-4.1-mini", name: "Grok 4.1 Mini (Thinking)" },
+    { id: "grok-4.1-fast", name: "Grok 4.1 Fast" },
+    { id: "grok-4.1-expert", name: "Grok 4.1 Expert" },
+    { id: "grok-4.1-thinking", name: "Grok 4.1 Thinking" },
+    { id: "grok-4.2", name: "Grok 4.2 (4.20 Beta)" },
   ],
-  sdwebui: [
-    { id: "stable-diffusion-v1-5", name: "Stable Diffusion v1.5", type: "image" },
-    { id: "sdxl-base-1.0", name: "SDXL Base 1.0", type: "image" },
-  ],
-  huggingface: [
-    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell", type: "image" },
-    { id: "stabilityai/stable-diffusion-xl-base-1.0", name: "Stable Diffusion XL", type: "image" },
+  "perplexity-web": [
+    { id: "pplx-auto", name: "Perplexity Auto (Free)" },
+    { id: "pplx-sonar", name: "Perplexity Sonar" },
+    { id: "pplx-gpt", name: "GPT-5.4 (via Perplexity)" },
+    { id: "pplx-gemini", name: "Gemini 3.1 Pro (via Perplexity)" },
+    { id: "pplx-sonnet", name: "Claude Sonnet 4.6 (via Perplexity)" },
+    { id: "pplx-opus", name: "Claude Opus 4.6 (via Perplexity)" },
+    { id: "pplx-nemotron", name: "Nemotron 3 Super (via Perplexity)" },
   ],
 
   // TTS entries are loaded from ttsModels.js via buildTtsProviderModels()
   ...buildTtsProviderModels(),
+
+  // Image providers
+  nanobanana: [
+    { id: "nanobanana-flash", name: "NanoBanana Flash", type: "image", params: ["n", "size"] },
+    { id: "nanobanana-pro", name: "NanoBanana Pro", type: "image", params: ["n", "size"] },
+  ],
+  sdwebui: [
+    { id: "stable-diffusion-v1-5", name: "Stable Diffusion v1.5", type: "image", params: ["n", "size"] },
+    { id: "sdxl-base-1.0", name: "SDXL Base 1.0", type: "image", params: ["n", "size"] },
+  ],
+  comfyui: [
+    { id: "flux-dev", name: "FLUX Dev", type: "image", params: ["n", "size"] },
+    { id: "sdxl", name: "SDXL", type: "image", params: ["n", "size"] },
+  ],
+  huggingface: [
+    { id: "black-forest-labs/FLUX.1-schnell", name: "FLUX.1 Schnell", type: "image", params: [] },
+    { id: "stabilityai/stable-diffusion-xl-base-1.0", name: "SDXL Base 1.0", type: "image", params: [] },
+  ],
 };
 
 // Helper functions

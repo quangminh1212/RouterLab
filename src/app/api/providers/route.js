@@ -7,8 +7,7 @@ import {
   getProxyPoolById,
 } from "@/models";
 import { APIKEY_PROVIDERS } from "@/shared/constants/config";
-import { FREE_TIER_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
-import { logger } from "@/lib/logger";
+import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -49,15 +48,12 @@ async function normalizeProxyPoolId(proxyPoolId) {
 // GET /api/providers - List all connections
 export async function GET() {
   try {
-    logger.info("API:PROVIDERS", "GET /api/providers started");
     const connections = await getProviderConnections();
-    logger.info("API:PROVIDERS", "Provider connections loaded", { count: connections.length });
 
     // Build nodeNameMap for compatible providers (id → name)
     let nodeNameMap = {};
     try {
       const nodes = await getProviderNodes();
-      logger.info("API:PROVIDERS", "Provider nodes loaded", { count: nodes.length });
       for (const node of nodes) {
         if (node.id && node.name) nodeNameMap[node.id] = node.name;
       }
@@ -79,10 +75,9 @@ export async function GET() {
       };
     });
 
-    logger.info("API:PROVIDERS", "GET /api/providers completed", { count: safeConnections.length });
     return NextResponse.json({ connections: safeConnections });
   } catch (error) {
-    logger.error("API:PROVIDERS", "Error fetching providers", error);
+    console.log("Error fetching providers:", error);
     return NextResponse.json({ error: "Failed to fetch providers" }, { status: 500 });
   }
 }
@@ -90,7 +85,6 @@ export async function GET() {
 // POST /api/providers - Create new connection (API Key only, OAuth via separate flow)
 export async function POST(request) {
   try {
-    logger.info("API:PROVIDERS", "POST /api/providers started");
     const body = await request.json();
     const { provider, apiKey, name, priority, globalPriority, defaultModel, testStatus } = body;
     const proxyConfig = normalizeProxyConfig(body);
@@ -105,16 +99,19 @@ export async function POST(request) {
     const proxyPoolId = proxyPoolResult.proxyPoolId;
 
     // Validation
+    const isWebCookieProvider = !!WEB_COOKIE_PROVIDERS[provider];
     const isValidProvider = APIKEY_PROVIDERS[provider] ||
       FREE_TIER_PROVIDERS[provider] ||
+      isWebCookieProvider ||
       isOpenAICompatibleProvider(provider) ||
-      isAnthropicCompatibleProvider(provider);
+      isAnthropicCompatibleProvider(provider) ||
+      isCustomEmbeddingProvider(provider);
 
     if (!provider || !isValidProvider) {
       return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
     }
     if (!apiKey) {
-      return NextResponse.json({ error: "API Key is required" }, { status: 400 });
+      return NextResponse.json({ error: `${isWebCookieProvider ? "Cookie value" : "API Key"} is required` }, { status: 400 });
     }
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -155,6 +152,22 @@ export async function POST(request) {
         baseUrl: node.baseUrl,
         nodeName: node.name,
       };
+    } else if (isCustomEmbeddingProvider(provider)) {
+      const node = await getProviderNodeById(provider);
+      if (!node) {
+        return NextResponse.json({ error: "Custom Embedding node not found" }, { status: 404 });
+      }
+
+      const existingConnections = await getProviderConnections({ provider });
+      if (existingConnections.length > 0) {
+        return NextResponse.json({ error: "Only one connection is allowed for this Custom Embedding node" }, { status: 400 });
+      }
+
+      providerSpecificData = {
+        prefix: node.prefix,
+        baseUrl: node.baseUrl,
+        nodeName: node.name,
+      };
     }
 
     const mergedProviderSpecificData = {
@@ -170,7 +183,7 @@ export async function POST(request) {
 
     const newConnection = await createProviderConnection({
       provider,
-      authType: "apikey",
+      authType: isWebCookieProvider ? "cookie" : "apikey",
       name,
       apiKey,
       priority: priority || 1,
@@ -185,10 +198,9 @@ export async function POST(request) {
     const result = { ...newConnection };
     delete result.apiKey;
 
-    logger.info("API:PROVIDERS", "POST /api/providers completed", { provider, name });
     return NextResponse.json({ connection: result }, { status: 201 });
   } catch (error) {
-    logger.error("API:PROVIDERS", "Error creating provider", error);
+    console.log("Error creating provider:", error);
     return NextResponse.json({ error: "Failed to create provider" }, { status: 500 });
   }
 }
