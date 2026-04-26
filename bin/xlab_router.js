@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
@@ -200,7 +200,7 @@ if (command === "--help" || command === "-h") {
   console.log("xlab_router - XLab Router CLI");
   console.log("");
   console.log("Usage:");
-  console.log("  xlab_router           Start in system tray/background mode");
+  console.log("  xlab_router           Start Web UI directly (port 1212)");
   console.log("  xlab_router --tray    Start in system tray/background mode");
   console.log("  xlab_router --web     Start Web UI directly (port 1212)");
   console.log("  xlab_router --menu    Show interactive menu");
@@ -870,8 +870,13 @@ if (command === "--web") {
     console.error("[ERROR] Tray host failed:", err);
     process.exit(1);
   });
-} else if (command === "--tray" || !command) {
+} else if (command === "--tray") {
   startTrayMode();
+} else if (!command) {
+  startWebUI().catch((err) => {
+    console.error("[ERROR] Web UI failed:", err);
+    process.exit(1);
+  });
 } else if (command === "--menu") {
   showMenu().catch((err) => {
     console.error("[ERROR] Menu failed:", err);
