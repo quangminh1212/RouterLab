@@ -62,9 +62,6 @@ async function loadSettings() {
   const cacheHit = cachedSettings && now - cachedSettingsAt < getSettingsCacheTtlMs();
 
   if (cacheHit) {
-    if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
-      console.log("[DASHBOARD_GUARD] loadSettings:cacheHit", { age: now - cachedSettingsAt });
-    }
     return cachedSettings;
   }
 
