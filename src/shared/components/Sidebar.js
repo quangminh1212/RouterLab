@@ -31,8 +31,8 @@ const debugItems = [
 ];
 
 const systemItems = [
-  { href: "/dashboard/profile?section=mcp-servers", label: "MCP Servers", icon: "hub" },
-  { href: "/dashboard/profile?section=ai-plugins", label: "AI Plugins", icon: "extension" },
+  { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "hub" },
+  { href: "/dashboard/ai-plugins", label: "AI Plugins", icon: "extension" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
 ];
 
@@ -68,9 +68,6 @@ export default function Sidebar({ onClose }) {
   }, []);
 
   const isActive = (href) => {
-    if (href === "/dashboard/profile?section=mcp-servers" || href === "/dashboard/profile?section=ai-plugins") {
-      return pathname === "/dashboard/profile";
-    }
     if (href === "/dashboard/endpoint") {
       return pathname === "/dashboard" || pathname.startsWith("/dashboard/endpoint");
     }
