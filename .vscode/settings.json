@@ -1,5 +1,8 @@
 {
   "css.lint.unknownAtRules": "ignore",
+  "git.autofetch": true,
+  "git.autofetchPeriod": 180,
+  "git.pruneOnFetch": true,
   "sonarlint.rules": {
     "css:S4662": {
       "level": "off"
