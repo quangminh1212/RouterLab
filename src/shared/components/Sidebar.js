@@ -31,9 +31,7 @@ const debugItems = [
 ];
 
 const systemItems = [
-  { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "hub" },
-  { href: "/dashboard/ai-plugins", label: "AI Plugins", icon: "extension" },
-  { href: "/dashboard/ai-skills", label: "AI Skills", icon: "psychology" },
+  { href: "/dashboard/power-up", label: "Power Up", icon: "rocket_launch" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
 ];
 
