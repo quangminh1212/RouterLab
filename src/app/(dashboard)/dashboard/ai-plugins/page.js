@@ -1,5 +1,5 @@
-import AiSourcesPageClient from "../ai-integrations/AiSourcesPageClient";
+import AIPluginsPageClient from "./AIPluginsPageClient";
 
 export default function AIPluginsPage() {
-  return <AiSourcesPageClient group="plugins" />;
+  return <AIPluginsPageClient />;
 }
