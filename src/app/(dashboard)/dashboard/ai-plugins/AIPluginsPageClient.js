@@ -12,174 +12,39 @@ const EMPTY_AI_INTEGRATIONS = {
   selectedPlugins: [],
 };
 
-const SOURCE_OPTIONS = [
-  { id: "all", label: "All sources" },
-  { id: "xlab-official", label: "XLab official" },
-  { id: "community", label: "Community" },
-];
-
-const LOCAL_PLUGIN_CATALOG = [
+const FALLBACK_PLUGINS = [
   {
-    pluginId: "build-web-apps",
-    name: "Build Web Apps",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Build frontend/backends quickly with reusable web app workflows.",
-    tags: ["web", "frontend", "backend"],
-    icon: "language",
-  },
-  {
-    pluginId: "github-tools",
+    pluginId: "github",
     name: "GitHub",
+    description: "Triage PRs, issues, CI, and publish workflows.",
     category: "Coding",
-    source: "xlab-official",
-    description: "Triage PRs, issues, CI checks, and release workflows.",
-    tags: ["github", "git", "pr"],
-    icon: "code",
+    sourceId: "fallback",
+    sourceLabel: "Fallback",
+    iconUrl: "https://github.githubassets.com/favicons/favicon.svg",
+    homepage: "https://github.com",
+    sourceUrl: "https://github.com",
   },
   {
-    pluginId: "circleci-tools",
-    name: "CircleCI",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Build, test, and deploy applications from local workflows.",
-    tags: ["ci", "pipeline", "deploy"],
-    icon: "account_tree",
-  },
-  {
-    pluginId: "plugin-eval",
-    name: "Plugin Eval",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Evaluate plugin quality and benchmark flows directly from chat.",
-    tags: ["eval", "benchmark", "quality"],
-    icon: "experiment",
-  },
-  {
-    pluginId: "game-studio",
-    name: "Game Studio",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Design, prototype, and ship browser games with guided flows.",
-    tags: ["game", "prototype", "web"],
-    icon: "sports_esports",
-  },
-  {
-    pluginId: "build-ios-apps",
-    name: "Build iOS Apps",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Build, refine, and debug iOS apps with local toolchains.",
-    tags: ["ios", "swift", "xcode"],
-    icon: "phone_iphone",
-  },
-  {
-    pluginId: "build-macos-apps",
-    name: "Build macOS Apps",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Build and maintain macOS apps with desktop-focused workflows.",
-    tags: ["macos", "swift", "desktop"],
-    icon: "laptop_mac",
-  },
-  {
-    pluginId: "build-android-apps",
-    name: "Test Android Apps",
-    category: "Coding",
-    source: "xlab-official",
-    description: "Run Android emulator tests, snapshots, and QA checks quickly.",
-    tags: ["android", "test", "mobile"],
-    icon: "android",
-  },
-  {
-    pluginId: "cloudflare-tools",
-    name: "Cloudflare",
-    category: "Infrastructure",
-    source: "community",
-    description: "Deploy edge workflows and inspect Cloudflare project settings.",
-    tags: ["cloudflare", "edge", "infra"],
-    icon: "cloud",
-  },
-  {
-    pluginId: "sentry-tools",
-    name: "Sentry",
-    category: "Infrastructure",
-    source: "community",
-    description: "Inspect production error events and triage issues.",
-    tags: ["sentry", "monitoring", "errors"],
-    icon: "warning",
-  },
-  {
-    pluginId: "netlify-tools",
-    name: "Netlify",
-    category: "Infrastructure",
-    source: "community",
-    description: "Deploy projects and manage release promotion flows.",
-    tags: ["netlify", "deploy", "hosting"],
-    icon: "public",
-  },
-  {
-    pluginId: "vercel-tools",
+    pluginId: "vercel",
     name: "Vercel",
+    description: "Build and deploy web apps and agents.",
     category: "Infrastructure",
-    source: "community",
-    description: "Build and deploy web apps and agents with project insights.",
-    tags: ["vercel", "deploy", "hosting"],
-    icon: "rocket_launch",
+    sourceId: "fallback",
+    sourceLabel: "Fallback",
+    iconUrl: "https://assets.vercel.com/image/upload/front/favicon/vercel/57x57.png",
+    homepage: "https://vercel.com",
+    sourceUrl: "https://vercel.com",
   },
   {
-    pluginId: "notion-tools",
-    name: "Notion",
-    category: "Productivity",
-    source: "community",
-    description: "Search and organize project notes, docs, and references.",
-    tags: ["notion", "docs", "knowledge"],
-    icon: "sticky_note_2",
-  },
-  {
-    pluginId: "google-drive-tools",
-    name: "Google Drive",
-    category: "Productivity",
-    source: "community",
-    description: "Access Drive files and summarize docs for task context.",
-    tags: ["drive", "docs", "files"],
-    icon: "folder",
-  },
-  {
-    pluginId: "outlook-mail-tools",
-    name: "Outlook Email",
-    category: "Productivity",
-    source: "community",
-    description: "Triage inbox threads and draft replies with local context.",
-    tags: ["email", "outlook", "inbox"],
-    icon: "mail",
-  },
-  {
-    pluginId: "stripe-tools",
-    name: "Stripe",
-    category: "Productivity",
-    source: "community",
-    description: "Inspect payment objects and business events from one place.",
-    tags: ["payments", "billing", "finance"],
-    icon: "payments",
-  },
-  {
-    pluginId: "jira-tools",
-    name: "Jira",
-    category: "Productivity",
-    source: "community",
-    description: "Plan sprint work, track tickets, and summarize progress.",
-    tags: ["jira", "tickets", "agile"],
-    icon: "checklist",
-  },
-  {
-    pluginId: "slack-tools",
-    name: "Slack",
-    category: "Productivity",
-    source: "community",
-    description: "Read threads and manage channel summaries for follow-up.",
-    tags: ["slack", "chat", "team"],
-    icon: "chat",
+    pluginId: "sentry",
+    name: "Sentry",
+    description: "Inspect recent Sentry issues and events.",
+    category: "Infrastructure",
+    sourceId: "fallback",
+    sourceLabel: "Fallback",
+    iconUrl: "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png",
+    homepage: "https://sentry.io",
+    sourceUrl: "https://sentry.io",
   },
 ];
 
@@ -194,35 +59,128 @@ function cloneAiIntegrations(value) {
   };
 }
 
-function getPluginKey(item) {
-  return typeof item?.pluginId === "string" ? item.pluginId : "";
+function normalizePlugin(item) {
+  return {
+    pluginId: typeof item?.pluginId === "string" ? item.pluginId : "",
+    name: typeof item?.name === "string" ? item.name : "",
+    description: typeof item?.description === "string" ? item.description : "",
+    category: typeof item?.category === "string" && item.category.trim() ? item.category.trim() : "Other",
+    sourceId: typeof item?.sourceId === "string" ? item.sourceId : "unknown",
+    sourceLabel: typeof item?.sourceLabel === "string" ? item.sourceLabel : "Unknown",
+    iconUrl: typeof item?.iconUrl === "string" ? item.iconUrl : "",
+    homepage: typeof item?.homepage === "string" ? item.homepage : "",
+    sourceUrl: typeof item?.sourceUrl === "string" ? item.sourceUrl : "",
+    tags: Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === "string") : [],
+  };
 }
 
 function toSelectedPlugin(plugin) {
   return {
     pluginId: plugin.pluginId,
     name: plugin.name,
-    source: plugin.source,
+    source: plugin.sourceLabel,
     category: plugin.category,
     description: plugin.description,
+    homepage: plugin.homepage,
+    sourceUrl: plugin.sourceUrl,
+    iconUrl: plugin.iconUrl,
   };
+}
+
+function getPluginKey(item) {
+  return typeof item?.pluginId === "string" ? item.pluginId : "";
+}
+
+function getFallbackIcon(category) {
+  const value = String(category || "").toLowerCase();
+  if (value.includes("coding") || value.includes("development")) return "code";
+  if (value.includes("infrastructure") || value.includes("devops")) return "cloud";
+  if (value.includes("productivity")) return "work";
+  if (value.includes("security")) return "security";
+  if (value.includes("data")) return "database";
+  return "extension";
+}
+
+function PluginIcon({ iconUrl, category, name }) {
+  const [failed, setFailed] = useState(false);
+  if (iconUrl && !failed) {
+    return (
+      <img
+        src={iconUrl}
+        alt={name}
+        className="h-8 w-8 rounded-md object-cover"
+        onError={() => setFailed(true)}
+        loading="lazy"
+      />
+    );
+  }
+  return <span className="material-symbols-outlined text-[20px]">{getFallbackIcon(category)}</span>;
 }
 
 export default function AIPluginsPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
+  const [plugins, setPlugins] = useState([]);
+  const [sourceOptions, setSourceOptions] = useState([{ id: "all", label: "All sources" }]);
   const [query, setQuery] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("xlab-official");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [savingPluginId, setSavingPluginId] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => setAiForm(cloneAiIntegrations(data?.aiIntegrations)))
-      .catch(() => setStatus({ type: "error", message: "Failed to load local plugins" }))
-      .finally(() => setLoading(false));
+    let canceled = false;
+
+    const loadData = async () => {
+      try {
+        const [settingsRes, catalogRes] = await Promise.all([
+          fetch("/api/settings", { cache: "no-store" }),
+          fetch("/api/ai-plugins/catalog", { cache: "no-store" }),
+        ]);
+
+        const settings = await settingsRes.json().catch(() => ({}));
+        const nextForm = cloneAiIntegrations(settings?.aiIntegrations);
+        if (!canceled) setAiForm(nextForm);
+
+        if (catalogRes.ok) {
+          const catalog = await catalogRes.json().catch(() => ({}));
+          const nextPlugins = (Array.isArray(catalog.plugins) ? catalog.plugins : []).map(normalizePlugin).filter((plugin) => plugin.pluginId && plugin.name);
+          const nextSources = [
+            { id: "all", label: "All sources" },
+            ...(Array.isArray(catalog.sources) ? catalog.sources.map((item) => ({ id: item.id, label: item.label })) : []),
+          ];
+
+          if (!canceled) {
+            setPlugins(nextPlugins.length > 0 ? nextPlugins : FALLBACK_PLUGINS.map(normalizePlugin));
+            setSourceOptions(nextSources.length > 1 ? nextSources : [{ id: "all", label: "All sources" }]);
+            if (Array.isArray(catalog.errors) && catalog.errors.length > 0) {
+              setStatus({ type: "error", message: "Some sources failed to load. Showing available plugins." });
+            }
+          }
+        } else {
+          if (!canceled) {
+            setPlugins(FALLBACK_PLUGINS.map(normalizePlugin));
+            setStatus({ type: "error", message: "Catalog source unavailable. Showing fallback list." });
+          }
+        }
+      } catch {
+        if (!canceled) {
+          setPlugins(FALLBACK_PLUGINS.map(normalizePlugin));
+          setStatus({ type: "error", message: "Failed to load plugin sources. Showing fallback list." });
+        }
+      } finally {
+        if (!canceled) {
+          setLoading(false);
+          setLoadingCatalog(false);
+        }
+      }
+    };
+
+    loadData();
+    return () => {
+      canceled = true;
+    };
   }, []);
 
   const enabledPluginIds = useMemo(
@@ -231,19 +189,19 @@ export default function AIPluginsPageClient() {
   );
 
   const categoryOptions = useMemo(() => {
-    const sourceFiltered = sourceFilter === "all" ? LOCAL_PLUGIN_CATALOG : LOCAL_PLUGIN_CATALOG.filter((item) => item.source === sourceFilter);
+    const sourceFiltered = sourceFilter === "all" ? plugins : plugins.filter((plugin) => plugin.sourceId === sourceFilter);
     return ["all", ...Array.from(new Set(sourceFiltered.map((plugin) => plugin.category))).sort()];
-  }, [sourceFilter]);
+  }, [plugins, sourceFilter]);
 
   const filteredPlugins = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    return LOCAL_PLUGIN_CATALOG.filter((plugin) => {
-      const matchesSource = sourceFilter === "all" || plugin.source === sourceFilter;
+    return plugins.filter((plugin) => {
+      const matchesSource = sourceFilter === "all" || plugin.sourceId === sourceFilter;
       const matchesCategory = categoryFilter === "all" || plugin.category === categoryFilter;
-      const text = `${plugin.name} ${plugin.description} ${plugin.category} ${plugin.tags.join(" ")}`.toLowerCase();
+      const text = `${plugin.name} ${plugin.description} ${plugin.category} ${plugin.sourceLabel}`.toLowerCase();
       return matchesSource && matchesCategory && (!keyword || text.includes(keyword));
     });
-  }, [categoryFilter, query, sourceFilter]);
+  }, [plugins, categoryFilter, query, sourceFilter]);
 
   const groupedPlugins = useMemo(() => {
     const groups = new Map();
@@ -274,10 +232,7 @@ export default function AIPluginsPageClient() {
       if (!res.ok) throw new Error(data.error || "Failed to update plugin");
 
       setAiForm(nextForm);
-      setStatus({
-        type: "success",
-        message: isEnabled ? `Disabled ${plugin.name}` : `Enabled ${plugin.name}`,
-      });
+      setStatus({ type: "success", message: isEnabled ? `Disabled ${plugin.name}` : `Enabled ${plugin.name}` });
     } catch (error) {
       setStatus({ type: "error", message: error?.message || "Plugin update failed" });
     } finally {
@@ -290,7 +245,7 @@ export default function AIPluginsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make Plugins work your way</h1>
-          <p className="text-text-muted mt-2">Enable plugins directly in XLab Router. No store sync, no CLI sync.</p>
+          <p className="text-text-muted mt-2">Plugin list is pulled from real remote marketplace sources with per-plugin icons when available.</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -298,7 +253,7 @@ export default function AIPluginsPageClient() {
             className="flex-1 min-w-[260px]"
             label="Search plugins"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="Search plugins"
           />
 
@@ -306,13 +261,13 @@ export default function AIPluginsPageClient() {
             <label className="text-sm font-medium text-text-main">Source</label>
             <select
               value={sourceFilter}
-              onChange={(e) => {
-                setSourceFilter(e.target.value);
+              onChange={(event) => {
+                setSourceFilter(event.target.value);
                 setCategoryFilter("all");
               }}
               className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
             >
-              {SOURCE_OPTIONS.map((item) => (
+              {sourceOptions.map((item) => (
                 <option key={item.id} value={item.id} className="bg-[#111]">
                   {item.label}
                 </option>
@@ -324,7 +279,7 @@ export default function AIPluginsPageClient() {
             <label className="text-sm font-medium text-text-main">Category</label>
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(event) => setCategoryFilter(event.target.value)}
               className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
             >
               {categoryOptions.map((item) => (
@@ -339,11 +294,11 @@ export default function AIPluginsPageClient() {
         <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center justify-between">
             <p className="text-sm text-text-muted">Installed</p>
-            <p className="text-sm font-medium text-text-main">{enabledPluginIds.size}/{LOCAL_PLUGIN_CATALOG.length}</p>
+            <p className="text-sm font-medium text-text-main">{enabledPluginIds.size}/{plugins.length}</p>
           </div>
         </div>
 
-        {loading ? (
+        {loading || loadingCatalog ? (
           <div className="space-y-3">
             <div className="h-20 rounded-xl border border-black/10 dark:border-white/10" />
             <div className="h-20 rounded-xl border border-black/10 dark:border-white/10" />
@@ -363,12 +318,28 @@ export default function AIPluginsPageClient() {
                     return (
                       <div key={plugin.pluginId} className="flex items-start gap-4 px-4 py-4">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
-                          <span className="material-symbols-outlined text-[20px]">{plugin.icon}</span>
+                          <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="text-lg font-semibold text-text-main">{plugin.name}</p>
-                          <p className="text-sm text-text-muted line-clamp-2">{plugin.description}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-lg font-semibold text-text-main">{plugin.name}</p>
+                            {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                          </div>
+                          <p className="text-sm text-text-muted line-clamp-2">{plugin.description || "No description"}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {plugin.homepage ? (
+                              <a href={plugin.homepage} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
+                                homepage
+                              </a>
+                            ) : null}
+                            {plugin.sourceUrl ? (
+                              <a href={plugin.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
+                                source
+                              </a>
+                            ) : null}
+                          </div>
                         </div>
 
                         <button
