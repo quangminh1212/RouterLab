@@ -61,16 +61,32 @@ Result: Never stop coding, minimal cost
 
 ## 🚀 Quick Start
 
-**1. Install globally:**
+**1. Install and run:**
+
+Global install (recommended if you want the `xlabrouter` command everywhere):
 
 ```bash
 npm install -g xlabrouter
 xlabrouter
 ```
 
-🎉 XLab Router starts in the system tray and keeps running in the background.
+Run without global install:
 
-Open the dashboard at `http://localhost:1212`, or run `xlabrouter --web` if you want to keep it in the current terminal.
+```bash
+npx xlabrouter
+```
+
+Local project install:
+
+```bash
+npm install xlabrouter
+npx xlabrouter
+# or: ./node_modules/.bin/xlabrouter
+```
+
+XLab Router starts the Web UI in the current terminal by default.
+Open the dashboard at `http://localhost:1212`.
+Use `xlabrouter --tray` if you want the background/system tray mode.
 
 **2. Connect a FREE provider (no signup needed):**
 
