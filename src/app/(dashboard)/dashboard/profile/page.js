@@ -12,7 +12,29 @@ const INITIAL_SECTION_LOADING = {
   routing: true,
   network: true,
   observability: true,
+  ai: true,
 };
+
+const EMPTY_AI_INTEGRATIONS = {
+  enabled: false,
+  autoConnect: false,
+  mcpServers: [],
+  plugins: [],
+};
+
+function cloneAiIntegrations(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_AI_INTEGRATIONS;
+  return {
+    enabled: source.enabled === true,
+    autoConnect: source.autoConnect === true,
+    mcpServers: Array.isArray(source.mcpServers)
+      ? source.mcpServers.map((item) => ({ ...item }))
+      : [],
+    plugins: Array.isArray(source.plugins)
+      ? source.plugins.map((item) => ({ ...item }))
+      : [],
+  };
+}
 
 export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
@@ -33,6 +55,11 @@ export default function ProfilePage() {
   const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
+  const aiIntegrationsRef = useRef(null);
+  const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
+  const [aiStatus, setAiStatus] = useState({ type: "", message: "" });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [testingAiId, setTestingAiId] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -47,9 +74,20 @@ export default function ProfilePage() {
           routing: false,
           network: false,
           observability: false,
+          ai: false,
         });
         setSettingsLoadError(true);
       });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("section") !== "ai-integrations") return;
+    const timer = setTimeout(() => {
+      aiIntegrationsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const InlineSettingSkeleton = ({ wide = false }) => (
@@ -64,6 +102,7 @@ export default function ProfilePage() {
 
   const applySettings = (data) => {
     setSettings(data);
+    setAiForm(cloneAiIntegrations(data?.aiIntegrations));
     setProxyForm({
       outboundProxyEnabled: data?.outboundProxyEnabled === true,
       outboundProxyUrl: data?.outboundProxyUrl || "",
@@ -74,8 +113,52 @@ export default function ProfilePage() {
       routing: false,
       network: false,
       observability: false,
+      ai: false,
     });
     setSettingsLoadError(false);
+  };
+
+  const updateAiSource = (group, id, patch) => {
+    setAiForm((prev) => ({
+      ...prev,
+      [group]: (prev[group] || []).map((source) => (
+        source.id === id ? { ...source, ...patch } : source
+      )),
+    }));
+  };
+
+  const saveAiIntegrations = async () => {
+    setAiLoading(true);
+    setAiStatus({ type: "", message: "" });
+    try {
+      await patchSettings({ aiIntegrations: aiForm });
+      setAiStatus({ type: "success", message: "AI integrations saved" });
+    } catch (err) {
+      setAiStatus({ type: "error", message: err.message || "Failed to save AI integrations" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const testAiSource = async (source) => {
+    setTestingAiId(source.id);
+    setAiStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/settings/ai-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: source.endpoint, apiKey: source.apiKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        throw new Error(data.error || `Connection failed${data.status ? ` (${data.status})` : ""}`);
+      }
+      setAiStatus({ type: "success", message: `${source.name} connected in ${data.elapsedMs}ms` });
+    } catch (err) {
+      setAiStatus({ type: "error", message: `${source.name}: ${err.message || "Connection failed"}` });
+    } finally {
+      setTestingAiId("");
+    }
   };
 
   const patchSettings = async (body) => {
@@ -355,6 +438,7 @@ export default function ProfilePage() {
   const routingLoading = sectionLoading.routing;
   const networkLoading = sectionLoading.network;
   const observabilityLoading = sectionLoading.observability;
+  const aiLoadingSection = sectionLoading.ai;
   const observabilityEnabled = settings.enableObservability === true;
   const requireLoginEnabled = settings.requireLogin === true;
   const roundRobinEnabled = settings.fallbackStrategy === "round-robin";
@@ -377,10 +461,13 @@ export default function ProfilePage() {
   const disableRoutingControls = routingLoading;
   const disableNetworkControls = networkLoading || proxyLoading;
   const disableObservabilityControls = observabilityLoading;
+  const disableAiControls = aiLoadingSection || aiLoading;
 
   const showSecurityForm = !securityLoading && requireLoginEnabled;
   const showStickyLimit = !routingLoading && roundRobinEnabled;
   const showProxyForm = !networkLoading && outboundProxyEnabled;
+  const mcpServers = aiForm?.mcpServers || [];
+  const pluginSources = aiForm?.plugins || [];
 
   void isDark;
 
@@ -712,6 +799,142 @@ export default function ProfilePage() {
             )}
           </div>
         </Card>
+
+        {/* AI Integrations */}
+        <div ref={aiIntegrationsRef}>
+        <Card>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+              <span className="material-symbols-outlined text-[20px]">hub</span>
+            </div>
+            <h3 className="text-lg font-semibold">AI Integrations</h3>
+          </div>
+          <div className="flex flex-col gap-4">
+            {aiLoadingSection ? (
+              <div className="flex flex-col gap-4">
+                {renderInlineSkeleton(true)}
+                {renderInlineSkeleton(true)}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <p className="font-medium text-sm">MCP Servers</p>
+                  </div>
+                  {mcpServers.length === 0 ? (
+                    <p className="text-sm text-text-muted">No MCP servers configured</p>
+                  ) : (
+                    mcpServers.map((server) => (
+                      <div key={server.id} className="flex flex-col gap-2 p-3 rounded-lg bg-bg border border-border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px] text-text-muted">
+                              {server.source === "documentation" ? "description" : server.source === "web-search" ? "search" : "memory"}
+                            </span>
+                            <span className="font-medium">{server.name}</span>
+                          </div>
+                          <Toggle
+                            checked={server.enabled}
+                            onChange={() => updateAiSource("mcpServers", server.id, { enabled: !server.enabled })}
+                            disabled={disableAiControls}
+                          />
+                        </div>
+                        <Input
+                          placeholder="Endpoint URL"
+                          value={server.endpoint}
+                          onChange={(e) => updateAiSource("mcpServers", server.id, { endpoint: e.target.value })}
+                          disabled={disableAiControls}
+                        />
+                        <Input
+                          placeholder="API Key (optional)"
+                          type="password"
+                          value={server.apiKey}
+                          onChange={(e) => updateAiSource("mcpServers", server.id, { apiKey: e.target.value })}
+                          disabled={disableAiControls}
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          loading={testingAiId === server.id}
+                          disabled={disableAiControls || !server.endpoint}
+                          onClick={() => testAiSource(server)}
+                        >
+                          Test Connection
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <p className="font-medium text-sm">AI Plugins</p>
+                  </div>
+                  {pluginSources.length === 0 ? (
+                    <p className="text-sm text-text-muted">No plugins configured</p>
+                  ) : (
+                    pluginSources.map((plugin) => (
+                      <div key={plugin.id} className="flex flex-col gap-2 p-3 rounded-lg bg-bg border border-border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px] text-text-muted">extension</span>
+                            <span className="font-medium">{plugin.name}</span>
+                          </div>
+                          <Toggle
+                            checked={plugin.enabled}
+                            onChange={() => updateAiSource("plugins", plugin.id, { enabled: !plugin.enabled })}
+                            disabled={disableAiControls}
+                          />
+                        </div>
+                        <Input
+                          placeholder="Endpoint URL"
+                          value={plugin.endpoint}
+                          onChange={(e) => updateAiSource("plugins", plugin.id, { endpoint: e.target.value })}
+                          disabled={disableAiControls}
+                        />
+                        <Input
+                          placeholder="API Key (optional)"
+                          type="password"
+                          value={plugin.apiKey}
+                          onChange={(e) => updateAiSource("plugins", plugin.id, { apiKey: e.target.value })}
+                          disabled={disableAiControls}
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          loading={testingAiId === plugin.id}
+                          disabled={disableAiControls || !plugin.endpoint}
+                          onClick={() => testAiSource(plugin)}
+                        >
+                          Test Connection
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-border flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    loading={aiLoading}
+                    disabled={disableAiControls}
+                    onClick={saveAiIntegrations}
+                  >
+                    Save AI Integrations
+                  </Button>
+                </div>
+
+                {aiStatus.message && (
+                  <p className={`text-sm ${aiStatus.type === "error" ? "text-red-500" : "text-green-500"}`}>
+                    {aiStatus.message}
+                  </p>
+                )}
+              </>
+            )}
+            {renderFallbackNotice()}
+          </div>
+        </Card>
+        </div>
 
         {/* Observability Settings */}
         <Card>

@@ -31,6 +31,7 @@ const debugItems = [
 ];
 
 const systemItems = [
+  { href: "/dashboard/profile?section=ai-integrations", label: "AI Integrations", icon: "hub" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
 ];
 
@@ -66,6 +67,9 @@ export default function Sidebar({ onClose }) {
   }, []);
 
   const isActive = (href) => {
+    if (href === "/dashboard/profile?section=ai-integrations") {
+      return pathname === "/dashboard/profile";
+    }
     if (href === "/dashboard/endpoint") {
       return pathname === "/dashboard" || pathname.startsWith("/dashboard/endpoint");
     }

@@ -56,9 +56,69 @@ const DEFAULT_SETTINGS = {
   outboundProxyEnabled: false,
   outboundProxyUrl: "",
   outboundNoProxy: "",
+  aiIntegrations: {
+    enabled: false,
+    autoConnect: false,
+    mcpServers: [
+      {
+        id: "context7",
+        name: "Context7 Docs",
+        source: "documentation",
+        endpoint: "https://context7.com",
+        apiKey: "",
+        enabled: false,
+      },
+      {
+        id: "tavily",
+        name: "Tavily Search",
+        source: "web-search",
+        endpoint: "https://api.tavily.com",
+        apiKey: "",
+        enabled: false,
+      },
+      {
+        id: "agent-memory",
+        name: "Agent Memory",
+        source: "memory",
+        endpoint: "http://localhost:3333",
+        apiKey: "",
+        enabled: false,
+      },
+    ],
+    plugins: [
+      {
+        id: "openai",
+        name: "OpenAI",
+        source: "llm",
+        endpoint: "https://api.openai.com/v1/models",
+        apiKey: "",
+        enabled: false,
+      },
+      {
+        id: "anthropic",
+        name: "Anthropic",
+        source: "llm",
+        endpoint: "https://api.anthropic.com/v1/messages",
+        apiKey: "",
+        enabled: false,
+      },
+      {
+        id: "google-ai",
+        name: "Google AI",
+        source: "llm",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
+        apiKey: "",
+        enabled: false,
+      },
+    ],
+  },
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   rtkEnabled: false,
 };
+
+function cloneDefaultSettings() {
+  return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+}
 
 function cloneDefaultData() {
   return {
@@ -69,7 +129,7 @@ function cloneDefaultData() {
     mitmAlias: {},
     combos: [],
     apiKeys: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: cloneDefaultSettings(),
     pricing: {},
   };
 }
@@ -91,7 +151,7 @@ function ensureDbShape(data) {
     }
 
     if (key === "settings" && (typeof next.settings !== "object" || Array.isArray(next.settings))) {
-      next.settings = { ...defaultValue };
+      next.settings = cloneDefaultSettings();
       changed = true;
       continue;
     }
@@ -109,6 +169,30 @@ function ensureDbShape(data) {
           } else {
             next.settings[settingKey] = settingDefault;
           }
+          changed = true;
+        }
+      }
+
+      const defaultAiIntegrations = defaultValue.aiIntegrations;
+      const currentAiIntegrations = next.settings.aiIntegrations;
+      if (!currentAiIntegrations || typeof currentAiIntegrations !== "object" || Array.isArray(currentAiIntegrations)) {
+        next.settings.aiIntegrations = JSON.parse(JSON.stringify(defaultAiIntegrations));
+        changed = true;
+      } else {
+        if (typeof currentAiIntegrations.enabled !== "boolean") {
+          currentAiIntegrations.enabled = defaultAiIntegrations.enabled;
+          changed = true;
+        }
+        if (typeof currentAiIntegrations.autoConnect !== "boolean") {
+          currentAiIntegrations.autoConnect = defaultAiIntegrations.autoConnect;
+          changed = true;
+        }
+        if (!Array.isArray(currentAiIntegrations.mcpServers)) {
+          currentAiIntegrations.mcpServers = JSON.parse(JSON.stringify(defaultAiIntegrations.mcpServers));
+          changed = true;
+        }
+        if (!Array.isArray(currentAiIntegrations.plugins)) {
+          currentAiIntegrations.plugins = JSON.parse(JSON.stringify(defaultAiIntegrations.plugins));
           changed = true;
         }
       }
@@ -1135,9 +1219,9 @@ export async function cleanupProviderConnections() {
 
 function cloneSettingsSnapshot(settings) {
   if (!settings || typeof settings !== "object") {
-    return { ...DEFAULT_SETTINGS };
+    return cloneDefaultSettings();
   }
-  return { ...settings };
+  return JSON.parse(JSON.stringify(settings));
 }
 
 async function refreshSettingsSnapshot() {
