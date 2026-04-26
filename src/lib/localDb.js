@@ -216,9 +216,21 @@ const DEFAULT_SETTINGS = {
     ],
     plugins: [
       {
-        id: "claude-official-store",
-        name: "Claude Official Store",
-        source: "builtin",
+        id: "anthropic-claude-code-plugins",
+        name: "Anthropic Claude Code Plugins",
+        source: "github",
+        marketplace: "claude-code-plugins",
+        endpoint: "",
+        repo: "anthropics/claude-code",
+        ref: "main",
+        path: ".claude-plugin/marketplace.json",
+        apiKey: "",
+        enabled: true,
+      },
+      {
+        id: "anthropic-plugin-directory",
+        name: "Anthropic Plugin Directory",
+        source: "github",
         marketplace: "claude-plugins-official",
         endpoint: "",
         repo: "anthropics/claude-plugins-official",
@@ -228,23 +240,35 @@ const DEFAULT_SETTINGS = {
         enabled: true,
       },
       {
-        id: "community-github-store",
-        name: "Community GitHub Store",
+        id: "claude-code-plugins-plus",
+        name: "Claude Code Plugins Plus",
         source: "github",
-        marketplace: "community",
+        marketplace: "claude-code-plugins-plus",
         endpoint: "",
-        repo: "owner/plugin-marketplace",
+        repo: "jeremylongshore/claude-code-plugins",
+        ref: "main",
+        path: ".claude-plugin/marketplace.json",
+        apiKey: "",
+        enabled: true,
+      },
+      {
+        id: "2389-research-marketplace",
+        name: "2389 Research Marketplace",
+        source: "github",
+        marketplace: "2389-research-marketplace",
+        endpoint: "",
+        repo: "2389-research/claude-plugins",
         ref: "main",
         path: ".claude-plugin/marketplace.json",
         apiKey: "",
         enabled: false,
       },
       {
-        id: "custom-team-store",
-        name: "Custom Team Store",
+        id: "custom-plugin-marketplace",
+        name: "Custom Plugin Marketplace",
         source: "url",
-        marketplace: "team",
-        endpoint: "https://plugins.example.com/marketplace.json",
+        marketplace: "custom",
+        endpoint: "",
         repo: "",
         ref: "",
         path: "",
@@ -364,8 +388,27 @@ function ensureDbShape(data) {
         } else {
           const defaultPluginById = new Map(defaultAiIntegrations.plugins.map((plugin) => [plugin.id, plugin]));
           const existingPluginIds = new Set();
+          const legacyPluginStoreMap = {
+            "claude-official-store": "anthropic-plugin-directory",
+            "community-github-store": "claude-code-plugins-plus",
+            "custom-team-store": "custom-plugin-marketplace",
+          };
           currentAiIntegrations.plugins = currentAiIntegrations.plugins.map((plugin) => {
             if (!plugin || typeof plugin !== "object" || Array.isArray(plugin)) return plugin;
+
+            const mappedId = legacyPluginStoreMap[plugin.id] || plugin.id;
+            if (mappedId !== plugin.id) {
+              plugin = { ...plugin, id: mappedId };
+              changed = true;
+            }
+
+            if (["https://api.openai.com/v1/models", "https://api.anthropic.com/v1/messages", "https://generativelanguage.googleapis.com/v1beta/models"].includes(plugin.endpoint)) {
+              plugin.endpoint = "";
+              plugin.enabled = false;
+              plugin.source = "url";
+              changed = true;
+            }
+
             existingPluginIds.add(plugin.id);
             const defaultPlugin = defaultPluginById.get(plugin.id);
             if (!defaultPlugin) {

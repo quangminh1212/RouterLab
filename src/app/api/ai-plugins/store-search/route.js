@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+const MODEL_API_ENDPOINTS = new Set([
+  "https://api.openai.com/v1/models",
+  "https://api.anthropic.com/v1/messages",
+  "https://generativelanguage.googleapis.com/v1beta/models",
+]);
+
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -60,6 +66,11 @@ function resolveStoreEndpoint(store) {
   return "";
 }
 
+function hasMarketplaceEndpoint(store) {
+  const endpoint = resolveStoreEndpoint(store);
+  return Boolean(endpoint) && !MODEL_API_ENDPOINTS.has(endpoint);
+}
+
 async function fetchMarketplace(store, query) {
   const endpoint = resolveStoreEndpoint(store);
   if (!store.enabled || !endpoint) return { store, plugins: [], error: "Missing marketplace endpoint" };
@@ -89,7 +100,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const query = typeof body?.query === "string" ? body.query.trim() : "";
     const stores = Array.isArray(body?.pluginStores) ? body.pluginStores.map(normalizeStore) : [];
-    const activeStores = stores.filter((store) => store.enabled && store.endpoint);
+    const activeStores = stores.filter((store) => store.enabled && hasMarketplaceEndpoint(store));
 
     if (activeStores.length === 0) {
       return NextResponse.json({ error: "No enabled plugin stores" }, { status: 400 });
