@@ -9,9 +9,6 @@ echo.
 
 set LOG_FILE=log.txt
 set MAX_LOG_BYTES=104857600
-set "SYNC_CLI_ONLY=0"
-if /I "%~1"=="--sync-cli-only" set "SYNC_CLI_ONLY=1"
-
 if exist "%LOG_FILE%" (
     for %%I in ("%LOG_FILE%") do set LOG_SIZE=%%~zI
     if !LOG_SIZE! GEQ %MAX_LOG_BYTES% (
@@ -24,16 +21,6 @@ echo [INFO] Log file: %LOG_FILE%
 echo [INFO] Starting at %date% %time%
 echo [INFO] Starting at %date% %time% > %LOG_FILE%
 echo.
-
-if "%SYNC_CLI_ONLY%"=="1" goto :SYNC_ONLY_PREP
-goto :CONTINUE_NORMAL
-
-:SYNC_ONLY_PREP
-echo [INFO] Sync-only mode enabled (--sync-cli-only^)
-echo [INFO] Sync-only mode enabled (--sync-cli-only^) >> %LOG_FILE%
-goto :AUTO_SYNC_CLI
-
-:CONTINUE_NORMAL
 
 echo [STEP 1/6] Checking for existing server on port 1212...
 echo [STEP 1/6] Checking for existing server on port 1212... >> %LOG_FILE%
@@ -129,153 +116,14 @@ if not exist ".env" (
 )
 echo.
 
-:AUTO_SYNC_CLI
-echo [STEP 6/8] Auto-configuring Claude/Codex CLI settings (optional)...
-echo [STEP 6/8] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG_FILE%
-
-set "AUTO_SYNC_CLI=0"
-
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLI_BASE_URL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLI_API_KEY=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_OPUS_MODEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_SONNET_MODEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_HAIKU_MODEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_DEFAULT_MODE=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_EFFORT_LEVEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_ALWAYS_THINKING=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CODEX_MODEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CODEX_SUBAGENT_MODEL=" ".env"') do set "%%A=%%B"
-if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_SHORTCUT_DIR=" ".env"') do set "%%A=%%B"
-
-if defined XLABROUTER_CLAUDE_DEFAULT_MODE set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CLAUDE_EFFORT_LEVEL set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CLAUDE_ALWAYS_THINKING set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CODEX_MODEL set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CLAUDE_OPUS_MODEL set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CLAUDE_SONNET_MODEL set "AUTO_SYNC_CLI=1"
-if defined XLABROUTER_CLAUDE_HAIKU_MODEL set "AUTO_SYNC_CLI=1"
-
-if "%AUTO_SYNC_CLI%"=="1" (
-    set "CLI_BASE_URL=%XLABROUTER_CLI_BASE_URL%"
-    if not defined CLI_BASE_URL set "CLI_BASE_URL=http://localhost:1212/v1"
-    if /I not "!CLI_BASE_URL:~-3!"=="/v1" set "CLI_BASE_URL=!CLI_BASE_URL!/v1"
-
-    set "CLI_API_KEY=%XLABROUTER_CLI_API_KEY%"
-    if not defined CLI_API_KEY set "CLI_API_KEY=sk_xlabrouter"
-
-    set "CLAUDE_OPUS_MODEL=%XLABROUTER_CLAUDE_OPUS_MODEL%"
-    set "CLAUDE_SONNET_MODEL=%XLABROUTER_CLAUDE_SONNET_MODEL%"
-    set "CLAUDE_HAIKU_MODEL=%XLABROUTER_CLAUDE_HAIKU_MODEL%"
-
-    set "CLAUDE_DEFAULT_MODE=%XLABROUTER_CLAUDE_DEFAULT_MODE%"
-    if not defined CLAUDE_DEFAULT_MODE set "CLAUDE_DEFAULT_MODE=acceptEdits"
-
-    set "CLAUDE_EFFORT_LEVEL=%XLABROUTER_CLAUDE_EFFORT_LEVEL%"
-    if not defined CLAUDE_EFFORT_LEVEL set "CLAUDE_EFFORT_LEVEL=high"
-    if /I "%CLAUDE_EFFORT_LEVEL%"=="max" set "CLAUDE_EFFORT_LEVEL=high"
-
-    set "CLAUDE_ALWAYS_THINKING=%XLABROUTER_CLAUDE_ALWAYS_THINKING%"
-    if not defined CLAUDE_ALWAYS_THINKING set "CLAUDE_ALWAYS_THINKING=true"
-
-    set "CODEX_MODEL=%XLABROUTER_CODEX_MODEL%"
-    set "CODEX_SUBAGENT_MODEL=%XLABROUTER_CODEX_SUBAGENT_MODEL%"
-    if not defined CODEX_SUBAGENT_MODEL set "CODEX_SUBAGENT_MODEL=%CODEX_MODEL%"
-
-    if not exist "%USERPROFILE%\.claude" mkdir "%USERPROFILE%\.claude" >nul 2>&1
-    > "%USERPROFILE%\.claude\settings.json" echo {
-    >> "%USERPROFILE%\.claude\settings.json" echo   "hasCompletedOnboarding": true,
-    >> "%USERPROFILE%\.claude\settings.json" echo   "defaultMode": "%CLAUDE_DEFAULT_MODE%",
-    >> "%USERPROFILE%\.claude\settings.json" echo   "alwaysThinkingEnabled": %CLAUDE_ALWAYS_THINKING%,
-    >> "%USERPROFILE%\.claude\settings.json" echo   "effortLevel": "%CLAUDE_EFFORT_LEVEL%",
-    >> "%USERPROFILE%\.claude\settings.json" echo   "env": {
-    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_BASE_URL": "%CLI_BASE_URL%",
-    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_AUTH_TOKEN": "%CLI_API_KEY%",
-    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_OPUS_MODEL": "%CLAUDE_OPUS_MODEL%",
-    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_SONNET_MODEL": "%CLAUDE_SONNET_MODEL%",
-    >> "%USERPROFILE%\.claude\settings.json" echo     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "%CLAUDE_HAIKU_MODEL%"
-    >> "%USERPROFILE%\.claude\settings.json" echo   }
-    >> "%USERPROFILE%\.claude\settings.json" echo }
-    if errorlevel 1 (
-        echo [WARN] Failed to auto-write Claude settings. >> %LOG_FILE%
-        echo [WARN] Failed to auto-write Claude settings.
-    ) else (
-        echo [OK] Claude settings synced to %USERPROFILE%\.claude\settings.json
-        echo [OK] Claude settings synced. >> %LOG_FILE%
-    )
-
-    if defined CODEX_MODEL (
-        if not exist "%USERPROFILE%\.codex" mkdir "%USERPROFILE%\.codex" >nul 2>&1
-        > "%USERPROFILE%\.codex\config.toml" echo # XLab Router Configuration for Codex CLI
-        >> "%USERPROFILE%\.codex\config.toml" echo model = "%CODEX_MODEL%"
-        >> "%USERPROFILE%\.codex\config.toml" echo model_provider = "xlabrouter"
-        >> "%USERPROFILE%\.codex\config.toml" echo.
-        >> "%USERPROFILE%\.codex\config.toml" echo [model_providers.xlabrouter]
-        >> "%USERPROFILE%\.codex\config.toml" echo name = "xlabrouter"
-        >> "%USERPROFILE%\.codex\config.toml" echo base_url = "%CLI_BASE_URL%"
-        >> "%USERPROFILE%\.codex\config.toml" echo wire_api = "responses"
-        >> "%USERPROFILE%\.codex\config.toml" echo.
-        >> "%USERPROFILE%\.codex\config.toml" echo [agents.subagent]
-        >> "%USERPROFILE%\.codex\config.toml" echo model = "%CODEX_SUBAGENT_MODEL%"
-
-        > "%USERPROFILE%\.codex\auth.json" echo {
-        >> "%USERPROFILE%\.codex\auth.json" echo   "OPENAI_API_KEY": "%CLI_API_KEY%"
-        >> "%USERPROFILE%\.codex\auth.json" echo }
-        if errorlevel 1 (
-            echo [WARN] Failed to auto-write Codex settings. >> %LOG_FILE%
-            echo [WARN] Failed to auto-write Codex settings.
-        ) else (
-            echo [OK] Codex settings synced to %USERPROFILE%\.codex\config.toml and auth.json
-            echo [OK] Codex settings synced. >> %LOG_FILE%
-        )
-    ) else (
-        echo [INFO] XLABROUTER_CODEX_MODEL is empty. Skipped Codex auto-sync.
-        echo [INFO] XLABROUTER_CODEX_MODEL is empty. Skipped Codex auto-sync. >> %LOG_FILE%
-    )
-) else (
-    echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync.
-    echo [INFO] No CLI sync variables found in .env. Skipping Claude/Codex auto-sync. >> %LOG_FILE%
-)
-
-set "CLI_SHORTCUT_DIR=%XLABROUTER_SHORTCUT_DIR%"
-if not defined CLI_SHORTCUT_DIR set "CLI_SHORTCUT_DIR=C:\Dev\Work\2000\shortcut"
-
-if not exist "%CLI_SHORTCUT_DIR%" mkdir "%CLI_SHORTCUT_DIR%" >nul 2>&1
-
-set "SELF_BAT=%~f0"
-
-> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo @echo off
->> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo call "%SELF_BAT%" --sync-cli-only
->> "%CLI_SHORTCUT_DIR%\claude-settings.cmd" echo start "" "%%USERPROFILE%%\.claude\settings.json"
-
-> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo @echo off
->> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo call "%SELF_BAT%" --sync-cli-only
->> "%CLI_SHORTCUT_DIR%\codex-config.cmd" echo start "" "%%USERPROFILE%%\.codex\config.toml"
-
-> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo @echo off
->> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo call "%SELF_BAT%" --sync-cli-only
->> "%CLI_SHORTCUT_DIR%\codex-auth.cmd" echo start "" "%%USERPROFILE%%\.codex\auth.json"
-
-> "%CLI_SHORTCUT_DIR%\setup-claude-codex.cmd" echo @echo off
->> "%CLI_SHORTCUT_DIR%\setup-claude-codex.cmd" echo call "%SELF_BAT%" --sync-cli-only
-
-echo [OK] Shortcut scripts synced in %CLI_SHORTCUT_DIR%
-echo [OK] Shortcut scripts synced in %CLI_SHORTCUT_DIR% >> %LOG_FILE%
-echo.
-
-if "%SYNC_CLI_ONLY%"=="1" (
-    echo [OK] Sync-only mode finished.
-    echo [OK] Sync-only mode finished. >> %LOG_FILE%
-    exit /b 0
-)
-
-echo [STEP 7/8] Skipping production build for development mode...
-echo [STEP 7/8] Skipping production build for development mode... >> %LOG_FILE%
+echo [STEP 6/6] Skipping production build for development mode...
+echo [STEP 6/6] Skipping production build for development mode... >> %LOG_FILE%
 echo [INFO] Build step removed to speed up startup and route switching in dev.
 echo [INFO] Build step removed to speed up startup and route switching in dev. >> %LOG_FILE%
 echo.
 
-echo [STEP 8/8] Starting development server with auto-restart...
-echo [STEP 8/8] Starting development server with auto-restart... >> %LOG_FILE%
+echo [STEP 6/6] Starting development server with auto-restart...
+echo [STEP 6/6] Starting development server with auto-restart... >> %LOG_FILE%
 set "NODE_ENV=development"
 echo [INFO] Startup mode: development (hot reload enabled)
 echo [INFO] Startup mode: development (hot reload enabled) >> %LOG_FILE%
