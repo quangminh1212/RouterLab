@@ -135,17 +135,17 @@ echo [STEP 6/8] Auto-configuring Claude/Codex CLI settings (optional)... >> %LOG
 
 set "AUTO_SYNC_CLI=0"
 
-if exist ".env" call :ReadEnvVar XLABROUTER_CLI_BASE_URL
-if exist ".env" call :ReadEnvVar XLABROUTER_CLI_API_KEY
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_OPUS_MODEL
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_SONNET_MODEL
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_HAIKU_MODEL
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_DEFAULT_MODE
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_EFFORT_LEVEL
-if exist ".env" call :ReadEnvVar XLABROUTER_CLAUDE_ALWAYS_THINKING
-if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_MODEL
-if exist ".env" call :ReadEnvVar XLABROUTER_CODEX_SUBAGENT_MODEL
-if exist ".env" call :ReadEnvVar XLABROUTER_SHORTCUT_DIR
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLI_BASE_URL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLI_API_KEY=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_OPUS_MODEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_SONNET_MODEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_HAIKU_MODEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_DEFAULT_MODE=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_EFFORT_LEVEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CLAUDE_ALWAYS_THINKING=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CODEX_MODEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_CODEX_SUBAGENT_MODEL=" ".env"') do set "%%A=%%B"
+if exist ".env" for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"XLABROUTER_SHORTCUT_DIR=" ".env"') do set "%%A=%%B"
 
 if defined XLABROUTER_CLAUDE_DEFAULT_MODE set "AUTO_SYNC_CLI=1"
 if defined XLABROUTER_CLAUDE_EFFORT_LEVEL set "AUTO_SYNC_CLI=1"
@@ -274,8 +274,8 @@ echo [INFO] Build step removed to speed up startup and route switching in dev.
 echo [INFO] Build step removed to speed up startup and route switching in dev. >> %LOG_FILE%
 echo.
 
-echo [STEP 8/8] Starting development server with hot reload...
-echo [STEP 8/8] Starting development server with hot reload... >> %LOG_FILE%
+echo [STEP 8/8] Starting development server with auto-restart...
+echo [STEP 8/8] Starting development server with auto-restart... >> %LOG_FILE%
 set "NODE_ENV=development"
 echo [INFO] Startup mode: development (hot reload enabled)
 echo [INFO] Startup mode: development (hot reload enabled) >> %LOG_FILE%
@@ -285,14 +285,17 @@ echo [INFO] Server will start on http://localhost:1212
 echo [INFO] Server will start on http://localhost:1212 >> %LOG_FILE%
 echo [INFO] Hot reload is enabled - file changes will auto-restart
 echo [INFO] Hot reload is enabled - file changes will auto-restart >> %LOG_FILE%
-echo [INFO] This batch file keeps the server in the current terminal.
-echo [INFO] This batch file keeps the server in the current terminal. >> %LOG_FILE%
+echo [INFO] Auto-restart is enabled - crashes will restart the server.
+echo [INFO] Auto-restart is enabled - crashes will restart the server. >> %LOG_FILE%
+echo [INFO] Press Ctrl+C to stop and cleanup.
+echo [INFO] Press Ctrl+C to stop and cleanup. >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
 echo [INFO] All server output will be logged to %LOG_FILE% and auto-delete at 100MB
 echo [INFO] Server output is shown below (press Ctrl+C to stop and cleanup)
 echo ========================================
 echo.
 
+:DEV_LOOP
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
 call npm run dev
 set DEV_EXIT_CODE=%ERRORLEVEL%
@@ -308,16 +311,16 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') d
 echo [OK] Port 1212 cleaned up.
 echo [OK] Port 1212 cleaned up. >> %LOG_FILE%
 
-if not "%DEV_EXIT_CODE%"=="0" (
+if "%DEV_EXIT_CODE%"=="0" (
     echo.
-    echo [ERROR] Server stopped with exit code %DEV_EXIT_CODE%. Check %LOG_FILE% for startup details.
-    echo [ERROR] Server stopped with exit code %DEV_EXIT_CODE%. >> %LOG_FILE%
-    pause
-    exit /b %DEV_EXIT_CODE%
+    echo [INFO] Server stopped normally.
+    echo [INFO] Server stopped normally. >> %LOG_FILE%
+    exit /b 0
 )
 
-exit /b 0
+echo.
+echo [WARN] Server stopped with exit code %DEV_EXIT_CODE%. Restarting in 3 seconds...
+echo [WARN] Server stopped with exit code %DEV_EXIT_CODE%. Restarting in 3 seconds... >> %LOG_FILE%
+ping -n 4 127.0.0.1 >nul
+goto :DEV_LOOP
 
-:ReadEnvVar
-for /f "tokens=1,* delims==" %%A in ('findstr /B /C:"%~1=" ".env"') do set "%%A=%%B"
-exit /b 0
