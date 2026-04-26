@@ -55,7 +55,8 @@ export default function ProfilePage() {
   const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
-  const aiIntegrationsRef = useRef(null);
+  const mcpServersRef = useRef(null);
+  const aiPluginsRef = useRef(null);
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
   const [aiStatus, setAiStatus] = useState({ type: "", message: "" });
   const [aiLoading, setAiLoading] = useState(false);
@@ -83,11 +84,19 @@ export default function ProfilePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("section") !== "ai-integrations") return;
-    const timer = setTimeout(() => {
-      aiIntegrationsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-    return () => clearTimeout(timer);
+    const section = params.get("section");
+    if (section === "mcp-servers") {
+      const timer = setTimeout(() => {
+        mcpServersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    if (section === "ai-plugins") {
+      const timer = setTimeout(() => {
+        aiPluginsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const InlineSettingSkeleton = ({ wide = false }) => (
@@ -800,14 +809,14 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        {/* AI Integrations */}
-        <div ref={aiIntegrationsRef}>
+        {/* MCP Servers */}
+        <div ref={mcpServersRef}>
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
               <span className="material-symbols-outlined text-[20px]">hub</span>
             </div>
-            <h3 className="text-lg font-semibold">AI Integrations</h3>
+            <h3 className="text-lg font-semibold">MCP Servers</h3>
           </div>
           <div className="flex flex-col gap-4">
             {aiLoadingSection ? (
@@ -818,9 +827,6 @@ export default function ProfilePage() {
             ) : (
               <>
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-border">
-                    <p className="font-medium text-sm">MCP Servers</p>
-                  </div>
                   {mcpServers.length === 0 ? (
                     <p className="text-sm text-text-muted">No MCP servers configured</p>
                   ) : (
@@ -865,11 +871,31 @@ export default function ProfilePage() {
                     ))
                   )}
                 </div>
+              </>
+            )}
+            {renderFallbackNotice()}
+          </div>
+        </Card>
+        </div>
 
-                <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between pb-2 border-b border-border">
-                    <p className="font-medium text-sm">AI Plugins</p>
-                  </div>
+        {/* AI Plugins */}
+        <div ref={aiPluginsRef}>
+        <Card>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-violet-500/10 text-violet-500">
+              <span className="material-symbols-outlined text-[20px]">extension</span>
+            </div>
+            <h3 className="text-lg font-semibold">AI Plugins</h3>
+          </div>
+          <div className="flex flex-col gap-4">
+            {aiLoadingSection ? (
+              <div className="flex flex-col gap-4">
+                {renderInlineSkeleton(true)}
+                {renderInlineSkeleton(true)}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3">
                   {pluginSources.length === 0 ? (
                     <p className="text-sm text-text-muted">No plugins configured</p>
                   ) : (
