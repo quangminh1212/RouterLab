@@ -11,39 +11,39 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import RamConfigModal from "./RamConfigModal";
 
 const LOCALE_INFO = {
-  "en": { name: "English", flag: "ðŸ‡ºðŸ‡¸" },
-  "vi": { name: "Tiáº¿ng Viá»‡t", flag: "ðŸ‡»ðŸ‡³" },
-  "zh-CN": { name: "ç®€ä½“ä¸­æ–‡", flag: "ðŸ‡¨ðŸ‡³" },
-  "zh-TW": { name: "ç¹é«”ä¸­æ–‡", flag: "ðŸ‡¹ðŸ‡¼" },
-  "ja": { name: "æ—¥æœ¬èªž", flag: "ðŸ‡¯ðŸ‡µ" },
-  "pt-BR": { name: "PortuguÃªs (BR)", flag: "ðŸ‡§ðŸ‡·" },
-  "pt-PT": { name: "PortuguÃªs (PT)", flag: "ðŸ‡µðŸ‡¹" },
-  "ko": { name: "í•œêµ­ì–´", flag: "ðŸ‡°ðŸ‡·" },
-  "es": { name: "EspaÃ±ol", flag: "ðŸ‡ªðŸ‡¸" },
-  "de": { name: "Deutsch", flag: "ðŸ‡©ðŸ‡ª" },
-  "fr": { name: "FranÃ§ais", flag: "ðŸ‡«ðŸ‡·" },
-  "he": { name: "×¢×‘×¨×™×ª", flag: "ðŸ‡®ðŸ‡±" },
-  "ar": { name: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©", flag: "ðŸ‡¸ðŸ‡¦" },
-  "ru": { name: "Ð ÑƒÑÑÐºÐ¸Ð¹", flag: "ðŸ‡·ðŸ‡º" },
-  "pl": { name: "Polski", flag: "ðŸ‡µðŸ‡±" },
-  "cs": { name: "ÄŒeÅ¡tina", flag: "ðŸ‡¨ðŸ‡¿" },
-  "nl": { name: "Nederlands", flag: "ðŸ‡³ðŸ‡±" },
-  "tr": { name: "TÃ¼rkÃ§e", flag: "ðŸ‡¹ðŸ‡·" },
-  "uk": { name: "Ð£ÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ°", flag: "ðŸ‡ºðŸ‡¦" },
-  "tl": { name: "Tagalog", flag: "ðŸ‡µðŸ‡­" },
-  "id": { name: "Indonesia", flag: "ðŸ‡®ðŸ‡©" },
-  "th": { name: "à¹„à¸—à¸¢", flag: "ðŸ‡¹ðŸ‡­" },
-  "hi": { name: "à¤¹à¤¿à¤¨à¥à¤¦à¥€", flag: "ðŸ‡®ðŸ‡³" },
-  "bn": { name: "à¦¬à¦¾à¦‚à¦²à¦¾", flag: "ðŸ‡§ðŸ‡©" },
-  "ur": { name: "Ø§Ø±Ø¯Ùˆ", flag: "ðŸ‡µðŸ‡°" },
-  "ro": { name: "RomÃ¢nÄƒ", flag: "ðŸ‡·ðŸ‡´" },
-  "sv": { name: "Svenska", flag: "ðŸ‡¸ðŸ‡ª" },
-  "it": { name: "Italiano", flag: "ðŸ‡®ðŸ‡¹" },
-  "el": { name: "Î•Î»Î»Î·Î½Î¹ÎºÎ¬", flag: "ðŸ‡¬ðŸ‡·" },
-  "hu": { name: "Magyar", flag: "ðŸ‡­ðŸ‡º" },
-  "fi": { name: "Suomi", flag: "ðŸ‡«ðŸ‡®" },
-  "da": { name: "Dansk", flag: "ðŸ‡©ðŸ‡°" },
-  "no": { name: "Norsk", flag: "ðŸ‡³ðŸ‡´" },
+  "en": { name: "English", flag: "🇺🇸" },
+  "vi": { name: "Tiếng Việt", flag: "🇻🇳" },
+  "zh-CN": { name: "简体中文", flag: "🇨🇳" },
+  "zh-TW": { name: "繁體中文", flag: "🇹🇼" },
+  "ja": { name: "日本語", flag: "🇯🇵" },
+  "pt-BR": { name: "Português (BR)", flag: "🇧🇷" },
+  "pt-PT": { name: "Português (PT)", flag: "🇵🇹" },
+  "ko": { name: "한국어", flag: "🇰🇷" },
+  "es": { name: "Español", flag: "🇪🇸" },
+  "de": { name: "Deutsch", flag: "🇩🇪" },
+  "fr": { name: "Français", flag: "🇫🇷" },
+  "he": { name: "עברית", flag: "🇮🇱" },
+  "ar": { name: "العربية", flag: "🇸🇦" },
+  "ru": { name: "Русский", flag: "🇷🇺" },
+  "pl": { name: "Polski", flag: "🇵🇱" },
+  "cs": { name: "Čeština", flag: "🇨🇿" },
+  "nl": { name: "Nederlands", flag: "🇳🇱" },
+  "tr": { name: "Türkçe", flag: "🇹🇷" },
+  "uk": { name: "Українська", flag: "🇺🇦" },
+  "tl": { name: "Tagalog", flag: "🇵🇭" },
+  "id": { name: "Indonesia", flag: "🇮🇩" },
+  "th": { name: "ไทย", flag: "🇹🇭" },
+  "hi": { name: "हिन्दी", flag: "🇮🇳" },
+  "bn": { name: "বাংলা", flag: "🇧🇩" },
+  "ur": { name: "اردو", flag: "🇵🇰" },
+  "ro": { name: "Română", flag: "🇷🇴" },
+  "sv": { name: "Svenska", flag: "🇸🇪" },
+  "it": { name: "Italiano", flag: "🇮🇹" },
+  "el": { name: "Ελληνικά", flag: "🇬🇷" },
+  "hu": { name: "Magyar", flag: "🇭🇺" },
+  "fi": { name: "Suomi", flag: "🇫🇮" },
+  "da": { name: "Dansk", flag: "🇩🇰" },
+  "no": { name: "Norsk", flag: "🇳🇴" },
 };
 
 function getLocaleFromCookie() {
@@ -289,7 +289,7 @@ export default function HeaderMenu({ onLogout }) {
             <MenuItem
               icon="language"
               label={LOCALE_INFO[locale]?.name || locale}
-              trailing={LOCALE_INFO[locale]?.flag || "ðŸŒ"}
+              trailing={LOCALE_INFO[locale]?.flag || "🌐"}
               onClick={() => { close(); setLangOpen(true); }}
             />
             <MenuItem
