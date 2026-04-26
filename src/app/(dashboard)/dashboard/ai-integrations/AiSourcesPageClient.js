@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { Button, Card, CardSkeleton, Input, Toggle } from "@/shared/components";
+import { Button, Card, CardSkeleton } from "@/shared/components";
 
 const EMPTY_AI_INTEGRATIONS = {
   enabled: false,
@@ -14,19 +14,11 @@ const EMPTY_AI_INTEGRATIONS = {
 const PAGE_CONFIG = {
   mcpServers: {
     title: "MCP Servers",
-    description: "Connect MCP sources for documentation, web search, and agent memory.",
-    icon: "hub",
-    color: "bg-blue-500/10 text-blue-500",
-    empty: "No MCP servers configured",
-    getIcon: (source) => (source === "documentation" ? "description" : source === "web-search" ? "search" : "memory"),
+    description: "JSON config for MCP sources.",
   },
   plugins: {
     title: "AI Plugins",
-    description: "Connect AI plugin sources used by agent workflows.",
-    icon: "extension",
-    color: "bg-violet-500/10 text-violet-500",
-    empty: "No plugins configured",
-    getIcon: () => "extension",
+    description: "JSON config for plugin sources.",
   },
 };
 
@@ -35,82 +27,148 @@ function cloneAiIntegrations(value) {
   return {
     enabled: source.enabled === true,
     autoConnect: source.autoConnect === true,
-    mcpServers: Array.isArray(source.mcpServers)
-      ? source.mcpServers.map((item) => ({ ...item }))
-      : [],
-    plugins: Array.isArray(source.plugins)
-      ? source.plugins.map((item) => ({ ...item }))
-      : [],
+    mcpServers: Array.isArray(source.mcpServers) ? source.mcpServers.map((item) => ({ ...item })) : [],
+    plugins: Array.isArray(source.plugins) ? source.plugins.map((item) => ({ ...item })) : [],
   };
+}
+
+function normalizeSources(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, index) => {
+    const id = typeof item?.id === "string" && item.id.trim() ? item.id.trim() : `source-${index + 1}`;
+    return {
+      id,
+      name: typeof item?.name === "string" && item.name.trim() ? item.name.trim() : id,
+      source: typeof item?.source === "string" ? item.source.trim() : "",
+      endpoint: typeof item?.endpoint === "string" ? item.endpoint.trim() : "",
+      apiKey: typeof item?.apiKey === "string" ? item.apiKey : "",
+      enabled: item?.enabled === true,
+    };
+  });
+}
+
+function toJson(value) {
+  return JSON.stringify(value, null, 2);
 }
 
 export default function AiSourcesPageClient({ group }) {
   const config = PAGE_CONFIG[group];
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
+  const [jsonText, setJsonText] = useState("[]");
+  const [jsonError, setJsonError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testingId, setTestingId] = useState("");
+  const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
+  const [testResults, setTestResults] = useState([]);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
-      .then((data) => setAiForm(cloneAiIntegrations(data?.aiIntegrations)))
-      .catch(() => setStatus({ type: "error", message: "Failed to load AI integrations" }))
+      .then((data) => {
+        const next = cloneAiIntegrations(data?.aiIntegrations);
+        setAiForm(next);
+        setJsonText(toJson(normalizeSources(next[group])));
+      })
+      .catch(() => setStatus({ type: "error", message: "Failed to load settings" }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [group]);
 
-  const updateSource = (id, patch) => {
-    setAiForm((prev) => ({
-      ...prev,
-      [group]: (prev[group] || []).map((source) => (
-        source.id === id ? { ...source, ...patch } : source
-      )),
-    }));
+  const parseJsonSources = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      throw new Error("Invalid JSON format");
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error("JSON must be an array");
+    }
+    return normalizeSources(parsed);
   };
 
   const saveSources = async () => {
     setSaving(true);
     setStatus({ type: "", message: "" });
+    setJsonError("");
     try {
+      const normalized = parseJsonSources();
+      const nextForm = { ...aiForm, [group]: normalized };
+
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aiIntegrations: aiForm }),
+        body: JSON.stringify({ aiIntegrations: nextForm }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to save AI integrations");
-      setStatus({ type: "success", message: `${config.title} saved` });
+      if (!res.ok) throw new Error(data.error || "Failed to save settings");
+
+      setAiForm(nextForm);
+      setJsonText(toJson(normalized));
+      setStatus({ type: "success", message: `Saved ${normalized.length} items` });
     } catch (err) {
-      setStatus({ type: "error", message: err.message || "Failed to save AI integrations" });
+      setJsonError(err.message || "Invalid JSON");
+      setStatus({ type: "error", message: "Save failed" });
     } finally {
       setSaving(false);
     }
   };
 
-  const testSource = async (source) => {
-    setTestingId(source.id);
+  const testEnabled = async () => {
+    setTesting(true);
     setStatus({ type: "", message: "" });
+    setJsonError("");
+    setTestResults([]);
+
     try {
-      const res = await fetch("/api/settings/ai-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: source.endpoint, apiKey: source.apiKey }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        throw new Error(data.error || `Connection failed${data.status ? ` (${data.status})` : ""}`);
+      const normalized = parseJsonSources();
+      const activeSources = normalized.filter((item) => item.enabled && item.endpoint);
+      if (activeSources.length === 0) {
+        setStatus({ type: "error", message: "No enabled sources with endpoint" });
+        return;
       }
-      setStatus({ type: "success", message: `${source.name} connected in ${data.elapsedMs}ms` });
+
+      const results = await Promise.all(activeSources.map(async (source) => {
+        try {
+          const res = await fetch("/api/settings/ai-test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: source.endpoint, apiKey: source.apiKey }),
+          });
+          const data = await res.json().catch(() => ({}));
+          return {
+            id: source.id,
+            name: source.name,
+            ok: res.ok && data?.ok === true,
+            status: data?.status || res.status,
+            elapsedMs: data?.elapsedMs || null,
+            error: data?.error || null,
+          };
+        } catch (err) {
+          return {
+            id: source.id,
+            name: source.name,
+            ok: false,
+            status: null,
+            elapsedMs: null,
+            error: err?.message || "Connection failed",
+          };
+        }
+      }));
+
+      setTestResults(results);
+      const successCount = results.filter((item) => item.ok).length;
+      setStatus({
+        type: successCount === results.length ? "success" : "error",
+        message: `Tested ${results.length} source(s): ${successCount} OK`,
+      });
     } catch (err) {
-      setStatus({ type: "error", message: `${source.name}: ${err.message || "Connection failed"}` });
+      setJsonError(err.message || "Invalid JSON");
+      setStatus({ type: "error", message: "Test failed" });
     } finally {
-      setTestingId("");
+      setTesting(false);
     }
   };
-
-  const sources = aiForm[group] || [];
-  const disabled = loading || saving;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -121,82 +179,34 @@ export default function AiSourcesPageClient({ group }) {
         </div>
 
         <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`p-2 rounded-lg ${config.color}`}>
-              <span className="material-symbols-outlined text-[20px]">{config.icon}</span>
-            </div>
-            <h3 className="text-lg font-semibold">Sources</h3>
-          </div>
-
           {loading ? (
-            <div className="grid gap-4">
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
+            <CardSkeleton />
           ) : (
-            <div className="flex flex-col gap-4">
-              {sources.length === 0 ? (
-                <p className="text-sm text-text-muted">{config.empty}</p>
-              ) : (
-                sources.map((source) => (
-                  <div key={source.id} className="flex flex-col gap-3 p-4 rounded-lg bg-bg border border-border">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px] text-text-muted">
-                          {config.getIcon(source.source)}
-                        </span>
-                        <div>
-                          <p className="font-medium">{source.name}</p>
-                          <p className="text-xs text-text-muted uppercase tracking-wide">{source.source}</p>
-                        </div>
-                      </div>
-                      <Toggle
-                        checked={source.enabled}
-                        onChange={() => updateSource(source.id, { enabled: !source.enabled })}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <Input
-                      label="Endpoint URL"
-                      placeholder="https://example.com"
-                      value={source.endpoint}
-                      onChange={(e) => updateSource(source.id, { endpoint: e.target.value })}
-                      disabled={disabled}
-                    />
-                    <Input
-                      label="API Key"
-                      placeholder="Optional"
-                      type="password"
-                      value={source.apiKey}
-                      onChange={(e) => updateSource(source.id, { apiKey: e.target.value })}
-                      disabled={disabled}
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        loading={testingId === source.id}
-                        disabled={disabled || !source.endpoint}
-                        onClick={() => testSource(source)}
-                      >
-                        Test Connection
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="flex flex-col gap-3">
+              <textarea
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+                className="min-h-[320px] w-full rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 font-mono text-sm text-text-main focus:outline-none focus:ring-1 focus:ring-primary/40"
+                spellCheck={false}
+              />
 
-              <div className="pt-4 border-t border-border flex items-center gap-2">
-                <Button variant="primary" loading={saving} disabled={disabled} onClick={saveSources}>
-                  Save {config.title}
+              {jsonError ? <p className="text-sm text-red-500">{jsonError}</p> : null}
+              {status.message ? (
+                <p className={`text-sm ${status.type === "error" ? "text-red-500" : "text-green-500"}`}>{status.message}</p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button variant="secondary" loading={testing} disabled={saving} onClick={testEnabled}>
+                  Test Enabled
+                </Button>
+                <Button variant="primary" loading={saving} disabled={testing} onClick={saveSources}>
+                  Save JSON
                 </Button>
               </div>
 
-              {status.message && (
-                <p className={`text-sm ${status.type === "error" ? "text-red-500" : "text-green-500"}`}>
-                  {status.message}
-                </p>
-              )}
+              {testResults.length > 0 ? (
+                <pre className="mt-2 overflow-auto rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 text-xs text-text-main">{toJson(testResults)}</pre>
+              ) : null}
             </div>
           )}
         </Card>
@@ -208,3 +218,4 @@ export default function AiSourcesPageClient({ group }) {
 AiSourcesPageClient.propTypes = {
   group: PropTypes.oneOf(["mcpServers", "plugins"]).isRequired,
 };
+
