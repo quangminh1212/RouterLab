@@ -45,7 +45,7 @@ function normalizeOfficialServer(raw) {
     sourceUrl: typeof repository.url === "string" ? repository.url : "https://registry.modelcontextprotocol.io",
     verified: metadata.status === "active",
     latest: metadata.isLatest === true,
-    installHint: packageName ? `npx -y ${packageName}@latest` : endpoint,
+    installHint: packageName ? `npm i ${packageName}` : endpoint,
   };
 }
 
