@@ -277,6 +277,7 @@ const DEFAULT_SETTINGS = {
       },
     ],
     selectedPlugins: [],
+    selectedSkills: [],
   },
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   rtkEnabled: false,
@@ -435,6 +436,10 @@ function ensureDbShape(data) {
 
         if (!Array.isArray(currentAiIntegrations.selectedPlugins)) {
           currentAiIntegrations.selectedPlugins = [];
+          changed = true;
+        }
+        if (!Array.isArray(currentAiIntegrations.selectedSkills)) {
+          currentAiIntegrations.selectedSkills = [];
           changed = true;
         }
       }
