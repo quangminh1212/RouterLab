@@ -61,10 +61,26 @@ const DEFAULT_SETTINGS = {
     autoConnect: false,
     mcpServers: [
       {
+        id: "openai-docs",
+        name: "OpenAI Developer Docs",
+        source: "documentation",
+        command: "",
+        args: [],
+        env: {},
+        headers: {},
+        endpoint: "https://developers.openai.com/mcp",
+        apiKey: "",
+        enabled: false,
+      },
+      {
         id: "context7",
         name: "Context7 Docs",
         source: "documentation",
-        endpoint: "https://context7.com",
+        command: "npx",
+        args: ["-y", "@upstash/context7-mcp@latest"],
+        env: {},
+        headers: {},
+        endpoint: "",
         apiKey: "",
         enabled: false,
       },
@@ -72,41 +88,61 @@ const DEFAULT_SETTINGS = {
         id: "tavily",
         name: "Tavily Search",
         source: "web-search",
-        endpoint: "https://api.tavily.com",
+        command: "npx",
+        args: ["-y", "tavily-mcp@latest"],
+        env: { "TAVILY_API_KEY": "" },
+        headers: {},
+        endpoint: "",
         apiKey: "",
         enabled: false,
       },
       {
-        id: "agent-memory",
-        name: "Agent Memory",
-        source: "memory",
-        endpoint: "http://localhost:3333",
+        id: "playwright",
+        name: "Playwright Browser",
+        source: "browser",
+        command: "npx",
+        args: ["-y", "@playwright/mcp@latest"],
+        env: {},
+        headers: {},
+        endpoint: "",
         apiKey: "",
         enabled: false,
       },
     ],
     plugins: [
       {
-        id: "openai",
-        name: "OpenAI",
-        source: "llm",
-        endpoint: "https://api.openai.com/v1/models",
+        id: "claude-official-store",
+        name: "Claude Official Store",
+        source: "builtin",
+        marketplace: "claude-plugins-official",
+        endpoint: "",
+        repo: "anthropics/claude-plugins-official",
+        ref: "main",
+        path: ".claude-plugin/marketplace.json",
+        apiKey: "",
+        enabled: true,
+      },
+      {
+        id: "community-github-store",
+        name: "Community GitHub Store",
+        source: "github",
+        marketplace: "community",
+        endpoint: "",
+        repo: "owner/plugin-marketplace",
+        ref: "main",
+        path: ".claude-plugin/marketplace.json",
         apiKey: "",
         enabled: false,
       },
       {
-        id: "anthropic",
-        name: "Anthropic",
-        source: "llm",
-        endpoint: "https://api.anthropic.com/v1/messages",
-        apiKey: "",
-        enabled: false,
-      },
-      {
-        id: "google-ai",
-        name: "Google AI",
-        source: "llm",
-        endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
+        id: "custom-team-store",
+        name: "Custom Team Store",
+        source: "url",
+        marketplace: "team",
+        endpoint: "https://plugins.example.com/marketplace.json",
+        repo: "",
+        ref: "",
+        path: "",
         apiKey: "",
         enabled: false,
       },
@@ -190,10 +226,62 @@ function ensureDbShape(data) {
         if (!Array.isArray(currentAiIntegrations.mcpServers)) {
           currentAiIntegrations.mcpServers = JSON.parse(JSON.stringify(defaultAiIntegrations.mcpServers));
           changed = true;
+        } else {
+          const defaultMcpById = new Map(defaultAiIntegrations.mcpServers.map((server) => [server.id, server]));
+          const existingMcpIds = new Set();
+          currentAiIntegrations.mcpServers = currentAiIntegrations.mcpServers.map((server) => {
+            if (!server || typeof server !== "object" || Array.isArray(server)) return server;
+            existingMcpIds.add(server.id);
+            const defaultServer = defaultMcpById.get(server.id);
+            if (!defaultServer) return server;
+            const mergedServer = { ...defaultServer, ...server };
+            if (!Array.isArray(mergedServer.args)) mergedServer.args = defaultServer.args || [];
+            if (!mergedServer.env || typeof mergedServer.env !== "object" || Array.isArray(mergedServer.env)) {
+              mergedServer.env = defaultServer.env || {};
+            }
+            if (!mergedServer.headers || typeof mergedServer.headers !== "object" || Array.isArray(mergedServer.headers)) {
+              mergedServer.headers = defaultServer.headers || {};
+            }
+            if (JSON.stringify(mergedServer) !== JSON.stringify(server)) changed = true;
+            return mergedServer;
+          });
+
+          for (const defaultServer of defaultAiIntegrations.mcpServers) {
+            if (!existingMcpIds.has(defaultServer.id)) {
+              currentAiIntegrations.mcpServers.push(JSON.parse(JSON.stringify(defaultServer)));
+              changed = true;
+            }
+          }
         }
         if (!Array.isArray(currentAiIntegrations.plugins)) {
           currentAiIntegrations.plugins = JSON.parse(JSON.stringify(defaultAiIntegrations.plugins));
           changed = true;
+        } else {
+          const defaultPluginById = new Map(defaultAiIntegrations.plugins.map((plugin) => [plugin.id, plugin]));
+          const existingPluginIds = new Set();
+          currentAiIntegrations.plugins = currentAiIntegrations.plugins.map((plugin) => {
+            if (!plugin || typeof plugin !== "object" || Array.isArray(plugin)) return plugin;
+            existingPluginIds.add(plugin.id);
+            const defaultPlugin = defaultPluginById.get(plugin.id);
+            if (!defaultPlugin) {
+              if (plugin.marketplace === undefined) plugin.marketplace = "";
+              if (plugin.repo === undefined) plugin.repo = "";
+              if (plugin.ref === undefined) plugin.ref = "";
+              if (plugin.path === undefined) plugin.path = "";
+              return plugin;
+            }
+
+            const mergedPlugin = { ...defaultPlugin, ...plugin };
+            if (JSON.stringify(mergedPlugin) !== JSON.stringify(plugin)) changed = true;
+            return mergedPlugin;
+          });
+
+          for (const defaultPlugin of defaultAiIntegrations.plugins) {
+            if (!existingPluginIds.has(defaultPlugin.id)) {
+              currentAiIntegrations.plugins.push(JSON.parse(JSON.stringify(defaultPlugin)));
+              changed = true;
+            }
+          }
         }
       }
 

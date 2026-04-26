@@ -36,6 +36,11 @@ function normalizeMcpServers(raw) {
       const headers = asObject(source.headers);
       const apiKey = typeof source.apiKey === "string" ? source.apiKey.trim() : "";
       const enabled = source.enabled !== false;
+      const enabledTools = toStringArray(source.enabledTools);
+      const disabledTools = toStringArray(source.disabledTools);
+      const envVars = toStringArray(source.envVars);
+      const cwd = typeof source.cwd === "string" ? source.cwd.trim() : "";
+      const bearerTokenEnvVar = typeof source.bearerTokenEnvVar === "string" ? source.bearerTokenEnvVar.trim() : "";
 
       const startupTimeoutSec = Number.isFinite(Number(source.startupTimeoutSec))
         ? Number(source.startupTimeoutSec)
@@ -45,6 +50,7 @@ function normalizeMcpServers(raw) {
         : 120;
 
       const supportsParallelToolCalls = source.supportsParallelToolCalls === true;
+      const required = source.required === true;
 
       return {
         id,
@@ -55,9 +61,15 @@ function normalizeMcpServers(raw) {
         headers,
         apiKey,
         enabled,
+        enabledTools,
+        disabledTools,
+        envVars,
+        cwd,
+        bearerTokenEnvVar,
         startupTimeoutSec,
         toolTimeoutSec,
         supportsParallelToolCalls,
+        required,
       };
     })
     .filter((item) => item.command || item.endpoint);
@@ -70,24 +82,29 @@ function toCodexMcpEntry(server) {
     tool_timeout_sec: server.toolTimeoutSec,
   };
 
-  if (server.supportsParallelToolCalls) {
-    entry.supports_parallel_tool_calls = true;
-  }
+  if (server.supportsParallelToolCalls) entry.supports_parallel_tool_calls = true;
+  if (server.required) entry.required = true;
+  if (server.enabledTools.length > 0) entry.enabled_tools = server.enabledTools;
+  if (server.disabledTools.length > 0) entry.disabled_tools = server.disabledTools;
 
   if (server.command) {
     entry.command = server.command;
     if (server.args.length > 0) entry.args = server.args;
     if (Object.keys(server.env).length > 0) entry.env = server.env;
+    if (server.envVars.length > 0) entry.env_vars = server.envVars;
+    if (server.cwd) entry.cwd = server.cwd;
     return entry;
   }
 
   entry.url = server.endpoint;
+  if (server.bearerTokenEnvVar) entry.bearer_token_env_var = server.bearerTokenEnvVar;
+
   const mergedHeaders = { ...server.headers };
-  if (server.apiKey && !mergedHeaders.Authorization) {
+  if (server.apiKey && !mergedHeaders.Authorization && !server.bearerTokenEnvVar) {
     mergedHeaders.Authorization = `Bearer ${server.apiKey}`;
   }
   if (Object.keys(mergedHeaders).length > 0) {
-    entry.headers = mergedHeaders;
+    entry.http_headers = mergedHeaders;
   }
   return entry;
 }
