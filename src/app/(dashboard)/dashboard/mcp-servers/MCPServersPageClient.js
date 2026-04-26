@@ -54,6 +54,8 @@ function normalizeServer(item, index) {
     id,
     name: typeof item?.name === "string" && item.name.trim() ? item.name.trim() : id,
     source: typeof item?.source === "string" ? item.source.trim() : "",
+    sourceUrl: typeof item?.sourceUrl === "string" ? item.sourceUrl.trim() : "",
+    npmPackage: typeof item?.npmPackage === "string" ? item.npmPackage.trim() : "",
     endpoint: typeof item?.endpoint === "string" ? item.endpoint.trim() : "",
     apiKey: typeof item?.apiKey === "string" ? item.apiKey : "",
     command: typeof item?.command === "string" ? item.command.trim() : "",
@@ -70,6 +72,23 @@ function normalizeServer(item, index) {
     toolTimeoutSec: Number.isFinite(Number(item?.toolTimeoutSec)) ? Number(item.toolTimeoutSec) : 120,
     enabled: item?.enabled === true,
   };
+}
+
+function inferNpmPackage(server) {
+  if (server?.npmPackage) return server.npmPackage;
+  const packageArg = (server?.args || []).find((item) => typeof item === "string" && item.includes("@latest"));
+  return packageArg ? packageArg.replace(/@latest$/, "") : "";
+}
+
+function getNpmUrl(server) {
+  const packageName = inferNpmPackage(server);
+  return packageName ? `https://www.npmjs.com/package/${packageName}` : "https://www.npmjs.com/search?q=mcp%20server";
+}
+
+function getSourceUrl(server) {
+  if (server?.sourceUrl) return server.sourceUrl;
+  if (server?.endpoint?.startsWith("http")) return server.endpoint;
+  return "https://github.com/modelcontextprotocol/servers";
 }
 
 const CLI_TARGETS = [
@@ -286,11 +305,31 @@ export default function MCPServersPageClient() {
             </div>
           </Card>
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-sm font-semibold text-text-main">Servers</h2>
-            <Button variant="ghost" size="sm" icon="add" onClick={addServer} disabled={saving}>
-              Add server
-            </Button>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://www.npmjs.com/search?q=mcp%20server"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-muted hover:text-text-main hover:border-primary/50"
+              >
+                <span className="material-symbols-outlined text-[16px]">storefront</span>
+                NPM MCP Market
+              </a>
+              <a
+                href="https://github.com/modelcontextprotocol/servers"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-muted hover:text-text-main hover:border-primary/50"
+              >
+                <span className="material-symbols-outlined text-[16px]">hub</span>
+                Official MCP Sources
+              </a>
+              <Button variant="ghost" size="sm" icon="add" onClick={addServer} disabled={saving}>
+                Add server
+              </Button>
+            </div>
           </div>
 
           {loading ? (
@@ -309,6 +348,24 @@ export default function MCPServersPageClient() {
                       <p className="text-xs text-text-muted mt-1">
                         {server.command ? `${server.command} ${server.args.join(" ")}` : server.endpoint || server.source || server.id}
                       </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <a
+                          href={getNpmUrl(server)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main hover:border-primary/50"
+                        >
+                          npm
+                        </a>
+                        <a
+                          href={getSourceUrl(server)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main hover:border-primary/50"
+                        >
+                          source
+                        </a>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
@@ -434,6 +491,18 @@ export default function MCPServersPageClient() {
               value={editModal.server.source}
               onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, source: e.target.value } }))}
               placeholder="documentation"
+            />
+            <Input
+              label="NPM package"
+              value={editModal.server.npmPackage || ""}
+              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, npmPackage: e.target.value } }))}
+              placeholder="@modelcontextprotocol/server-filesystem"
+            />
+            <Input
+              label="Source URL"
+              value={editModal.server.sourceUrl || ""}
+              onChange={(e) => setEditModal((prev) => ({ ...prev, server: { ...prev.server, sourceUrl: e.target.value } }))}
+              placeholder="https://github.com/modelcontextprotocol/servers"
             />
             <Input
               label="Endpoint"
