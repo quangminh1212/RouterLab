@@ -276,6 +276,7 @@ const DEFAULT_SETTINGS = {
         enabled: false,
       },
     ],
+    selectedPlugins: [],
   },
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   rtkEnabled: false,
@@ -430,6 +431,11 @@ function ensureDbShape(data) {
               changed = true;
             }
           }
+        }
+
+        if (!Array.isArray(currentAiIntegrations.selectedPlugins)) {
+          currentAiIntegrations.selectedPlugins = [];
+          changed = true;
         }
       }
 

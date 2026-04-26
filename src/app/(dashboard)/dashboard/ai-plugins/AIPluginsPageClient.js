@@ -9,6 +9,7 @@ const EMPTY_AI_INTEGRATIONS = {
   autoConnect: false,
   mcpServers: [],
   plugins: [],
+  selectedPlugins: [],
 };
 
 function cloneAiIntegrations(value) {
@@ -18,6 +19,7 @@ function cloneAiIntegrations(value) {
     autoConnect: source.autoConnect === true,
     mcpServers: Array.isArray(source.mcpServers) ? source.mcpServers.map((item) => ({ ...item })) : [],
     plugins: Array.isArray(source.plugins) ? source.plugins.map((item) => ({ ...item })) : [],
+    selectedPlugins: Array.isArray(source.selectedPlugins) ? source.selectedPlugins.map((item) => ({ ...item })) : [],
   };
 }
 
@@ -34,6 +36,23 @@ function normalizePluginStore(item, index) {
     path: typeof item?.path === "string" ? item.path.trim() : "",
     apiKey: typeof item?.apiKey === "string" ? item.apiKey : "",
     enabled: item?.enabled === true,
+  };
+}
+
+function getPluginKey(item) {
+  const pluginId = typeof item?.pluginId === "string" ? item.pluginId : "";
+  const marketplace = typeof item?.marketplace === "string" ? item.marketplace : "";
+  return pluginId && marketplace ? `${pluginId}@${marketplace}` : "";
+}
+
+function normalizeSelectedPlugin(item) {
+  return {
+    pluginId: typeof item?.pluginId === "string" ? item.pluginId : "",
+    name: typeof item?.name === "string" ? item.name : "",
+    marketplace: typeof item?.marketplace === "string" ? item.marketplace : "",
+    storeId: typeof item?.storeId === "string" ? item.storeId : "",
+    storeName: typeof item?.storeName === "string" ? item.storeName : "",
+    homepage: typeof item?.homepage === "string" ? item.homepage : "",
   };
 }
 
@@ -89,6 +108,8 @@ export default function AIPluginsPageClient() {
 
   const enabledStoresCount = useMemo(() => stores.filter((store) => store.enabled).length, [stores]);
   const selectedPluginsCount = useMemo(() => plugins.filter((plugin) => plugin.enabled).length, [plugins]);
+  const integratedPluginsCount = useMemo(() => (Array.isArray(aiForm.selectedPlugins) ? aiForm.selectedPlugins.length : 0), [aiForm.selectedPlugins]);
+  const integratedPluginKeys = useMemo(() => new Set((Array.isArray(aiForm.selectedPlugins) ? aiForm.selectedPlugins : []).map(getPluginKey).filter(Boolean)), [aiForm.selectedPlugins]);
 
   const persistStores = async (nextStores) => {
     setSaving(true);
@@ -171,7 +192,11 @@ export default function AIPluginsPageClient() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to search plugins");
 
-      setPlugins((Array.isArray(data.results) ? data.results : []).map(normalizePluginItem));
+      setPlugins(
+        (Array.isArray(data.results) ? data.results : [])
+          .map(normalizePluginItem)
+          .map((plugin) => ({ ...plugin, enabled: integratedPluginKeys.has(getPluginKey(plugin)) || plugin.enabled }))
+      );
       setStoreStatus(Array.isArray(data.stores) ? data.stores : []);
       setStatus({
         type: "success",
@@ -188,6 +213,29 @@ export default function AIPluginsPageClient() {
     const updated = [...plugins];
     updated[index] = { ...updated[index], enabled: !updated[index].enabled };
     setPlugins(updated);
+  };
+
+  const integratePluginsToXLab = async () => {
+    setSaving(true);
+    setStatus({ type: "", message: "" });
+    try {
+      const selectedPlugins = plugins.filter((plugin) => plugin.enabled).map(normalizeSelectedPlugin).filter((plugin) => getPluginKey(plugin));
+      const nextForm = { ...aiForm, selectedPlugins };
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiIntegrations: nextForm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to integrate plugins into XLab Router");
+
+      setAiForm(nextForm);
+      setStatus({ type: "success", message: `Integrated ${selectedPlugins.length} plugin(s) into XLab Router` });
+    } catch (error) {
+      setStatus({ type: "error", message: error?.message || "Integration failed" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const syncPluginsToClaude = async () => {
@@ -226,26 +274,31 @@ export default function AIPluginsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-text-main">AI Plugins</h1>
-          <p className="text-text-muted mt-1">Plugin store manager for Claude Code: discover from plugin marketplaces, select, and sync to CLI.</p>
+          <p className="text-text-muted mt-1">Plugin store manager: discover marketplaces, integrate selected plugins into XLab Router, and optionally sync to Claude Code.</p>
           <p className="text-xs text-text-muted mt-2">
-            <strong>Note:</strong> Codex CLI uses MCP Servers (see MCP Servers page). Other CLIs (Copilot/OpenCode/Droid/Hermes/OpenClaw) only support model/endpoint config without plugin marketplace.
+            <strong>Note:</strong> XLab Router keeps selected plugins locally. CLI sync only writes Claude Code config when needed.
           </p>
         </div>
 
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-text-main">CLI Integration (Claude Code)</h2>
+              <h2 className="text-sm font-semibold text-text-main">XLab Plugin Integration</h2>
               <p className="text-sm text-text-muted mt-1">
-                Sync custom stores to <code>.claude/settings.json</code> via <code>extraKnownMarketplaces</code> and selected plugins to <code>enabledPlugins</code>.
+                Keep selected plugins in XLab Router settings for local AI integration. Currently integrated: {integratedPluginsCount}.
               </p>
               <p className="text-xs text-text-muted mt-2">
-                CLI equivalent: <code>claude plugin marketplace add ... --scope project</code> and <code>claude plugin install plugin@marketplace</code>.
+                Optional Claude Code sync writes marketplaces to <code>.claude/settings.json</code> via <code>extraKnownMarketplaces</code> and selected plugins to <code>enabledPlugins</code>.
               </p>
             </div>
-            <Button variant="primary" size="sm" loading={syncing} disabled={loading || saving || syncing} onClick={syncPluginsToClaude}>
-              Sync Plugin Config
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" size="sm" loading={saving} disabled={loading || saving || syncing || selectedPluginsCount === 0} onClick={integratePluginsToXLab}>
+                Add to XLab
+              </Button>
+              <Button variant="secondary" size="sm" loading={syncing} disabled={loading || saving || syncing} onClick={syncPluginsToClaude}>
+                Sync Claude Code
+              </Button>
+            </div>
           </div>
         </Card>
 
