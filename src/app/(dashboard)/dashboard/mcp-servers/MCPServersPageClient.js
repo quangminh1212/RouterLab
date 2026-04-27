@@ -1231,17 +1231,14 @@ export default function MCPServersPageClient() {
                 const details = serverDetails(server);
                 const desc = serverDescription(server);
                 return (
-                  <div key={server.id} className="flex items-center gap-4 px-4 py-4">
+                  <div key={server.id} className="flex items-center gap-3 px-3.5 py-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold text-text-main">{server.name}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-base font-semibold text-text-main">{server.name}</p>
                         {server.enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
-                        {details.length > 0 ? (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{details[0]}</span>
-                        ) : null}
                       </div>
                       <p className="text-sm text-text-muted line-clamp-2">{desc}</p>
-                      <p className="truncate font-mono text-xs text-text-muted">{commandSummary(server)}</p>
+                      <p className="mt-1 truncate font-mono text-xs text-text-muted">{commandSummary(server)}</p>
                     </div>
                     <button type="button" onClick={() => openEditModal(server, index)} className="text-text-muted hover:text-text-main">
                       <span className="material-symbols-outlined text-[20px]">settings</span>
