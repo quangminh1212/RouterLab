@@ -17,6 +17,39 @@ const SOURCE_OPTIONS = [
   { id: "mcpmarket", label: "MCPMarket" },
 ];
 
+const MCP_ICON_URLS = {
+  context7: "https://www.google.com/s2/favicons?domain=context7.com&sz=64",
+  playwright: "https://www.google.com/s2/favicons?domain=playwright.dev&sz=64",
+  firecrawl: "https://www.google.com/s2/favicons?domain=firecrawl.dev&sz=64",
+  browserbase: "https://www.google.com/s2/favicons?domain=browserbase.com&sz=64",
+  github: "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+  filesystem: "https://www.google.com/s2/favicons?domain=modelcontextprotocol.io&sz=64",
+  memory: "https://www.google.com/s2/favicons?domain=modelcontextprotocol.io&sz=64",
+  "sequential-thinking": "https://www.google.com/s2/favicons?domain=modelcontextprotocol.io&sz=64",
+  "brave-search": "https://www.google.com/s2/favicons?domain=brave.com&sz=64",
+  tavily: "https://www.google.com/s2/favicons?domain=tavily.com&sz=64",
+  postgres: "https://www.google.com/s2/favicons?domain=postgresql.org&sz=64",
+  puppeteer: "https://www.google.com/s2/favicons?domain=pptr.dev&sz=64",
+  "openai-docs": "https://www.google.com/s2/favicons?domain=openai.com&sz=64",
+  elevenlabs: "https://www.google.com/s2/favicons?domain=elevenlabs.io&sz=64",
+  fastapi: "https://www.google.com/s2/favicons?domain=fastapi.tiangolo.com&sz=64",
+  excel: "https://www.google.com/s2/favicons?domain=microsoft.com&sz=64",
+  "exa-search": "https://www.google.com/s2/favicons?domain=exa.ai&sz=64",
+  "arxiv-mcp": "https://www.google.com/s2/favicons?domain=arxiv.org&sz=64",
+  "workspace-mcp": "https://www.google.com/s2/favicons?domain=workspace.google.com&sz=64",
+  "language-server": "https://www.google.com/s2/favicons?domain=microsoft.github.io&sz=64",
+  "memory-bank": "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+  "reddit-buddy": "https://www.google.com/s2/favicons?domain=reddit.com&sz=64",
+  "sentry-mcp": "https://www.google.com/s2/favicons?domain=sentry.io&sz=64",
+  "notion-mcp": "https://www.google.com/s2/favicons?domain=notion.so&sz=64",
+  "hubspot-mcp": "https://www.google.com/s2/favicons?domain=hubspot.com&sz=64",
+  "neon-mcp": "https://www.google.com/s2/favicons?domain=neon.tech&sz=64",
+  "supabase-mcp": "https://www.google.com/s2/favicons?domain=supabase.com&sz=64",
+  "stripe-mcp": "https://www.google.com/s2/favicons?domain=stripe.com&sz=64",
+  "google-maps-mcp": "https://www.google.com/s2/favicons?domain=maps.google.com&sz=64",
+  "slack-mcp": "https://www.google.com/s2/favicons?domain=slack.com&sz=64",
+};
+
 const MCP_CATALOG = [
   {
     id: "context7",
@@ -518,6 +551,30 @@ function commandSummary(server) {
   return server.source || server.id;
 }
 
+function getMcpIconUrl(item) {
+  if (typeof item?.iconUrl === "string" && item.iconUrl.trim()) return item.iconUrl.trim();
+  return MCP_ICON_URLS[item?.id] || "";
+}
+
+function McpIcon({ item }) {
+  const [failed, setFailed] = useState(false);
+  const iconUrl = getMcpIconUrl(item);
+
+  if (iconUrl && !failed) {
+    return (
+      <img
+        src={iconUrl}
+        alt={item.name}
+        className="h-7 w-7 object-contain"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{item.icon}</span>;
+}
+
 export default function MCPServersPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
   const [servers, setServers] = useState([]);
@@ -759,7 +816,7 @@ export default function MCPServersPageClient() {
                             title={`Open ${item.name} information`}
                           >
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
-                              <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{item.icon}</span>
+                              <McpIcon item={item} />
                             </div>
 
                             <div className="min-w-0 flex-1">
@@ -781,7 +838,7 @@ export default function MCPServersPageClient() {
                         ) : (
                           <div className="flex min-w-0 flex-1 items-start gap-4">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
-                              <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{item.icon}</span>
+                              <McpIcon item={item} />
                             </div>
 
                             <div className="min-w-0 flex-1">
