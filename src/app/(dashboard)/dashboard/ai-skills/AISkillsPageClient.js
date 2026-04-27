@@ -486,19 +486,19 @@ export default function AISkillsPageClient() {
                     const enabled = enabledSkillIds.has(skill.id);
                     const saving = savingSkillId === skill.id;
                     return (
-                      <div key={skill.id} className="flex items-start gap-4 px-4 py-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
-                          <span className="material-symbols-outlined text-[20px]">{skill.icon}</span>
+                      <div key={skill.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-text-main dark:bg-white/10">
+                          <span className="material-symbols-outlined text-[18px]">{skill.icon}</span>
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-lg font-semibold text-text-main">{skill.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-base font-semibold text-text-main">{skill.name}</p>
                             {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{skill.source}</span>
                           </div>
-                          <p className="text-sm text-text-muted line-clamp-2">{skill.description}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <p className="text-xs text-text-muted line-clamp-1">{skill.description}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <a href={skill.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
                               repo
                             </a>
@@ -513,7 +513,7 @@ export default function AISkillsPageClient() {
                           onClick={() => toggleSkill(skill)}
                           disabled={saving || Boolean(savingSkillId)}
                           className={cn(
-                            "mt-1 flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                            "mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
                             enabled
                               ? "border-green-500/40 bg-green-500/10 text-green-500"
                               : "border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
@@ -521,7 +521,7 @@ export default function AISkillsPageClient() {
                           )}
                           title={enabled ? "Disable skill" : "Enable skill"}
                         >
-                          <span className="material-symbols-outlined text-[18px]">{enabled ? "check" : "add"}</span>
+                          <span className="material-symbols-outlined text-[17px]">{enabled ? "check" : "add"}</span>
                         </button>
                       </div>
                     );
