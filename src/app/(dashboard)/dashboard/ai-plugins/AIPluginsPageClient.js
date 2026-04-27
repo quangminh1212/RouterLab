@@ -60,12 +60,15 @@ function cloneAiIntegrations(value) {
 }
 
 function normalizePlugin(item) {
+  const sourceId = typeof item?.sourceId === "string" ? item.sourceId : "unknown";
+  const pluginId = typeof item?.pluginId === "string" ? item.pluginId : "";
   return {
-    pluginId: typeof item?.pluginId === "string" ? item.pluginId : "",
+    pluginId,
     name: typeof item?.name === "string" ? item.name : "",
     description: typeof item?.description === "string" ? item.description : "",
     category: typeof item?.category === "string" && item.category.trim() ? item.category.trim() : "Other",
-    sourceId: typeof item?.sourceId === "string" ? item.sourceId : "unknown",
+    sourceId,
+    uniqueKey: `${sourceId}:${pluginId}`,
     sourceLabel: typeof item?.sourceLabel === "string" ? item.sourceLabel : "Unknown",
     iconUrl: typeof item?.iconUrl === "string" ? item.iconUrl : "",
     homepage: typeof item?.homepage === "string" ? item.homepage : "",
@@ -76,9 +79,11 @@ function normalizePlugin(item) {
 
 function toSelectedPlugin(plugin) {
   return {
+    pluginKey: plugin.uniqueKey,
     pluginId: plugin.pluginId,
     name: plugin.name,
     source: plugin.sourceLabel,
+    sourceId: plugin.sourceId,
     category: plugin.category,
     description: plugin.description,
     homepage: plugin.homepage,
@@ -88,6 +93,10 @@ function toSelectedPlugin(plugin) {
 }
 
 function getPluginKey(item) {
+  if (typeof item?.pluginKey === "string" && item.pluginKey) return item.pluginKey;
+  if (typeof item?.sourceId === "string" && typeof item?.pluginId === "string" && item.pluginId) {
+    return `${item.sourceId}:${item.pluginId}`;
+  }
   return typeof item?.pluginId === "string" ? item.pluginId : "";
 }
 
@@ -145,7 +154,16 @@ export default function AIPluginsPageClient() {
 
         if (catalogRes.ok) {
           const catalog = await catalogRes.json().catch(() => ({}));
-          const nextPlugins = (Array.isArray(catalog.plugins) ? catalog.plugins : []).map(normalizePlugin).filter((plugin) => plugin.pluginId && plugin.name);
+          const rawPlugins = (Array.isArray(catalog.plugins) ? catalog.plugins : [])
+            .map(normalizePlugin)
+            .filter((plugin) => plugin.pluginId && plugin.name);
+          const nextPlugins = [];
+          const seenPluginKeys = new Set();
+          for (const plugin of rawPlugins) {
+            if (seenPluginKeys.has(plugin.uniqueKey)) continue;
+            seenPluginKeys.add(plugin.uniqueKey);
+            nextPlugins.push(plugin);
+          }
           const nextSources = [
             { id: "all", label: "All sources" },
             ...(Array.isArray(catalog.sources) ? catalog.sources.map((item) => ({ id: item.id, label: item.label })) : []),
@@ -213,14 +231,15 @@ export default function AIPluginsPageClient() {
   }, [filteredPlugins]);
 
   const togglePlugin = async (plugin) => {
-    setSavingPluginId(plugin.pluginId);
+    const pluginKey = getPluginKey(plugin);
+    setSavingPluginId(pluginKey);
     setStatus({ type: "", message: "" });
     try {
       const currentSelected = Array.isArray(aiForm.selectedPlugins) ? aiForm.selectedPlugins : [];
-      const isEnabled = enabledPluginIds.has(plugin.pluginId);
+      const isEnabled = enabledPluginIds.has(pluginKey);
       const selectedPlugins = isEnabled
-        ? currentSelected.filter((item) => getPluginKey(item) !== plugin.pluginId)
-        : [...currentSelected.filter((item) => getPluginKey(item) !== plugin.pluginId), toSelectedPlugin(plugin)];
+        ? currentSelected.filter((item) => getPluginKey(item) !== pluginKey)
+        : [...currentSelected.filter((item) => getPluginKey(item) !== pluginKey), toSelectedPlugin(plugin)];
 
       const nextForm = { ...aiForm, selectedPlugins };
       const res = await fetch("/api/settings", {
@@ -313,10 +332,11 @@ export default function AIPluginsPageClient() {
                 <h2 className="text-[30px] font-semibold text-text-main">{category}</h2>
                 <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
                   {items.map((plugin) => {
-                    const enabled = enabledPluginIds.has(plugin.pluginId);
-                    const saving = savingPluginId === plugin.pluginId;
+                    const pluginKey = getPluginKey(plugin);
+                    const enabled = enabledPluginIds.has(pluginKey);
+                    const saving = savingPluginId === pluginKey;
                     return (
-                      <div key={plugin.pluginId} className="flex items-start gap-4 px-4 py-4">
+                      <div key={plugin.uniqueKey || pluginKey} className="flex items-start gap-4 px-4 py-4">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
                           <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
                         </div>
