@@ -385,11 +385,13 @@ async function verifyGithubRepo(candidate) {
   const searchText = `${data.full_name} ${description} ${data.topics?.join(" ") || ""}`;
   if (!isSkillRepoCandidate(searchText)) return null;
 
+  const displayName = prettifyRepoLabel(candidate.label || data.name || repo);
+
   return {
     id: `repo-${repoSlugFromUrl(candidate.url)}`,
-    name: candidate.label || prettifyRepoLabel(data.name || repo),
+    name: displayName,
     source: repoSlugFromUrl(candidate.url),
-    sourceLabel: candidate.label || prettifyRepoLabel(data.name || repo),
+    sourceLabel: displayName,
     sourceUrl: data.html_url || candidate.url,
     iconUrl: data.owner?.avatar_url || githubOwnerAvatarUrl(data.html_url || candidate.url),
     description,

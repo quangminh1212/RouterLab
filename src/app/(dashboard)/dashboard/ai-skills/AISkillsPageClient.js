@@ -22,6 +22,16 @@ const SOURCE_OPTIONS = [
   { id: "xlab-curated", label: "XLab Curated" },
 ];
 
+function prettifyRepoName(value) {
+  return String(value || "repo")
+    .replace(/^repo:/, "")
+    .replace(/\.git$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 const SKILL_CATALOG = [
   {
     id: "openai-docs",
@@ -503,8 +513,8 @@ export default function AISkillsPageClient() {
         repos.set(source, {
           id: `repo:${source}`,
           source,
-          sourceLabel: skill.sourceLabel || source,
-          name: skill.sourceLabel || source,
+          sourceLabel: prettifyRepoName(skill.sourceLabel || source),
+          name: prettifyRepoName(skill.sourceLabel || source),
           sourceUrl: skill.sourceUrl || "",
           localPath: skill.localPath || "",
           tags: [],
