@@ -775,11 +775,11 @@ export default function BasicChatPageClient() {
   const modelSubLabel = activeModel ? activeModel.requestModel : "Choose from connected providers";
 
   return (
-    <div className="relative flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[#212121] text-white overflow-hidden">
+    <div className="relative flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[#0B1416] text-white overflow-hidden">
       <div className="relative mx-auto flex flex-1 h-full min-h-0 w-full max-w-4xl flex-col">
 
         {historyOpen ? (
-          <div ref={historyMenuRef} className="absolute right-4 top-[72px] z-20 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-[#262626] p-2 shadow-2xl shadow-black/50 lg:right-6">
+          <div ref={historyMenuRef} className="absolute right-4 top-[72px] z-20 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-[#152226] p-2 shadow-2xl shadow-black/50 lg:right-6">
             <div className="px-3 py-2">
               <p className="text-xs uppercase tracking-[0.22em] text-white/45">Recent chats</p>
             </div>
@@ -848,7 +848,7 @@ export default function BasicChatPageClient() {
 
                 return (
                   <div key={message.id} className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-6`}>
-                    <div className={`max-w-[min(88%,42rem)] ${isUser ? "rounded-3xl bg-[#2f2f2f] px-5 py-3.5 text-white" : "text-white/90"}`}>
+                    <div className={`max-w-[min(88%,42rem)] ${isUser ? "rounded-3xl bg-[#1a2a2d] px-5 py-3.5 text-white" : "text-white/90"}`}>
                       <div className="mb-1 flex items-center justify-between gap-3">
                         <span className="text-xs font-semibold">{isUser ? "You" : activeModel?.name || "Assistant"}</span>
                       </div>
@@ -890,7 +890,7 @@ export default function BasicChatPageClient() {
 
             <div ref={modelMenuRef} className="relative mx-auto w-full max-w-3xl px-4 pb-2">
               {modelMenuOpen ? (
-                <div className="absolute bottom-[calc(100%+8px)] left-4 z-30 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-[#262626] shadow-2xl shadow-black/50">
+                <div className="absolute bottom-[calc(100%+8px)] left-4 z-30 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-[#152226] shadow-2xl shadow-black/50">
                   <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Models</p>
                     <span className="text-[11px] text-white/40">{filteredGroups.reduce((sum, group) => sum + group.models.length, 0)}/{allModels.length}</span>
@@ -931,7 +931,7 @@ export default function BasicChatPageClient() {
                   </div>
                 </div>
               ) : null}
-              <div className="rounded-[26px] bg-[#2f2f2f] px-3 pt-3 pb-2 shadow-[0_0_15px_rgba(0,0,0,0.10)] ring-1 ring-white/5">
+              <div className="rounded-[26px] bg-[#1a2a2d] px-3 pt-3 pb-2 shadow-[0_0_15px_rgba(0,0,0,0.10)] ring-1 ring-white/5">
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
