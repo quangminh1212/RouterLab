@@ -197,7 +197,7 @@ export default function Sidebar({ onClose }) {
               <span
                 className={cn(
                   "material-symbols-outlined text-[18px]",
-                  isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
+                  isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
                 )}
               >
                 {item.icon}
@@ -222,7 +222,7 @@ export default function Sidebar({ onClose }) {
                   : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
-              <span className="material-symbols-outlined text-[18px]">perm_media</span>
+              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">perm_media</span>
               <span className="text-sm font-medium flex-1 text-left">Media Providers</span>
               <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: mediaOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 expand_more
@@ -242,7 +242,7 @@ export default function Sidebar({ onClose }) {
                         : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
                     )}
                   >
-                    <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
+                    <span className="material-symbols-outlined text-[16px] text-white/90 group-hover:text-white transition-colors">{kind.icon}</span>
                     <span className="text-sm">{kind.label}</span>
                   </Link>
                 ))}
@@ -259,7 +259,7 @@ export default function Sidebar({ onClose }) {
                   : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
-              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">rocket_launch</span>
               <span className="text-sm font-medium flex-1 text-left">Power Up</span>
               <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 expand_more
@@ -279,7 +279,7 @@ export default function Sidebar({ onClose }) {
                         : "text-[#9BB4B6] hover:text-[#DFF5F3]"
                     )}
                   >
-                    <span className="material-symbols-outlined text-[15px]">{item.icon}</span>
+                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
                     <span className="text-[13px]">{item.label}</span>
                   </Link>
                 ))}
@@ -301,7 +301,7 @@ export default function Sidebar({ onClose }) {
                 <span
                   className={cn(
                     "material-symbols-outlined text-[18px]",
-                    isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
+                    isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
                   )}
                 >
                   {item.icon}
@@ -328,7 +328,7 @@ export default function Sidebar({ onClose }) {
                   <span
                     className={cn(
                       "material-symbols-outlined text-[18px]",
-                      isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
+                      isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
                     )}
                   >
                     {item.icon}
@@ -352,7 +352,7 @@ export default function Sidebar({ onClose }) {
               <span
                 className={cn(
                   "material-symbols-outlined text-[18px]",
-                  isActive("/dashboard/profile") ? "fill-1" : "group-hover:text-primary transition-colors"
+                  isActive("/dashboard/profile") ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
                 )}
               >
                 settings
