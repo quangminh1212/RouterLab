@@ -1562,9 +1562,9 @@ export default function APIPageClient() {
         onClose={() => setShowEnableTunnelModal(false)}
       >
         <div className="flex flex-col gap-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="bg-primary/5 dark:bg-blue-900/20 border border-primary/20 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">cloud_upload</span>
+              <span className="material-symbols-outlined text-primary dark:text-blue-400">cloud_upload</span>
               <div>
                 <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">
                   Cloudflare Tunnel
@@ -1752,7 +1752,7 @@ function StatusAlert({ status, className = "" }) {
   return (
     <div className={`p-2 rounded text-sm ${className} ${status.type === "success" ? "bg-green-500/10 text-green-600 dark:text-green-400" :
         status.type === "warning" ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" :
-        status.type === "info" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+        status.type === "info" ? "bg-primary/50/10 text-primary dark:text-blue-400" :
           "bg-red-500/10 text-red-600 dark:text-red-400"
       }`}>
       {renderMessage(status.message)}
