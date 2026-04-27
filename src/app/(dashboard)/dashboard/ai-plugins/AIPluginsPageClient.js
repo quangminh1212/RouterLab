@@ -100,6 +100,12 @@ function getPluginKey(item) {
   return typeof item?.pluginId === "string" ? item.pluginId : "";
 }
 
+function getPluginInfoUrl(plugin) {
+  const homepage = typeof plugin?.homepage === "string" ? plugin.homepage.trim() : "";
+  const sourceUrl = typeof plugin?.sourceUrl === "string" ? plugin.sourceUrl.trim() : "";
+  return homepage || sourceUrl || "";
+}
+
 function getFallbackIcon(category) {
   const value = String(category || "").toLowerCase();
   if (value.includes("coding") || value.includes("development")) return "code";
@@ -326,40 +332,40 @@ export default function AIPluginsPageClient() {
         ) : groupedPlugins.length === 0 ? (
           <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No plugins match current filters.</div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {groupedPlugins.map(([category, items]) => (
-              <section key={category} className="space-y-3">
-                <h2 className="text-[30px] font-semibold text-text-main">{category}</h2>
+              <section key={category} className="space-y-2.5">
+                <h2 className="text-[24px] font-semibold text-text-main">{category}</h2>
                 <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
                   {items.map((plugin) => {
                     const pluginKey = getPluginKey(plugin);
                     const enabled = enabledPluginIds.has(pluginKey);
                     const saving = savingPluginId === pluginKey;
+                    const infoUrl = getPluginInfoUrl(plugin);
                     return (
-                      <div key={plugin.uniqueKey || pluginKey} className="flex items-start gap-4 px-4 py-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                      <div key={plugin.uniqueKey || pluginKey} className="flex items-start gap-3 px-3.5 py-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
                           <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-lg font-semibold text-text-main">{plugin.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-base font-semibold text-text-main">{plugin.name}</p>
                             {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                            {infoUrl ? (
+                              <a
+                                href={infoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10"
+                                title="Open plugin information"
+                              >
+                                info
+                              </a>
+                            ) : null}
                           </div>
                           <p className="text-sm text-text-muted line-clamp-2">{plugin.description || "No description"}</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {plugin.homepage ? (
-                              <a href={plugin.homepage} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
-                                homepage
-                              </a>
-                            ) : null}
-                            {plugin.sourceUrl ? (
-                              <a href={plugin.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
-                                source
-                              </a>
-                            ) : null}
-                          </div>
                         </div>
 
                         <button

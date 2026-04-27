@@ -35,7 +35,7 @@ const systemItems = [
 ];
 
 const POWER_UP_ITEMS = [
-  { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
+  { href: "/dashboard/mcp-servers", label: "MCP", icon: "dns" },
   { href: "/dashboard/ai-plugins", label: "AI Plugins", icon: "extension" },
   { href: "/dashboard/ai-skills", label: "AI Skills", icon: "psychology" },
   { href: "/dashboard/ai-integrations", label: "AI Integrations", icon: "hub" },
