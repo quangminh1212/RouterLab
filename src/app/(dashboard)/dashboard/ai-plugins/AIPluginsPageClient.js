@@ -62,6 +62,11 @@ function cloneAiIntegrations(value) {
 function normalizePlugin(item) {
   const sourceId = typeof item?.sourceId === "string" ? item.sourceId : "unknown";
   const pluginId = typeof item?.pluginId === "string" ? item.pluginId : "";
+  const sourceLabel = typeof item?.sourceLabel === "string" && item.sourceLabel.trim()
+    ? item.sourceLabel.trim()
+    : typeof item?.source === "string" && item.source.trim()
+      ? item.source.trim()
+      : "";
   return {
     pluginId,
     name: typeof item?.name === "string" ? item.name : "",
@@ -69,7 +74,7 @@ function normalizePlugin(item) {
     category: typeof item?.category === "string" && item.category.trim() ? item.category.trim() : "Other",
     sourceId,
     uniqueKey: `${sourceId}:${pluginId}`,
-    sourceLabel: typeof item?.sourceLabel === "string" ? item.sourceLabel : "Unknown",
+    sourceLabel,
     iconUrl: typeof item?.iconUrl === "string" ? item.iconUrl : "",
     homepage: typeof item?.homepage === "string" ? item.homepage : "",
     sourceUrl: typeof item?.sourceUrl === "string" ? item.sourceUrl : "",
@@ -352,7 +357,9 @@ export default function AIPluginsPageClient() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="text-base font-semibold text-text-main">{plugin.name}</p>
                             {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                            {plugin.sourceLabel ? (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                            ) : null}
                             {infoUrl ? (
                               <a
                                 href={infoUrl}

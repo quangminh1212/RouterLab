@@ -32,9 +32,11 @@ export async function GET() {
           description: plugin.description || "",
           category: plugin.category || "Other",
           source: source.label,
+          sourceLabel: source.label,
           sourceId: source.id,
           iconUrl: "",
           homepage: plugin.homepage || "",
+          sourceUrl: plugin.homepage || "",
           tags: [],
         });
       }
@@ -56,9 +58,11 @@ export async function GET() {
             description: plugin.description || "",
             category: plugin.category || "Other",
             source: source.label,
+            sourceLabel: source.label,
             sourceId: source.id,
             iconUrl: plugin.icon || plugin.icon_url || plugin.logo || "",
             homepage: plugin.homepage || "",
+            sourceUrl: source.url || "",
             tags: [],
           });
         }
