@@ -936,6 +936,11 @@ export default function MCPServersPageClient() {
     return Array.from(groups.entries());
   }, [filteredCatalog]);
 
+  const enabledCatalogCount = useMemo(
+    () => MCP_CATALOG.filter((item) => serverById.get(item.id)?.server?.enabled === true).length,
+    [serverById]
+  );
+
   const customServers = useMemo(
     () => servers.filter((server) => !MCP_CATALOG.some((item) => item.id === server.id)),
     [servers]
@@ -1084,7 +1089,7 @@ export default function MCPServersPageClient() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-text-muted">Enabled MCP servers</p>
-              <p className="text-xl font-semibold text-text-main">{servers.filter((server) => server.enabled).length}/{servers.length || MCP_CATALOG.length}</p>
+              <p className="text-xl font-semibold text-text-main">{enabledCatalogCount}/{MCP_CATALOG.length}</p>
             </div>
             <button
               type="button"
