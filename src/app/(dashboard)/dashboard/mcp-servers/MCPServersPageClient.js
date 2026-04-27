@@ -812,6 +812,7 @@ function normalizeServer(item, index = 0) {
     source: typeof item?.source === "string" ? item.source.trim() : "",
     sourceUrl: typeof item?.sourceUrl === "string" ? item.sourceUrl.trim() : "",
     npmPackage: typeof item?.npmPackage === "string" ? item.npmPackage.trim() : "",
+    description: typeof item?.description === "string" ? item.description.trim() : "",
     endpoint: typeof item?.endpoint === "string" ? item.endpoint.trim() : "",
     apiKey: typeof item?.apiKey === "string" ? item.apiKey : "",
     command: typeof item?.command === "string" ? item.command.trim() : "",
@@ -837,6 +838,7 @@ function catalogToServer(item) {
     source: item.category,
     sourceUrl: item.sourceUrl,
     npmPackage: item.npmPackage || "",
+    description: item.description || "",
     endpoint: item.endpoint || "",
     command: item.command || "",
     args: item.args || [],
@@ -858,6 +860,23 @@ function commandSummary(server) {
   if (server.command) return `${server.command} ${server.args.join(" ")}`.trim();
   if (server.endpoint) return server.endpoint;
   return server.source || server.id;
+}
+
+function serverDescription(server) {
+  if (typeof server?.description === "string" && server.description.trim()) return server.description.trim();
+  if (server?.endpoint) return "Connects to a remote MCP endpoint using HTTP/SSE.";
+  if (server?.command) return "Runs a local MCP server command and exposes its tools to agents.";
+  return "Custom MCP server configuration.";
+}
+
+function serverDetails(server) {
+  const details = [];
+  if (server?.source) details.push(server.source);
+  if (server?.npmPackage) details.push(server.npmPackage);
+  if (server?.endpoint) details.push("Remote endpoint");
+  if (server?.command) details.push("Local command");
+  if (Array.isArray(server?.envVars) && server.envVars.length > 0) details.push(`${server.envVars.length} required env`);
+  return details;
 }
 
 function getMcpIconUrl(item) {
@@ -1209,10 +1228,19 @@ export default function MCPServersPageClient() {
             <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
               {customServers.map((server) => {
                 const index = servers.findIndex((item) => item.id === server.id);
+                const details = serverDetails(server);
+                const desc = serverDescription(server);
                 return (
                   <div key={server.id} className="flex items-center gap-4 px-4 py-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-lg font-semibold text-text-main">{server.name}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold text-text-main">{server.name}</p>
+                        {server.enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                        {details.length > 0 ? (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{details[0]}</span>
+                        ) : null}
+                      </div>
+                      <p className="text-sm text-text-muted line-clamp-2">{desc}</p>
                       <p className="truncate font-mono text-xs text-text-muted">{commandSummary(server)}</p>
                     </div>
                     <button type="button" onClick={() => openEditModal(server, index)} className="text-text-muted hover:text-text-main">
