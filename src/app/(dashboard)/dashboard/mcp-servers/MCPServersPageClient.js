@@ -1139,22 +1139,22 @@ export default function MCPServersPageClient() {
                     const saving = savingServerId === item.id;
                     const infoUrl = item.sourceUrl || "";
                     return (
-                      <div key={item.id} className="flex items-start gap-4 px-4 py-4">
+                      <div key={item.id} className="flex items-start gap-3 px-3 py-2.5">
                         {infoUrl ? (
                           <a
                             href={infoUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-w-0 flex-1 items-start gap-4 rounded-lg -m-2 p-2 hover:bg-black/5 dark:hover:bg-white/5"
+                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg -m-1 p-1 hover:bg-black/5 dark:hover:bg-white/5"
                             title={`Open ${item.name} information`}
                           >
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-text-main">
                               <McpIcon item={item} />
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-lg font-semibold text-text-main">{item.name}</p>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-base font-semibold text-text-main">{item.name}</p>
                                 {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                                 {configNeeded ? <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-500">Needs setup</span> : <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">Ready</span>}
                                 <span
@@ -1164,37 +1164,37 @@ export default function MCPServersPageClient() {
                                   info
                                 </span>
                               </div>
-                              <p className="text-sm text-text-muted line-clamp-2">{item.description}</p>
-                              <p className="mt-2 truncate font-mono text-xs text-text-muted">{commandSummary(server || catalogToServer(item))}</p>
+                              <p className="text-xs text-text-muted line-clamp-1">{item.description}</p>
+                              <p className="mt-1 truncate font-mono text-[11px] text-text-muted">{commandSummary(server || catalogToServer(item))}</p>
                             </div>
                           </a>
                         ) : (
-                          <div className="flex min-w-0 flex-1 items-start gap-4">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-text-main">
                               <McpIcon item={item} />
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-lg font-semibold text-text-main">{item.name}</p>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-base font-semibold text-text-main">{item.name}</p>
                                 {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                                 {configNeeded ? <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-500">Needs setup</span> : <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">Ready</span>}
                               </div>
-                              <p className="text-sm text-text-muted line-clamp-2">{item.description}</p>
-                              <p className="mt-2 truncate font-mono text-xs text-text-muted">{commandSummary(server || catalogToServer(item))}</p>
+                              <p className="text-xs text-text-muted line-clamp-1">{item.description}</p>
+                              <p className="mt-1 truncate font-mono text-[11px] text-text-muted">{commandSummary(server || catalogToServer(item))}</p>
                             </div>
                           </div>
                         )}
 
-                        <div className="mt-1 flex items-center gap-2">
+                        <div className="mt-0.5 flex items-center gap-1.5">
                           {server ? (
                             <button
                               type="button"
                               onClick={() => openEditModal(server, existing.index)}
-                              className="flex h-9 w-9 items-center justify-center rounded-full border border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
                               title="Configure MCP server"
                             >
-                              <span className="material-symbols-outlined text-[18px]">settings</span>
+                              <span className="material-symbols-outlined text-[17px]">settings</span>
                             </button>
                           ) : null}
                           <button
@@ -1202,7 +1202,7 @@ export default function MCPServersPageClient() {
                             onClick={() => toggleCatalogServer(item)}
                             disabled={saving || Boolean(savingServerId)}
                             className={cn(
-                              "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                              "flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
                               enabled
                                 ? "border-green-500/40 bg-green-500/10 text-green-500"
                                 : "border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
@@ -1210,7 +1210,7 @@ export default function MCPServersPageClient() {
                             )}
                             title={enabled ? "Disable MCP server" : "Enable MCP server"}
                           >
-                            <span className="material-symbols-outlined text-[18px]">{enabled ? "check" : "add"}</span>
+                            <span className="material-symbols-outlined text-[17px]">{enabled ? "check" : "add"}</span>
                           </button>
                         </div>
                       </div>
