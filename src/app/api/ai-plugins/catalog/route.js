@@ -1,81 +1,204 @@
+﻿import fs from "node:fs/promises";
+import path from "node:path";
+
+const OPENAI_PLUGINS_REPO = "https://github.com/openai/plugins";
+const OPENAI_PLUGINS_RAW = "https://raw.githubusercontent.com/openai/plugins/main";
+const MARKETPLACE_URL = `${OPENAI_PLUGINS_RAW}/.agents/plugins/marketplace.json`;
+const SOURCE_ID = "openai-curated";
+const SOURCE_LABEL = "OpenAI Codex";
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const ICONS_PUBLIC_DIR = path.join(process.cwd(), "public", "plugins", "icons");
+const DEFAULT_LOCAL_ICON_URL = "/plugins/icons/chatgpt-apps.svg";
+
+let catalogCache = null;
+
+const DISPLAY_NAME_OVERRIDES = {
+  aws: "AWS",
+  aws_skills: "AWS Skills",
+  azure: "Azure",
+  box: "Box",
+  brex: "Brex",
+  circleci: "CircleCI",
+  cloudflare: "Cloudflare",
+  datadog: "Datadog",
+  figma: "Figma",
+  github: "GitHub",
+  gitlab: "GitLab",
+  gmail: "Gmail",
+  google_drive: "Google Drive",
+  linear: "Linear",
+  notion: "Notion",
+  slack: "Slack",
+  stripe: "Stripe",
+  vercel: "Vercel",
+};
+
+function titleCaseName(value = "") {
+  return String(value)
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) => {
+      if (/^[A-Z0-9]{2,}$/.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function humanizeName(value = "") {
+  const rawName = String(value).trim();
+  const key = rawName.toLowerCase().replace(/[-\s]+/g, "_");
+  if (DISPLAY_NAME_OVERRIDES[key]) return DISPLAY_NAME_OVERRIDES[key];
+  return titleCaseName(rawName);
+}
+
+function safeSlug(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "plugin";
+}
+
+function pluginDirectory(plugin) {
+  const sourcePath = typeof plugin?.source?.path === "string" ? plugin.source.path : "";
+  return sourcePath.replace(/^\.\/plugins\//, "").replace(/^plugins\//, "") || plugin.name || "";
+}
+
+function extensionFromContentType(contentType = "") {
+  const normalized = String(contentType).toLowerCase();
+  if (normalized.includes("image/svg")) return "svg";
+  if (normalized.includes("image/png")) return "png";
+  if (normalized.includes("image/webp")) return "webp";
+  if (normalized.includes("image/x-icon") || normalized.includes("image/vnd.microsoft.icon")) return "ico";
+  if (normalized.includes("image/jpeg")) return "jpg";
+  return "png";
+}
+
+function extensionFromUrl(url = "") {
+  const base = String(url).split("?")[0];
+  const ext = path.extname(base).toLowerCase();
+  if ([".svg", ".png", ".webp", ".ico", ".jpg", ".jpeg"].includes(ext)) {
+    return ext.replace(/^\./, "").replace("jpeg", "jpg");
+  }
+  return "";
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+async function fetchPluginManifest(pluginDir) {
+  if (!pluginDir) return null;
+  try {
+    return await fetchJson(`${OPENAI_PLUGINS_RAW}/plugins/${pluginDir}/.codex-plugin/plugin.json`);
+  } catch {
+    return null;
+  }
+}
+
+async function writeIconLocal(pluginId, remoteUrl) {
+  if (!remoteUrl || !/^https?:\/\//i.test(remoteUrl)) return "";
+
+  const slug = safeSlug(pluginId);
+  const hintExt = extensionFromUrl(remoteUrl);
+
+  try {
+    await fs.mkdir(ICONS_PUBLIC_DIR, { recursive: true });
+
+    if (hintExt) {
+      const hintedPath = path.join(ICONS_PUBLIC_DIR, `${slug}.${hintExt}`);
+      try {
+        await fs.access(hintedPath);
+        return `/plugins/icons/${slug}.${hintExt}`;
+      } catch {
+        // Download missing icon below.
+      }
+    }
+
+    const response = await fetch(remoteUrl, { cache: "no-store" });
+    if (!response.ok) return "";
+
+    const contentType = response.headers.get("content-type") || "";
+    const ext = hintExt || extensionFromContentType(contentType);
+    const filePath = path.join(ICONS_PUBLIC_DIR, `${slug}.${ext}`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    await fs.writeFile(filePath, bytes);
+
+    return `/plugins/icons/${slug}.${ext}`;
+  } catch {
+    return "";
+  }
+}
+
+function normalizePlugin(plugin, manifest) {
+  const pluginDir = pluginDirectory(plugin);
+  const manifestInterface = manifest?.interface && typeof manifest.interface === "object" ? manifest.interface : {};
+  const displayName = manifestInterface.displayName || manifest?.name || humanizeName(plugin.name);
+  const description = manifestInterface.shortDescription || manifest?.description || `${displayName} plugin for Codex.`;
+  const category = manifestInterface.category || plugin.category || "Other";
+  const iconPath = manifestInterface.logo || manifestInterface.composerIcon || "./assets/app-icon.png";
+  const remoteIconUrl = iconPath.startsWith("http")
+    ? iconPath
+    : `${OPENAI_PLUGINS_RAW}/plugins/${pluginDir}/${iconPath.replace(/^\.\//, "")}`;
+  const homepage = manifestInterface.websiteURL || manifest?.homepage || `${OPENAI_PLUGINS_REPO}/tree/main/plugins/${pluginDir}`;
+
+  return {
+    pluginId: plugin.name || pluginDir,
+    name: displayName,
+    description,
+    category,
+    source: SOURCE_LABEL,
+    sourceLabel: SOURCE_LABEL,
+    sourceId: SOURCE_ID,
+    sourceUrl: `${OPENAI_PLUGINS_REPO}/tree/main/plugins/${pluginDir}`,
+    homepage,
+    iconUrl: remoteIconUrl,
+    tags: Array.isArray(manifest?.keywords) ? manifest.keywords.filter((tag) => typeof tag === "string") : [],
+    installPolicy: plugin?.policy?.installation || "AVAILABLE",
+    authPolicy: plugin?.policy?.authentication || "ON_INSTALL",
+  };
+}
+
+async function loadOpenAiCatalog() {
+  const now = Date.now();
+  if (catalogCache && now - catalogCache.createdAt < CACHE_TTL_MS) return catalogCache.data;
+
+  const marketplace = await fetchJson(MARKETPLACE_URL);
+  const marketplacePlugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
+  const manifests = await Promise.allSettled(
+    marketplacePlugins.map((plugin) => fetchPluginManifest(pluginDirectory(plugin)))
+  );
+
+  const plugins = marketplacePlugins.map((plugin, index) => {
+    const manifestResult = manifests[index];
+    const manifest = manifestResult.status === "fulfilled" ? manifestResult.value : null;
+    return normalizePlugin(plugin, manifest);
+  });
+
+  const pluginsWithLocalIcons = [];
+  for (const plugin of plugins) {
+    const localIconUrl = await writeIconLocal(plugin.pluginId, plugin.iconUrl);
+    pluginsWithLocalIcons.push({
+      ...plugin,
+      iconUrl: localIconUrl || DEFAULT_LOCAL_ICON_URL,
+    });
+  }
+
+  const data = {
+    plugins: pluginsWithLocalIcons,
+    sources: [{ id: SOURCE_ID, label: SOURCE_LABEL, url: MARKETPLACE_URL }],
+  };
+  catalogCache = { createdAt: now, data };
+  return data;
+}
+
 export async function GET() {
   try {
-    const sources = [
-      {
-      id: "openai-codex-curated",
-      url: null,
-      label: "OpenAI Codex",
-      plugins: [
-        { name: "gmail", description: "Read and manage Gmail messages", category: "Productivity", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://www.google.com/gmail/about/static/images/logo-gmail.png" },
-        { name: "google-drive", description: "Work across Drive, Docs, Sheets, and Slides", category: "Productivity", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://ssl.gstatic.com/docs/doclist/images/drive_2022q3_32dp.png" },
-        { name: "slack", description: "Summarize channels or draft replies", category: "Communication", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://a.slack-edge.com/80588/marketing/img/meta/slack_hash_256.png" },
-        { name: "github", description: "Triage PRs, issues, CI, and publish workflows", category: "Development", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://github.githubassets.com/favicons/favicon.svg" },
-        { name: "linear", description: "Manage issues and project tracking", category: "Development", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://linear.app/apple-touch-icon.png" },
-        { name: "notion", description: "Read and write Notion pages and databases", category: "Productivity", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://www.notion.so/images/logo-ios.png" },
-        { name: "jira", description: "Manage Jira issues and projects", category: "Development", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://wac-cdn.atlassian.com/assets/img/favicons/atlassian/favicon.png" },
-        { name: "figma", description: "Read and inspect Figma designs", category: "Design", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://static.figma.com/app/icon/1/favicon.png" },
-        { name: "vercel", description: "Build and deploy web apps and agents", category: "Infrastructure", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://assets.vercel.com/image/upload/front/favicon/vercel/57x57.png" },
-        { name: "sentry", description: "Inspect recent Sentry issues and events", category: "Infrastructure", homepage: "https://developers.openai.com/codex/plugins", iconUrl: "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png" },
-      ],
-    },
-  ];
-
-    const allPlugins = [];
-    const errors = [];
-
-  for (const source of sources) {
-    if (source.url === null && Array.isArray(source.plugins)) {
-      for (const plugin of source.plugins) {
-        allPlugins.push({
-          pluginId: plugin.name || "",
-          name: plugin.name || "",
-          description: plugin.description || "",
-          category: plugin.category || "Other",
-          source: source.label,
-          sourceLabel: source.label,
-          sourceId: source.id,
-          iconUrl: plugin.iconUrl || "",
-          homepage: plugin.homepage || "",
-          sourceUrl: plugin.homepage || "",
-          tags: [],
-        });
-      }
-      continue;
-    }
-    try {
-        const res = await fetch(source.url, { cache: "no-store" });
-        if (!res.ok) {
-          errors.push({ source: source.id, error: `HTTP ${res.status}` });
-          continue;
-        }
-        const data = await res.json();
-        const plugins = Array.isArray(data.plugins) ? data.plugins : [];
-
-        for (const plugin of plugins.slice(0, 50)) {
-          allPlugins.push({
-            pluginId: plugin.name || "",
-            name: plugin.name || "",
-            description: plugin.description || "",
-            category: plugin.category || "Other",
-            source: source.label,
-            sourceLabel: source.label,
-            sourceId: source.id,
-            iconUrl: plugin.icon || plugin.icon_url || plugin.logo || "",
-            homepage: plugin.homepage || "",
-            sourceUrl: source.url || "",
-            tags: [],
-          });
-        }
-      } catch (error) {
-        errors.push({ source: source.id, error: error.message });
-      }
-    }
-
-    return Response.json({
-      plugins: allPlugins,
-      sources: sources.map((s) => ({ id: s.id, label: s.label })),
-      errors: errors.length > 0 ? errors : undefined,
-    });
+    const catalog = await loadOpenAiCatalog();
+    return Response.json(catalog);
   } catch (error) {
     return Response.json({ error: error?.message || "Failed to fetch plugin catalog" }, { status: 500 });
   }

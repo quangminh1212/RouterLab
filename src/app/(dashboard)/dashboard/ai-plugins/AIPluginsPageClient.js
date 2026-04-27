@@ -108,7 +108,7 @@ function getPluginKey(item) {
 function getPluginInfoUrl(plugin) {
   const homepage = typeof plugin?.homepage === "string" ? plugin.homepage.trim() : "";
   const sourceUrl = typeof plugin?.sourceUrl === "string" ? plugin.sourceUrl.trim() : "";
-  return homepage || sourceUrl || "";
+  return sourceUrl || homepage || "";
 }
 
 function getFallbackIcon(category) {
@@ -275,7 +275,7 @@ export default function AIPluginsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make Plugins work your way</h1>
-          <p className="text-text-muted mt-2">Plugin list is pulled from real remote marketplace sources with per-plugin icons when available.</p>
+          <p className="text-text-muted mt-2">Plugin list is pulled from the official OpenAI Codex plugin marketplace with local cached icons.</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -326,6 +326,10 @@ export default function AIPluginsPageClient() {
             <p className="text-sm text-text-muted">Installed</p>
             <p className="text-sm font-medium text-text-main">{enabledPluginIds.size}/{plugins.length}</p>
           </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
+            <span>Showing {filteredPlugins.length} of {plugins.length} plugins</span>
+            <span>{sourceOptions.find((item) => item.id === sourceFilter)?.label || "All sources"}</span>
+          </div>
         </div>
 
         {loading || loadingCatalog ? (
@@ -349,31 +353,53 @@ export default function AIPluginsPageClient() {
                     const infoUrl = getPluginInfoUrl(plugin);
                     return (
                       <div key={plugin.uniqueKey || pluginKey} className="flex items-start gap-3 px-3.5 py-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
-                          <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
-                        </div>
+                        {infoUrl ? (
+                          <a
+                            href={infoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg -m-1 p-1 hover:bg-black/5 dark:hover:bg-white/5"
+                            title={`Open ${plugin.name} plugin information`}
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                              <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
+                            </div>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="text-base font-semibold text-text-main">{plugin.name}</p>
-                            {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
-                            {plugin.sourceLabel ? (
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
-                            ) : null}
-                            {infoUrl ? (
-                              <a
-                                href={infoUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-full border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10"
-                                title="Open plugin information"
-                              >
-                                info
-                              </a>
-                            ) : null}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-base font-semibold text-text-main">{plugin.name}</p>
+                                {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                                {plugin.sourceLabel ? (
+                                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                                ) : null}
+                                <span
+                                  className="rounded-full border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10"
+                                  title="Open plugin information"
+                                >
+                                  info
+                                </span>
+                              </div>
+                              <p className="text-sm text-text-muted line-clamp-2">{plugin.description || "No description"}</p>
+                            </div>
+                          </a>
+                        ) : (
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                              <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-base font-semibold text-text-main">{plugin.name}</p>
+                                {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                                {plugin.sourceLabel ? (
+                                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{plugin.sourceLabel}</span>
+                                ) : null}
+                              </div>
+                              <p className="text-sm text-text-muted line-clamp-2">{plugin.description || "No description"}</p>
+                            </div>
                           </div>
-                          <p className="text-sm text-text-muted line-clamp-2">{plugin.description || "No description"}</p>
-                        </div>
+                        )}
 
                         <button
                           type="button"
