@@ -181,6 +181,7 @@ export default function BasicChatPageClient() {
   const [streamingText, setStreamingText] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const fileInputRef = useRef(null);
   const abortRef = useRef(null);
@@ -370,6 +371,15 @@ export default function BasicChatPageClient() {
 
   const allModels = useMemo(() => Array.from(modelIndex.values()), [modelIndex]);
 
+  const filteredGroups = useMemo(() => {
+    if (!modelSearch.trim()) return providerGroups;
+    const query = modelSearch.toLowerCase();
+    return providerGroups.map(group => ({
+      ...group,
+      models: group.models.filter(m => m.name.toLowerCase().includes(query) || m.requestModel.toLowerCase().includes(query))
+    })).filter(g => g.models.length > 0);
+  }, [providerGroups, modelSearch]);
+
   const activeProviderGroup = useMemo(() => {
     return providerGroups.find((group) => group.providerId === activeProviderId) || providerGroups[0] || null;
   }, [providerGroups, activeProviderId]);
@@ -554,6 +564,7 @@ export default function BasicChatPageClient() {
     setActiveProviderId(model.providerId);
     setActiveModelId(model.id);
     setModelMenuOpen(false);
+    setModelSearch("");
   };
 
   const handleAttachFiles = async (event) => {
@@ -882,10 +893,18 @@ export default function BasicChatPageClient() {
                 <div className="absolute bottom-[calc(100%+8px)] left-4 z-30 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-[#262626] shadow-2xl shadow-black/50">
                   <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Models</p>
-                    <span className="text-[11px] text-white/40">{allModels.length}</span>
+                    <span className="text-[11px] text-white/40">{filteredGroups.reduce((sum, group) => sum + group.models.length, 0)}/{allModels.length}</span>
                   </div>
-                  <div className="max-h-[38vh] overflow-y-auto p-1.5 custom-scrollbar">
-                    {providerGroups.map((group) => (
+                  <div className="border-b border-white/10 p-1.5">
+                    <input
+                      value={modelSearch}
+                      onChange={(event) => setModelSearch(event.target.value)}
+                      placeholder="Search model..."
+                      className="w-full rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-white/35 focus:border-primary/40"
+                    />
+                  </div>
+                  <div className="max-h-[34vh] overflow-y-auto p-1.5 custom-scrollbar">
+                    {filteredGroups.map((group) => (
                       <div key={group.providerId} className="mb-1.5">
                         <div className="flex items-center justify-between px-2 py-1">
                           <p className="truncate text-[11px] font-semibold text-white/60">{group.providerName}</p>
