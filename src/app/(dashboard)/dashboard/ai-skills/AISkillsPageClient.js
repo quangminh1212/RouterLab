@@ -353,12 +353,41 @@ function inferSkillTags(skill) {
 function normalizeSkill(skill) {
   return {
     ...skill,
+    id: typeof skill?.id === "string" && skill.id.trim()
+      ? skill.id.trim()
+      : String(skill?.name || "skill").toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-"),
+    name: skill?.name || "Unnamed Skill",
+    description: skill?.description || "No description",
     source: skill?.source || "local-skill-finder",
     category: skill?.category || inferSkillCategory(skill),
     sourceUrl: skill?.sourceUrl || "",
     tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
     icon: skill?.icon || inferSkillIcon(skill),
   };
+}
+
+function normalizeSkillCatalog(skills) {
+  const seenSignature = new Set();
+  const idCounts = new Map();
+  const output = [];
+
+  for (const item of Array.isArray(skills) ? skills : []) {
+    const normalized = normalizeSkill(item);
+    const signature = `${normalized.id}|${normalized.name}|${normalized.description}|${normalized.source}`;
+    if (seenSignature.has(signature)) continue;
+    seenSignature.add(signature);
+
+    const baseId = normalized.id;
+    const nextCount = (idCounts.get(baseId) || 0) + 1;
+    idCounts.set(baseId, nextCount);
+
+    output.push({
+      ...normalized,
+      id: nextCount === 1 ? baseId : `${baseId}--${nextCount}`,
+    });
+  }
+
+  return output;
 }
 
 function toSkillRecord(skill) {
@@ -398,10 +427,10 @@ export default function AISkillsPageClient() {
       .then((data) => {
         if (cancelled) return;
         const skills = Array.isArray(data?.results) ? data.results : [];
-        setSkillCatalog((skills.length > 0 ? skills : SKILL_CATALOG).map(normalizeSkill));
+        setSkillCatalog(normalizeSkillCatalog(skills.length > 0 ? skills : SKILL_CATALOG));
       })
       .catch(() => {
-        if (!cancelled) setSkillCatalog(SKILL_CATALOG.map(normalizeSkill));
+        if (!cancelled) setSkillCatalog(normalizeSkillCatalog(SKILL_CATALOG));
       })
       .finally(() => {
         if (!cancelled) setCatalogLoading(false);
@@ -530,8 +559,8 @@ export default function AISkillsPageClient() {
                                 repo
                               </a>
                             ) : null}
-                            {(Array.isArray(skill.tags) ? skill.tags : []).slice(0, 3).map((tag) => (
-                              <span key={tag} className="rounded bg-black/5 px-2 py-0.5 text-[11px] text-text-muted dark:bg-white/5">#{tag}</span>
+                            {(Array.isArray(skill.tags) ? skill.tags : []).slice(0, 3).map((tag, tagIndex) => (
+                              <span key={`${skill.id}-tag-${tag}-${tagIndex}`} className="rounded bg-black/5 px-2 py-0.5 text-[11px] text-text-muted dark:bg-white/5">#{tag}</span>
                             ))}
                           </div>
                         </div>
