@@ -1139,13 +1139,13 @@ export default function MCPServersPageClient() {
                     const saving = savingServerId === item.id;
                     const infoUrl = item.sourceUrl || "";
                     return (
-                      <div key={item.id} className="flex items-start gap-3 px-3 py-2.5">
+                      <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
                         {infoUrl ? (
                           <a
                             href={infoUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg -m-1 p-1 hover:bg-black/5 dark:hover:bg-white/5"
+                            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg -m-1 p-1 hover:bg-black/5 dark:hover:bg-white/5"
                             title={`Open ${item.name} information`}
                           >
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-text-main">
@@ -1169,7 +1169,7 @@ export default function MCPServersPageClient() {
                             </div>
                           </a>
                         ) : (
-                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-text-main">
                               <McpIcon item={item} />
                             </div>
