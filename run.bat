@@ -8,6 +8,7 @@ echo ========================================
 echo.
 
 set LOG_FILE=log.txt
+set DEV_RUN_LOG=next-dev.log
 set MAX_LOG_BYTES=104857600
 if exist "%LOG_FILE%" (
     for %%I in ("%LOG_FILE%") do set LOG_SIZE=%%~zI
@@ -28,7 +29,7 @@ netstat -ano | findstr /R /C:":1212 .*LISTENING" >nul 2>&1
 if not errorlevel 1 (
     echo [WARN] Port 1212 is in use. Stopping existing process...
     echo [WARN] Port 1212 is in use. Stopping existing process... >> %LOG_FILE%
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
+    for /f "tokens=5" %%a in (\'netstat -ano ^^^| findstr /R /C:":1212 .*LISTENING"\'') do (
         echo [INFO] Killing process ID: %%a
         echo [INFO] Killing process ID: %%a >> %LOG_FILE%
         taskkill /F /PID %%a >nul 2>&1
@@ -51,7 +52,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
+for /f "tokens=*" %%i in (\'node --version\') do set NODE_VERSION=%%i
 echo [OK] Node.js version: %NODE_VERSION%
 echo [OK] Node.js version: %NODE_VERSION% >> %LOG_FILE%
 echo.
@@ -65,7 +66,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
+for /f "tokens=*" %%i in (\'npm --version 2^^^>nul\') do set NPM_VERSION=%%i
 if not defined NPM_VERSION (
     echo [WARN] Cannot detect npm version, but npm is available.
     echo [WARN] Cannot detect npm version, but npm is available. >> %LOG_FILE%
@@ -138,20 +139,47 @@ echo [INFO] Auto-restart is enabled - crashes will restart the server. >> %LOG_F
 echo [INFO] Press Ctrl+C to stop and cleanup.
 echo [INFO] Press Ctrl+C to stop and cleanup. >> %LOG_FILE%
 echo [INFO] Startup events are logged to %LOG_FILE%
+echo [INFO] Dev session log: %DEV_RUN_LOG%
 echo [INFO] All server output will be logged to %LOG_FILE% and auto-delete at 100MB
 echo [INFO] Server output is shown below (press Ctrl+C to stop and cleanup)
 echo ========================================
 echo.
 
+echo [STEP 1.5/6] Cleaning stale Next.js dev processes...
+echo [STEP 1.5/6] Cleaning stale Next.js dev processes... >> %LOG_FILE%
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq \'node.exe\' -and $_.CommandLine -like \'*next*dev*\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
+echo [OK] Stale Next.js dev process cleanup done.
+echo [OK] Stale Next.js dev process cleanup done. >> %LOG_FILE%
+echo.
+
 :DEV_LOOP
+if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 echo [INFO] Starting npm run dev... >> %LOG_FILE%
-call npm run dev
+call npm run dev > "%DEV_RUN_LOG%" 2>&1
 set DEV_EXIT_CODE=%ERRORLEVEL%
+
+type "%DEV_RUN_LOG%"
+type "%DEV_RUN_LOG%" >> %LOG_FILE%
+
+set CACHE_ERROR=0
+findstr /I /C:"build-manifest.json" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
+findstr /I /C:".next\\dev\\server" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
+findstr /I /C:"ENOENT: no such file or directory, open" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
+
+if "%CACHE_ERROR%"=="1" (
+    echo [WARN] Detected stale Next.js dev cache error. Cleaning .next and preparing restart...
+    echo [WARN] Detected stale Next.js dev cache error. Cleaning .next and preparing restart... >> %LOG_FILE%
+    if exist ".next" (
+        rmdir /s /q ".next" >nul 2>&1
+        echo [OK] Cleared .next cache directory.
+        echo [OK] Cleared .next cache directory. >> %LOG_FILE%
+    )
+)
 
 echo.
 echo [INFO] Cleaning up port 1212...
 echo [INFO] Cleaning up port 1212... >> %LOG_FILE%
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
+for /f "tokens=5" %%a in (\'netstat -ano ^^^| findstr /R /C:":1212 .*LISTENING"\'') do (
     echo [INFO] Killing process ID: %%a
     echo [INFO] Killing process ID: %%a >> %LOG_FILE%
     taskkill /F /PID %%a >nul 2>&1
@@ -159,7 +187,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') d
 echo [OK] Port 1212 cleaned up.
 echo [OK] Port 1212 cleaned up. >> %LOG_FILE%
 
-if "%DEV_EXIT_CODE%"=="0" (
+if "%DEV_EXIT_CODE%"=="0" if "%CACHE_ERROR%"=="0" (
     echo.
     echo [INFO] Server stopped normally.
     echo [INFO] Server stopped normally. >> %LOG_FILE%
@@ -171,4 +199,3 @@ echo [WARN] Server stopped with exit code %DEV_EXIT_CODE%. Restarting in 3 secon
 echo [WARN] Server stopped with exit code %DEV_EXIT_CODE%. Restarting in 3 seconds... >> %LOG_FILE%
 ping -n 4 127.0.0.1 >nul
 goto :DEV_LOOP
-
