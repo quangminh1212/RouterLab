@@ -3,7 +3,6 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
-const SKILL_FINDER_PATH = path.join(os.homedir(), ".agent", "skills", "skill-finder", "SKILL.md");
 const SKILLS_ROOT = path.join(os.homedir(), ".agent", "skills");
 const MAX_SKILL_RESULTS = 1200;
 
@@ -11,16 +10,38 @@ function slugify(value) {
   return String(value || "skill").toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
 
-function sourceFromSkillPath(filePath) {
-  const relative = path.relative(SKILLS_ROOT, filePath).replace(/\\/g, "/");
-  const parts = relative.split("/").filter(Boolean);
-  const root = parts[0] || "local-skills";
-  const localPath = path.join(SKILLS_ROOT, root);
-  if (root === ".system") return { source: "openai-system", sourceLabel: "OpenAI/System Skills", sourceUrl: "https://github.com/openai/skills", localPath };
-  if (root === "antigravity-awesome-skills") return { source: "antigravity-awesome-skills", sourceLabel: "Antigravity Awesome Skills", sourceUrl: "https://github.com/sickn33/antigravity-awesome-skills", localPath };
-  if (root === "game-development") return { source: "game-development", sourceLabel: "Game Development Skills", sourceUrl: "", localPath };
-  if (root === "skill-finder") return { source: "skill-finder", sourceLabel: "Skill Finder", sourceUrl: "", localPath };
-  return { source: root, sourceLabel: root.replace(/[-_]/g, " "), sourceUrl: "", localPath };
+function prettifyRepoLabel(name) {
+  return String(name || "repo")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+async function findRepoRoot(startPath) {
+  let current = path.dirname(startPath);
+  const rootResolved = path.resolve(SKILLS_ROOT);
+
+  while (current.startsWith(rootResolved)) {
+    const gitDir = path.join(current, ".git");
+    const isRepo = await fs.stat(gitDir).then((stat) => stat.isDirectory() || stat.isFile()).catch(() => false);
+    if (isRepo) return current;
+
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  return "";
+}
+
+async function readRepoOriginUrl(repoRoot) {
+  const configPath = path.join(repoRoot, ".git", "config");
+  const text = await fs.readFile(configPath, "utf-8").catch(() => "");
+  if (!text) return "";
+
+  const originMatch = text.match(/\[remote\s+"origin"\]([\s\S]*?)(?:\n\[|$)/i);
+  if (!originMatch) return "";
+  const urlMatch = originMatch[1].match(/\n\s*url\s*=\s*(.+)\s*$/im);
+  return urlMatch ? urlMatch[1].trim() : "";
 }
 
 function parseFrontMatter(content) {
@@ -54,41 +75,38 @@ async function collectSkillFiles(dir, depth = 0) {
 async function loadLocalSkills() {
   const files = await collectSkillFiles(SKILLS_ROOT);
   const items = [];
+  const repoCache = new Map();
 
   for (const file of files) {
-    if (file === SKILL_FINDER_PATH) continue;
+    const repoRoot = await findRepoRoot(file);
+    if (!repoRoot) continue;
+
+    let repoInfo = repoCache.get(repoRoot);
+    if (!repoInfo) {
+      const source = slugify(path.basename(repoRoot));
+      repoInfo = {
+        source,
+        sourceLabel: prettifyRepoLabel(path.basename(repoRoot)),
+        sourceUrl: await readRepoOriginUrl(repoRoot),
+        localPath: repoRoot,
+      };
+      repoCache.set(repoRoot, repoInfo);
+    }
+
     const content = await fs.readFile(file, "utf-8").catch(() => "");
     const meta = parseFrontMatter(content);
     const folderName = path.basename(path.dirname(file));
     const name = meta.name || folderName;
     const description = meta.description || "No description";
-    const sourceInfo = sourceFromSkillPath(file);
-    const relativePath = path.relative(SKILLS_ROOT, file).replace(/\\/g, "/");
+    const relativePath = path.relative(repoRoot, file).replace(/\\/g, "/");
 
     items.push({
-      id: slugify(`${sourceInfo.source}-${name}`),
+      id: slugify(`${repoInfo.source}-${name}`),
       name,
       description,
-      ...sourceInfo,
+      ...repoInfo,
       sourcePath: relativePath,
     });
-  }
-
-  return items;
-}
-
-function parseSkillFinderMarkdown(content) {
-  const lines = String(content || "").split(/\r?\n/);
-  const items = [];
-
-  for (const line of lines) {
-    const match = line.match(/^\s*-\s+(.+?)\s*\|\s*(.+)$/);
-    if (!match) continue;
-    const name = match[1].trim();
-    const description = match[2].trim();
-    if (!name) continue;
-    const id = slugify(name);
-    items.push({ id, name, description, source: "local-skill-finder" });
   }
 
   return items;
@@ -106,15 +124,13 @@ export async function POST(request) {
     const query = typeof body?.query === "string" ? body.query.trim() : "";
 
     const localSkills = await loadLocalSkills();
-    const raw = localSkills.length > 0 ? "" : await fs.readFile(SKILL_FINDER_PATH, "utf-8");
-    const sourceItems = localSkills.length > 0 ? localSkills : parseSkillFinderMarkdown(raw);
-    const items = sourceItems
+    const items = localSkills
       .filter((item) => matchesQuery(item, query))
       .slice(0, MAX_SKILL_RESULTS);
 
     return NextResponse.json({
       results: items,
-      source: SKILL_FINDER_PATH,
+      source: SKILLS_ROOT,
       total: items.length,
     });
   } catch (error) {
