@@ -317,15 +317,60 @@ function cloneAiIntegrations(value) {
   };
 }
 
-function toSkillRecord(skill) {
+function inferSkillCategory(skill) {
+  const text = `${skill?.name || ""} ${skill?.description || ""}`.toLowerCase();
+  if (text.includes("security") || text.includes("pentest") || text.includes("vulnerability")) return "Security";
+  if (text.includes("agent") || text.includes("orchestration") || text.includes("memory")) return "Agent Engineering";
+  if (text.includes("react") || text.includes("next") || text.includes("frontend") || text.includes("ui")) return "Web Development";
+  if (text.includes("api") || text.includes("backend") || text.includes("database")) return "Backend";
+  if (text.includes("prompt") || text.includes("llm") || text.includes("rag") || text.includes("ai")) return "AI Development";
+  return "Other";
+}
+
+function inferSkillIcon(skill) {
+  const text = `${skill?.name || ""} ${skill?.description || ""}`.toLowerCase();
+  if (text.includes("security") || text.includes("pentest") || text.includes("vulnerability")) return "security";
+  if (text.includes("memory")) return "account_tree";
+  if (text.includes("agent")) return "smart_toy";
+  if (text.includes("react") || text.includes("next") || text.includes("web") || text.includes("ui")) return "web";
+  if (text.includes("api") || text.includes("backend")) return "code";
+  if (text.includes("database") || text.includes("sql")) return "database";
+  if (text.includes("prompt") || text.includes("llm") || text.includes("ai")) return "psychology";
+  return "extension";
+}
+
+function inferSkillTags(skill) {
+  const text = `${skill?.name || ""} ${skill?.description || ""}`.toLowerCase();
+  const tags = [];
+  const candidates = ["agent", "ai", "llm", "prompt", "memory", "security", "react", "nextjs", "api", "backend", "database", "frontend", "automation", "testing", "docs"];
+  for (const tag of candidates) {
+    if (text.includes(tag.replace("nextjs", "next"))) tags.push(tag);
+    if (tags.length >= 3) break;
+  }
+  return tags;
+}
+
+function normalizeSkill(skill) {
   return {
-    id: skill.id,
-    name: skill.name,
-    description: skill.description,
-    source: skill.source,
-    category: skill.category,
-    sourceUrl: skill.sourceUrl,
-    tags: skill.tags,
+    ...skill,
+    source: skill?.source || "local-skill-finder",
+    category: skill?.category || inferSkillCategory(skill),
+    sourceUrl: skill?.sourceUrl || "",
+    tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
+    icon: skill?.icon || inferSkillIcon(skill),
+  };
+}
+
+function toSkillRecord(skill) {
+  const normalized = normalizeSkill(skill);
+  return {
+    id: normalized.id,
+    name: normalized.name,
+    description: normalized.description,
+    source: normalized.source,
+    category: normalized.category,
+    sourceUrl: normalized.sourceUrl,
+    tags: normalized.tags,
   };
 }
 
@@ -335,12 +380,34 @@ function getSkillKey(item) {
 
 export default function AISkillsPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
+  const [skillCatalog, setSkillCatalog] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [savingSkillId, setSavingSkillId] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ai-skills/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "" }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const skills = Array.isArray(data?.results) ? data.results : [];
+        setSkillCatalog((skills.length > 0 ? skills : SKILL_CATALOG).map(normalizeSkill));
+      })
+      .catch(() => {
+        if (!cancelled) setSkillCatalog(SKILL_CATALOG.map(normalizeSkill));
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -358,26 +425,23 @@ export default function AISkillsPageClient() {
     [aiForm.selectedSkills]
   );
 
-  const categoryOptions = useMemo(() => {
-    const sourceFiltered = sourceFilter === "all" ? SKILL_CATALOG : SKILL_CATALOG.filter((item) => item.source === sourceFilter);
-    return ["all", ...Array.from(new Set(sourceFiltered.map((item) => item.category))).sort()];
-  }, [sourceFilter]);
-
   const filteredSkills = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    return SKILL_CATALOG.filter((skill) => {
-      const matchesSource = sourceFilter === "all" || skill.source === sourceFilter;
-      const matchesCategory = categoryFilter === "all" || skill.category === categoryFilter;
-      const text = `${skill.name} ${skill.description} ${skill.category} ${skill.tags.join(" ")}`.toLowerCase();
-      return matchesSource && matchesCategory && (!keyword || text.includes(keyword));
+    return skillCatalog.filter((skill) => {
+      if (!keyword) return true;
+      const category = typeof skill.category === "string" ? skill.category : "";
+      const tags = Array.isArray(skill.tags) ? skill.tags.join(" ") : "";
+      const text = `${skill.name || ""} ${skill.description || ""} ${category} ${tags}`.toLowerCase();
+      return text.includes(keyword);
     });
-  }, [categoryFilter, query, sourceFilter]);
+  }, [query, skillCatalog]);
 
   const groupedSkills = useMemo(() => {
     const groups = new Map();
     for (const skill of filteredSkills) {
-      if (!groups.has(skill.category)) groups.set(skill.category, []);
-      groups.get(skill.category).push(skill);
+      const category = skill.category || "Other";
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push(skill);
     }
     return Array.from(groups.entries());
   }, [filteredSkills]);
@@ -415,67 +479,29 @@ export default function AISkillsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make Skills work your way</h1>
-          <p className="text-text-muted mt-2">Enable curated skills from popular GitHub skill repositories for better task performance.</p>
+          <p className="text-text-muted mt-2">Enable skills from local skill-finder ({skillCatalog.length} available) for better task performance.</p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div>
           <Input
-            className="flex-1 min-w-[260px]"
             label="Search skills"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search planning, backend, security, agents..."
+            placeholder="Search by name or description..."
           />
-
-          <div className="min-w-[260px]">
-            <label className="text-sm font-medium text-text-main">Source</label>
-            <select
-              value={sourceFilter}
-              onChange={(event) => {
-                setSourceFilter(event.target.value);
-                setCategoryFilter("all");
-              }}
-              className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
-            >
-              {SOURCE_OPTIONS.map((item) => (
-                <option key={item.id} value={item.id} className="bg-[#111]">
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="min-w-[220px]">
-            <label className="text-sm font-medium text-text-main">Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
-            >
-              {categoryOptions.map((item) => (
-                <option key={item} value={item} className="bg-[#111]">
-                  {item === "all" ? "All" : item}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.02]">
-          <div className="flex items-center justify-between">
+          <div>
             <p className="text-sm text-text-muted">Enabled skills</p>
-            <p className="text-xl font-semibold text-text-main">{enabledSkillIds.size}/{SKILL_CATALOG.length}</p>
+            <p className="text-xl font-semibold text-text-main">{enabledSkillIds.size}/{skillCatalog.length}</p>
           </div>
         </div>
 
-        {loading ? (
-          <div className="space-y-3">
-            <div className="h-20 rounded-xl border border-black/10 dark:border-white/10" />
-            <div className="h-20 rounded-xl border border-black/10 dark:border-white/10" />
-            <div className="h-20 rounded-xl border border-black/10 dark:border-white/10" />
-          </div>
+        {loading || catalogLoading ? (
+          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">Loading skills...</div>
         ) : groupedSkills.length === 0 ? (
-          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No skills match current filters.</div>
+          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No skills found.</div>
         ) : (
           <div className="space-y-8">
             {groupedSkills.map(([category, items]) => (
@@ -499,10 +525,12 @@ export default function AISkillsPageClient() {
                           </div>
                           <p className="text-xs text-text-muted line-clamp-1">{skill.description}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <a href={skill.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
-                              repo
-                            </a>
-                            {skill.tags.slice(0, 3).map((tag) => (
+                            {skill.sourceUrl ? (
+                              <a href={skill.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
+                                repo
+                              </a>
+                            ) : null}
+                            {(Array.isArray(skill.tags) ? skill.tags : []).slice(0, 3).map((tag) => (
                               <span key={tag} className="rounded bg-black/5 px-2 py-0.5 text-[11px] text-text-muted dark:bg-white/5">#{tag}</span>
                             ))}
                           </div>

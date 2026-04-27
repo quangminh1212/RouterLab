@@ -36,7 +36,7 @@ export async function POST(request) {
     const raw = await fs.readFile(SKILL_FINDER_PATH, "utf-8");
     const items = parseSkillFinderMarkdown(raw)
       .filter((item) => matchesQuery(item, query))
-      .slice(0, 300);
+      .slice(0, 1200);
 
     return NextResponse.json({
       results: items,
