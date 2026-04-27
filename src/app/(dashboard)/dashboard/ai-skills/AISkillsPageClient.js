@@ -363,6 +363,7 @@ function normalizeSkill(skill) {
     category: skill?.category || inferSkillCategory(skill),
     sourceUrl: skill?.sourceUrl || "",
     localPath: skill?.localPath || "",
+    iconUrl: skill?.iconUrl || "",
     skillCountHint: Number.isFinite(Number(skill?.skillCountHint)) ? Number(skill.skillCountHint) : 0,
     tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
     icon: skill?.icon || inferSkillIcon(skill),
@@ -426,6 +427,7 @@ function toRepoRecord(repo) {
     description: repo.description,
     sourceUrl: repo.sourceUrl || "",
     localPath: repo.localPath || "",
+    iconUrl: repo.iconUrl || "",
     tags: Array.isArray(repo.tags) ? repo.tags : [],
     skillCount: repo.skillCount,
   };
@@ -511,6 +513,7 @@ export default function AISkillsPageClient() {
           skillCountHint: skill.skillCountHint || 0,
           description: "",
           icon: skill.icon || "folder",
+          iconUrl: skill.iconUrl || "",
         });
       }
 
@@ -520,6 +523,7 @@ export default function AISkillsPageClient() {
       if (!repo.description && skill.description) repo.description = skill.description;
       if (!repo.sourceUrl && skill.sourceUrl) repo.sourceUrl = skill.sourceUrl;
       if (!repo.localPath && skill.localPath) repo.localPath = skill.localPath;
+      if (!repo.iconUrl && skill.iconUrl) repo.iconUrl = skill.iconUrl;
       const tags = Array.isArray(skill.tags) ? skill.tags : [];
       for (const tag of tags) {
         if (repo.tags.length >= 3) break;
@@ -602,8 +606,21 @@ export default function AISkillsPageClient() {
               const repoHref = repo.sourceUrl || (repo.localPath ? `file:///${String(repo.localPath).replace(/\\/g, "/")}` : "");
               return (
                 <div key={repo.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-text-main dark:bg-white/10">
-                    <span className="material-symbols-outlined text-[18px]">{repo.icon || "folder"}</span>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/5 text-text-main dark:bg-white/10">
+                    {repo.iconUrl ? (
+                      <img
+                        src={repo.iconUrl}
+                        alt={`${repo.name} icon`}
+                        className="h-6 w-6 rounded-md object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          event.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                    ) : null}
+                    <span className={cn("material-symbols-outlined text-[18px]", repo.iconUrl && "hidden")}>{repo.icon || "folder"}</span>
                   </div>
 
                   <div className="min-w-0 flex-1">

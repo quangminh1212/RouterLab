@@ -274,10 +274,12 @@ async function loadLocalSkills() {
     let repoInfo = repoCache.get(repoRoot);
     if (!repoInfo) {
       const source = slugify(path.basename(repoRoot));
+      const sourceUrl = await readRepoOriginUrl(repoRoot);
       repoInfo = {
         source,
         sourceLabel: prettifyRepoLabel(path.basename(repoRoot)),
-        sourceUrl: await readRepoOriginUrl(repoRoot),
+        sourceUrl,
+        iconUrl: githubOwnerAvatarUrl(sourceUrl),
         localPath: repoRoot,
       };
       repoCache.set(repoRoot, repoInfo);
@@ -315,6 +317,12 @@ function normalizeGithubRepoUrl(url) {
 function repoSlugFromUrl(url) {
   const match = String(url || "").match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/i);
   return match ? slugify(`${match[1]}-${match[2]}`) : "";
+}
+
+function githubOwnerAvatarUrl(url) {
+  const match = String(url || "").match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/i);
+  if (!match) return "";
+  return `https://github.com/${match[1]}.png?size=64`;
 }
 
 function isSkillRepoCandidate(text) {
@@ -383,6 +391,7 @@ async function verifyGithubRepo(candidate) {
     source: repoSlugFromUrl(candidate.url),
     sourceLabel: candidate.label || prettifyRepoLabel(data.name || repo),
     sourceUrl: data.html_url || candidate.url,
+    iconUrl: data.owner?.avatar_url || githubOwnerAvatarUrl(data.html_url || candidate.url),
     description,
     category: "Repository",
     sourcePath: "",
@@ -430,6 +439,7 @@ function loadCuratedSkillRepos() {
     category: "Repository",
     sourcePath: "",
     localPath: "",
+    iconUrl: githubOwnerAvatarUrl(repo.sourceUrl),
     icon: "folder_special",
     ...repo,
   }));
