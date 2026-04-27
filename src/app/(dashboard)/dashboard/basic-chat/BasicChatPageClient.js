@@ -291,6 +291,33 @@ export default function BasicChatPageClient() {
           .sort((a, b) => a.providerName.localeCompare(b.providerName));
 
         if (!cancelled) {
+
+        // Fetch combos
+        try {
+          const combosRes = await fetch("/api/combos", { cache: "no-store" });
+          const combosData = await combosRes.json().catch(() => ({}));
+          const combos = Array.isArray(combosData.combos) ? combosData.combos.filter(c => c?.isActive !== false) : [];
+          
+          if (combos.length > 0) {
+            const comboGroup = {
+              providerId: "combo",
+              providerName: "Combos",
+              providerType: "combo",
+              connections: [],
+              models: combos.map(combo => ({
+                id: `combo/${combo.id}`,
+                requestModel: `combo/${combo.id}`,
+                name: combo.name || combo.id,
+                providerId: "combo",
+                providerName: "Combos",
+                source: "combo"
+              }))
+            };
+            normalized.unshift(comboGroup);
+          }
+        } catch (e) {
+          // Ignore combo fetch errors
+        }
           setProviderGroups(normalized);
           if (normalized.length === 0) {
             setLoadError("Đã có provider connect nhưng chưa lấy được model nào.");
@@ -934,7 +961,7 @@ export default function BasicChatPageClient() {
                       <span className="material-symbols-outlined text-[20px]">attach_file</span>
                     </button>
                     <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAttachFiles} />
-                    <span className="text-xs font-medium text-white/30 truncate max-w-[120px]">{activeModel ? activeModel.name : "No model"}</span>
+                    <button type="button" onClick={() => setModelMenuOpen(!modelMenuOpen)} className="text-xs font-medium text-white/50 hover:text-white/70 transition truncate max-w-[180px] flex items-center gap-1">{activeModel ? activeModel.name : "Select model"}<span className="material-symbols-outlined text-[14px]">expand_more</span></button>
                   </div>
 
                   <div className="flex items-center gap-2">
