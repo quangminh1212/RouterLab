@@ -29,7 +29,7 @@ netstat -ano | findstr /R /C:":1212 .*LISTENING" >nul 2>&1
 if not errorlevel 1 (
     echo [WARN] Port 1212 is in use. Stopping existing process...
     echo [WARN] Port 1212 is in use. Stopping existing process... >> %LOG_FILE%
-    for /f "tokens=5" %%a in (\'netstat -ano ^^^| findstr /R /C:":1212 .*LISTENING"\'') do (
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
         echo [INFO] Killing process ID: %%a
         echo [INFO] Killing process ID: %%a >> %LOG_FILE%
         taskkill /F /PID %%a >nul 2>&1
@@ -52,7 +52,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in (\'node --version\') do set NODE_VERSION=%%i
+for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
 echo [OK] Node.js version: %NODE_VERSION%
 echo [OK] Node.js version: %NODE_VERSION% >> %LOG_FILE%
 echo.
@@ -66,7 +66,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in (\'npm --version 2^^^>nul\') do set NPM_VERSION=%%i
+for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
 if not defined NPM_VERSION (
     echo [WARN] Cannot detect npm version, but npm is available.
     echo [WARN] Cannot detect npm version, but npm is available. >> %LOG_FILE%
@@ -163,7 +163,7 @@ type "%DEV_RUN_LOG%" >> %LOG_FILE%
 
 set CACHE_ERROR=0
 findstr /I /C:"build-manifest.json" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
-findstr /I /C:".next\\dev\\server" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
+findstr /I /C:".next\dev\server" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
 findstr /I /C:"ENOENT: no such file or directory, open" "%DEV_RUN_LOG%" >nul 2>&1 && set CACHE_ERROR=1
 
 if "%CACHE_ERROR%"=="1" (
@@ -179,7 +179,7 @@ if "%CACHE_ERROR%"=="1" (
 echo.
 echo [INFO] Cleaning up port 1212...
 echo [INFO] Cleaning up port 1212... >> %LOG_FILE%
-for /f "tokens=5" %%a in (\'netstat -ano ^^^| findstr /R /C:":1212 .*LISTENING"\'') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":1212 .*LISTENING"') do (
     echo [INFO] Killing process ID: %%a
     echo [INFO] Killing process ID: %%a >> %LOG_FILE%
     taskkill /F /PID %%a >nul 2>&1
