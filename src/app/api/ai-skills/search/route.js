@@ -5,6 +5,41 @@ import path from "path";
 
 const SKILLS_ROOT = path.join(os.homedir(), ".agent", "skills");
 const MAX_SKILL_RESULTS = 1200;
+const CRAWLED_REPO_LIMIT = 80;
+const CRAWL_CACHE_TTL_MS = 1000 * 60 * 60;
+
+let crawledRepoCache = {
+  expiresAt: 0,
+  items: [],
+};
+
+const AWESOME_SKILL_SOURCES = [
+  "https://raw.githubusercontent.com/e2b-dev/awesome-ai-agents/main/README.md",
+  "https://raw.githubusercontent.com/github/awesome-copilot/main/README.md",
+  "https://raw.githubusercontent.com/kodustech/awesome-agent-skills/main/README.md",
+  "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/README.md",
+];
+
+const SKILL_REPO_KEYWORDS = [
+  "agent",
+  "agents",
+  "ai-agent",
+  "assistant",
+  "automation",
+  "claude",
+  "codex",
+  "copilot",
+  "instruction",
+  "instructions",
+  "mcp",
+  "prompt",
+  "prompts",
+  "skill",
+  "skills",
+  "subagent",
+  "workflow",
+  "workflows",
+];
 
 const CURATED_SKILL_REPOS = [
   {
@@ -267,6 +302,127 @@ async function loadLocalSkills() {
   return items;
 }
 
+
+function normalizeGithubRepoUrl(url) {
+  const match = String(url || "").match(/^https:\/\/github\.com\/([^\s/?#)]+)\/([^\s/?#)]+)(?:[/?#][^\s)]*)?$/i);
+  if (!match) return "";
+  const owner = match[1];
+  const repo = match[2].replace(/\.git$/i, "");
+  if (!owner || !repo) return "";
+  return `https://github.com/${owner}/${repo}`;
+}
+
+function repoSlugFromUrl(url) {
+  const match = String(url || "").match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/i);
+  return match ? slugify(`${match[1]}-${match[2]}`) : "";
+}
+
+function isSkillRepoCandidate(text) {
+  const haystack = String(text || "").toLowerCase();
+  return SKILL_REPO_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}
+
+function extractGithubRepoLinks(markdown) {
+  const candidates = new Map();
+  const linkPattern = /\[([^\]]+)\]\((https:\/\/github\.com\/[^\s)]+)\)/gi;
+  let match;
+
+  while ((match = linkPattern.exec(markdown))) {
+    const label = match[1].replace(/[`*_]/g, " ").trim();
+    const url = normalizeGithubRepoUrl(match[2]);
+    if (!url) continue;
+
+    const lineStart = markdown.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = markdown.indexOf("\n", match.index);
+    const line = markdown.slice(lineStart, lineEnd === -1 ? markdown.length : lineEnd).trim();
+    const context = `${label} ${line}`;
+    if (!isSkillRepoCandidate(context)) continue;
+
+    candidates.set(url.toLowerCase(), { url, label, context });
+  }
+
+  return [...candidates.values()];
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, {
+    headers: {
+      accept: "text/plain, text/markdown, */*",
+      "user-agent": "XLab-Router-Skill-Catalog",
+    },
+    next: { revalidate: 3600 },
+  });
+  if (!response.ok) return "";
+  return response.text();
+}
+
+async function verifyGithubRepo(candidate) {
+  const match = candidate.url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/i);
+  if (!match) return null;
+
+  const [, owner, repo] = match;
+  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    headers: {
+      accept: "application/vnd.github+json",
+      "user-agent": "XLab-Router-Skill-Catalog",
+    },
+    next: { revalidate: 3600 },
+  }).catch(() => null);
+  if (!response?.ok) return null;
+
+  const data = await response.json().catch(() => ({}));
+  if (data?.archived || data?.disabled || data?.private) return null;
+
+  const description = data.description || candidate.context || "Verified GitHub repository related to AI agent skills, prompts, instructions, or workflows.";
+  const searchText = `${data.full_name} ${description} ${data.topics?.join(" ") || ""}`;
+  if (!isSkillRepoCandidate(searchText)) return null;
+
+  return {
+    id: `repo-${repoSlugFromUrl(candidate.url)}`,
+    name: candidate.label || prettifyRepoLabel(data.name || repo),
+    source: repoSlugFromUrl(candidate.url),
+    sourceLabel: candidate.label || prettifyRepoLabel(data.name || repo),
+    sourceUrl: data.html_url || candidate.url,
+    description,
+    category: "Repository",
+    sourcePath: "",
+    localPath: "",
+    icon: "folder_special",
+    skillCountHint: Math.max(10, Math.min(100, Math.round((data.stargazers_count || 0) / 10) || 10)),
+    tags: ["github", "crawler", "skills"],
+  };
+}
+
+async function loadCrawledSkillRepos() {
+  if (Date.now() < crawledRepoCache.expiresAt) return crawledRepoCache.items;
+
+  const markdownList = await Promise.all(AWESOME_SKILL_SOURCES.map((url) => fetchText(url).catch(() => "")));
+  const candidates = [];
+  const seen = new Set();
+
+  for (const markdown of markdownList) {
+    for (const candidate of extractGithubRepoLinks(markdown)) {
+      const key = candidate.url.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      candidates.push(candidate);
+    }
+  }
+
+  const verified = [];
+  for (const candidate of candidates) {
+    if (verified.length >= CRAWLED_REPO_LIMIT) break;
+    const repo = await verifyGithubRepo(candidate);
+    if (repo) verified.push(repo);
+  }
+
+  crawledRepoCache = {
+    expiresAt: Date.now() + CRAWL_CACHE_TTL_MS,
+    items: verified,
+  };
+  return verified;
+}
+
 function loadCuratedSkillRepos() {
   return CURATED_SKILL_REPOS.map((repo) => ({
     id: `repo-${repo.source}`,
@@ -292,8 +448,21 @@ export async function POST(request) {
 
     const localSkills = await loadLocalSkills();
     const localSources = new Set(localSkills.map((item) => item.source));
+
     const curatedRepos = loadCuratedSkillRepos().filter((repo) => !localSources.has(repo.source));
-    const items = [...localSkills, ...curatedRepos]
+    const curatedSources = new Set(curatedRepos.map((repo) => repo.source));
+
+    const crawledRepos = (await loadCrawledSkillRepos()).filter(
+      (repo) => repo?.source && !localSources.has(repo.source) && !curatedSources.has(repo.source)
+    );
+
+    const uniqueRepos = new Map();
+    for (const repo of [...curatedRepos, ...crawledRepos]) {
+      if (!repo?.source || uniqueRepos.has(repo.source)) continue;
+      uniqueRepos.set(repo.source, repo);
+    }
+
+    const items = [...localSkills, ...uniqueRepos.values()]
       .filter((item) => matchesQuery(item, query))
       .slice(0, MAX_SKILL_RESULTS);
 
