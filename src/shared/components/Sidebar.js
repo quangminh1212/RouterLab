@@ -133,7 +133,7 @@ export default function Sidebar({ onClose }) {
 
   return (
     <>
-      <aside className="flex w-72 flex-col border-r border-black/5 dark:border-white/5 bg-vibrancy backdrop-blur-xl transition-colors duration-300 min-h-full">
+      <aside className="flex w-72 flex-col border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-colors duration-300 min-h-full">
         {/* Traffic lights */}
         <div className="flex items-center gap-2 px-6 pt-5 pb-2">
           <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
@@ -190,8 +190,8 @@ export default function Sidebar({ onClose }) {
               className={cn(
                 "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isActive(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
               <span
@@ -208,7 +208,7 @@ export default function Sidebar({ onClose }) {
 
           {/* System section */}
           <div className="pt-4 mt-2">
-            <p className="px-4 text-xs font-semibold text-text-muted/60 uppercase tracking-wider mb-2">
+            <p className="px-4 text-xs font-semibold text-primary/55 uppercase tracking-wider mb-2">
               System
             </p>
 
@@ -218,8 +218,8 @@ export default function Sidebar({ onClose }) {
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 pathname.startsWith("/dashboard/media-providers")
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
               <span className="material-symbols-outlined text-[18px]">perm_media</span>
@@ -238,8 +238,8 @@ export default function Sidebar({ onClose }) {
                     className={cn(
                       "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                       pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
-                        ? "bg-primary/10 text-primary"
-                        : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                        ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                        : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
                     )}
                   >
                     <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
@@ -255,8 +255,8 @@ export default function Sidebar({ onClose }) {
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isPowerUpActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
               <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
@@ -275,8 +275,8 @@ export default function Sidebar({ onClose }) {
                     className={cn(
                       "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                       pathname.startsWith(item.href)
-                        ? "bg-primary/10 text-primary"
-                        : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                        ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                        : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
                     )}
                   >
                     <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
@@ -294,8 +294,8 @@ export default function Sidebar({ onClose }) {
                 className={cn(
                   "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                   isActive(item.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                    ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                    : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
                 )}
               >
                 <span
@@ -321,8 +321,8 @@ export default function Sidebar({ onClose }) {
                   className={cn(
                     "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                     isActive(item.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                      ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                      : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
                   )}
                 >
                   <span
@@ -345,8 +345,8 @@ export default function Sidebar({ onClose }) {
               className={cn(
                 "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isActive("/dashboard/profile")
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface/50 hover:text-text-main"
+                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
             >
               <span
@@ -363,7 +363,7 @@ export default function Sidebar({ onClose }) {
         </nav>
 
         {/* Footer section */}
-        <div className="p-3 border-t border-black/5 dark:border-white/5">
+        <div className="p-3 border-t border-primary/15">
           {/* Shutdown button */}
           <Button
             variant="outline"
