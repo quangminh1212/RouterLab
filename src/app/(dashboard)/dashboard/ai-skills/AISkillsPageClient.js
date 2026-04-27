@@ -409,6 +409,24 @@ function getSkillKey(item) {
   return typeof item?.id === "string" ? item.id : "";
 }
 
+function getSkillSource(item) {
+  return typeof item?.source === "string" ? item.source : "";
+}
+
+function toRepoRecord(repo) {
+  return {
+    id: `repo:${repo.source}`,
+    type: "repo",
+    source: repo.source,
+    sourceLabel: repo.sourceLabel,
+    name: repo.name,
+    description: repo.description,
+    sourceUrl: repo.sourceUrl || "",
+    tags: Array.isArray(repo.tags) ? repo.tags : [],
+    skillCount: repo.skillCount,
+  };
+}
+
 export default function AISkillsPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
   const [skillCatalog, setSkillCatalog] = useState([]);
@@ -451,10 +469,14 @@ export default function AISkillsPageClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  const enabledSkillIds = useMemo(
-    () => new Set((Array.isArray(aiForm.selectedSkills) ? aiForm.selectedSkills : []).map(getSkillKey).filter(Boolean)),
-    [aiForm.selectedSkills]
-  );
+  const enabledRepoSources = useMemo(() => {
+    const sources = new Set();
+    for (const item of Array.isArray(aiForm.selectedSkills) ? aiForm.selectedSkills : []) {
+      const source = getSkillSource(item);
+      if (source) sources.add(source);
+    }
+    return sources;
+  }, [aiForm.selectedSkills]);
 
   const filteredSkills = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -467,25 +489,55 @@ export default function AISkillsPageClient() {
     });
   }, [query, skillCatalog]);
 
-  const groupedSkills = useMemo(() => {
-    const groups = new Map();
+  const repoCatalog = useMemo(() => {
+    const repos = new Map();
     for (const skill of filteredSkills) {
-      const group = skill.sourceLabel || skill.source || "Other";
-      if (!groups.has(group)) groups.set(group, []);
-      groups.get(group).push(skill);
+      const source = skill.source || "local-skill-finder";
+      if (!repos.has(source)) {
+        repos.set(source, {
+          id: `repo:${source}`,
+          source,
+          sourceLabel: skill.sourceLabel || source,
+          name: skill.sourceLabel || source,
+          sourceUrl: skill.sourceUrl || "",
+          tags: [],
+          tagSet: new Set(),
+          skillCount: 0,
+          description: "",
+          icon: skill.icon || "folder",
+        });
+      }
+
+      const repo = repos.get(source);
+      repo.skillCount += 1;
+      if (!repo.description && skill.description) repo.description = skill.description;
+      if (!repo.sourceUrl && skill.sourceUrl) repo.sourceUrl = skill.sourceUrl;
+      const tags = Array.isArray(skill.tags) ? skill.tags : [];
+      for (const tag of tags) {
+        if (repo.tags.length >= 3) break;
+        if (!repo.tagSet.has(tag)) {
+          repo.tagSet.add(tag);
+          repo.tags.push(tag);
+        }
+      }
     }
-    return Array.from(groups.entries());
+
+    return Array.from(repos.values())
+      .map((repo) => ({
+        ...repo,
+        description: repo.description || `${repo.skillCount} skills available in this repository.`,
+      }))
+      .sort((a, b) => b.skillCount - a.skillCount || a.name.localeCompare(b.name));
   }, [filteredSkills]);
 
-  const toggleSkill = async (skill) => {
-    setSavingSkillId(skill.id);
+  const toggleRepo = async (repo) => {
+    setSavingSkillId(repo.id);
     setStatus({ type: "", message: "" });
     try {
       const current = Array.isArray(aiForm.selectedSkills) ? aiForm.selectedSkills : [];
-      const isEnabled = enabledSkillIds.has(skill.id);
-      const selectedSkills = isEnabled
-        ? current.filter((item) => getSkillKey(item) !== skill.id)
-        : [...current.filter((item) => getSkillKey(item) !== skill.id), toSkillRecord(skill)];
+      const isEnabled = enabledRepoSources.has(repo.source);
+      const selectedSkills = current.filter((item) => getSkillSource(item) !== repo.source);
+      if (!isEnabled) selectedSkills.push(toRepoRecord(repo));
 
       const nextForm = { ...aiForm, selectedSkills };
       const res = await fetch("/api/settings", {
@@ -497,9 +549,9 @@ export default function AISkillsPageClient() {
       if (!res.ok) throw new Error(data.error || "Failed to update AI skills");
 
       setAiForm(nextForm);
-      setStatus({ type: "success", message: isEnabled ? `Disabled ${skill.name}` : `Enabled ${skill.name}` });
+      setStatus({ type: "success", message: isEnabled ? `Disabled ${repo.name}` : `Enabled ${repo.name}` });
     } catch (error) {
-      setStatus({ type: "error", message: error?.message || "Skill update failed" });
+      setStatus({ type: "error", message: error?.message || "Repository update failed" });
     } finally {
       setSavingSkillId("");
     }
@@ -510,84 +562,77 @@ export default function AISkillsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make Skills work your way</h1>
-          <p className="text-text-muted mt-2">Enable skills from local skill-finder ({skillCatalog.length} available) for better task performance.</p>
+          <p className="text-text-muted mt-2">Integrate skill repositories ({repoCatalog.length} repos / {skillCatalog.length} skills).</p>
         </div>
 
         <div>
           <Input
-            label="Search skills"
+            label="Search repositories"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name or description..."
+            placeholder="Search by repo name, skills, or description..."
           />
         </div>
 
         <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.02]">
           <div>
-            <p className="text-sm text-text-muted">Enabled skills</p>
-            <p className="text-xl font-semibold text-text-main">{enabledSkillIds.size}/{skillCatalog.length}</p>
+            <p className="text-sm text-text-muted">Enabled repositories</p>
+            <p className="text-xl font-semibold text-text-main">{enabledRepoSources.size}/{repoCatalog.length}</p>
           </div>
         </div>
 
         {loading || catalogLoading ? (
-          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">Loading skills...</div>
-        ) : groupedSkills.length === 0 ? (
-          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No skills found.</div>
+          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">Loading repositories...</div>
+        ) : repoCatalog.length === 0 ? (
+          <div className="rounded-xl border border-black/10 p-5 text-sm text-text-muted dark:border-white/10">No repositories found.</div>
         ) : (
-          <div className="space-y-8">
-            {groupedSkills.map(([category, items]) => (
-              <section key={category} className="space-y-3">
-                <h2 className="text-[30px] font-semibold text-text-main">{category}</h2>
-                <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
-                  {items.map((skill) => {
-                    const enabled = enabledSkillIds.has(skill.id);
-                    const saving = savingSkillId === skill.id;
-                    return (
-                      <div key={skill.id} className="flex items-center gap-3 px-3 py-2.5">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-text-main dark:bg-white/10">
-                          <span className="material-symbols-outlined text-[18px]">{skill.icon}</span>
-                        </div>
+          <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
+            {repoCatalog.map((repo) => {
+              const enabled = enabledRepoSources.has(repo.source);
+              const saving = savingSkillId === repo.id;
+              return (
+                <div key={repo.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-text-main dark:bg-white/10">
+                    <span className="material-symbols-outlined text-[18px]">{repo.icon || "folder"}</span>
+                  </div>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="text-base font-semibold text-text-main">{skill.name}</p>
-                            {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{skill.sourceLabel || skill.source}</span>
-                          </div>
-                          <p className="text-xs text-text-muted line-clamp-1">{skill.description}</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            {skill.sourceUrl ? (
-                              <a href={skill.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
-                                repo
-                              </a>
-                            ) : null}
-                            {(Array.isArray(skill.tags) ? skill.tags : []).slice(0, 3).map((tag, tagIndex) => (
-                              <span key={`${skill.id}-tag-${tag}-${tagIndex}`} className="rounded bg-black/5 px-2 py-0.5 text-[11px] text-text-muted dark:bg-white/5">#{tag}</span>
-                            ))}
-                          </div>
-                        </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-base font-semibold text-text-main">{repo.name}</p>
+                      {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{repo.skillCount} skills</span>
+                    </div>
+                    <p className="text-xs text-text-muted line-clamp-1">{repo.description}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {repo.sourceUrl ? (
+                        <a href={repo.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
+                          repo
+                        </a>
+                      ) : null}
+                      {(Array.isArray(repo.tags) ? repo.tags : []).slice(0, 3).map((tag, tagIndex) => (
+                        <span key={`${repo.id}-tag-${tag}-${tagIndex}`} className="rounded bg-black/5 px-2 py-0.5 text-[11px] text-text-muted dark:bg-white/5">#{tag}</span>
+                      ))}
+                    </div>
+                  </div>
 
-                        <button
-                          type="button"
-                          onClick={() => toggleSkill(skill)}
-                          disabled={saving || Boolean(savingSkillId)}
-                          className={cn(
-                            "mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
-                            enabled
-                              ? "border-green-500/40 bg-green-500/10 text-green-500"
-                              : "border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
-                            (saving || Boolean(savingSkillId)) && "opacity-60"
-                          )}
-                          title={enabled ? "Disable skill" : "Enable skill"}
-                        >
-                          <span className="material-symbols-outlined text-[17px]">{enabled ? "check" : "add"}</span>
-                        </button>
-                      </div>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={() => toggleRepo(repo)}
+                    disabled={saving || Boolean(savingSkillId)}
+                    className={cn(
+                      "mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
+                      enabled
+                        ? "border-green-500/40 bg-green-500/10 text-green-500"
+                        : "border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
+                      (saving || Boolean(savingSkillId)) && "opacity-60"
+                    )}
+                    title={enabled ? "Disable repository" : "Enable repository"}
+                  >
+                    <span className="material-symbols-outlined text-[17px]">{enabled ? "check" : "add"}</span>
+                  </button>
                 </div>
-              </section>
-            ))}
+              );
+            })}
           </div>
         )}
 
