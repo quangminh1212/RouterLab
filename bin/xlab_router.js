@@ -877,12 +877,7 @@ if (command === "--web") {
   });
 } else if (command === "--tray") {
   startTrayMode();
-} else if (!command) {
-  startWebUI().catch((err) => {
-    console.error("[ERROR] Web UI failed:", err);
-    process.exit(1);
-  });
-} else if (command === "--menu") {
+} else if (!command || command === "--menu") {
   showMenu().catch((err) => {
     console.error("[ERROR] Menu failed:", err);
     process.exit(1);
