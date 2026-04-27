@@ -266,21 +266,21 @@ export default function Sidebar({ onClose }) {
               </span>
             </button>
             {powerUpOpen && (
-              <div className="pl-4">
+              <div className="pl-3 space-y-0.5">
                 {POWER_UP_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={onClose}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
+                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
                       pathname.startsWith(item.href)
-                        ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                        : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+                        ? "text-primary"
+                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
                     )}
                   >
-                    <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
-                    <span className="text-sm">{item.label}</span>
+                    <span className="material-symbols-outlined text-[15px]">{item.icon}</span>
+                    <span className="text-[13px]">{item.label}</span>
                   </Link>
                 ))}
               </div>
