@@ -765,7 +765,7 @@ export default function BasicChatPageClient() {
                         <p className="text-sm font-semibold text-white">{group.providerName}</p>
                         <Badge size="sm" variant="default">{group.models.length}</Badge>
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1.5">
                         {group.models.map((model) => {
                           const isActive = model.id === activeModelId;
                           return (
@@ -773,12 +773,12 @@ export default function BasicChatPageClient() {
                               key={model.id}
                               type="button"
                               onClick={() => handleSelectModel(model.id)}
-                              className={`rounded-[14px] border px-3 py-3 text-left transition ${isActive ? "border-blue-400/40 bg-blue-500/15" : "border-white/10 bg-white/5 hover:bg-white/8"}`}
+                              className={`rounded-lg border px-3 py-2 text-left transition ${isActive ? "border-blue-400/40 bg-blue-500/15" : "border-white/10 bg-white/5 hover:bg-white/8"}`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium text-white">{model.name}</p>
-                                  <p className="truncate text-[11px] text-white/45">{model.requestModel}</p>
+                                  <p className="truncate text-[13px] font-medium text-white">{model.name}</p>
+                                  <p className="truncate text-[10px] text-white/45">{model.requestModel}</p>
                                 </div>
                                 {isActive ? <span className="material-symbols-outlined text-[18px] text-blue-300">check_circle</span> : null}
                               </div>
@@ -829,7 +829,7 @@ export default function BasicChatPageClient() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white">{session.title}</p>
+                        <p className="truncate text-[13px] font-medium text-white">{session.title}</p>
                         <p className="mt-1 truncate text-xs text-white/50">{textValue(latestMessage?.content) || "Empty chat"}</p>
                       </div>
                       <span className="text-[10px] text-white/40 shrink-0">{formatRelativeTime(session.updatedAt)}</span>
