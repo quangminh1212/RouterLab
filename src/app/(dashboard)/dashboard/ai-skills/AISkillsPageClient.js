@@ -606,22 +606,21 @@ export default function AISkillsPageClient() {
               const repoHref = repo.sourceUrl || (repo.localPath ? `file:///${String(repo.localPath).replace(/\\/g, "/")}` : "");
               return (
                 <div key={repo.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/5 text-text-main dark:bg-white/10">
-                    {repo.iconUrl ? (
+                  {repo.iconUrl ? (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-white">
                       <img
                         src={repo.iconUrl}
                         alt={`${repo.name} icon`}
                         className="h-6 w-6 rounded-md object-cover"
                         loading="lazy"
                         referrerPolicy="no-referrer"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                          event.currentTarget.nextElementSibling?.classList.remove("hidden");
-                        }}
                       />
-                    ) : null}
-                    <span className={cn("material-symbols-outlined text-[18px]", repo.iconUrl && "hidden")}>{repo.icon || "folder"}</span>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-text-main dark:bg-white">
+                      <span className="material-symbols-outlined text-[18px]">{repo.icon || "folder"}</span>
+                    </div>
+                  )}
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -635,7 +634,6 @@ export default function AISkillsPageClient() {
                       {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{repo.skillCount} skills</span>
                     </div>
-                    <p className="text-xs text-text-muted line-clamp-1">{repo.description}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {repoHref ? (
                         <a href={repoHref} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
