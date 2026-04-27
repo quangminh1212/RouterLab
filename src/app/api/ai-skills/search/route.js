@@ -14,11 +14,13 @@ function slugify(value) {
 function sourceFromSkillPath(filePath) {
   const relative = path.relative(SKILLS_ROOT, filePath).replace(/\\/g, "/");
   const parts = relative.split("/").filter(Boolean);
-  if (parts[0] === ".system") return { source: "openai-system", sourceLabel: "OpenAI/System Skills" };
-  if (parts[0] === "antigravity-awesome-skills") return { source: "antigravity-awesome-skills", sourceLabel: "Antigravity Awesome Skills" };
-  if (parts[0] === "game-development") return { source: "game-development", sourceLabel: "Game Development Skills" };
-  if (parts[0] === "skill-finder") return { source: "skill-finder", sourceLabel: "Skill Finder" };
-  return { source: "local-skills", sourceLabel: "Local Skills" };
+  const root = parts[0] || "local-skills";
+  const localPath = path.join(SKILLS_ROOT, root);
+  if (root === ".system") return { source: "openai-system", sourceLabel: "OpenAI/System Skills", sourceUrl: "https://github.com/openai/skills", localPath };
+  if (root === "antigravity-awesome-skills") return { source: "antigravity-awesome-skills", sourceLabel: "Antigravity Awesome Skills", sourceUrl: "https://github.com/sickn33/antigravity-awesome-skills", localPath };
+  if (root === "game-development") return { source: "game-development", sourceLabel: "Game Development Skills", sourceUrl: "", localPath };
+  if (root === "skill-finder") return { source: "skill-finder", sourceLabel: "Skill Finder", sourceUrl: "", localPath };
+  return { source: root, sourceLabel: root.replace(/[-_]/g, " "), sourceUrl: "", localPath };
 }
 
 function parseFrontMatter(content) {

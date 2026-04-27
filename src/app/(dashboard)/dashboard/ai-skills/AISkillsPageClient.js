@@ -362,6 +362,7 @@ function normalizeSkill(skill) {
     sourceLabel: skill?.sourceLabel || skill?.source || "local-skill-finder",
     category: skill?.category || inferSkillCategory(skill),
     sourceUrl: skill?.sourceUrl || "",
+    localPath: skill?.localPath || "",
     tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
     icon: skill?.icon || inferSkillIcon(skill),
   };
@@ -401,6 +402,7 @@ function toSkillRecord(skill) {
     sourceLabel: normalized.sourceLabel,
     category: normalized.category,
     sourceUrl: normalized.sourceUrl,
+    localPath: normalized.localPath,
     tags: normalized.tags,
   };
 }
@@ -422,6 +424,7 @@ function toRepoRecord(repo) {
     name: repo.name,
     description: repo.description,
     sourceUrl: repo.sourceUrl || "",
+    localPath: repo.localPath || "",
     tags: Array.isArray(repo.tags) ? repo.tags : [],
     skillCount: repo.skillCount,
   };
@@ -500,6 +503,7 @@ export default function AISkillsPageClient() {
           sourceLabel: skill.sourceLabel || source,
           name: skill.sourceLabel || source,
           sourceUrl: skill.sourceUrl || "",
+          localPath: skill.localPath || "",
           tags: [],
           tagSet: new Set(),
           skillCount: 0,
@@ -512,6 +516,7 @@ export default function AISkillsPageClient() {
       repo.skillCount += 1;
       if (!repo.description && skill.description) repo.description = skill.description;
       if (!repo.sourceUrl && skill.sourceUrl) repo.sourceUrl = skill.sourceUrl;
+      if (!repo.localPath && skill.localPath) repo.localPath = skill.localPath;
       const tags = Array.isArray(skill.tags) ? skill.tags : [];
       for (const tag of tags) {
         if (repo.tags.length >= 3) break;
@@ -590,6 +595,7 @@ export default function AISkillsPageClient() {
             {repoCatalog.map((repo) => {
               const enabled = enabledRepoSources.has(repo.source);
               const saving = savingSkillId === repo.id;
+              const repoHref = repo.sourceUrl || (repo.localPath ? `file:///${String(repo.localPath).replace(/\\/g, "/")}` : "");
               return (
                 <div key={repo.id} className="flex items-center gap-3 px-3 py-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-text-main dark:bg-white/10">
@@ -598,14 +604,20 @@ export default function AISkillsPageClient() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-base font-semibold text-text-main">{repo.name}</p>
+                      {repoHref ? (
+                        <a href={repoHref} target="_blank" rel="noreferrer" className="text-base font-semibold text-text-main hover:text-primary hover:underline">
+                          {repo.name}
+                        </a>
+                      ) : (
+                        <p className="text-base font-semibold text-text-main">{repo.name}</p>
+                      )}
                       {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{repo.skillCount} skills</span>
                     </div>
                     <p className="text-xs text-text-muted line-clamp-1">{repo.description}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {repo.sourceUrl ? (
-                        <a href={repo.sourceUrl} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
+                      {repoHref ? (
+                        <a href={repoHref} target="_blank" rel="noreferrer" className="rounded border border-black/10 px-2 py-0.5 text-[11px] text-text-muted hover:text-text-main dark:border-white/10">
                           repo
                         </a>
                       ) : null}
