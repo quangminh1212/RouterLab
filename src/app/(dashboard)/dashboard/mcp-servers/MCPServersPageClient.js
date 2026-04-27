@@ -758,8 +758,8 @@ export default function MCPServersPageClient() {
                             className="flex min-w-0 flex-1 items-start gap-4 rounded-lg -m-2 p-2 hover:bg-black/5 dark:hover:bg-white/5"
                             title={`Open ${item.name} information`}
                           >
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
-                              <span className="material-symbols-outlined text-[20px] text-white/90">{item.icon}</span>
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
+                              <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{item.icon}</span>
                             </div>
 
                             <div className="min-w-0 flex-1">
@@ -780,8 +780,8 @@ export default function MCPServersPageClient() {
                           </a>
                         ) : (
                           <div className="flex min-w-0 flex-1 items-start gap-4">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
-                              <span className="material-symbols-outlined text-[20px] text-white/90">{item.icon}</span>
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-text-main">
+                              <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{item.icon}</span>
                             </div>
 
                             <div className="min-w-0 flex-1">

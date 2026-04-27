@@ -134,7 +134,7 @@ function PluginIcon({ iconUrl, category, name }) {
       />
     );
   }
-  return <span className="material-symbols-outlined text-[20px]">{getFallbackIcon(category)}</span>;
+  return <span className="material-symbols-outlined text-[20px] text-[#0F1D20]">{getFallbackIcon(category)}</span>;
 }
 
 export default function AIPluginsPageClient() {
@@ -361,7 +361,7 @@ export default function AIPluginsPageClient() {
                             className="flex min-w-0 flex-1 items-start gap-3 rounded-lg -m-1 p-1 hover:bg-black/5 dark:hover:bg-white/5"
                             title={`Open ${plugin.name} plugin information`}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
                               <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
                             </div>
 
@@ -384,7 +384,7 @@ export default function AIPluginsPageClient() {
                           </a>
                         ) : (
                           <div className="flex min-w-0 flex-1 items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-main dark:bg-white/10">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
                               <PluginIcon iconUrl={plugin.iconUrl} category={plugin.category} name={plugin.name} />
                             </div>
 
