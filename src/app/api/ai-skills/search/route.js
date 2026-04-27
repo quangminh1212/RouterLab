@@ -6,6 +6,89 @@ import path from "path";
 const SKILLS_ROOT = path.join(os.homedir(), ".agent", "skills");
 const MAX_SKILL_RESULTS = 1200;
 
+const CURATED_SKILL_REPOS = [
+  {
+    source: "openai-skills",
+    sourceLabel: "OpenAI Skills",
+    sourceUrl: "https://github.com/openai/skills",
+    description: "Official OpenAI skill examples and system skills for reusable agent workflows.",
+    skillCountHint: 5,
+    tags: ["openai", "codex", "skills"],
+  },
+  {
+    source: "anthropic-skills",
+    sourceLabel: "Anthropic Skills",
+    sourceUrl: "https://github.com/anthropics/skills",
+    description: "Anthropic skill examples and reusable task instructions for Claude-style agents.",
+    skillCountHint: 10,
+    tags: ["claude", "agents", "skills"],
+  },
+  {
+    source: "awesome-agent-skills-kodustech",
+    sourceLabel: "Awesome Agent Skills (KodusTech)",
+    sourceUrl: "https://github.com/kodustech/awesome-agent-skills",
+    description: "A broad collection of agent skills for coding, product, workflow, and automation tasks.",
+    skillCountHint: 100,
+    tags: ["awesome", "agent", "skills"],
+  },
+  {
+    source: "awesome-agent-skills-voltagent",
+    sourceLabel: "Awesome Agent Skills (VoltAgent)",
+    sourceUrl: "https://github.com/VoltAgent/awesome-agent-skills",
+    description: "Curated agent skills and workflow patterns for AI engineering and automation.",
+    skillCountHint: 100,
+    tags: ["awesome", "workflow", "agents"],
+  },
+  {
+    source: "skills-supply",
+    sourceLabel: "Skills Supply",
+    sourceUrl: "https://github.com/803/skills-supply",
+    description: "Community skill repository with reusable agent capabilities and task playbooks.",
+    skillCountHint: 50,
+    tags: ["community", "agents", "skills"],
+  },
+  {
+    source: "codex-skills-vadimcomanescu",
+    sourceLabel: "Codex Skills",
+    sourceUrl: "https://github.com/vadimcomanescu/codex-skills",
+    description: "Codex-oriented skills for software development workflows and reusable automation.",
+    skillCountHint: 25,
+    tags: ["codex", "coding", "skills"],
+  },
+  {
+    source: "agent-skills-simota",
+    sourceLabel: "Agent Skills",
+    sourceUrl: "https://github.com/simota/agent-skills",
+    description: "Reusable agent skills for common development and productivity tasks.",
+    skillCountHint: 25,
+    tags: ["agent", "productivity", "skills"],
+  },
+  {
+    source: "codex-skills-library",
+    sourceLabel: "Codex Skills Library",
+    sourceUrl: "https://github.com/proflead/codex-skills-library",
+    description: "Library of Codex skills covering coding workflows, reviews, and automation patterns.",
+    skillCountHint: 50,
+    tags: ["codex", "library", "coding"],
+  },
+  {
+    source: "ai-agents-skills",
+    sourceLabel: "AI Agents Skills",
+    sourceUrl: "https://github.com/hoodini/ai-agents-skills",
+    description: "AI agent skill repository for task execution, automation, and agent orchestration.",
+    skillCountHint: 30,
+    tags: ["ai", "agents", "skills"],
+  },
+  {
+    source: "awesome-copilot",
+    sourceLabel: "Awesome Copilot",
+    sourceUrl: "https://github.com/github/awesome-copilot",
+    description: "Community repository of Copilot instructions, prompts, and reusable coding workflows.",
+    skillCountHint: 100,
+    tags: ["copilot", "instructions", "coding"],
+  },
+];
+
 function slugify(value) {
   return String(value || "skill").toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
@@ -112,6 +195,18 @@ async function loadLocalSkills() {
   return items;
 }
 
+function loadCuratedSkillRepos() {
+  return CURATED_SKILL_REPOS.map((repo) => ({
+    id: `repo-${repo.source}`,
+    name: repo.sourceLabel,
+    category: "Repository",
+    sourcePath: "",
+    localPath: "",
+    icon: "folder_special",
+    ...repo,
+  }));
+}
+
 function matchesQuery(item, query) {
   if (!query) return true;
   const haystack = `${item.name} ${item.description}`.toLowerCase();
@@ -124,7 +219,9 @@ export async function POST(request) {
     const query = typeof body?.query === "string" ? body.query.trim() : "";
 
     const localSkills = await loadLocalSkills();
-    const items = localSkills
+    const localSources = new Set(localSkills.map((item) => item.source));
+    const curatedRepos = loadCuratedSkillRepos().filter((repo) => !localSources.has(repo.source));
+    const items = [...localSkills, ...curatedRepos]
       .filter((item) => matchesQuery(item, query))
       .slice(0, MAX_SKILL_RESULTS);
 

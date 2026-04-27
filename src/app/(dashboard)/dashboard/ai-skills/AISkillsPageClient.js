@@ -363,6 +363,7 @@ function normalizeSkill(skill) {
     category: skill?.category || inferSkillCategory(skill),
     sourceUrl: skill?.sourceUrl || "",
     localPath: skill?.localPath || "",
+    skillCountHint: Number.isFinite(Number(skill?.skillCountHint)) ? Number(skill.skillCountHint) : 0,
     tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
     icon: skill?.icon || inferSkillIcon(skill),
   };
@@ -507,6 +508,7 @@ export default function AISkillsPageClient() {
           tags: [],
           tagSet: new Set(),
           skillCount: 0,
+          skillCountHint: skill.skillCountHint || 0,
           description: "",
           icon: skill.icon || "folder",
         });
@@ -514,6 +516,7 @@ export default function AISkillsPageClient() {
 
       const repo = repos.get(source);
       repo.skillCount += 1;
+      if (skill.skillCountHint) repo.skillCountHint = Math.max(repo.skillCountHint || 0, skill.skillCountHint);
       if (!repo.description && skill.description) repo.description = skill.description;
       if (!repo.sourceUrl && skill.sourceUrl) repo.sourceUrl = skill.sourceUrl;
       if (!repo.localPath && skill.localPath) repo.localPath = skill.localPath;
@@ -531,6 +534,7 @@ export default function AISkillsPageClient() {
       .map((repo) => ({
         ...repo,
         description: repo.description || `${repo.skillCount} skills available in this repository.`,
+        skillCount: Math.max(repo.skillCount, repo.skillCountHint || 0),
       }))
       .sort((a, b) => b.skillCount - a.skillCount || a.name.localeCompare(b.name));
   }, [filteredSkills]);
