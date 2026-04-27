@@ -359,6 +359,7 @@ function normalizeSkill(skill) {
     name: skill?.name || "Unnamed Skill",
     description: skill?.description || "No description",
     source: skill?.source || "local-skill-finder",
+    sourceLabel: skill?.sourceLabel || skill?.source || "local-skill-finder",
     category: skill?.category || inferSkillCategory(skill),
     sourceUrl: skill?.sourceUrl || "",
     tags: Array.isArray(skill?.tags) ? skill.tags : inferSkillTags(skill),
@@ -397,6 +398,7 @@ function toSkillRecord(skill) {
     name: normalized.name,
     description: normalized.description,
     source: normalized.source,
+    sourceLabel: normalized.sourceLabel,
     category: normalized.category,
     sourceUrl: normalized.sourceUrl,
     tags: normalized.tags,
@@ -468,9 +470,9 @@ export default function AISkillsPageClient() {
   const groupedSkills = useMemo(() => {
     const groups = new Map();
     for (const skill of filteredSkills) {
-      const category = skill.category || "Other";
-      if (!groups.has(category)) groups.set(category, []);
-      groups.get(category).push(skill);
+      const group = skill.sourceLabel || skill.source || "Other";
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(skill);
     }
     return Array.from(groups.entries());
   }, [filteredSkills]);
@@ -550,7 +552,7 @@ export default function AISkillsPageClient() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="text-base font-semibold text-text-main">{skill.name}</p>
                             {enabled ? <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] text-green-500">Enabled</span> : null}
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{skill.source}</span>
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{skill.sourceLabel || skill.source}</span>
                           </div>
                           <p className="text-xs text-text-muted line-clamp-1">{skill.description}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -594,3 +596,4 @@ export default function AISkillsPageClient() {
     </div>
   );
 }
+
