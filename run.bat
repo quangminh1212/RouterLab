@@ -147,7 +147,7 @@ echo.
 
 echo [STEP 1.5/6] Cleaning stale Next.js dev processes...
 echo [STEP 1.5/6] Cleaning stale Next.js dev processes... >> %LOG_FILE%
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq \'node.exe\' -and $_.CommandLine -like \'*next*dev*\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
+taskkill /F /IM node.exe >nul 2>&1
 echo [OK] Stale Next.js dev process cleanup done.
 echo [OK] Stale Next.js dev process cleanup done. >> %LOG_FILE%
 echo.
