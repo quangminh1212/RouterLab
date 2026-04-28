@@ -8,11 +8,16 @@ function createEmptyRule() {
     name: "",
     enabled: true,
     content: "",
-    priority: 100,
+    priority: "medium",
     applyType: "always",
-    applyValue: "",
     updatedAt: new Date().toISOString(),
   };
+}
+
+function priorityRank(value) {
+  if (value === "high") return 1;
+  if (value === "low") return 3;
+  return 2;
 }
 
 export default function RulesPage() {
@@ -24,10 +29,7 @@ export default function RulesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [openSettingsId, setOpenSettingsId] = useState("");
 
-  const sortedRules = useMemo(
-    () => [...rules].sort((a, b) => (a.priority || 100) - (b.priority || 100)),
-    [rules]
-  );
+  const sortedRules = useMemo(() => [...rules].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)), [rules]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,14 +75,7 @@ export default function RulesPage() {
       setStatus("Cần nhập nội dung rule");
       return;
     }
-    const nextRules = [
-      ...rules,
-      {
-        ...draft,
-        id: `rule-${Date.now()}`,
-        name: draft.name.trim() || `Rule ${rules.length + 1}`,
-      },
-    ];
+    const nextRules = [...rules, { ...draft, id: `rule-${Date.now()}`, name: draft.name.trim() || `Rule ${rules.length + 1}` }];
     await saveRules(nextRules);
     setDraft(createEmptyRule());
     setShowAddForm(false);
@@ -92,16 +87,12 @@ export default function RulesPage() {
   };
 
   const toggleRule = async (id) => {
-    const nextRules = rules.map((item) =>
-      item.id === id ? { ...item, enabled: !item.enabled, updatedAt: new Date().toISOString() } : item
-    );
+    const nextRules = rules.map((item) => (item.id === id ? { ...item, enabled: !item.enabled, updatedAt: new Date().toISOString() } : item));
     await saveRules(nextRules);
   };
 
   const updateRule = async (id, patch) => {
-    const nextRules = rules.map((item) =>
-      item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
-    );
+    const nextRules = rules.map((item) => (item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item));
     await saveRules(nextRules);
   };
 
@@ -115,10 +106,7 @@ export default function RulesPage() {
       <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
-          <button
-            onClick={() => setShowAddForm((v) => !v)}
-            className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm"
-          >
+          <button onClick={() => setShowAddForm((v) => !v)} className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm">
             {showAddForm ? "Đóng" : "Thêm rule"}
           </button>
         </div>
@@ -126,48 +114,22 @@ export default function RulesPage() {
         {showAddForm && (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-                placeholder="Tên rule (tuỳ chọn)"
-                value={draft?.name ?? ""}
-                onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))}
-              />
-              <input
-                type="number"
-                className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-                placeholder="Priority"
-                value={draft?.priority ?? 100}
-                onChange={(e) => setDraft((v) => ({ ...v, priority: Number(e.target.value || 100) }))}
-              />
+              <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule (tuỳ chọn)" value={draft?.name ?? ""} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
+              <select className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft?.priority ?? "medium"} onChange={(e) => setDraft((v) => ({ ...v, priority: e.target.value }))}>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <select
-                className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-                value={draft?.applyType ?? "always"}
-                onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}
-              >
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+              <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft?.applyType ?? "always"} onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}>
                 <option value="always">Always</option>
                 <option value="contains">Contains text</option>
               </select>
-              <input
-                className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-                placeholder="Apply value (dùng cho Contains text)"
-                value={draft?.applyValue ?? ""}
-                onChange={(e) => setDraft((v) => ({ ...v, applyValue: e.target.value }))}
-              />
             </div>
-            <textarea
-              className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-              placeholder="# Rule
-Viết nội dung markdown tại đây..."
-              value={draft?.content ?? ""}
-              onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))}
-            />
-            <button
-              onClick={addRule}
-              disabled={saving}
-              className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60"
-            >
+            <textarea className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="# Rule
+Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))} />
+            <button onClick={addRule} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60">
               {saving ? "Đang lưu..." : "Lưu rule mới"}
             </button>
           </div>
@@ -190,28 +152,17 @@ Viết nội dung markdown tại đây..."
                       {rule.name || "Rule"} {rule.enabled ? "" : "(Tắt)"}
                     </p>
                     <p className="text-xs text-text-muted truncate">
-                      Ưu tiên: {rule.priority ?? 100} | Áp dụng: {rule.applyType || "always"}
+                      Ưu tiên: {String(rule.priority || "medium").toUpperCase()} | Áp dụng: {rule.applyType || "always"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)}
-                      className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm"
-                    >
+                    <button onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
                       Settings
                     </button>
-                    <button
-                      onClick={() => toggleRule(rule.id)}
-                      disabled={saving}
-                      className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm"
-                    >
+                    <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
                       {rule.enabled ? "Tắt" : "Bật"}
                     </button>
-                    <button
-                      onClick={() => removeRule(rule.id)}
-                      disabled={saving}
-                      className="px-3 py-1 rounded bg-red-500/90 text-white text-sm"
-                    >
+                    <button onClick={() => removeRule(rule.id)} disabled={saving} className="px-3 py-1 rounded bg-red-500/90 text-white text-sm">
                       Xóa
                     </button>
                   </div>
@@ -219,38 +170,19 @@ Viết nội dung markdown tại đây..."
 
                 {isOpen && (
                   <div className="space-y-2">
-                    <input
-                      className="w-full px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
-                      defaultValue={rule.name || ""}
-                      onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <input
-                        type="number"
-                        className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
-                        defaultValue={rule.priority ?? 100}
-                        onBlur={(e) => updateRule(rule.id, { priority: Number(e.target.value || 100) })}
-                      />
-                      <select
-                        className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
-                        defaultValue={rule.applyType || "always"}
-                        onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}
-                      >
+                    <input className="w-full px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <select className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                      <select className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
                         <option value="always">Always</option>
                         <option value="contains">Contains text</option>
                       </select>
-                      <input
-                        className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
-                        defaultValue={rule.applyValue || ""}
-                        placeholder="Apply value"
-                        onBlur={(e) => updateRule(rule.id, { applyValue: e.target.value })}
-                      />
                     </div>
-                    <textarea
-                      className="w-full min-h-28 px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
-                      defaultValue={rule.content || ""}
-                      onBlur={(e) => updateRule(rule.id, { content: e.target.value })}
-                    />
+                    <textarea className="w-full min-h-28 px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.content || ""} onBlur={(e) => updateRule(rule.id, { content: e.target.value })} />
                   </div>
                 )}
               </div>
@@ -262,3 +194,4 @@ Viết nội dung markdown tại đây..."
     </div>
   );
 }
+
