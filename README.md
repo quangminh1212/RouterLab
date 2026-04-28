@@ -68,12 +68,16 @@ Global install (recommended if you want the `xlabrouter` command everywhere):
 ```bash
 npm install -g xlabrouter
 xlabrouter
+# optional alias:
+# xrouter
 ```
 
 Run without global install:
 
 ```bash
 npx xlabrouter
+# optional alias:
+# npx xrouter
 ```
 
 Local project install:
@@ -81,12 +85,14 @@ Local project install:
 ```bash
 npm install xlabrouter
 npx xlabrouter
+# or: npx xrouter
 # or: ./node_modules/.bin/xlabrouter
 ```
 
 XLab Router starts the Web UI in the current terminal by default.
 Open the dashboard at `http://localhost:1212`.
 Use `xlabrouter --tray` if you want the background/system tray mode.
+You can also use the shorter alias `xrouter` if you prefer.
 
 **2. Connect a FREE provider (no signup needed):**
 
