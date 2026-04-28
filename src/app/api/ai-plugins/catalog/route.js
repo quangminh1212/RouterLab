@@ -101,36 +101,7 @@ async function fetchPluginManifest(pluginDir) {
 
 async function writeIconLocal(pluginId, remoteUrl) {
   if (!remoteUrl || !/^https?:\/\//i.test(remoteUrl)) return "";
-
-  const slug = safeSlug(pluginId);
-  const hintExt = extensionFromUrl(remoteUrl);
-
-  try {
-    await fs.mkdir(ICONS_PUBLIC_DIR, { recursive: true });
-
-    if (hintExt) {
-      const hintedPath = path.join(ICONS_PUBLIC_DIR, `${slug}.${hintExt}`);
-      try {
-        await fs.access(hintedPath);
-        return `/plugins/icons/${slug}.${hintExt}`;
-      } catch {
-        // Download missing icon below.
-      }
-    }
-
-    const response = await fetch(remoteUrl, { cache: "no-store" });
-    if (!response.ok) return "";
-
-    const contentType = response.headers.get("content-type") || "";
-    const ext = hintExt || extensionFromContentType(contentType);
-    const filePath = path.join(ICONS_PUBLIC_DIR, `${slug}.${ext}`);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    await fs.writeFile(filePath, bytes);
-
-    return `/plugins/icons/${slug}.${ext}`;
-  } catch {
-    return "";
-  }
+  return remoteUrl;
 }
 
 function normalizePlugin(plugin, manifest) {
@@ -168,9 +139,15 @@ async function loadOpenAiCatalog() {
 
   const marketplace = await fetchJson(MARKETPLACE_URL);
   const marketplacePlugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
-  const manifests = await Promise.allSettled(
-    marketplacePlugins.map((plugin) => fetchPluginManifest(pluginDirectory(plugin)))
-  );
+  const manifests = [];
+  const batchSize = 6;
+  for (let index = 0; index < marketplacePlugins.length; index += batchSize) {
+    const batch = marketplacePlugins.slice(index, index + batchSize);
+    const batchResults = await Promise.allSettled(
+      batch.map((plugin) => fetchPluginManifest(pluginDirectory(plugin)))
+    );
+    manifests.push(...batchResults);
+  }
 
   const plugins = marketplacePlugins.map((plugin, index) => {
     const manifestResult = manifests[index];
@@ -183,7 +160,7 @@ async function loadOpenAiCatalog() {
     const localIconUrl = await writeIconLocal(plugin.pluginId, plugin.iconUrl);
     pluginsWithLocalIcons.push({
       ...plugin,
-      iconUrl: localIconUrl || DEFAULT_LOCAL_ICON_URL,
+      iconUrl: localIconUrl || plugin.iconUrl || DEFAULT_LOCAL_ICON_URL,
     });
   }
 

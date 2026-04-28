@@ -7,8 +7,14 @@ const SKILLS_ROOT = path.join(os.homedir(), ".agent", "skills");
 const MAX_SKILL_RESULTS = 1200;
 const CRAWLED_REPO_LIMIT = 80;
 const CRAWL_CACHE_TTL_MS = 1000 * 60 * 60;
+const LOCAL_SKILLS_CACHE_TTL_MS = 1000 * 60 * 2;
 
 let crawledRepoCache = {
+  expiresAt: 0,
+  items: [],
+};
+let crawledRepoRefreshPromise = null;
+let localSkillsCache = {
   expiresAt: 0,
   items: [],
 };
@@ -304,6 +310,17 @@ async function loadLocalSkills() {
   return items;
 }
 
+async function loadLocalSkillsCached() {
+  const now = Date.now();
+  if (localSkillsCache.expiresAt > now) return localSkillsCache.items;
+  const items = await loadLocalSkills();
+  localSkillsCache = {
+    expiresAt: now + LOCAL_SKILLS_CACHE_TTL_MS,
+    items,
+  };
+  return items;
+}
+
 
 function normalizeGithubRepoUrl(url) {
   const match = String(url || "").match(/^https:\/\/github\.com\/([^\s/?#)]+)\/([^\s/?#)]+)(?:[/?#][^\s)]*)?$/i);
@@ -385,7 +402,8 @@ async function verifyGithubRepo(candidate) {
   const searchText = `${data.full_name} ${description} ${data.topics?.join(" ") || ""}`;
   if (!isSkillRepoCandidate(searchText)) return null;
 
-  const displayName = prettifyRepoLabel(candidate.label || data.name || repo);
+  const repoNameFromApi = typeof data?.name === "string" && data.name.trim() ? data.name.trim() : repo;
+  const displayName = prettifyRepoLabel(repoNameFromApi);
 
   return {
     id: `repo-${repoSlugFromUrl(candidate.url)}`,
@@ -404,34 +422,53 @@ async function verifyGithubRepo(candidate) {
   };
 }
 
-async function loadCrawledSkillRepos() {
-  if (Date.now() < crawledRepoCache.expiresAt) return crawledRepoCache.items;
+async function refreshCrawledSkillRepos() {
+  if (crawledRepoRefreshPromise) return crawledRepoRefreshPromise;
 
-  const markdownList = await Promise.all(AWESOME_SKILL_SOURCES.map((url) => fetchText(url).catch(() => "")));
-  const candidates = [];
-  const seen = new Set();
+  crawledRepoRefreshPromise = (async () => {
+    const markdownList = await Promise.all(AWESOME_SKILL_SOURCES.map((url) => fetchText(url).catch(() => "")));
+    const candidates = [];
+    const seen = new Set();
 
-  for (const markdown of markdownList) {
-    for (const candidate of extractGithubRepoLinks(markdown)) {
-      const key = candidate.url.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      candidates.push(candidate);
+    for (const markdown of markdownList) {
+      for (const candidate of extractGithubRepoLinks(markdown)) {
+        const key = candidate.url.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        candidates.push(candidate);
+      }
     }
-  }
 
-  const verified = [];
-  for (const candidate of candidates) {
-    if (verified.length >= CRAWLED_REPO_LIMIT) break;
-    const repo = await verifyGithubRepo(candidate);
-    if (repo) verified.push(repo);
-  }
+    const verified = [];
+    const batchSize = 8;
+    for (let index = 0; index < candidates.length && verified.length < CRAWLED_REPO_LIMIT; index += batchSize) {
+      const batch = candidates.slice(index, index + batchSize);
+      const results = await Promise.allSettled(batch.map((candidate) => verifyGithubRepo(candidate)));
+      for (const result of results) {
+        if (verified.length >= CRAWLED_REPO_LIMIT) break;
+        if (result.status === "fulfilled" && result.value) verified.push(result.value);
+      }
+    }
 
-  crawledRepoCache = {
-    expiresAt: Date.now() + CRAWL_CACHE_TTL_MS,
-    items: verified,
-  };
-  return verified;
+    crawledRepoCache = {
+      expiresAt: Date.now() + CRAWL_CACHE_TTL_MS,
+      items: verified,
+    };
+    return verified;
+  })();
+
+  try {
+    return await crawledRepoRefreshPromise;
+  } finally {
+    crawledRepoRefreshPromise = null;
+  }
+}
+
+function loadCrawledSkillReposCached() {
+  const now = Date.now();
+  if (now < crawledRepoCache.expiresAt) return crawledRepoCache.items;
+  void refreshCrawledSkillRepos();
+  return crawledRepoCache.items;
 }
 
 function loadCuratedSkillRepos() {
@@ -458,13 +495,13 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const query = typeof body?.query === "string" ? body.query.trim() : "";
 
-    const localSkills = await loadLocalSkills();
+    const localSkills = await loadLocalSkillsCached();
     const localSources = new Set(localSkills.map((item) => item.source));
 
     const curatedRepos = loadCuratedSkillRepos().filter((repo) => !localSources.has(repo.source));
     const curatedSources = new Set(curatedRepos.map((repo) => repo.source));
 
-    const crawledRepos = (await loadCrawledSkillRepos()).filter(
+    const crawledRepos = loadCrawledSkillReposCached().filter(
       (repo) => repo?.source && !localSources.has(repo.source) && !curatedSources.has(repo.source)
     );
 
