@@ -25,6 +25,8 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
+  const [googleStatus, setGoogleStatus] = useState({ configured: false, connected: false, email: "", backup: null });
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -50,6 +52,18 @@ export default function ProfilePage() {
         });
         setSettingsLoadError(true);
       });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/google/status")
+      .then((res) => res.json())
+      .then((data) => setGoogleStatus({
+        configured: !!data?.configured,
+        connected: !!data?.connected,
+        email: data?.email || "",
+        backup: data?.backup || null,
+      }))
+      .catch(() => {});
   }, []);
 
   const InlineSettingSkeleton = ({ wide = false }) => (
@@ -351,6 +365,51 @@ export default function ProfilePage() {
     }
   };
 
+  const runGoogleSync = async (action) => {
+    setGoogleLoading(true);
+    setDbStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/auth/google/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Google sync failed");
+      if (action === "restore") {
+        setDbStatus({ type: "success", message: "Restored data from Google Drive backup" });
+        reloadSettings();
+      } else {
+        setDbStatus({ type: "success", message: "Backed up data to Google Drive" });
+      }
+      const statusRes = await fetch("/api/auth/google/status");
+      const status = await statusRes.json().catch(() => ({}));
+      setGoogleStatus({
+        configured: !!status?.configured,
+        connected: !!status?.connected,
+        email: status?.email || "",
+        backup: status?.backup || null,
+      });
+    } catch (err) {
+      setDbStatus({ type: "error", message: err.message || "Google sync failed" });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const disconnectGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      await fetch("/api/auth/google/disconnect", { method: "POST" });
+      setGoogleStatus({ configured: googleStatus.configured, connected: false, email: "", backup: null });
+      setDbStatus({ type: "success", message: "Disconnected Google Drive" });
+    } catch {
+      setDbStatus({ type: "error", message: "Failed to disconnect Google Drive" });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const securityLoading = sectionLoading.security;
   const routingLoading = sectionLoading.routing;
   const networkLoading = sectionLoading.network;
@@ -426,6 +485,39 @@ export default function ProfilePage() {
                 <p className="font-medium">Database Location</p>
                 <p className="text-sm text-text-muted font-mono">~/.xlabrouter/db.json</p>
               </div>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-bg border border-border">
+              <div>
+                <p className="font-medium">Google Drive Sync</p>
+                <p className="text-sm text-text-muted">
+                  {googleStatus.connected
+                    ? `Connected: ${googleStatus.email}`
+                    : googleStatus.configured
+                      ? "Not connected"
+                      : "Google OAuth not configured"}
+                </p>
+              </div>
+              {!googleStatus.connected ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => { window.location.href = "/api/auth/google/start"; }}
+                  disabled={!googleStatus.configured || googleLoading}
+                >
+                  Connect Google
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => runGoogleSync("backup")} loading={googleLoading}>
+                    Backup to Drive
+                  </Button>
+                  <Button variant="outline" onClick={() => runGoogleSync("restore")} disabled={googleLoading}>
+                    Restore from Drive
+                  </Button>
+                  <Button variant="outline" onClick={disconnectGoogle} disabled={googleLoading}>
+                    Disconnect
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button

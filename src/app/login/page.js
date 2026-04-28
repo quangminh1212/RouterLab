@@ -12,6 +12,18 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    const googleError = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("google")
+      : null;
+    if (!googleError) return;
+    if (googleError === "not-configured") {
+      setError("Google login is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
+      return;
+    }
+    setError(`Google login failed: ${googleError}`);
+  }, []);
+
+  useEffect(() => {
     async function checkAuth() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -119,6 +131,15 @@ export default function LoginPage() {
               loading={loading}
             >
               Login
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => { window.location.href = "/api/auth/google/start"; }}
+            >
+              Login with Google Drive
             </Button>
 
             <p className="text-xs text-center text-text-muted mt-2">
