@@ -380,9 +380,22 @@ export default function ProfilePage() {
     setDbStatus({ type: "", message: "" });
     try {
       const data = await postGistBackup({ action: "save-config", token: gistForm.token, gistId: gistForm.gistId });
-      setDbStatus({ type: "success", message: data.config?.hasToken ? "GitHub Gist backup connected" : "Gist ID saved. Add a GitHub token to enable backup." });
+      setDbStatus({ type: "success", message: data.config?.hasToken ? "GitHub Gist backup connected" : "Gist ID saved. Add a GitHub token or use GitHub CLI to enable backup." });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to save Gist backup settings" });
+    } finally {
+      setGistLoading(false);
+    }
+  };
+
+  const connectGitHubCli = async () => {
+    setGistLoading(true);
+    setDbStatus({ type: "", message: "" });
+    try {
+      const data = await postGistBackup({ action: "use-gh-cli", gistId: gistForm.gistId });
+      setDbStatus({ type: "success", message: data.config?.hasToken ? "Connected using GitHub CLI" : "GitHub CLI token was not found" });
+    } catch (err) {
+      setDbStatus({ type: "error", message: err.message || "Failed to connect via GitHub CLI" });
     } finally {
       setGistLoading(false);
     }
@@ -604,7 +617,7 @@ export default function ProfilePage() {
                       placeholder={gistConfig.hasToken ? "Saved token (leave blank)" : "ghp_... or fine-grained token"}
                       value={gistForm.token}
                       onChange={(e) => setGistForm((prev) => ({ ...prev, token: e.target.value }))}
-                      hint="Needs permission to create/update private Gists."
+                      hint="Needs permission to create/update private Gists. Or use GitHub CLI after running gh auth login."
                       disabled={gistLoading}
                     />
                     <Input
@@ -625,6 +638,9 @@ export default function ProfilePage() {
                     disabled={gistLoading}
                   />
                   <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
+                      Dùng GitHub CLI
+                    </Button>
                     <Button variant="secondary" size="sm" icon="save" onClick={saveGistConfig} loading={gistLoading}>
                       Save
                     </Button>
