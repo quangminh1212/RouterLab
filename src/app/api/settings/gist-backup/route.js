@@ -31,6 +31,29 @@ function toPublicConfig(settings) {
     htmlUrl: gistBackup.htmlUrl || "",
     updatedAt: gistBackup.updatedAt || "",
     fileName: gistBackup.fileName || "xlabrouter-backup.enc.json",
+    tokenSource: gistBackup.tokenSource || "",
+    githubLogin: gistBackup.githubLogin || "",
+  };
+}
+
+async function validateGitHubToken(token) {
+  const res = await fetch("https://api.github.com/user", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "XLab-Router",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("GitHub token is invalid or missing required access");
+  }
+
+  const data = await res.json().catch(() => ({}));
+  return {
+    login: typeof data?.login === "string" ? data.login : "",
   };
 }
 
@@ -53,6 +76,7 @@ async function getGitHubCliToken() {
     throw new Error(message);
   }
 }
+
 export async function GET(request) {
   try {
     if (!await hasValidAuth(request)) {
@@ -78,21 +102,35 @@ export async function POST(request) {
 
     if (action === "use-gh-cli") {
       const token = await getGitHubCliToken();
+      const gitHubUser = await validateGitHubToken(token);
       const nextConfig = {
         ...current,
         enabled: true,
         token,
+        tokenSource: "gh-cli",
+        githubLogin: gitHubUser.login || current.githubLogin || "",
         gistId: typeof body.gistId === "string" ? body.gistId.trim() : current.gistId || "",
         fileName: current.fileName || "xlabrouter-backup.enc.json",
       };
       await updateSettings({ gistBackup: nextConfig });
-      return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }), tokenSource: "gh-cli" });
+      return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
     }
+
     if (action === "save-config") {
+      const incomingToken = typeof body.token === "string" ? body.token.trim() : "";
+      const tokenToUse = incomingToken || current.token || "";
+      let githubLogin = current.githubLogin || "";
+      if (incomingToken) {
+        const gitHubUser = await validateGitHubToken(incomingToken);
+        githubLogin = gitHubUser.login || "";
+      }
+
       const nextConfig = {
         ...current,
         enabled: body.enabled !== false,
-        token: typeof body.token === "string" && body.token.trim() ? body.token.trim() : current.token || "",
+        token: tokenToUse,
+        tokenSource: incomingToken ? "manual" : current.tokenSource || "",
+        githubLogin,
         gistId: typeof body.gistId === "string" ? body.gistId.trim() : current.gistId || "",
         fileName: typeof body.fileName === "string" && body.fileName.trim() ? body.fileName.trim() : current.fileName || "xlabrouter-backup.enc.json",
       };
@@ -104,6 +142,8 @@ export async function POST(request) {
       const nextConfig = {
         enabled: false,
         token: "",
+        tokenSource: "",
+        githubLogin: "",
         gistId: "",
         htmlUrl: "",
         updatedAt: "",
