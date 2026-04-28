@@ -39,6 +39,7 @@ const POWER_UP_ITEMS = [
   { href: "/dashboard/ai-plugins", label: "Plugins", icon: "extension" },
   { href: "/dashboard/ai-skills", label: "Skills", icon: "psychology" },
   { href: "/dashboard/rules", label: "Rules", icon: "gavel" },
+  { href: "/dashboard/endpoint#rtk", label: "Token Saver", icon: "token" },
 ];
 
 export default function Sidebar({ onClose }) {
