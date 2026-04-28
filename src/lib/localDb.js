@@ -56,6 +56,7 @@ const DEFAULT_SETTINGS = {
   outboundProxyEnabled: false,
   outboundProxyUrl: "",
   outboundNoProxy: "",
+  aiRules: [],
   gistBackup: {
     enabled: false,
     token: "",
