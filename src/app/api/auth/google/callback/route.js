@@ -15,11 +15,12 @@ import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
 );
+const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 
 async function setAuthCookie(email) {
   const token = await new SignJWT({ authenticated: true, email, provider: "google" })
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("24h")
+    .setExpirationTime(`${AUTH_SESSION_MAX_AGE_SECONDS}s`)
     .sign(SECRET);
   const cookieStore = await cookies();
   cookieStore.set("auth_token", token, {
@@ -27,6 +28,7 @@ async function setAuthCookie(email) {
     secure: process.env.AUTH_COOKIE_SECURE === "true",
     sameSite: "lax",
     path: "/",
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
   });
 }
 

@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
 );
+const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 
 function safeHostname(urlValue) {
   if (!urlValue || typeof urlValue !== "string") return "";
@@ -88,7 +89,7 @@ export async function POST(request) {
 
       const token = await new SignJWT({ authenticated: true })
         .setProtectedHeader({ alg: "HS256" })
-        .setExpirationTime("24h")
+        .setExpirationTime(`${AUTH_SESSION_MAX_AGE_SECONDS}s`)
         .sign(SECRET);
 
       const cookieStore = await cookies();
@@ -97,6 +98,7 @@ export async function POST(request) {
         secure: useSecureCookie,
         sameSite: "lax",
         path: "/",
+        maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
       });
 
       return NextResponse.json({ success: true });

@@ -7,6 +7,7 @@ const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
 const BACKUP_FILE_NAME = "xlabrouter-backup.json";
 const APPDATA_SPACE = "appDataFolder";
+const GOOGLE_SESSION_MAX_AGE_SECONDS = Number(process.env.GOOGLE_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 const SCOPE = [
   "openid",
   "email",
@@ -159,7 +160,7 @@ export async function getGoogleSession() {
 export async function setGoogleSession(session) {
   const cookieStore = await cookies();
   const secure = process.env.AUTH_COOKIE_SECURE === "true";
-  const common = { httpOnly: true, secure, sameSite: "lax", path: "/" };
+  const common = { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: GOOGLE_SESSION_MAX_AGE_SECONDS };
   cookieStore.set("google_access_token", session.accessToken || "", common);
   cookieStore.set("google_refresh_token", session.refreshToken || "", common);
   cookieStore.set("google_email", session.email || "", common);

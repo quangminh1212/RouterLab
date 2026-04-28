@@ -22,9 +22,9 @@ function bootstrapServerInits() {
     import("@/lib/network/initOutboundProxy"),
   ]).then((results) => {
     if (results[0]?.status === "fulfilled") {
-      logger.info("APP", "Cloud sync module loaded");
+      logger.info("APP", "Local services module loaded");
     } else {
-      logger.warn("APP", "Cloud sync module failed to load");
+      logger.warn("APP", "Local services module failed to load");
     }
 
     if (results[1]?.status === "fulfilled") {
