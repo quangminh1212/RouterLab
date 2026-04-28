@@ -162,40 +162,66 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
         {!loading && sortedRules.map((rule) => {
           const isOpen = openSettingsId === rule.id;
           return (
-            <article key={rule.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 space-y-3 hover:border-primary/30 transition-colors">
+            <article key={rule.id} className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:border-primary/30 transition-colors">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-text-main truncate">{rule.name || "Rule"} {!rule.enabled && <span className="text-text-muted">(Tắt)</span>}</p>
+                  <p className="font-medium text-text-main truncate">{rule.name || "Untitled rule"}</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {rule.enabled ? "Active" : "Disabled"} · {String(rule.priority || "medium").toUpperCase()}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-sm transition-colors">
-                    {isOpen ? "Hide" : "Settings"}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)}
+                    className="px-2.5 py-1.5 rounded-md text-xs border border-white/10 hover:bg-white/5 transition-colors"
+                  >
+                    {isOpen ? "Close" : "Settings"}
                   </button>
-                  <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-sm transition-colors">
+                  <button
+                    onClick={() => toggleRule(rule.id)}
+                    disabled={saving}
+                    className="px-2.5 py-1.5 rounded-md text-xs border border-white/10 hover:bg-white/5 transition-colors"
+                  >
                     {rule.enabled ? "Disable" : "Enable"}
                   </button>
-                  <button onClick={() => removeRule(rule.id)} disabled={saving} className="px-3 py-1.5 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm transition-colors">
+                  <button
+                    onClick={() => removeRule(rule.id)}
+                    disabled={saving}
+                    className="px-2.5 py-1.5 rounded-md text-xs bg-red-500/90 hover:bg-red-500 text-white transition-colors"
+                  >
                     Delete
                   </button>
                 </div>
               </div>
 
               {isOpen && (
-                <div className="space-y-2 animate-in fade-in duration-200">
-                  <input className="w-full px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <select className="px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Rule name</span>
+                    <input className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Priority</span>
+                      <select className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
                       <option value="high">High</option>
                       <option value="medium">Medium</option>
                       <option value="low">Low</option>
                     </select>
-                    <select className="px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Apply rule</span>
+                      <select className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
                       <option value="always">Always</option>
                       <option value="contains">Contains text</option>
                     </select>
+                    </label>
                   </div>
-                  <textarea className="w-full min-h-28 px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.content || ""} onBlur={(e) => updateRule(rule.id, { content: e.target.value })} />
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Markdown content</span>
+                    <textarea className="w-full min-h-28 px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.content || ""} onBlur={(e) => updateRule(rule.id, { content: e.target.value })} />
+                  </label>
                 </div>
               )}
             </article>
