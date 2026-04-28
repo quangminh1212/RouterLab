@@ -110,19 +110,23 @@ export default function RulesPage() {
         </div>
       </header>
 
-      <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-        <div className="flex items-center justify-between">
+      <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">add_circle</span>
-            <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
+            <button
+              onClick={() => setShowAddForm((v) => !v)}
+              className="size-7 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors flex items-center justify-center"
+              title={showAddForm ? "Đóng" : "Thêm rule"}
+            >
+              +
+            </button>
+            <span className="material-symbols-outlined text-primary">rule_settings</span>
+            <h2 className="text-base font-semibold text-text-main">Danh sách Rule ({sortedRules.length})</h2>
           </div>
-          <button onClick={() => setShowAddForm((v) => !v)} className="px-3 py-1.5 rounded-lg bg-primary/90 hover:bg-primary text-white text-sm transition-colors">
-            {showAddForm ? "Đóng" : "Thêm rule"}
-          </button>
         </div>
 
         {showAddForm && (
-          <div className="space-y-3 animate-in fade-in duration-200">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 space-y-3 animate-in fade-in duration-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <input className="md:col-span-2 w-full px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="Tên rule (tuỳ chọn)" value={draft?.name ?? ""} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
               <select className="w-full px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" value={draft?.priority ?? "medium"} onChange={(e) => setDraft((v) => ({ ...v, priority: e.target.value }))}>
@@ -148,13 +152,6 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
             </div>
           </div>
         )}
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">rule_settings</span>
-          <h2 className="text-base font-semibold text-text-main">Danh sách Rule ({sortedRules.length})</h2>
-        </div>
 
         {loading && <p className="text-sm text-text-muted">Đang tải...</p>}
         {!loading && sortedRules.length === 0 && <p className="text-sm text-text-muted">Chưa có rule nào.</p>}
@@ -195,8 +192,8 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
                 </div>
               </div>
 
-                {isOpen && (
-                  <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
+              {isOpen && (
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <label className="block">
                       <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Rule name</span>
@@ -205,17 +202,17 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
                     <label className="block">
                       <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Priority</span>
                       <select className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Apply rule</span>
                       <select className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
-                      <option value="always">Always</option>
-                      <option value="contains">Contains text</option>
-                    </select>
+                        <option value="always">Always</option>
+                        <option value="contains">Contains text</option>
+                      </select>
                     </label>
                   </div>
                   <label className="block">
@@ -233,3 +230,4 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
     </div>
   );
 }
+
