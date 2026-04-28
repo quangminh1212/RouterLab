@@ -129,21 +129,21 @@ export default function RulesPage() {
               <input
                 className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
                 placeholder="Tên rule (tuỳ chọn)"
-                value={draft.name}
+                value={draft?.name ?? ""}
                 onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))}
               />
               <input
                 type="number"
                 className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
                 placeholder="Priority"
-                value={draft.priority}
+                value={draft?.priority ?? 100}
                 onChange={(e) => setDraft((v) => ({ ...v, priority: Number(e.target.value || 100) }))}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <select
                 className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
-                value={draft.applyType}
+                value={draft?.applyType ?? "always"}
                 onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}
               >
                 <option value="always">Always</option>
@@ -152,7 +152,7 @@ export default function RulesPage() {
               <input
                 className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
                 placeholder="Apply value (dùng cho Contains text)"
-                value={draft.applyValue}
+                value={draft?.applyValue ?? ""}
                 onChange={(e) => setDraft((v) => ({ ...v, applyValue: e.target.value }))}
               />
             </div>
@@ -160,7 +160,7 @@ export default function RulesPage() {
               className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10"
               placeholder="# Rule
 Viết nội dung markdown tại đây..."
-              value={draft.content}
+              value={draft?.content ?? ""}
               onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))}
             />
             <button
@@ -262,4 +262,3 @@ Viết nội dung markdown tại đây..."
     </div>
   );
 }
-
