@@ -8,6 +8,9 @@ function createEmptyRule() {
     name: "",
     enabled: true,
     content: "",
+    priority: 100,
+    applyType: "always",
+    applyValue: "",
     updatedAt: new Date().toISOString(),
   };
 }
@@ -19,7 +22,7 @@ export default function RulesPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  const sortedRules = useMemo(() => [...rules], [rules]);
+  const sortedRules = useMemo(() => [...rules].sort((a, b) => (a.priority || 100) - (b.priority || 100)), [rules]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +88,13 @@ export default function RulesPage() {
     await saveRules(nextRules);
   };
 
+  const updateRuleMeta = async (id, patch) => {
+    const nextRules = rules.map((item) => (
+      item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
+    ));
+    await saveRules(nextRules);
+  };
+
   const removeRule = async (id) => {
     const nextRules = rules.filter((item) => item.id !== id);
     await saveRules(nextRules);
@@ -104,7 +114,17 @@ export default function RulesPage() {
 
       <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 space-y-3">
         <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
-        <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule (tuỳ chọn)" value={draft.name} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule (tuỳ chọn)" value={draft.name} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
+          <input type="number" className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Priority" value={draft.priority} onChange={(e) => setDraft((v) => ({ ...v, priority: Number(e.target.value || 100) }))} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft.applyType} onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}>
+            <option value="always">Always</option>
+            <option value="contains">Contains text</option>
+          </select>
+          <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Apply value (dùng cho Contains text)" value={draft.applyValue} onChange={(e) => setDraft((v) => ({ ...v, applyValue: e.target.value }))} />
+        </div>
         <textarea className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="# Rule\nViết nội dung markdown tại đây..." value={draft.content} onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))} />
         <button onClick={addRule} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60">
           {saving ? "Đang lưu..." : "Thêm rule"}
@@ -123,12 +143,34 @@ export default function RulesPage() {
                 defaultValue={rule.name || ""}
                 onBlur={(e) => updateRuleName(rule.id, e.target.value.trim())}
               />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
+                  defaultValue={rule.priority ?? 100}
+                  onBlur={(e) => updateRuleMeta(rule.id, { priority: Number(e.target.value || 100) })}
+                />
+                <select
+                  className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
+                  defaultValue={rule.applyType || "always"}
+                  onBlur={(e) => updateRuleMeta(rule.id, { applyType: e.target.value })}
+                >
+                  <option value="always">Always</option>
+                  <option value="contains">Contains text</option>
+                </select>
+                <input
+                  className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
+                  defaultValue={rule.applyValue || ""}
+                  placeholder="Apply value"
+                  onBlur={(e) => updateRuleMeta(rule.id, { applyValue: e.target.value })}
+                />
+              </div>
               <textarea
                 className="w-full min-h-28 px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
                 defaultValue={rule.content || ""}
                 onBlur={(e) => updateRuleContent(rule.id, e.target.value)}
               />
-              <p className="text-xs text-text-muted">Cập nhật: {rule.updatedAt || "-"}</p>
+              <p className="text-xs text-text-muted">Ưu tiên: {rule.priority ?? 100} | Áp dụng: {rule.applyType || "always"} | Cập nhật: {rule.updatedAt || "-"}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
