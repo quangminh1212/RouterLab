@@ -827,34 +827,6 @@ function checkForUpdates() {
   });
 }
 
-async function showServerSettings() {
-  console.log(`\n========================================`);
-  console.log(`       Server Settings`);
-  console.log(`========================================\n`);
-  console.log(`[INFO] Current port: ${port}`);
-  console.log(`[INFO] To change port, set PORT environment variable.`);
-  console.log(`[INFO] Example: PORT=3000 xlab_router\n`);
-
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: "What would you like to do?",
-      choices: [
-        { name: "Back to Main Menu", value: "back" },
-        { name: "Exit", value: "exit" },
-      ],
-    },
-  ]);
-
-  if (action === "back") {
-    await showMenu();
-  } else {
-    console.log("\n[INFO] Goodbye!\n");
-    process.exit(0);
-  }
-}
-
 async function showMenu() {
   console.clear();
   console.log("========================================");
@@ -872,7 +844,6 @@ async function showMenu() {
         { name: "Hide to Tray (System Tray)", value: "tray" },
         new inquirer.Separator(),
         { name: "Check for Updates", value: "update" },
-        { name: "Server Settings", value: "settings" },
         new inquirer.Separator(),
         { name: "Exit", value: "exit" },
       ],
@@ -891,9 +862,6 @@ async function showMenu() {
       console.log("");
       await inquirer.prompt([{ type: "input", name: "continue", message: "Press Enter to continue..." }]);
       await showMenu();
-      break;
-    case "settings":
-      await showServerSettings();
       break;
     case "exit":
       console.log("\n[INFO] Goodbye!\n");
