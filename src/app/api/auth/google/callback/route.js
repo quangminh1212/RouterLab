@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SignJWT } from "jose";
 import {
@@ -39,7 +39,9 @@ export async function GET(request) {
   const error = url.searchParams.get("error") || "";
   const cookieStore = await cookies();
   const expectedState = cookieStore.get("google_oauth_state")?.value || "";
+  const codeVerifier = cookieStore.get("google_oauth_code_verifier")?.value || "";
   cookieStore.delete("google_oauth_state");
+  cookieStore.delete("google_oauth_code_verifier");
 
   if (error) return NextResponse.redirect(new URL(`/login?google=${encodeURIComponent(error)}`, request.url));
   if (!code || !state || !expectedState || state !== expectedState) {
@@ -47,7 +49,7 @@ export async function GET(request) {
   }
 
   try {
-    const tokenData = await exchangeGoogleCode(request, code);
+    const tokenData = await exchangeGoogleCode(request, code, codeVerifier);
     const profile = await fetchGoogleProfile(tokenData.access_token);
     const email = typeof profile?.email === "string" ? profile.email : "";
     if (!email) throw new Error("Google account email not found");

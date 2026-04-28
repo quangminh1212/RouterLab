@@ -1,4 +1,5 @@
-﻿import { cookies } from "next/headers";
+import { randomBytes, createHash } from "node:crypto";
+import { cookies } from "next/headers";
 
 const GOOGLE_AUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -6,36 +7,58 @@ const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
 const BACKUP_FILE_NAME = "xlabrouter-backup.json";
-const APPDATA_SPACE = "appDataFolder";
+const BACKUP_FOLDER_NAME = "XLab Router Backup";
 const GOOGLE_SESSION_MAX_AGE_SECONDS = Number(process.env.GOOGLE_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 const SCOPE = [
   "openid",
   "email",
   "profile",
-  "https://www.googleapis.com/auth/drive.appdata",
+  "https://www.googleapis.com/auth/drive.file",
 ].join(" ");
 
 function getBaseUrl(request) {
-  return process.env.BASE_URL || `${new URL(request.url).protocol}//${new URL(request.url).host}`;
+  const url = new URL(request.url);
+  return process.env.GOOGLE_DESKTOP_REDIRECT_ORIGIN || `${url.protocol}//${url.host}`;
+}
+
+function toBase64Url(value) {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+export function createPkceVerifier() {
+  return toBase64Url(randomBytes(64));
+}
+
+export function createPkceChallenge(verifier) {
+  const hash = createHash("sha256").update(verifier).digest();
+  return toBase64Url(hash);
+}
+
+function escapeQuery(value) {
+  return String(value || "").replace(/'/g, "\\'");
 }
 
 export function getGoogleAuthConfig() {
   return {
-    clientId: process.env.GOOGLE_CLIENT_ID || "",
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    clientId: process.env.GOOGLE_DESKTOP_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret: process.env.GOOGLE_DESKTOP_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
   };
 }
 
 export function isGoogleAuthConfigured() {
-  const { clientId, clientSecret } = getGoogleAuthConfig();
-  return !!clientId && !!clientSecret;
+  const { clientId } = getGoogleAuthConfig();
+  return !!clientId;
 }
 
 export function buildGoogleRedirectUri(request) {
   return `${getBaseUrl(request)}/api/auth/google/callback`;
 }
 
-export function buildGoogleAuthUrl(request, state = "") {
+export function buildGoogleAuthUrl(request, state = "", codeChallenge = "") {
   const { clientId } = getGoogleAuthConfig();
   const redirectUri = buildGoogleRedirectUri(request);
   const params = new URLSearchParams({
@@ -47,19 +70,25 @@ export function buildGoogleAuthUrl(request, state = "") {
     scope: SCOPE,
   });
   if (state) params.set("state", state);
+  if (codeChallenge) {
+    params.set("code_challenge", codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
   return `${GOOGLE_AUTH_BASE}?${params.toString()}`;
 }
 
-export async function exchangeGoogleCode(request, code) {
+export async function exchangeGoogleCode(request, code, codeVerifier = "") {
   const { clientId, clientSecret } = getGoogleAuthConfig();
   const redirectUri = buildGoogleRedirectUri(request);
   const body = new URLSearchParams({
     code,
     client_id: clientId,
-    client_secret: clientSecret,
     redirect_uri: redirectUri,
     grant_type: "authorization_code",
   });
+  if (clientSecret) body.set("client_secret", clientSecret);
+  if (codeVerifier) body.set("code_verifier", codeVerifier);
+
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -75,9 +104,10 @@ export async function refreshGoogleAccessToken(refreshToken) {
   const body = new URLSearchParams({
     refresh_token: refreshToken,
     client_id: clientId,
-    client_secret: clientSecret,
     grant_type: "refresh_token",
   });
+  if (clientSecret) body.set("client_secret", clientSecret);
+
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -112,9 +142,37 @@ async function driveRequest(accessToken, url, options = {}) {
   return response;
 }
 
+async function findDriveBackupFolder(accessToken) {
+  const query = encodeURIComponent(
+    `name='${escapeQuery(BACKUP_FOLDER_NAME)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+  );
+  const url = `${GOOGLE_DRIVE_FILES_URL}?fields=files(id,name,modifiedTime)&q=${query}`;
+  const response = await driveRequest(accessToken, url, { method: "GET" });
+  const data = await response.json().catch(() => ({ files: [] }));
+  return Array.isArray(data.files) && data.files.length > 0 ? data.files[0] : null;
+}
+
+async function ensureDriveBackupFolder(accessToken) {
+  const existing = await findDriveBackupFolder(accessToken);
+  if (existing?.id) return existing;
+
+  const response = await driveRequest(accessToken, GOOGLE_DRIVE_FILES_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: BACKUP_FOLDER_NAME,
+      mimeType: "application/vnd.google-apps.folder",
+    }),
+  });
+  return response.json().catch(() => ({}));
+}
+
 export async function findDriveBackupFile(accessToken) {
-  const query = encodeURIComponent(`name='${BACKUP_FILE_NAME}' and '${APPDATA_SPACE}' in parents and trashed=false`);
-  const url = `${GOOGLE_DRIVE_FILES_URL}?spaces=${APPDATA_SPACE}&fields=files(id,name,modifiedTime,size)&q=${query}`;
+  const folder = await findDriveBackupFolder(accessToken);
+  if (!folder?.id) return null;
+
+  const query = encodeURIComponent(`name='${escapeQuery(BACKUP_FILE_NAME)}' and '${folder.id}' in parents and trashed=false`);
+  const url = `${GOOGLE_DRIVE_FILES_URL}?fields=files(id,name,modifiedTime,size)&q=${query}`;
   const response = await driveRequest(accessToken, url, { method: "GET" });
   const data = await response.json().catch(() => ({ files: [] }));
   return Array.isArray(data.files) && data.files.length > 0 ? data.files[0] : null;
@@ -126,24 +184,33 @@ export async function downloadDriveBackup(accessToken, fileId) {
 }
 
 export async function uploadDriveBackup(accessToken, payload, existingFileId = "") {
-  const metadata = existingFileId
-    ? null
-    : { name: BACKUP_FILE_NAME, parents: [APPDATA_SPACE], mimeType: "application/json" };
-  const multipartBoundary = `xlabrouter-${Date.now()}`;
-  const bodyParts = [];
-  if (metadata) {
-    bodyParts.push(`--${multipartBoundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`);
+  if (existingFileId) {
+    const response = await driveRequest(accessToken, `${GOOGLE_DRIVE_UPLOAD_URL}/${existingFileId}?uploadType=media`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    return response.json().catch(() => ({}));
   }
-  bodyParts.push(`--${multipartBoundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payload)}\r\n--${multipartBoundary}--`);
-  const uploadUrl = existingFileId
-    ? `${GOOGLE_DRIVE_UPLOAD_URL}/${existingFileId}?uploadType=media`
-    : `${GOOGLE_DRIVE_UPLOAD_URL}?uploadType=multipart`;
-  const response = await driveRequest(accessToken, uploadUrl, {
-    method: existingFileId ? "PATCH" : "POST",
+
+  const folder = await ensureDriveBackupFolder(accessToken);
+  if (!folder?.id) throw new Error("Failed to create Google Drive backup folder");
+
+  const metadata = { name: BACKUP_FILE_NAME, parents: [folder.id], mimeType: "application/json" };
+  const multipartBoundary = `xlabrouter-${Date.now()}`;
+  const bodyParts = [
+    `--${multipartBoundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
+    `--${multipartBoundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payload)}\r\n--${multipartBoundary}--`,
+  ];
+
+  const response = await driveRequest(accessToken, `${GOOGLE_DRIVE_UPLOAD_URL}?uploadType=multipart`, {
+    method: "POST",
     headers: {
-      "Content-Type": existingFileId ? "application/json" : `multipart/related; boundary=${multipartBoundary}`,
+      "Content-Type": `multipart/related; boundary=${multipartBoundary}`,
     },
-    body: existingFileId ? JSON.stringify(payload) : bodyParts.join(""),
+    body: bodyParts.join(""),
   });
   return response.json().catch(() => ({}));
 }
