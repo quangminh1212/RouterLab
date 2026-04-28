@@ -1,6 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
 set LOG_FILE=log.txt
 set DEV_RUN_LOG=next-dev.log
@@ -62,7 +63,7 @@ echo.
 if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 
 REM Start dev server with realtime colored output
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File colorlog.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0colorlog.ps1"
 set EXIT_CODE=!ERRORLEVEL!
 
 if exist "%DEV_RUN_LOG%" type "%DEV_RUN_LOG%" >> "%LOG_FILE%"
