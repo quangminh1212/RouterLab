@@ -1638,7 +1638,7 @@ export default function APIPageClient() {
           {/* Not installed */}
           {tsInstalled === false && !tsInstalling && (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-muted">Tailscale chua du?c cài. Cài d?t d? có link tunnel c? d?nh (mi?n phí, truy c?p public).</p>
+              <p className="text-sm text-text-muted">Tailscale chưa được cài. Cài đặt để có link tunnel cố định (miễn phí, truy cập public).</p>
               <div className="flex gap-2">
                 <Button
                   onClick={handleInstallTailscale}
