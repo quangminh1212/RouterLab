@@ -277,7 +277,7 @@ export default function AIPluginsPageClient() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make Plugins work your way</h1>
-          <p className="text-text-muted mt-2">Plugin list is pulled from the official OpenAI Codex plugin marketplace with local cached icons.</p>
+          <p className="text-text-muted mt-2">Plugin list is pulled from OpenAI Codex and GitHub Awesome Copilot marketplaces.</p>
         </div>
 
         <div className="flex flex-wrap gap-3">

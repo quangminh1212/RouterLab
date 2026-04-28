@@ -4,8 +4,13 @@ import path from "node:path";
 const OPENAI_PLUGINS_REPO = "https://github.com/openai/plugins";
 const OPENAI_PLUGINS_RAW = "https://raw.githubusercontent.com/openai/plugins/main";
 const MARKETPLACE_URL = `${OPENAI_PLUGINS_RAW}/.agents/plugins/marketplace.json`;
-const SOURCE_ID = "openai-curated";
-const SOURCE_LABEL = "OpenAI Codex";
+const GITHUB_COPILOT_REPO = "https://github.com/github/awesome-copilot";
+const GITHUB_COPILOT_RAW = "https://raw.githubusercontent.com/github/awesome-copilot/main";
+const GITHUB_COPILOT_MARKETPLACE_URL = `${GITHUB_COPILOT_RAW}/.github/plugin/marketplace.json`;
+const OPENAI_SOURCE_ID = "openai-curated";
+const OPENAI_SOURCE_LABEL = "OpenAI Codex";
+const GITHUB_COPILOT_SOURCE_ID = "github-awesome-copilot";
+const GITHUB_COPILOT_SOURCE_LABEL = "GitHub Awesome Copilot";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const ICONS_PUBLIC_DIR = path.join(process.cwd(), "public", "plugins", "icons");
 const DEFAULT_LOCAL_ICON_URL = "/plugins/icons/chatgpt-apps.svg";
@@ -65,6 +70,15 @@ function pluginDirectory(plugin) {
   return sourcePath.replace(/^\.\/plugins\//, "").replace(/^plugins\//, "") || plugin.name || "";
 }
 
+function githubCopilotPluginDirectory(plugin) {
+  const source = plugin?.source;
+  if (typeof source === "string") return source;
+  if (source && typeof source === "object" && typeof source.path === "string") {
+    return source.path.replace(/^\.\/plugins\//, "").replace(/^plugins\//, "");
+  }
+  return plugin?.name || "";
+}
+
 function extensionFromContentType(contentType = "") {
   const normalized = String(contentType).toLowerCase();
   if (normalized.includes("image/svg")) return "svg";
@@ -121,15 +135,47 @@ function normalizePlugin(plugin, manifest) {
     name: displayName,
     description,
     category,
-    source: SOURCE_LABEL,
-    sourceLabel: SOURCE_LABEL,
-    sourceId: SOURCE_ID,
+    source: OPENAI_SOURCE_LABEL,
+    sourceLabel: OPENAI_SOURCE_LABEL,
+    sourceId: OPENAI_SOURCE_ID,
     sourceUrl: `${OPENAI_PLUGINS_REPO}/tree/main/plugins/${pluginDir}`,
     homepage,
     iconUrl: remoteIconUrl,
     tags: Array.isArray(manifest?.keywords) ? manifest.keywords.filter((tag) => typeof tag === "string") : [],
     installPolicy: plugin?.policy?.installation || "AVAILABLE",
     authPolicy: plugin?.policy?.authentication || "ON_INSTALL",
+  };
+}
+
+function normalizeGithubCopilotPlugin(plugin) {
+  const pluginDir = githubCopilotPluginDirectory(plugin);
+  const sourceRepo = typeof plugin?.source?.repo === "string" ? plugin.source.repo : "";
+  const homepage = plugin.homepage || (sourceRepo ? `https://github.com/${sourceRepo}` : `${GITHUB_COPILOT_REPO}/tree/main/plugins/${pluginDir}`);
+
+  return {
+    pluginId: plugin.name || pluginDir,
+    name: humanizeName(plugin.name || pluginDir),
+    description: plugin.description || `${humanizeName(plugin.name || pluginDir)} plugin for GitHub Copilot.` ,
+    category: "GitHub Copilot",
+    source: GITHUB_COPILOT_SOURCE_LABEL,
+    sourceLabel: GITHUB_COPILOT_SOURCE_LABEL,
+    sourceId: GITHUB_COPILOT_SOURCE_ID,
+    sourceUrl: `${GITHUB_COPILOT_REPO}/tree/main/plugins/${pluginDir}`,
+    homepage,
+    iconUrl: DEFAULT_LOCAL_ICON_URL,
+    tags: Array.isArray(plugin.keywords) ? plugin.keywords.filter((tag) => typeof tag === "string") : [],
+    installPolicy: "AVAILABLE",
+    authPolicy: "ON_INSTALL",
+  };
+}
+
+async function loadGithubCopilotCatalog() {
+  const marketplace = await fetchJson(GITHUB_COPILOT_MARKETPLACE_URL);
+  const marketplacePlugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
+
+  return {
+    plugins: marketplacePlugins.map(normalizeGithubCopilotPlugin),
+    sources: [{ id: GITHUB_COPILOT_SOURCE_ID, label: GITHUB_COPILOT_SOURCE_LABEL, url: GITHUB_COPILOT_MARKETPLACE_URL }],
   };
 }
 
@@ -166,17 +212,24 @@ async function loadOpenAiCatalog() {
 
   const data = {
     plugins: pluginsWithLocalIcons,
-    sources: [{ id: SOURCE_ID, label: SOURCE_LABEL, url: MARKETPLACE_URL }],
+    sources: [{ id: OPENAI_SOURCE_ID, label: OPENAI_SOURCE_LABEL, url: MARKETPLACE_URL }],
   };
   catalogCache = { createdAt: now, data };
   return data;
 }
 
 export async function GET() {
-  try {
-    const catalog = await loadOpenAiCatalog();
-    return Response.json(catalog);
-  } catch (error) {
-    return Response.json({ error: error?.message || "Failed to fetch plugin catalog" }, { status: 500 });
+  const results = await Promise.allSettled([loadOpenAiCatalog(), loadGithubCopilotCatalog()]);
+  const catalogs = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+  const errors = results.filter((result) => result.status === "rejected").map((result) => result.reason?.message || "Failed to fetch plugin source");
+
+  if (catalogs.length === 0) {
+    return Response.json({ error: errors[0] || "Failed to fetch plugin catalog" }, { status: 500 });
   }
+
+  return Response.json({
+    plugins: catalogs.flatMap((catalog) => catalog.plugins || []),
+    sources: catalogs.flatMap((catalog) => catalog.sources || []),
+    errors,
+  });
 }
