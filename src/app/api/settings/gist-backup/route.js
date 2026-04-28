@@ -77,6 +77,12 @@ async function ensureCliAuth(current) {
   };
 }
 
+function buildStableGistPassphrase({ token, githubLogin }) {
+  const login = String(githubLogin || "").trim().toLowerCase();
+  if (!login) return token;
+  return `xlabrouter-gist-sync:${login}`;
+}
+
 export async function GET() {
   try {
     const settings = await getSettings();
@@ -125,7 +131,8 @@ export async function POST(request) {
 
     if (action === "backup") {
       const auth = await ensureCliAuth(current);
-      const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: auth.token });
+      const stablePassphrase = buildStableGistPassphrase({ token: auth.token, githubLogin: auth.githubLogin || current.githubLogin });
+      const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: stablePassphrase });
       const nextConfig = {
         ...current,
         enabled: true,
@@ -142,7 +149,12 @@ export async function POST(request) {
 
     if (action === "restore") {
       const auth = await ensureCliAuth(current);
-      const restored = await restoreFromGist({ token: auth.token, gistId: current.gistId || "", passphrase: auth.token });
+      const stablePassphrase = buildStableGistPassphrase({ token: auth.token, githubLogin: auth.githubLogin || current.githubLogin });
+      const restored = await restoreFromGist({
+        token: auth.token,
+        gistId: current.gistId || "",
+        passphrases: [stablePassphrase, auth.token],
+      });
       const nextConfig = {
         ...current,
         enabled: true,
@@ -155,6 +167,54 @@ export async function POST(request) {
       };
       await updateSettings({ gistBackup: nextConfig });
       return NextResponse.json({ success: true, action, restored, config: toPublicConfig({ gistBackup: nextConfig }) });
+    }
+
+    if (action === "sync") {
+      const auth = await ensureCliAuth(current);
+      const stablePassphrase = buildStableGistPassphrase({ token: auth.token, githubLogin: auth.githubLogin || current.githubLogin });
+
+      let pulled = null;
+      try {
+        pulled = await restoreFromGist({
+          token: auth.token,
+          gistId: current.gistId || "",
+          passphrases: [stablePassphrase, auth.token],
+        });
+      } catch {
+        pulled = null;
+      }
+
+      const localUpdatedAt = current.updatedAt ? new Date(current.updatedAt).getTime() : 0;
+      const remoteUpdatedAt = pulled?.updatedAt ? new Date(pulled.updatedAt).getTime() : 0;
+
+      if (!pulled || localUpdatedAt > remoteUpdatedAt) {
+        const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: stablePassphrase });
+        const nextConfig = {
+          ...current,
+          enabled: true,
+          token: auth.token,
+          tokenSource: "gh-cli",
+          githubLogin: auth.githubLogin || current.githubLogin || "",
+          gistId: backup.gistId,
+          htmlUrl: backup.htmlUrl,
+          updatedAt: backup.updatedAt,
+        };
+        await updateSettings({ gistBackup: nextConfig });
+        return NextResponse.json({ success: true, action, direction: "push", config: toPublicConfig({ gistBackup: nextConfig }) });
+      }
+
+      const nextConfig = {
+        ...current,
+        enabled: true,
+        token: auth.token,
+        tokenSource: "gh-cli",
+        githubLogin: auth.githubLogin || current.githubLogin || "",
+        gistId: pulled.gistId,
+        htmlUrl: pulled.htmlUrl,
+        updatedAt: pulled.updatedAt,
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, action, direction: "pull", restored: pulled, config: toPublicConfig({ gistBackup: nextConfig }) });
     }
 
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });

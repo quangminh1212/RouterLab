@@ -59,6 +59,21 @@ function decryptPayload(envelope, passphrase) {
   return JSON.parse(decrypted.toString("utf8"));
 }
 
+function decryptPayloadWithFallback(envelope, passphrases) {
+  const candidates = Array.from(new Set((Array.isArray(passphrases) ? passphrases : [passphrases]).filter(Boolean)));
+  let lastError = null;
+
+  for (const passphrase of candidates) {
+    try {
+      return decryptPayload(envelope, passphrase);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Cannot decrypt Gist backup");
+}
+
 async function githubRequest(token, url, options = {}) {
   if (!token || typeof token !== "string") throw new Error("GitHub token is required");
 
@@ -119,7 +134,7 @@ export async function backupToGist({ token, gistId = "", passphrase }) {
   };
 }
 
-export async function restoreFromGist({ token, gistId, passphrase }) {
+export async function restoreFromGist({ token, gistId, passphrase, passphrases }) {
   const existingGist = gistId ? null : await findExistingBackupGist(token);
   const resolvedGistId = gistId || existingGist?.id || "";
   if (!resolvedGistId) throw new Error("No XLab Router backup Gist found yet");
@@ -129,7 +144,7 @@ export async function restoreFromGist({ token, gistId, passphrase }) {
   if (!file?.content) throw new Error("XLab Router backup file not found in Gist");
 
   const envelope = JSON.parse(file.content);
-  const payload = decryptPayload(envelope, passphrase);
+  const payload = decryptPayloadWithFallback(envelope, passphrases || passphrase);
   const result = await restoreBackupBundle(payload);
 
   return {

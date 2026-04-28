@@ -394,6 +394,14 @@ export default function ProfilePage() {
       if (action === "restore") {
         setDbStatus({ type: "success", message: "Restored encrypted backup from GitHub Gist" });
         reloadSettings();
+      } else if (action === "sync") {
+        setDbStatus({
+          type: "success",
+          message: data.direction === "pull"
+            ? "Synced from shared GitHub Gist to this machine"
+            : "Synced this machine to shared GitHub Gist",
+        });
+        if (data.direction === "pull") reloadSettings();
       } else {
         setDbStatus({ type: "success", message: `Encrypted backup saved to GitHub Gist ${data.config?.gistId || ""}` });
       }
@@ -599,7 +607,7 @@ export default function ProfilePage() {
                     <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
                       Dùng GitHub CLI
                     </Button>
-                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
+                    <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>`r`n                      Sync`r`n                    </Button>`r`n                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
                       Backup
                     </Button>
                     <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
