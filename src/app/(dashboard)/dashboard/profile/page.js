@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
   const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
-  const [gistForm, setGistForm] = useState({ token: "", gistId: "", passphrase: "" });
+  const [gistForm, setGistForm] = useState({ passphrase: "" });
   const [gistLoading, setGistLoading] = useState(false);
   const [gistExpanded, setGistExpanded] = useState(false);
   const [googleStatus, setGoogleStatus] = useState({
@@ -87,7 +87,6 @@ export default function ProfilePage() {
       .then((data) => {
         if (!data) return;
         setGistConfig(data);
-        setGistForm((prev) => ({ ...prev, gistId: data.gistId || "" }));
       })
       .catch(() => {});
   }, []);
@@ -370,29 +369,16 @@ export default function ProfilePage() {
     if (!res.ok) throw new Error(data.error || "GitHub Gist backup failed");
     if (data.config) {
       setGistConfig(data.config);
-      setGistForm((prev) => ({ ...prev, token: "", gistId: data.config.gistId || prev.gistId }));
     }
     return data;
   };
 
-  const saveGistConfig = async () => {
-    setGistLoading(true);
-    setDbStatus({ type: "", message: "" });
-    try {
-      const data = await postGistBackup({ action: "save-config", token: gistForm.token, gistId: gistForm.gistId });
-      setDbStatus({ type: "success", message: data.config?.hasToken ? "GitHub Gist backup connected" : "Gist ID saved. Add a GitHub token or use GitHub CLI to enable backup." });
-    } catch (err) {
-      setDbStatus({ type: "error", message: err.message || "Failed to save Gist backup settings" });
-    } finally {
-      setGistLoading(false);
-    }
-  };
 
   const connectGitHubCli = async () => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
     try {
-      const data = await postGistBackup({ action: "use-gh-cli", gistId: gistForm.gistId });
+      const data = await postGistBackup({ action: "use-gh-cli" });
       setDbStatus({ type: "success", message: data.config?.hasToken ? "Connected using GitHub CLI" : "GitHub CLI token was not found" });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to connect via GitHub CLI" });
@@ -425,7 +411,7 @@ export default function ProfilePage() {
     try {
       const data = await postGistBackup({ action: "disconnect" });
       setGistConfig(data.config);
-      setGistForm({ token: "", gistId: "", passphrase: "" });
+      setGistForm({ passphrase: "" });
       setDbStatus({ type: "success", message: "GitHub Gist backup disconnected" });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to disconnect Gist backup" });
@@ -585,7 +571,7 @@ export default function ProfilePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">GitHub Gist Backup</p>
-                  <p className="text-sm text-text-muted">Private encrypted backup (hidden by default).</p>
+                  <p className="text-sm text-text-muted">Backup mã hóa qua GitHub CLI.</p>
                   {gistConfig.gistId ? (
                     <p className="text-xs text-text-muted mt-1 break-all">
                       Gist: {gistConfig.htmlUrl ? <a className="text-primary hover:underline" href={gistConfig.htmlUrl} target="_blank" rel="noreferrer">{gistConfig.gistId}</a> : gistConfig.gistId}
@@ -595,7 +581,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={cn("text-xs px-2 py-1 rounded-full border whitespace-nowrap", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
-                    {gistConfig.hasToken ? (gistConfig.tokenSource === "gh-cli" ? "CLI" : "PAT") : "Off"}
+                    {gistConfig.hasToken ? "CLI" : "Off"}
                   </span>
                   <Button
                     size="sm"
@@ -610,44 +596,23 @@ export default function ProfilePage() {
               </div>
               {gistExpanded ? (
                 <>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Input
-                      type="password"
-                      label="GitHub Token"
-                      placeholder={gistConfig.hasToken ? "Saved token (leave blank)" : "ghp_... or fine-grained token"}
-                      value={gistForm.token}
-                      onChange={(e) => setGistForm((prev) => ({ ...prev, token: e.target.value }))}
-                      hint="Needs permission to create/update private Gists. Or use GitHub CLI after running gh auth login."
-                      disabled={gistLoading}
-                    />
-                    <Input
-                      label="Gist ID"
-                      placeholder="Leave blank to create a new private Gist"
-                      value={gistForm.gistId}
-                      onChange={(e) => setGistForm((prev) => ({ ...prev, gistId: e.target.value }))}
-                      disabled={gistLoading}
-                    />
-                  </div>
                   <Input
                     type="password"
                     label="Encryption Passphrase"
                     placeholder="Required for backup and restore"
                     value={gistForm.passphrase}
                     onChange={(e) => setGistForm((prev) => ({ ...prev, passphrase: e.target.value }))}
-                    hint="Do not lose this passphrase. Without it, the Gist backup cannot be restored."
+                    hint="Cần gh auth login. App tự tạo/tái dùng Gist xlabrouter-backup."
                     disabled={gistLoading}
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
                       Dùng GitHub CLI
                     </Button>
-                    <Button variant="secondary" size="sm" icon="save" onClick={saveGistConfig} loading={gistLoading}>
-                      Save
-                    </Button>
-                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistForm.passphrase}>
+                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading} disabled={!gistForm.passphrase}>
                       Backup
                     </Button>
-                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistConfig.gistId || !gistForm.passphrase}>
+                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading} disabled={!gistForm.passphrase}>
                       Restore
                     </Button>
                     <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
