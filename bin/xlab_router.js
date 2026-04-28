@@ -840,7 +840,6 @@ async function showMenu() {
       message: "Choose Interface:",
       choices: [
         { name: "Web UI (Browser Interface)", value: "web" },
-        { name: "Terminal UI (Coming Soon)", value: "terminal", disabled: true },
         { name: "Hide to Tray (System Tray)", value: "tray" },
         new inquirer.Separator(),
         { name: "Check for Updates", value: "update" },
