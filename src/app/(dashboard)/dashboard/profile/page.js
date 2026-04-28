@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
-  const [googleStatus, setGoogleStatus] = useState({ configured: false, connected: false, email: "", backup: null });
+  const [googleStatus, setGoogleStatus] = useState({ loading: true, configured: false, connected: false, email: "", backup: null });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
@@ -55,15 +55,16 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/auth/google/status")
+    fetch(`/api/auth/google/status?t=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => setGoogleStatus({
+        loading: false,
         configured: !!data?.configured,
         connected: !!data?.connected,
         email: data?.email || "",
         backup: data?.backup || null,
       }))
-      .catch(() => {});
+      .catch(() => setGoogleStatus((prev) => ({ ...prev, loading: false })));
   }, []);
 
   const InlineSettingSkeleton = ({ wide = false }) => (
@@ -490,7 +491,9 @@ export default function ProfilePage() {
               <div>
                 <p className="font-medium">Google Drive Sync</p>
                 <p className="text-sm text-text-muted">
-                  {googleStatus.connected
+                  {googleStatus.loading
+                    ? "Checking Google Drive OAuth..."
+                    : googleStatus.connected
                     ? `Connected: ${googleStatus.email}`
                     : googleStatus.configured
                       ? "Not connected"
@@ -501,7 +504,7 @@ export default function ProfilePage() {
                 <Button
                   variant="secondary"
                   onClick={() => { window.location.href = "/api/auth/google/start"; }}
-                  disabled={!googleStatus.configured || googleLoading}
+                  disabled={googleStatus.loading || !googleStatus.configured || googleLoading}
                 >
                   Connect Google
                 </Button>
