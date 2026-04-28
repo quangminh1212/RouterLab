@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "" });
   const [gistForm, setGistForm] = useState({ token: "", gistId: "", passphrase: "" });
   const [gistLoading, setGistLoading] = useState(false);
+  const [gistExpanded, setGistExpanded] = useState(false);
   const [googleStatus, setGoogleStatus] = useState({
     loading: true,
     configured: false,
@@ -571,61 +572,74 @@ export default function ProfilePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">GitHub Gist Backup</p>
-                  <p className="text-sm text-text-muted">
-                    Private encrypted backup. Create a GitHub token with Gist permission.
-                  </p>
+                  <p className="text-sm text-text-muted">Private encrypted backup (hidden by default).</p>
                   {gistConfig.gistId ? (
                     <p className="text-xs text-text-muted mt-1 break-all">
                       Gist: {gistConfig.htmlUrl ? <a className="text-primary hover:underline" href={gistConfig.htmlUrl} target="_blank" rel="noreferrer">{gistConfig.gistId}</a> : gistConfig.gistId}
-                      {gistConfig.updatedAt ? ` · Updated ${new Date(gistConfig.updatedAt).toLocaleString()}` : ""}
+                      {gistConfig.updatedAt ? ` - Updated ${new Date(gistConfig.updatedAt).toLocaleString()}` : ""}
                     </p>
                   ) : null}
                 </div>
-                <span className={cn("text-xs px-2 py-1 rounded-full border", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
-                  {gistConfig.hasToken ? "Connected" : "Not connected"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-xs px-2 py-1 rounded-full border", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
+                    {gistConfig.hasToken ? "Connected" : "Not connected"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={gistExpanded ? "expand_less" : "expand_more"}
+                    onClick={() => setGistExpanded((prev) => !prev)}
+                    disabled={gistLoading}
+                  >
+                    {gistExpanded ? "Thu g?n" : "M? r?ng"}
+                  </Button>
+                </div>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Input
-                  type="password"
-                  label="GitHub Token"
-                  placeholder={gistConfig.hasToken ? "Saved token (leave blank)" : "ghp_... or fine-grained token"}
-                  value={gistForm.token}
-                  onChange={(e) => setGistForm((prev) => ({ ...prev, token: e.target.value }))}
-                  hint="Needs permission to create/update private Gists."
-                  disabled={gistLoading}
-                />
-                <Input
-                  label="Gist ID"
-                  placeholder="Leave blank to create a new private Gist"
-                  value={gistForm.gistId}
-                  onChange={(e) => setGistForm((prev) => ({ ...prev, gistId: e.target.value }))}
-                  disabled={gistLoading}
-                />
-              </div>
-              <Input
-                type="password"
-                label="Encryption Passphrase"
-                placeholder="Required for backup and restore"
-                value={gistForm.passphrase}
-                onChange={(e) => setGistForm((prev) => ({ ...prev, passphrase: e.target.value }))}
-                hint="Do not lose this passphrase. Without it, the Gist backup cannot be restored."
-                disabled={gistLoading}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" icon="save" onClick={saveGistConfig} loading={gistLoading}>
-                  Save Gist Config
-                </Button>
-                <Button variant="secondary" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistForm.passphrase}>
-                  Backup to Gist
-                </Button>
-                <Button variant="outline" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistConfig.gistId || !gistForm.passphrase}>
-                  Restore from Gist
-                </Button>
-                <Button variant="ghost" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
-                  Disconnect
-                </Button>
-              </div>
+              {gistExpanded ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      type="password"
+                      label="GitHub Token"
+                      placeholder={gistConfig.hasToken ? "Saved token (leave blank)" : "ghp_... or fine-grained token"}
+                      value={gistForm.token}
+                      onChange={(e) => setGistForm((prev) => ({ ...prev, token: e.target.value }))}
+                      hint="Needs permission to create/update private Gists."
+                      disabled={gistLoading}
+                    />
+                    <Input
+                      label="Gist ID"
+                      placeholder="Leave blank to create a new private Gist"
+                      value={gistForm.gistId}
+                      onChange={(e) => setGistForm((prev) => ({ ...prev, gistId: e.target.value }))}
+                      disabled={gistLoading}
+                    />
+                  </div>
+                  <Input
+                    type="password"
+                    label="Encryption Passphrase"
+                    placeholder="Required for backup and restore"
+                    value={gistForm.passphrase}
+                    onChange={(e) => setGistForm((prev) => ({ ...prev, passphrase: e.target.value }))}
+                    hint="Do not lose this passphrase. Without it, the Gist backup cannot be restored."
+                    disabled={gistLoading}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" icon="save" onClick={saveGistConfig} loading={gistLoading}>
+                      Save
+                    </Button>
+                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistForm.passphrase}>
+                      Backup
+                    </Button>
+                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading} disabled={!gistConfig.hasToken || !gistConfig.gistId || !gistForm.passphrase}>
+                      Restore
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
+                      Disconnect
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </div>
             {dbStatus.message && (
               <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
