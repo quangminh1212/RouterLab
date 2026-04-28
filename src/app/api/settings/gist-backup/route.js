@@ -1,7 +1,11 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { backupToGist, restoreFromGist } from "@/lib/gistBackup";
+
+const execFileAsync = promisify(execFile);
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
@@ -30,6 +34,25 @@ function toPublicConfig(settings) {
   };
 }
 
+async function getGitHubCliToken() {
+  try {
+    const { stdout } = await execFileAsync("gh", ["auth", "token"], {
+      timeout: 10000,
+      windowsHide: true,
+      maxBuffer: 16 * 1024,
+    });
+    const token = String(stdout || "").trim();
+    if (!token) {
+      throw new Error("GitHub CLI did not return a token");
+    }
+    return token;
+  } catch (error) {
+    const message = error?.code === "ENOENT"
+      ? "GitHub CLI is not installed. Install gh and run gh auth login first."
+      : "Cannot read GitHub CLI token. Run gh auth login first, then try again.";
+    throw new Error(message);
+  }
+}
 export async function GET(request) {
   try {
     if (!await hasValidAuth(request)) {
@@ -53,6 +76,18 @@ export async function POST(request) {
     const settings = await getSettings();
     const current = settings?.gistBackup || {};
 
+    if (action === "use-gh-cli") {
+      const token = await getGitHubCliToken();
+      const nextConfig = {
+        ...current,
+        enabled: true,
+        token,
+        gistId: typeof body.gistId === "string" ? body.gistId.trim() : current.gistId || "",
+        fileName: current.fileName || "xlabrouter-backup.enc.json",
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }), tokenSource: "gh-cli" });
+    }
     if (action === "save-config") {
       const nextConfig = {
         ...current,
