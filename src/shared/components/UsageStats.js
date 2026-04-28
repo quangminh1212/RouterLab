@@ -10,6 +10,10 @@ import UsageTable, { fmt, fmtTime } from "@/app/(dashboard)/dashboard/usage/comp
 import ProviderTopology from "@/app/(dashboard)/dashboard/usage/components/ProviderTopology";
 import UsageChart from "@/app/(dashboard)/dashboard/usage/components/UsageChart";
 
+function fmtCost(value) {
+  return `$${Number(value || 0).toFixed(4)}`;
+}
+
 function timeAgo(timestamp) {
   const diff = Math.floor((Date.now() - new Date(timestamp)) / 1000);
   if (diff < 60) return `${diff}s ago`;
@@ -48,6 +52,7 @@ function RecentRequests({ requests = [] }) {
                 <th className="py-1.5 text-left font-semibold text-text-muted w-2"></th>
                 <th className="py-1.5 text-left font-semibold text-text-muted">Model</th>
                 <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">In / Out</th>
+                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">Cost</th>
                 <th className="py-1.5 text-right font-semibold text-text-muted">When</th>
               </tr>
             </thead>
@@ -64,6 +69,9 @@ function RecentRequests({ requests = [] }) {
                       <span className="text-primary">{fmt(r.promptTokens)}↑</span>
                       {" "}
                       <span className="text-success">{fmt(r.completionTokens)}↓</span>
+                    </td>
+                    <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
+                      {fmtCost(r.cost || r.totalCost)}
                     </td>
                     <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} /></td>
                   </tr>
