@@ -20,12 +20,6 @@ function priorityRank(value) {
   return 2;
 }
 
-function priorityBadgeClass(priority) {
-  if (priority === "high") return "bg-red-500/15 text-red-300 border-red-400/30";
-  if (priority === "low") return "bg-slate-500/15 text-slate-300 border-slate-400/30";
-  return "bg-amber-500/15 text-amber-300 border-amber-400/30";
-}
-
 export default function RulesPage() {
   const [rules, setRules] = useState([]);
   const [draft, setDraft] = useState(createEmptyRule());
@@ -172,9 +166,6 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium text-text-main truncate">{rule.name || "Rule"} {!rule.enabled && <span className="text-text-muted">(Tắt)</span>}</p>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-text-muted">
-                    <span className={`px-2 py-0.5 rounded-full border ${priorityBadgeClass(rule.priority)}`}>{String(rule.priority || "medium").toUpperCase()}</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
