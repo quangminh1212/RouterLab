@@ -497,46 +497,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-text-muted font-mono">~/.xlabrouter/db.json</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-bg border border-border">
-              <div>
-                <p className="font-medium">Google Drive Sync</p>
-                <p className="text-sm text-text-muted">
-                  {googleStatus.loading
-                    ? "Checking Google Drive OAuth..."
-                    : googleStatus.connected
-                    ? `Connected: ${googleStatus.email}`
-                    : googleStatus.configured
-                      ? "Not connected"
-                      : "Google Drive OAuth not configured (XLab_Router / XLab_Web)"}
-                </p>
-                {!googleStatus.loading && !googleStatus.connected && googleStatus.expectedRedirectUri ? (
-                  <p className="text-xs text-text-muted mt-1 break-all">
-                    OAuth Source: {googleStatus.authSource} | Redirect URI: {googleStatus.expectedRedirectUri}
-                  </p>
-                ) : null}
-              </div>
-              {!googleStatus.connected ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => { window.location.href = "/api/auth/google/start"; }}
-                  disabled={googleStatus.loading || !googleStatus.configured || googleLoading}
-                >
-                  Connect Google
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => runGoogleSync("backup")} loading={googleLoading}>
-                    Backup to Drive
-                  </Button>
-                  <Button variant="outline" onClick={() => runGoogleSync("restore")} disabled={googleLoading}>
-                    Restore from Drive
-                  </Button>
-                  <Button variant="outline" onClick={disconnectGoogle} disabled={googleLoading}>
-                    Disconnect
-                  </Button>
-                </div>
-              )}
-            </div>
+            
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="secondary"
