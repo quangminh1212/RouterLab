@@ -20,6 +20,12 @@ function priorityRank(value) {
   return 2;
 }
 
+function priorityBadgeClass(priority) {
+  if (priority === "high") return "bg-red-500/15 text-red-300 border-red-400/30";
+  if (priority === "low") return "bg-slate-500/15 text-slate-300 border-slate-400/30";
+  return "bg-amber-500/15 text-amber-300 border-amber-400/30";
+}
+
 export default function RulesPage() {
   const [rules, setRules] = useState([]);
   const [draft, setDraft] = useState(createEmptyRule());
@@ -30,6 +36,7 @@ export default function RulesPage() {
   const [openSettingsId, setOpenSettingsId] = useState("");
 
   const sortedRules = useMemo(() => [...rules].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)), [rules]);
+  const enabledCount = useMemo(() => sortedRules.filter((r) => r.enabled).length, [sortedRules]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,98 +104,114 @@ export default function RulesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-main">Rules</h1>
-        <p className="text-sm text-text-muted">Danh sách rule dạng gọn, bấm Settings để chỉnh chi tiết.</p>
-      </div>
+    <div className="p-6 space-y-5 max-w-6xl">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-main">Rules</h1>
+          <p className="mt-1 text-sm text-text-muted">Quản lý bộ rule AI gọn gàng, rõ ràng, dễ vận hành.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-text-muted">
+          <span className="px-2.5 py-1 rounded-full border border-white/10 bg-white/5">Total: {sortedRules.length}</span>
+          <span className="px-2.5 py-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 text-emerald-300">Enabled: {enabledCount}</span>
+        </div>
+      </header>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 space-y-3">
+      <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
-          <button onClick={() => setShowAddForm((v) => !v)} className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">add_circle</span>
+            <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
+          </div>
+          <button onClick={() => setShowAddForm((v) => !v)} className="px-3 py-1.5 rounded-lg bg-primary/90 hover:bg-primary text-white text-sm transition-colors">
             {showAddForm ? "Đóng" : "Thêm rule"}
           </button>
         </div>
 
         {showAddForm && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule (tuỳ chọn)" value={draft?.name ?? ""} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
-              <select className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft?.priority ?? "medium"} onChange={(e) => setDraft((v) => ({ ...v, priority: e.target.value }))}>
+          <div className="space-y-3 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input className="md:col-span-2 w-full px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="Tên rule (tuỳ chọn)" value={draft?.name ?? ""} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
+              <select className="w-full px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" value={draft?.priority ?? "medium"} onChange={(e) => setDraft((v) => ({ ...v, priority: e.target.value }))}>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
               </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-              <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft?.applyType ?? "always"} onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}>
-                <option value="always">Always</option>
-                <option value="contains">Contains text</option>
-              </select>
-            </div>
-            <textarea className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="# Rule
+
+            <select className="w-full px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" value={draft?.applyType ?? "always"} onChange={(e) => setDraft((v) => ({ ...v, applyType: e.target.value }))}>
+              <option value="always">Always</option>
+              <option value="contains">Contains text</option>
+            </select>
+
+            <textarea className="w-full min-h-36 px-3 py-2.5 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="# Rule
 Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))} />
-            <button onClick={addRule} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60">
-              {saving ? "Đang lưu..." : "Lưu rule mới"}
-            </button>
+
+            <div className="flex items-center justify-end gap-2">
+              <button onClick={() => { setShowAddForm(false); setDraft(createEmptyRule()); }} className="px-4 py-2 rounded-lg border border-white/10 text-text-muted hover:text-text-main hover:bg-white/5 transition-colors">Huỷ</button>
+              <button onClick={addRule} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60 hover:bg-primary/90 transition-colors">
+                {saving ? "Đang lưu..." : "Lưu rule mới"}
+              </button>
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 space-y-3">
-        <h2 className="text-base font-semibold text-text-main">Danh sách Rule ({sortedRules.length})</h2>
+      <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">rule_settings</span>
+          <h2 className="text-base font-semibold text-text-main">Danh sách Rule ({sortedRules.length})</h2>
+        </div>
+
         {loading && <p className="text-sm text-text-muted">Đang tải...</p>}
         {!loading && sortedRules.length === 0 && <p className="text-sm text-text-muted">Chưa có rule nào.</p>}
 
-        {!loading &&
-          sortedRules.map((rule) => {
-            const isOpen = openSettingsId === rule.id;
-            return (
-              <div key={rule.id} className="rounded-lg border border-black/10 dark:border-white/10 p-3 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-text-main truncate">
-                      {rule.name || "Rule"} {rule.enabled ? "" : "(Tắt)"}
-                    </p>
-                    <p className="text-xs text-text-muted truncate">
-                      Ưu tiên: {String(rule.priority || "medium").toUpperCase()} | Áp dụng: {rule.applyType || "always"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
-                      Settings
-                    </button>
-                    <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
-                      {rule.enabled ? "Tắt" : "Bật"}
-                    </button>
-                    <button onClick={() => removeRule(rule.id)} disabled={saving} className="px-3 py-1 rounded bg-red-500/90 text-white text-sm">
-                      Xóa
-                    </button>
+        {!loading && sortedRules.map((rule) => {
+          const isOpen = openSettingsId === rule.id;
+          return (
+            <article key={rule.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 space-y-3 hover:border-primary/30 transition-colors">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-text-main truncate">{rule.name || "Rule"} {!rule.enabled && <span className="text-text-muted">(Tắt)</span>}</p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-text-muted">
+                    <span className={`px-2 py-0.5 rounded-full border ${priorityBadgeClass(rule.priority)}`}>{String(rule.priority || "medium").toUpperCase()}</span>
+                    <span className="truncate">Apply: {rule.applyType || "always"}</span>
                   </div>
                 </div>
 
-                {isOpen && (
-                  <div className="space-y-2">
-                    <input className="w-full px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <select className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
-                      <select className="px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
-                        <option value="always">Always</option>
-                        <option value="contains">Contains text</option>
-                      </select>
-                    </div>
-                    <textarea className="w-full min-h-28 px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10" defaultValue={rule.content || ""} onBlur={(e) => updateRule(rule.id, { content: e.target.value })} />
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setOpenSettingsId(isOpen ? "" : rule.id)} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-sm transition-colors">
+                    {isOpen ? "Hide" : "Settings"}
+                  </button>
+                  <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-sm transition-colors">
+                    {rule.enabled ? "Disable" : "Enable"}
+                  </button>
+                  <button onClick={() => removeRule(rule.id)} disabled={saving} className="px-3 py-1.5 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm transition-colors">
+                    Delete
+                  </button>
+                </div>
               </div>
-            );
-          })}
-      </div>
+
+              {isOpen && (
+                <div className="space-y-2 animate-in fade-in duration-200">
+                  <input className="w-full px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <select className="px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                    <select className="px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.applyType || "always"} onBlur={(e) => updateRule(rule.id, { applyType: e.target.value })}>
+                      <option value="always">Always</option>
+                      <option value="contains">Contains text</option>
+                    </select>
+                  </div>
+                  <textarea className="w-full min-h-28 px-3 py-2 rounded-xl bg-sidebar border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.content || ""} onBlur={(e) => updateRule(rule.id, { content: e.target.value })} />
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </section>
 
       {status && <p className="text-sm text-text-muted">{status}</p>}
     </div>
