@@ -195,13 +195,13 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
                 </div>
               </div>
 
-              {isOpen && (
-                <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Rule name</span>
-                    <input className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {isOpen && (
+                  <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Rule name</span>
+                      <input className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.name || ""} onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() || rule.name })} />
+                    </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-muted">Priority</span>
                       <select className="w-full px-3 py-2 rounded-lg bg-sidebar/80 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue={rule.priority || "medium"} onBlur={(e) => updateRule(rule.id, { priority: e.target.value })}>
