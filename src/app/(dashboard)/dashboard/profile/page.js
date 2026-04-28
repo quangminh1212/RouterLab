@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
-  const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "" });
+  const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
   const [gistForm, setGistForm] = useState({ token: "", gistId: "", passphrase: "" });
   const [gistLoading, setGistLoading] = useState(false);
   const [gistExpanded, setGistExpanded] = useState(false);
@@ -595,7 +595,13 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn("text-xs px-2 py-1 rounded-full border", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
-                    {gistConfig.hasToken ? "Connected" : "Not connected"}
+                    {gistConfig.hasToken ? (
+                      <>
+                        Connected
+                        {gistConfig.githubLogin ? ` (@${gistConfig.githubLogin})` : ""}
+                        {gistConfig.tokenSource === "gh-cli" ? " via CLI" : ""}
+                      </>
+                    ) : "Not connected"}
                   </span>
                   <Button
                     size="sm"
