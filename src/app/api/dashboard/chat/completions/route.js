@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { getApiKeys } from "@/lib/localDb";
+import { INTERNAL_REQUEST_HEADER } from "open-sse/config/appConstants.js";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export async function POST(request) {
     const headers = {
       "Content-Type": "application/json",
       Accept: request.headers.get("Accept") || "application/json",
+      [INTERNAL_REQUEST_HEADER.name]: INTERNAL_REQUEST_HEADER.value,
     };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
