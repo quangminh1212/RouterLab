@@ -219,7 +219,7 @@ if (command === "--help" || command === "-h") {
 
 function execCommand(commandText) {
   return new Promise((resolve) => {
-    exec(commandText, (error, stdout, stderr) => {
+    exec(commandText, { windowsHide: true }, (error, stdout, stderr) => {
       resolve({ error, stdout, stderr });
     });
   });
