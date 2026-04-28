@@ -28,7 +28,7 @@ export async function GET() {
       ...safeSettings, 
       enableRequestLogs,
       enableTranslator,
-      hasPassword: !!password
+      hasPassword: !!settings?.password
     });
   } catch (error) {
     console.log("Error getting settings:", error);
