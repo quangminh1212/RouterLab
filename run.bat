@@ -54,15 +54,15 @@ if not exist ".env" (
 )
 
 echo Starting dev server on http://localhost:1212
-echo Logs are shown in realtime and also saved to %DEV_RUN_LOG%
+echo Logs are shown in realtime with colors and also saved to %DEV_RUN_LOG%
 echo Press Ctrl+C to stop
 echo.
 
 :DEV_LOOP
 if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 
-REM Start dev server with realtime output while still writing next-dev.log
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Continue'; npm run dev 2>&1 | Tee-Object -FilePath '%DEV_RUN_LOG%'; exit $LASTEXITCODE"
+REM Start dev server with realtime colored output
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File colorlog.ps1
 set EXIT_CODE=!ERRORLEVEL!
 
 if exist "%DEV_RUN_LOG%" type "%DEV_RUN_LOG%" >> "%LOG_FILE%"
