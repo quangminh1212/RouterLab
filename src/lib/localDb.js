@@ -56,6 +56,14 @@ const DEFAULT_SETTINGS = {
   outboundProxyEnabled: false,
   outboundProxyUrl: "",
   outboundNoProxy: "",
+  gistBackup: {
+    enabled: false,
+    token: "",
+    gistId: "",
+    htmlUrl: "",
+    updatedAt: "",
+    fileName: "xlabrouter-backup.enc.json",
+  },
   aiIntegrations: {
     enabled: false,
     autoConnect: false,

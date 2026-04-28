@@ -4,11 +4,22 @@ import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 import bcrypt from "bcryptjs";
 
+function sanitizeSettings(settings) {
+  const { password, ...safeSettings } = settings || {};
+  if (safeSettings.gistBackup && typeof safeSettings.gistBackup === "object") {
+    safeSettings.gistBackup = {
+      ...safeSettings.gistBackup,
+      token: safeSettings.gistBackup.token ? "***" : "",
+    };
+  }
+  return safeSettings;
+}
+
 export async function GET() {
   const startedAt = Date.now();
   try {
     const settings = await getSettings();
-    const { password, ...safeSettings } = settings;
+    const safeSettings = sanitizeSettings(settings);
     
     const enableRequestLogs = process.env.ENABLE_REQUEST_LOGS === "true";
     const enableTranslator = process.env.ENABLE_TRANSLATOR === "true";
@@ -81,8 +92,7 @@ export async function PATCH(request) {
       resetComboRotation();
     }
 
-    const { password, ...safeSettings } = settings;
-    return NextResponse.json(safeSettings);
+    return NextResponse.json(sanitizeSettings(settings));
   } catch (error) {
     console.log("Error updating settings:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
