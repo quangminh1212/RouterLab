@@ -893,7 +893,7 @@ function McpIcon({ item }) {
       <img
         src={iconUrl}
         alt={item.name}
-        className="h-7 w-7 object-contain"
+        className="h-8 w-8 object-contain"
         loading="lazy"
         onError={() => setFailed(true)}
       />
