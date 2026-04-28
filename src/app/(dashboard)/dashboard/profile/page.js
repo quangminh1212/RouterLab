@@ -591,7 +591,7 @@ export default function ProfilePage() {
                     onClick={() => setGistExpanded((prev) => !prev)}
                     disabled={gistLoading}
                   >
-                    {gistExpanded ? "Thu g?n" : "M? r?ng"}
+                    {gistExpanded ? "Thu gon" : "Mo rong"}
                   </Button>
                 </div>
               </div>
