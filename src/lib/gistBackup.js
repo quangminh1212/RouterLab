@@ -2,8 +2,10 @@ import crypto from "node:crypto";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 
 const GITHUB_GISTS_URL = "https://api.github.com/gists";
-const BACKUP_FILE_NAME = "xlabrouter-backup.enc.json";
-const BACKUP_GIST_DESCRIPTION = "XLab Router encrypted backup";
+const BACKUP_FILE_NAME = "xlabrouter.enc.json";
+const LEGACY_BACKUP_FILE_NAME = "xlabrouter-backup.enc.json";
+const BACKUP_GIST_DESCRIPTION = "xlabrouter";
+const LEGACY_BACKUP_GIST_DESCRIPTION = "XLab Router encrypted backup";
 const PBKDF2_ITERATIONS = 210000;
 
 function getEncryptionKey(passphrase, salt) {
@@ -84,8 +86,8 @@ async function findExistingBackupGist(token) {
   if (!Array.isArray(gists)) return null;
 
   return gists.find((gist) => {
-    const hasBackupFile = Boolean(gist?.files?.[BACKUP_FILE_NAME]);
-    const hasBackupDescription = gist?.description === BACKUP_GIST_DESCRIPTION;
+    const hasBackupFile = Boolean(gist?.files?.[BACKUP_FILE_NAME] || gist?.files?.[LEGACY_BACKUP_FILE_NAME]);
+    const hasBackupDescription = gist?.description === BACKUP_GIST_DESCRIPTION || gist?.description === LEGACY_BACKUP_GIST_DESCRIPTION;
     return hasBackupFile || hasBackupDescription;
   }) || null;
 }
@@ -123,7 +125,7 @@ export async function restoreFromGist({ token, gistId, passphrase }) {
   if (!resolvedGistId) throw new Error("No XLab Router backup Gist found yet");
 
   const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "GET" });
-  const file = gist.files?.[BACKUP_FILE_NAME];
+  const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_BACKUP_FILE_NAME];
   if (!file?.content) throw new Error("XLab Router backup file not found in Gist");
 
   const envelope = JSON.parse(file.content);
