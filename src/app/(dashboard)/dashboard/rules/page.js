@@ -174,7 +174,6 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
                   <p className="font-medium text-text-main truncate">{rule.name || "Rule"} {!rule.enabled && <span className="text-text-muted">(Tắt)</span>}</p>
                   <div className="mt-1 flex items-center gap-2 text-xs text-text-muted">
                     <span className={`px-2 py-0.5 rounded-full border ${priorityBadgeClass(rule.priority)}`}>{String(rule.priority || "medium").toUpperCase()}</span>
-                    <span className="truncate">Apply: {rule.applyType || "always"}</span>
                   </div>
                 </div>
 
@@ -217,4 +216,3 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
     </div>
   );
 }
-
