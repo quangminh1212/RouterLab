@@ -27,6 +27,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Check PowerShell for realtime log tee
+where powershell.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] PowerShell not found!
+    pause
+    exit /b 1
+)
+
 REM Install dependencies if needed
 if not exist "node_modules" (
     echo Installing dependencies...
@@ -46,19 +54,18 @@ if not exist ".env" (
 )
 
 echo Starting dev server on http://localhost:1212
+echo Logs are shown in realtime and also saved to %DEV_RUN_LOG%
 echo Press Ctrl+C to stop
 echo.
 
 :DEV_LOOP
 if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 
-REM Start dev server
-call npm run dev > "%DEV_RUN_LOG%" 2>&1
+REM Start dev server with realtime output while still writing next-dev.log
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Continue'; npm run dev 2>&1 | Tee-Object -FilePath '%DEV_RUN_LOG%'; exit $LASTEXITCODE"
 set EXIT_CODE=!ERRORLEVEL!
 
-REM Show output
-type "%DEV_RUN_LOG%"
-type "%DEV_RUN_LOG%" >> %LOG_FILE%
+if exist "%DEV_RUN_LOG%" type "%DEV_RUN_LOG%" >> "%LOG_FILE%"
 
 REM Check for cache errors
 findstr /I /C:"build-manifest.json" "%DEV_RUN_LOG%" >nul 2>&1
