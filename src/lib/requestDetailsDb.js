@@ -253,6 +253,40 @@ export async function getRequestDetailById(id) {
   return db.data.records.find(r => r.id === id) || null;
 }
 
+
+export async function exportRequestDetailsDb() {
+  if (isCloud) {
+    return {
+      records: [],
+      metadata: { recordsCount: 0, exportedAt: new Date().toISOString() },
+    };
+  }
+
+  if (writeBuffer.length > 0) {
+    await flushToDatabase();
+  }
+
+  const db = await getDb();
+  const records = Array.isArray(db.data?.records) ? db.data.records : [];
+  return {
+    records,
+    metadata: {
+      recordsCount: records.length,
+      exportedAt: new Date().toISOString(),
+    },
+  };
+}
+
+export async function importRequestDetailsDb(payload) {
+  if (isCloud) return;
+
+  const db = await getDb();
+  db.data = {
+    records: Array.isArray(payload?.records) ? payload.records : [],
+  };
+  await db.write();
+}
+
 // Graceful shutdown — use named handler so we can remove it on re-registration
 const _shutdownHandler = async () => {
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }

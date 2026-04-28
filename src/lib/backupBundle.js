@@ -1,5 +1,6 @@
 ﻿import { exportDb, importDb, getSettings } from "@/lib/localDb";
 import { exportUsageDb, importUsageDb } from "@/lib/usageDb";
+import { exportRequestDetailsDb, importRequestDetailsDb } from "@/lib/requestDetailsDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { getClaudeSettingsBackup, restoreClaudeSettingsBackup } from "@/app/api/cli-tools/claude-settings/route";
 import { getCodexSettingsBackup, restoreCodexSettingsBackup } from "@/app/api/cli-tools/codex-settings/route";
@@ -84,9 +85,10 @@ async function reapplyImportedRuntimeSettings() {
 }
 
 export async function createBackupBundle() {
-  const [database, usage, toolBackups] = await Promise.all([
+  const [database, usage, requestDetails, toolBackups] = await Promise.all([
     exportDb(),
     exportUsageDb(),
+    exportRequestDetailsDb(),
     exportToolBackups(),
   ]);
 
@@ -95,9 +97,11 @@ export async function createBackupBundle() {
     exportedAt: new Date().toISOString(),
     database,
     usage,
+    requestDetails,
     ...toolBackups,
     metadata: {
       includesUsage: true,
+      includesRequestDetails: true,
       includesClaudeCli: true,
       includesCodexCli: true,
       includesOpenCodeCli: true,
@@ -119,6 +123,10 @@ export async function restoreBackupBundle(payload) {
 
     if (payload.usage && typeof payload.usage === "object") {
       await importUsageDb(payload.usage);
+    }
+
+    if (payload.requestDetails && typeof payload.requestDetails === "object") {
+      await importRequestDetailsDb(payload.requestDetails);
     }
 
     await restoreToolBackups(payload);
