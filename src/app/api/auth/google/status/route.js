@@ -1,9 +1,10 @@
 ﻿import { NextResponse } from "next/server";
-import { getGoogleSession, isGoogleAuthConfigured, getValidGoogleAccessToken, findDriveBackupFile } from "@/lib/googleDriveSync";
+import { getGoogleSession, isGoogleAuthConfigured, getValidGoogleAccessToken, findDriveBackupFile, buildGoogleRedirectUri, getGoogleAuthConfig } from "@/lib/googleDriveSync";
 
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await getGoogleSession();
+    const authConfig = getGoogleAuthConfig();
     let backup = null;
     if (session.email && session.refreshToken) {
       try {
@@ -13,6 +14,8 @@ export async function GET() {
     }
     return NextResponse.json({
       configured: isGoogleAuthConfigured(),
+      authSource: authConfig.source || "none",
+      expectedRedirectUri: buildGoogleRedirectUri(request),
       connected: !!session.email && !!session.refreshToken,
       email: session.email || "",
       backup,

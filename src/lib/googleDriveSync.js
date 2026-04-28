@@ -68,12 +68,13 @@ function readXLabWebGoogleAuthConfig() {
 export function getGoogleAuthConfig() {
   const localClientId = process.env.GOOGLE_DESKTOP_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "";
   const localClientSecret = process.env.GOOGLE_DESKTOP_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "";
-  if (localClientId) return { clientId: localClientId, clientSecret: localClientSecret };
+  if (localClientId) return { clientId: localClientId, clientSecret: localClientSecret, source: "local" };
 
   const xlabWebConfig = readXLabWebGoogleAuthConfig();
   return {
     clientId: xlabWebConfig.clientId,
     clientSecret: xlabWebConfig.clientSecret,
+    source: xlabWebConfig.clientId ? "xlab-web" : "none",
   };
 }
 
@@ -83,7 +84,10 @@ export function isGoogleAuthConfigured() {
 }
 
 export function buildGoogleRedirectUri(request) {
-  return `${getBaseUrl(request)}/api/auth/google/callback`;
+  const config = getGoogleAuthConfig();
+  const defaultPath = config.source === "xlab-web" ? "/api/auth/callback/google" : "/api/auth/google/callback";
+  const callbackPath = process.env.GOOGLE_REDIRECT_PATH || defaultPath;
+  return `${getBaseUrl(request)}${callbackPath}`;
 }
 
 export function buildGoogleAuthUrl(request, state = "", codeChallenge = "") {

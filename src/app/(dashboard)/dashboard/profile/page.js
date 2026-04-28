@@ -25,7 +25,15 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
-  const [googleStatus, setGoogleStatus] = useState({ loading: true, configured: false, connected: false, email: "", backup: null });
+  const [googleStatus, setGoogleStatus] = useState({
+    loading: true,
+    configured: false,
+    connected: false,
+    email: "",
+    backup: null,
+    authSource: "none",
+    expectedRedirectUri: "",
+  });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
@@ -63,6 +71,8 @@ export default function ProfilePage() {
         connected: !!data?.connected,
         email: data?.email || "",
         backup: data?.backup || null,
+        authSource: data?.authSource || "none",
+        expectedRedirectUri: data?.expectedRedirectUri || "",
       }))
       .catch(() => setGoogleStatus((prev) => ({ ...prev, loading: false })));
   }, []);
@@ -499,6 +509,11 @@ export default function ProfilePage() {
                       ? "Not connected"
                       : "Google Drive OAuth not configured (XLab_Router / XLab_Web)"}
                 </p>
+                {!googleStatus.loading && !googleStatus.connected && googleStatus.expectedRedirectUri ? (
+                  <p className="text-xs text-text-muted mt-1 break-all">
+                    OAuth Source: {googleStatus.authSource} | Redirect URI: {googleStatus.expectedRedirectUri}
+                  </p>
+                ) : null}
               </div>
               {!googleStatus.connected ? (
                 <Button
