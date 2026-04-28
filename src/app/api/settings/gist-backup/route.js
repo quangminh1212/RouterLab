@@ -125,7 +125,7 @@ export async function POST(request) {
 
     if (action === "backup") {
       const auth = await ensureCliAuth(current);
-      const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: body?.passphrase || "" });
+      const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: auth.token });
       const nextConfig = {
         ...current,
         enabled: true,
@@ -142,7 +142,7 @@ export async function POST(request) {
 
     if (action === "restore") {
       const auth = await ensureCliAuth(current);
-      const restored = await restoreFromGist({ token: auth.token, gistId: current.gistId || "", passphrase: body?.passphrase || "" });
+      const restored = await restoreFromGist({ token: auth.token, gistId: current.gistId || "", passphrase: auth.token });
       const nextConfig = {
         ...current,
         enabled: true,

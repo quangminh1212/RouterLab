@@ -26,7 +26,6 @@ export default function ProfilePage() {
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
   const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
-  const [gistForm, setGistForm] = useState({ passphrase: "" });
   const [gistLoading, setGistLoading] = useState(false);
   const [gistExpanded, setGistExpanded] = useState(false);
   const [googleStatus, setGoogleStatus] = useState({
@@ -391,7 +390,7 @@ export default function ProfilePage() {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
     try {
-      const data = await postGistBackup({ action, passphrase: gistForm.passphrase });
+      const data = await postGistBackup({ action });
       if (action === "restore") {
         setDbStatus({ type: "success", message: "Restored encrypted backup from GitHub Gist" });
         reloadSettings();
@@ -411,7 +410,6 @@ export default function ProfilePage() {
     try {
       const data = await postGistBackup({ action: "disconnect" });
       setGistConfig(data.config);
-      setGistForm({ passphrase: "" });
       setDbStatus({ type: "success", message: "GitHub Gist backup disconnected" });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to disconnect Gist backup" });
@@ -596,23 +594,15 @@ export default function ProfilePage() {
               </div>
               {gistExpanded ? (
                 <>
-                  <Input
-                    type="password"
-                    label="Encryption Passphrase"
-                    placeholder="Required for backup and restore"
-                    value={gistForm.passphrase}
-                    onChange={(e) => setGistForm((prev) => ({ ...prev, passphrase: e.target.value }))}
-                    hint="Cần gh auth login. App tự tạo/tái dùng Gist xlabrouter-backup."
-                    disabled={gistLoading}
-                  />
+
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
                       Dùng GitHub CLI
                     </Button>
-                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading} disabled={!gistForm.passphrase}>
+                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
                       Backup
                     </Button>
-                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading} disabled={!gistForm.passphrase}>
+                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
                       Restore
                     </Button>
                     <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
