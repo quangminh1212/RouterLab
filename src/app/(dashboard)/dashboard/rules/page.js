@@ -7,12 +7,8 @@ function createEmptyRule() {
     id: `rule-${Date.now()}`,
     name: "",
     enabled: true,
-    trigger: "contains",
-    matchText: "",
-    target: "all",
-    actionType: "prepend-system",
-    actionValue: "",
-    priority: 100,
+    content: "",
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -23,7 +19,7 @@ export default function RulesPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  const sortedRules = useMemo(() => [...rules].sort((a, b) => (a.priority || 100) - (b.priority || 100)), [rules]);
+  const sortedRules = useMemo(() => [...rules], [rules]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,13 +62,27 @@ export default function RulesPage() {
   };
 
   const addRule = async () => {
-    if (!draft.name.trim() || !draft.matchText.trim() || !draft.actionValue.trim()) {
-      setStatus("Cần nhập tên, điều kiện và nội dung action");
+    if (!draft.content.trim()) {
+      setStatus("Cần nhập nội dung rule");
       return;
     }
-    const nextRules = [...rules, { ...draft, id: `rule-${Date.now()}` }];
+    const nextRules = [...rules, { ...draft, id: `rule-${Date.now()}`, name: draft.name.trim() || `Rule ${rules.length + 1}` }];
     await saveRules(nextRules);
     setDraft(createEmptyRule());
+  };
+
+  const updateRuleContent = async (id, content) => {
+    const nextRules = rules.map((item) => (
+      item.id === id ? { ...item, content, updatedAt: new Date().toISOString() } : item
+    ));
+    await saveRules(nextRules);
+  };
+
+  const updateRuleName = async (id, name) => {
+    const nextRules = rules.map((item) => (
+      item.id === id ? { ...item, name: name || item.name, updatedAt: new Date().toISOString() } : item
+    ));
+    await saveRules(nextRules);
   };
 
   const removeRule = async (id) => {
@@ -89,34 +99,13 @@ export default function RulesPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-text-main">Rules</h1>
-        <p className="text-sm text-text-muted">Thêm rule AI để áp dụng prompt/action theo điều kiện.</p>
+        <p className="text-sm text-text-muted">Nhập rule như file markdown. Có thể thêm nhiều rule.</p>
       </div>
 
       <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 space-y-3">
-        <h2 className="text-base font-semibold text-text-main">Thêm Rule AI</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule" value={draft.name} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
-          <input className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Điều kiện (match text)" value={draft.matchText} onChange={(e) => setDraft((v) => ({ ...v, matchText: e.target.value }))} />
-          <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft.trigger} onChange={(e) => setDraft((v) => ({ ...v, trigger: e.target.value }))}>
-            <option value="contains">contains</option>
-            <option value="startsWith">startsWith</option>
-            <option value="equals">equals</option>
-            <option value="regex">regex</option>
-          </select>
-          <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft.target} onChange={(e) => setDraft((v) => ({ ...v, target: e.target.value }))}>
-            <option value="all">all</option>
-            <option value="system">system</option>
-            <option value="user">user</option>
-            <option value="assistant">assistant</option>
-          </select>
-          <select className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" value={draft.actionType} onChange={(e) => setDraft((v) => ({ ...v, actionType: e.target.value }))}>
-            <option value="prepend-system">prepend-system</option>
-            <option value="append-system">append-system</option>
-            <option value="replace-user">replace-user</option>
-          </select>
-          <input type="number" className="px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Priority" value={draft.priority} onChange={(e) => setDraft((v) => ({ ...v, priority: Number(e.target.value || 100) }))} />
-        </div>
-        <textarea className="w-full min-h-28 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Action value (prompt/rule text)" value={draft.actionValue} onChange={(e) => setDraft((v) => ({ ...v, actionValue: e.target.value }))} />
+        <h2 className="text-base font-semibold text-text-main">Thêm Rule</h2>
+        <input className="w-full px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="Tên rule (tuỳ chọn)" value={draft.name} onChange={(e) => setDraft((v) => ({ ...v, name: e.target.value }))} />
+        <textarea className="w-full min-h-32 px-3 py-2 rounded-lg bg-sidebar border border-black/10 dark:border-white/10" placeholder="# Rule\nViết nội dung markdown tại đây..." value={draft.content} onChange={(e) => setDraft((v) => ({ ...v, content: e.target.value }))} />
         <button onClick={addRule} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-60">
           {saving ? "Đang lưu..." : "Thêm rule"}
         </button>
@@ -128,10 +117,18 @@ export default function RulesPage() {
         {!loading && sortedRules.length === 0 && <p className="text-sm text-text-muted">Chưa có rule nào.</p>}
         {!loading && sortedRules.map((rule) => (
           <div key={rule.id} className="rounded-lg border border-black/10 dark:border-white/10 p-3 flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <p className="font-medium text-text-main">{rule.name} {rule.enabled ? "" : "(tắt)"}</p>
-              <p className="text-xs text-text-muted">{rule.trigger} | target: {rule.target} | action: {rule.actionType} | priority: {rule.priority}</p>
-              <p className="text-sm text-text-muted">match: {rule.matchText}</p>
+            <div className="space-y-2 flex-1">
+              <input
+                className="w-full px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
+                defaultValue={rule.name || ""}
+                onBlur={(e) => updateRuleName(rule.id, e.target.value.trim())}
+              />
+              <textarea
+                className="w-full min-h-28 px-2 py-1 rounded bg-sidebar border border-black/10 dark:border-white/10"
+                defaultValue={rule.content || ""}
+                onBlur={(e) => updateRuleContent(rule.id, e.target.value)}
+              />
+              <p className="text-xs text-text-muted">Cập nhật: {rule.updatedAt || "-"}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => toggleRule(rule.id)} disabled={saving} className="px-3 py-1 rounded border border-black/10 dark:border-white/10 text-sm">
@@ -149,4 +146,3 @@ export default function RulesPage() {
     </div>
   );
 }
-
