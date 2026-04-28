@@ -1,8 +1,11 @@
 import path from "node:path";
 
+const hideDevIndicators = process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR === "1";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  devIndicators: hideDevIndicators ? false : undefined,
   serverExternalPackages: ["better-sqlite3"],
   images: {
     unoptimized: true
