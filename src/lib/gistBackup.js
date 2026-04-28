@@ -3,6 +3,7 @@ import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 
 const GITHUB_GISTS_URL = "https://api.github.com/gists";
 const BACKUP_FILE_NAME = "xlabrouter-backup.enc.json";
+const BACKUP_GIST_DESCRIPTION = "XLab Router encrypted backup";
 const PBKDF2_ITERATIONS = 210000;
 
 function getEncryptionKey(passphrase, salt) {
@@ -68,6 +69,7 @@ async function githubRequest(token, url, options = {}) {
       "X-GitHub-Api-Version": "2022-11-28",
       ...(options.headers || {}),
     },
+    cache: "no-store",
   });
 
   const data = await response.json().catch(() => ({}));
@@ -77,21 +79,35 @@ async function githubRequest(token, url, options = {}) {
   return data;
 }
 
+async function findExistingBackupGist(token) {
+  const gists = await githubRequest(token, `${GITHUB_GISTS_URL}?per_page=100`, { method: "GET" });
+  if (!Array.isArray(gists)) return null;
+
+  return gists.find((gist) => {
+    const hasBackupFile = Boolean(gist?.files?.[BACKUP_FILE_NAME]);
+    const hasBackupDescription = gist?.description === BACKUP_GIST_DESCRIPTION;
+    return hasBackupFile || hasBackupDescription;
+  }) || null;
+}
+
 export async function backupToGist({ token, gistId = "", passphrase }) {
   const backup = await createBackupBundle();
   const encrypted = encryptPayload(backup, passphrase);
   const content = JSON.stringify(encrypted, null, 2);
 
   const body = {
-    description: "XLab Router encrypted backup",
+    description: BACKUP_GIST_DESCRIPTION,
     public: false,
     files: {
       [BACKUP_FILE_NAME]: { content },
     },
   };
 
-  const gist = gistId
-    ? await githubRequest(token, `${GITHUB_GISTS_URL}/${gistId}`, { method: "PATCH", body: JSON.stringify(body) })
+  const existingGist = gistId ? null : await findExistingBackupGist(token);
+  const resolvedGistId = gistId || existingGist?.id || "";
+
+  const gist = resolvedGistId
+    ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "PATCH", body: JSON.stringify(body) })
     : await githubRequest(token, GITHUB_GISTS_URL, { method: "POST", body: JSON.stringify(body) });
 
   return {
@@ -102,9 +118,11 @@ export async function backupToGist({ token, gistId = "", passphrase }) {
 }
 
 export async function restoreFromGist({ token, gistId, passphrase }) {
-  if (!gistId || typeof gistId !== "string") throw new Error("Gist ID is required");
+  const existingGist = gistId ? null : await findExistingBackupGist(token);
+  const resolvedGistId = gistId || existingGist?.id || "";
+  if (!resolvedGistId) throw new Error("No XLab Router backup Gist found yet");
 
-  const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${gistId}`, { method: "GET" });
+  const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "GET" });
   const file = gist.files?.[BACKUP_FILE_NAME];
   if (!file?.content) throw new Error("XLab Router backup file not found in Gist");
 

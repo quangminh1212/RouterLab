@@ -61,7 +61,23 @@ async function getGitHubCliToken() {
   }
 }
 
-export async function GET(request) {
+async function ensureCliAuth(current) {
+  if (current?.token) {
+    return {
+      token: current.token,
+      githubLogin: current.githubLogin || "",
+    };
+  }
+
+  const token = await getGitHubCliToken();
+  const user = await validateGitHubToken(token);
+  return {
+    token,
+    githubLogin: user.login || "",
+  };
+}
+
+export async function GET() {
   try {
     const settings = await getSettings();
     return NextResponse.json(toPublicConfig(settings));
@@ -86,30 +102,7 @@ export async function POST(request) {
         token,
         tokenSource: "gh-cli",
         githubLogin: gitHubUser.login || current.githubLogin || "",
-        gistId: typeof body.gistId === "string" ? body.gistId.trim() : current.gistId || "",
         fileName: current.fileName || "xlabrouter-backup.enc.json",
-      };
-      await updateSettings({ gistBackup: nextConfig });
-      return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
-    }
-
-    if (action === "save-config") {
-      const incomingToken = typeof body.token === "string" ? body.token.trim() : "";
-      const tokenToUse = incomingToken || current.token || "";
-      let githubLogin = current.githubLogin || "";
-      if (incomingToken) {
-        const gitHubUser = await validateGitHubToken(incomingToken);
-        githubLogin = gitHubUser.login || "";
-      }
-
-      const nextConfig = {
-        ...current,
-        enabled: body.enabled !== false,
-        token: tokenToUse,
-        tokenSource: incomingToken ? "manual" : current.tokenSource || "",
-        githubLogin,
-        gistId: typeof body.gistId === "string" ? body.gistId.trim() : current.gistId || "",
-        fileName: typeof body.fileName === "string" && body.fileName.trim() ? body.fileName.trim() : current.fileName || "xlabrouter-backup.enc.json",
       };
       await updateSettings({ gistBackup: nextConfig });
       return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
@@ -130,19 +123,15 @@ export async function POST(request) {
       return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
     }
 
-    const token = (current.token || "").trim();
-    const gistId = (current.gistId || "").trim();
-    const passphrase = typeof body.passphrase === "string" ? body.passphrase : "";
-
-    if (!token) {
-      return NextResponse.json({ error: "GitHub token is not configured" }, { status: 400 });
-    }
-
     if (action === "backup") {
-      const backup = await backupToGist({ token, gistId, passphrase });
+      const auth = await ensureCliAuth(current);
+      const backup = await backupToGist({ token: auth.token, gistId: current.gistId || "", passphrase: body?.passphrase || "" });
       const nextConfig = {
         ...current,
         enabled: true,
+        token: auth.token,
+        tokenSource: "gh-cli",
+        githubLogin: auth.githubLogin || current.githubLogin || "",
         gistId: backup.gistId,
         htmlUrl: backup.htmlUrl,
         updatedAt: backup.updatedAt,
@@ -152,11 +141,20 @@ export async function POST(request) {
     }
 
     if (action === "restore") {
-      if (!gistId) {
-        return NextResponse.json({ error: "No backup Gist connected yet" }, { status: 400 });
-      }
-      const restored = await restoreFromGist({ token, gistId, passphrase });
-      return NextResponse.json({ success: true, action, restored, config: toPublicConfig(settings) });
+      const auth = await ensureCliAuth(current);
+      const restored = await restoreFromGist({ token: auth.token, gistId: current.gistId || "", passphrase: body?.passphrase || "" });
+      const nextConfig = {
+        ...current,
+        enabled: true,
+        token: auth.token,
+        tokenSource: "gh-cli",
+        githubLogin: auth.githubLogin || current.githubLogin || "",
+        gistId: restored.gistId,
+        htmlUrl: restored.htmlUrl,
+        updatedAt: restored.updatedAt,
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, action, restored, config: toPublicConfig({ gistBackup: nextConfig }) });
     }
 
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
