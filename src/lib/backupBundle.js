@@ -84,11 +84,14 @@ async function reapplyImportedRuntimeSettings() {
   }
 }
 
-export async function createBackupBundle() {
+export async function createBackupBundle(options = {}) {
+  const includeUsage = options.includeUsage !== false;
+  const includeRequestDetails = options.includeRequestDetails !== false;
+
   const [database, usage, requestDetails, toolBackups] = await Promise.all([
     exportDb(),
-    exportUsageDb(),
-    exportRequestDetailsDb(),
+    includeUsage ? exportUsageDb() : Promise.resolve(undefined),
+    includeRequestDetails ? exportRequestDetailsDb() : Promise.resolve(undefined),
     exportToolBackups(),
   ]);
 
@@ -96,12 +99,12 @@ export async function createBackupBundle() {
     version: 4,
     exportedAt: new Date().toISOString(),
     database,
-    usage,
-    requestDetails,
+    ...(includeUsage ? { usage } : {}),
+    ...(includeRequestDetails ? { requestDetails } : {}),
     ...toolBackups,
     metadata: {
-      includesUsage: true,
-      includesRequestDetails: true,
+      includesUsage: includeUsage,
+      includesRequestDetails: includeRequestDetails,
       includesClaudeCli: true,
       includesCodexCli: true,
       includesOpenCodeCli: true,

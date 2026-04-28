@@ -107,8 +107,8 @@ async function findExistingBackupGist(token) {
   }) || null;
 }
 
-export async function backupToGist({ token, gistId = "", passphrase }) {
-  const backup = await createBackupBundle();
+export async function backupToGist({ token, gistId = "", passphrase, payload = null }) {
+  const backup = payload || await createBackupBundle();
   const encrypted = encryptPayload(backup, passphrase);
   const content = JSON.stringify(encrypted, null, 2);
 
