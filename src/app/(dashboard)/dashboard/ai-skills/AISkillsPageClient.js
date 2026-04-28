@@ -445,44 +445,35 @@ function toRepoRecord(repo) {
 
 export default function AISkillsPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
-  const [skillCatalog, setSkillCatalog] = useState([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [skillCatalog, setSkillCatalog] = useState(() => normalizeSkillCatalog(SKILL_CATALOG));
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [savingSkillId, setSavingSkillId] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/ai-skills/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: "" }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const skills = Array.isArray(data?.results) ? data.results : [];
-        setSkillCatalog(normalizeSkillCatalog(skills.length > 0 ? skills : SKILL_CATALOG));
-      })
-      .catch(() => {
-        if (!cancelled) setSkillCatalog(normalizeSkillCatalog(SKILL_CATALOG));
-      })
-      .finally(() => {
-        if (!cancelled) setCatalogLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
+    const loadData = async () => {
+      const settingsRes = await fetch("/api/settings").catch(() => null);
+      if (settingsRes?.ok) {
+        const data = await settingsRes.json().catch(() => ({}));
+        if (!cancelled) setAiForm(cloneAiIntegrations(data?.aiIntegrations));
+      }
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        const next = cloneAiIntegrations(data?.aiIntegrations);
-        setAiForm(next);
-      })
-      .catch(() => setStatus({ type: "error", message: "Failed to load AI skills settings" }))
-      .finally(() => setLoading(false));
+      const skillsRes = await fetch("/api/ai-skills/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "" }),
+      }).catch(() => null);
+      if (skillsRes?.ok) {
+        const data = await skillsRes.json().catch(() => ({}));
+        const skills = Array.isArray(data?.results) ? data.results : [];
+        if (!cancelled && skills.length > 0) setSkillCatalog(normalizeSkillCatalog(skills));
+      }
+    };
+    loadData();
+    return () => { cancelled = true; };
   }, []);
 
   const enabledRepoSources = useMemo(() => {
@@ -621,7 +612,7 @@ export default function AISkillsPageClient() {
                       <img
                         src={repo.iconUrl}
                         alt={`${repo.name} icon`}
-                        className="h-6 w-6 rounded-md object-cover"
+                        className="h-8 w-8 rounded-md object-cover"
                         loading="lazy"
                         referrerPolicy="no-referrer"
                       />

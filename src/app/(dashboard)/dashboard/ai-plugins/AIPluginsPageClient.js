@@ -139,13 +139,13 @@ function PluginIcon({ iconUrl, category, name }) {
 
 export default function AIPluginsPageClient() {
   const [aiForm, setAiForm] = useState(() => cloneAiIntegrations(EMPTY_AI_INTEGRATIONS));
-  const [plugins, setPlugins] = useState([]);
+  const [plugins, setPlugins] = useState(() => FALLBACK_PLUGINS.map(normalizePlugin));
   const [sourceOptions, setSourceOptions] = useState([{ id: "all", label: "All sources" }]);
   const [query, setQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [savingPluginId, setSavingPluginId] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
 
@@ -154,14 +154,16 @@ export default function AIPluginsPageClient() {
 
     const loadData = async () => {
       try {
-        const [settingsRes, catalogRes] = await Promise.all([
-          fetch("/api/settings", { cache: "no-store" }),
-          fetch("/api/ai-plugins/catalog", { cache: "no-store" }),
-        ]);
+        const settingsRes = await fetch("/api/settings", { cache: "no-store" });
 
         const settings = await settingsRes.json().catch(() => ({}));
         const nextForm = cloneAiIntegrations(settings?.aiIntegrations);
-        if (!canceled) setAiForm(nextForm);
+        if (!canceled) {
+          setAiForm(nextForm);
+          setLoading(false);
+        }
+
+        const catalogRes = await fetch("/api/ai-plugins/catalog", { cache: "no-store" });
 
         if (catalogRes.ok) {
           const catalog = await catalogRes.json().catch(() => ({}));
