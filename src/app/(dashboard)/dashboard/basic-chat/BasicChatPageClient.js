@@ -786,7 +786,15 @@ export default function BasicChatPageClient() {
     <div className="relative flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[#0B1416] text-white overflow-hidden">
       <div className="relative mx-auto flex flex-1 h-full min-h-0 w-full max-w-4xl flex-col">
 
-        <div className="flex items-center justify-end px-4 py-3 lg:px-6">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 lg:px-6">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((value) => !value)}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            <span>History</span>
+          </button>
           <button
             type="button"
             onClick={handleNewChat}
