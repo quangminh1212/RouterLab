@@ -494,6 +494,7 @@ async function launchWebUIProcess(options = {}) {
           cwd: appRoot,
           stdio: "inherit",
           env: sharedEnv,
+          windowsHide: true,
         });
 
         await new Promise((resolve, reject) => {
@@ -518,13 +519,14 @@ async function launchWebUIProcess(options = {}) {
     }
   }
 
+  const runtimeNode = process.env.XLABROUTER_BACKGROUND === "1" ? getHiddenNodeExecutable() : process.execPath;
   let commandPath;
   let commandArgs;
   if (runProd) {
-    commandPath = process.execPath;
+    commandPath = runtimeNode;
     commandArgs = [path.join(appRoot, ".next", "standalone", "server.js")];
   } else {
-    commandPath = process.execPath;
+    commandPath = runtimeNode;
     commandArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
   }
 
@@ -532,6 +534,7 @@ async function launchWebUIProcess(options = {}) {
     cwd: appRoot,
     stdio: ["ignore", "pipe", "pipe"],
     env: sharedEnv,
+    windowsHide: true,
   });
 
   let warmupTriggered = false;
@@ -583,6 +586,11 @@ async function launchWebUIProcess(options = {}) {
 }
 
 async function startWebUI() {
+  if (process.platform === "win32" && process.env.XLABROUTER_BACKGROUND !== "1") {
+    launchDetachedWebHost();
+    printWebLaunchMessage();
+    return;
+  }
   await launchWebUIProcess();
 }
 
@@ -593,16 +601,40 @@ function printTrayLaunchMessage() {
   console.log(`[INFO] Run xlabrouter --web if you want to keep it in the current terminal.`);
 }
 
-function launchDetachedTrayHost() {
+
+function getHiddenNodeExecutable() {
   const nodeDir = path.dirname(process.execPath);
   const hiddenNodePath = process.platform === "win32"
     ? path.join(nodeDir, "nodew.exe")
     : process.execPath;
-  const executable = process.platform === "win32" && fs.existsSync(hiddenNodePath)
+  return process.platform === "win32" && fs.existsSync(hiddenNodePath)
     ? hiddenNodePath
     : process.execPath;
+}
 
-  const child = spawn(executable, [__filename, "--tray-host"], {
+function printWebLaunchMessage() {
+  console.log(`[INFO] XLab Router is starting in background mode.`);
+  console.log(`[INFO] Dashboard: ${getDashboardUrl()}`);
+  console.log(`[INFO] No extra CMD windows will be shown.`);
+}
+
+function launchDetachedWebHost() {
+  const child = spawn(getHiddenNodeExecutable(), [__filename, "--web-host"], {
+    cwd: process.cwd(),
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+    env: {
+      ...process.env,
+      XLABROUTER_BACKGROUND: "1",
+      XLABROUTER_LAUNCHED_FROM_ALIAS: "1",
+    },
+  });
+  child.unref();
+}
+
+function launchDetachedTrayHost() {
+  const child = spawn(getHiddenNodeExecutable(), [__filename, "--tray-host"], {
     cwd: process.cwd(),
     detached: true,
     stdio: "ignore",
@@ -868,6 +900,11 @@ async function showMenu() {
 if (command === "--web") {
   startWebUI().catch((err) => {
     console.error("[ERROR] Web UI failed:", err);
+    process.exit(1);
+  });
+} else if (command === "--web-host") {
+  launchWebUIProcess().catch((err) => {
+    console.error("[ERROR] Web host failed:", err);
     process.exit(1);
   });
 } else if (command === "--tray-host") {
