@@ -17,7 +17,7 @@ export default function LoginPage() {
       : null;
     if (!googleError) return;
     if (googleError === "not-configured") {
-      setError("Google login is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
+      setError("Google Drive Desktop OAuth is not configured. Add GOOGLE_DESKTOP_CLIENT_ID (or GOOGLE_CLIENT_ID).");
       return;
     }
     setError(`Google login failed: ${googleError}`);
