@@ -17,7 +17,7 @@ export default function LoginPage() {
       : null;
     if (!googleError) return;
     if (googleError === "not-configured") {
-      setError("Google Drive Desktop OAuth is not configured. Add GOOGLE_DESKTOP_CLIENT_ID (or GOOGLE_CLIENT_ID).");
+      setError("Google Drive OAuth chưa cấu hình trong XLab_Router và cũng không tìm thấy trong C:\\Dev\\XLab_Web (.env.local/.env).");
       return;
     }
     setError(`Google login failed: ${googleError}`);

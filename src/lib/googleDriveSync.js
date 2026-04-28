@@ -1,4 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { cookies } from "next/headers";
 
 const GOOGLE_AUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -15,6 +16,8 @@ const SCOPE = [
   "profile",
   "https://www.googleapis.com/auth/drive.file",
 ].join(" ");
+const XLAB_WEB_DIR = process.env.XLAB_WEB_DIR || "C:\\Dev\\XLab_Web";
+const XLAB_WEB_ENV_FILES = [".env.local", ".env"];
 
 function getBaseUrl(request) {
   const url = new URL(request.url);
@@ -42,10 +45,35 @@ function escapeQuery(value) {
   return String(value || "").replace(/'/g, "\\'");
 }
 
+function readEnvValue(content, key) {
+  const match = content.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+?)\\s*$`, "m"));
+  if (!match) return "";
+  return match[1].replace(/^['"]|['"]$/g, "").trim();
+}
+
+function readXLabWebGoogleAuthConfig() {
+  for (const fileName of XLAB_WEB_ENV_FILES) {
+    const filePath = `${XLAB_WEB_DIR}\\${fileName}`;
+    if (!existsSync(filePath)) continue;
+    try {
+      const content = readFileSync(filePath, "utf8");
+      const clientId = readEnvValue(content, "GOOGLE_CLIENT_ID");
+      const clientSecret = readEnvValue(content, "GOOGLE_CLIENT_SECRET");
+      if (clientId) return { clientId, clientSecret };
+    } catch {}
+  }
+  return { clientId: "", clientSecret: "" };
+}
+
 export function getGoogleAuthConfig() {
+  const localClientId = process.env.GOOGLE_DESKTOP_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "";
+  const localClientSecret = process.env.GOOGLE_DESKTOP_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "";
+  if (localClientId) return { clientId: localClientId, clientSecret: localClientSecret };
+
+  const xlabWebConfig = readXLabWebGoogleAuthConfig();
   return {
-    clientId: process.env.GOOGLE_DESKTOP_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "",
-    clientSecret: process.env.GOOGLE_DESKTOP_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
+    clientId: xlabWebConfig.clientId,
+    clientSecret: xlabWebConfig.clientSecret,
   };
 }
 

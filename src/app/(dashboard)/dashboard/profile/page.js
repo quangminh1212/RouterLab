@@ -494,7 +494,7 @@ export default function ProfilePage() {
                     ? `Connected: ${googleStatus.email}`
                     : googleStatus.configured
                       ? "Not connected"
-                      : "Google Drive Desktop OAuth not configured"}
+                      : "Google Drive OAuth not configured (XLab_Router / XLab_Web)"}
                 </p>
               </div>
               {!googleStatus.connected ? (
