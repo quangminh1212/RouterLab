@@ -113,16 +113,17 @@ export default function RulesPage() {
       <section className="rounded-2xl border border-white/10 bg-black/10 backdrop-blur-sm p-4 md:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddForm((v) => !v)}
-              className="size-7 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors flex items-center justify-center"
-              title={showAddForm ? "Đóng" : "Thêm rule"}
-            >
-              +
-            </button>
             <span className="material-symbols-outlined text-primary">rule_settings</span>
             <h2 className="text-base font-semibold text-text-main">Danh sách Rule ({sortedRules.length})</h2>
           </div>
+          <button
+            onClick={() => setShowAddForm((v) => !v)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-colors text-sm font-medium"
+            title={showAddForm ? "Đóng" : "Thêm rule"}
+          >
+            <span className="text-base leading-none">+</span>
+            <span>{showAddForm ? "Đóng" : "Thêm rule"}</span>
+          </button>
         </div>
 
         {showAddForm && (
@@ -230,4 +231,3 @@ Viết nội dung markdown tại đây..." value={draft?.content ?? ""} onChange
     </div>
   );
 }
-
