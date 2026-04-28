@@ -593,14 +593,12 @@ export default function ProfilePage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn("text-xs px-2 py-1 rounded-full border", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={cn("text-xs px-2 py-1 rounded-full border whitespace-nowrap", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
                     {gistConfig.hasToken ? (
-                      <>
-                        Connected
-                        {gistConfig.githubLogin ? ` (@${gistConfig.githubLogin})` : ""}
-                        {gistConfig.tokenSource === "gh-cli" ? " via CLI" : ""}
-                      </>
+                      gistConfig.githubLogin
+                        ? `@${gistConfig.githubLogin}${gistConfig.tokenSource === "gh-cli" ? " (CLI)" : ""}`
+                        : "Connected"
                     ) : "Not connected"}
                   </span>
                   <Button
