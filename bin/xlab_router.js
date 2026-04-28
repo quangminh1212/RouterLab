@@ -92,18 +92,23 @@ function ensureWorkspaceRoot(repoRoot) {
 
   const sourceNodeModulesCandidates = inNodeModules
     ? [
-      path.resolve(repoRoot, ".."),
       path.join(repoRoot, "node_modules"),
+      path.resolve(repoRoot, ".."),
       path.resolve(repoRoot, "..", "..", "node_modules"),
     ]
     : [
       path.join(repoRoot, "node_modules"),
     ];
 
-  const sourceNodeModules = sourceNodeModulesCandidates.find((candidate) => fs.existsSync(candidate));
-  if (!sourceNodeModules) {
+  const existingNodeModuleDirs = sourceNodeModulesCandidates
+    .filter((candidate) => fs.existsSync(candidate))
+    .filter((candidate, index, arr) => arr.indexOf(candidate) === index);
+
+  if (existingNodeModuleDirs.length === 0) {
     throw new Error("Cannot locate node_modules for runtime workspace.");
   }
+
+  const sourceNodeModules = existingNodeModuleDirs.join(path.delimiter);
 
   if (!inNodeModules) {
     return { appRoot: repoRoot, sourceNodeModules };
@@ -112,7 +117,11 @@ function ensureWorkspaceRoot(repoRoot) {
   const installRoot = path.resolve(repoRoot, "..", "..");
   const workspaceRoot = path.join(installRoot, ".xlabrouter-runtime", pkg.version);
   const stampFile = path.join(workspaceRoot, ".runtime-stamp");
-  const expectedStamp = `${pkg.version}:${repoRoot}`;
+  const packageJsonPath = path.join(repoRoot, "package.json");
+  const packageJsonMtime = fs.existsSync(packageJsonPath)
+    ? String(fs.statSync(packageJsonPath).mtimeMs)
+    : "0";
+  const expectedStamp = `${pkg.version}:${repoRoot}:${packageJsonMtime}`;
   const currentStamp = fs.existsSync(stampFile) ? fs.readFileSync(stampFile, "utf8") : "";
 
   if (currentStamp !== expectedStamp) {
