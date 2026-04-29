@@ -298,6 +298,31 @@ export async function getTunnelStatus(settingsOverride) {
   const shortId = state?.shortId || "";
   const publicUrl = getComputedPublicUrl(shortId);
 
+  if (settings.tunnelEnabled !== true) {
+    try {
+      if (isNgrokRunning()) killNgrok();
+      if (isCloudflaredRunning()) killCloudflared();
+    } catch {
+      // ignore cleanup errors
+    }
+
+    if (state) {
+      saveState({ shortId: state.shortId, machineId: state.machineId, tunnelUrl: null });
+    }
+
+    cachedTunnelStatus = { running: false, tunnelUrl: "", provider: settings.tunnelProvider || "" };
+    cachedTunnelStatusAt = Date.now();
+
+    return {
+      enabled: false,
+      tunnelUrl: "",
+      shortId,
+      publicUrl,
+      running: false,
+      provider: settings.tunnelProvider || "",
+    };
+  }
+
   if (shouldUseCachedStatus(cachedTunnelStatusAt)) {
     return {
       ...cachedTunnelStatus,
