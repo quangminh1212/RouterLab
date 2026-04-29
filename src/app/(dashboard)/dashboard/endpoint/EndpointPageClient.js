@@ -706,32 +706,32 @@ export default function APIPageClient() {
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
           try {
-            const r2 = await fetch("/api/tunnel/tailscale-check");
-            if (r2.ok) {
-              const check = await r2.json();
-              if (check.loggedIn) {
-                setTsProgress("Starting funnel...");
-                const res2 = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
-                const data2 = await res2.json();
-                if (res2.ok && data2.success) {
-                  if (tab) tab.close();
-                  setTsUrl(data2.tunnelUrl || "");
-                  const ok2 = await pingTsHealth(data2.tunnelUrl);
-                  if (ok2) {
-                    setTsEnabled(true);
-                    setTsStatus(null);
-                  } else {
-                    setTsEnabled(true);
-                    setTsStatus({ type: "warning", message: "Connected but not reachable yet." });
-                  }
-                } else if (data2.funnelNotEnabled && data2.enableUrl) {
-                  await pollFunnelEnable(data2.enableUrl, tab);
-                } else {
-                  setTsStatus({ type: "error", message: data2.error || "Failed to start funnel" });
-                }
-                return;
+            setTsProgress("Starting funnel...");
+            const res2 = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
+            const data2 = await res2.json();
+            if (res2.ok && data2.success) {
+              if (tab) tab.close();
+              setTsUrl(data2.tunnelUrl || "");
+              const ok2 = await pingTsHealth(data2.tunnelUrl);
+              if (ok2) {
+                setTsEnabled(true);
+                setTsStatus(null);
+              } else {
+                setTsEnabled(true);
+                setTsStatus({ type: "warning", message: "Connected but not reachable yet." });
               }
+              return;
             }
+            if (data2.funnelNotEnabled && data2.enableUrl) {
+              await pollFunnelEnable(data2.enableUrl, tab);
+              return;
+            }
+            if (data2.needsLogin) {
+              setTsProgress("Waiting for login...");
+              continue;
+            }
+            setTsStatus({ type: "error", message: data2.error || "Failed to start funnel" });
+            return;
           } catch { /* retry */ }
         }
         setTsStatus({ type: "error", message: "Login timed out. Please try again." });
