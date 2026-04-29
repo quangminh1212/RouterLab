@@ -605,7 +605,7 @@ export default function ProfilePage() {
 
                   <div className="flex flex-wrap gap-2">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-bg-subtle">
-                      <span className="text-xs text-text-muted">Auto Sync</span>
+                      <span className="text-xs text-text-muted">Auto Restore</span>
                       <Toggle checked={gistConfig.autoSyncEnabled !== false} onChange={async (checked) => {
                         setGistLoading(true);
                         try {

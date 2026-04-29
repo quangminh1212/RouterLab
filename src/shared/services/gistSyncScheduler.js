@@ -1,50 +1,31 @@
 import { getSettings, updateSettings } from "@/lib/localDb";
-import { backupToGist } from "@/lib/gistBackup";
-import { createBackupBundle } from "@/lib/backupBundle";
-import crypto from "node:crypto";
+import { restoreFromGist } from "@/lib/gistBackup";
 
 const DEFAULT_INTERVAL_MS = 60 * 1000;
-const USAGE_SYNC_INTERVAL_MS = 60 * 60 * 1000;
 
 const state = global.__gistSyncScheduler ??= {
   interval: null,
   running: false,
   lastSyncedAt: 0,
-  lastCoreHash: "",
-  lastUsageHash: "",
-  lastUsageSyncedAt: 0,
 };
 
-function sortObject(value) {
-  if (Array.isArray(value)) return value.map(sortObject);
-  if (value && typeof value === "object") {
-    const sorted = {};
-    for (const key of Object.keys(value).sort()) {
-      sorted[key] = sortObject(value[key]);
-    }
-    return sorted;
+async function fetchGistUpdatedAt(token, gistId) {
+  if (!token || !gistId) return null;
+  try {
+    const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.updated_at || null;
+  } catch {
+    return null;
   }
-  return value;
-}
-
-function hashPayload(value) {
-  const canonical = JSON.stringify(sortObject(value));
-  return crypto.createHash("sha256").update(canonical).digest("hex");
-}
-
-function computeCoreHash(bundle) {
-  const core = { ...bundle };
-  delete core.exportedAt;
-  delete core.usage;
-  delete core.requestDetails;
-  return hashPayload(core);
-}
-
-function computeUsageHash(bundle) {
-  return hashPayload({
-    usage: bundle?.usage || null,
-    requestDetails: bundle?.requestDetails || null,
-  });
 }
 
 function buildStableGistPassphrase(gistBackup) {
@@ -54,7 +35,7 @@ function buildStableGistPassphrase(gistBackup) {
   return `xlabrouter-gist-sync:${login}`;
 }
 
-async function runBackupOnce() {
+async function runAutoRestoreOnce() {
   if (state.running) return;
   state.running = true;
 
@@ -72,34 +53,21 @@ async function runBackupOnce() {
       return;
     }
 
-    const now = Date.now();
-    const includeUsage = now - state.lastUsageSyncedAt >= USAGE_SYNC_INTERVAL_MS;
-    const includeRequestDetails = includeUsage;
-
-    const bundle = await createBackupBundle({ includeUsage, includeRequestDetails });
-    const nextCoreHash = computeCoreHash(bundle);
-    const nextUsageHash = includeUsage ? computeUsageHash(bundle) : state.lastUsageHash;
-
-    const coreChanged = nextCoreHash !== state.lastCoreHash;
-    const usageChanged = includeUsage && nextUsageHash !== state.lastUsageHash;
-    if (!coreChanged && !usageChanged) {
+    const remoteUpdatedAt = await fetchGistUpdatedAt(gistBackup.token, gistBackup.gistId || "");
+    const localUpdatedAt = gistBackup.updatedAt || "";
+    if (remoteUpdatedAt && localUpdatedAt && new Date(remoteUpdatedAt).getTime() <= new Date(localUpdatedAt).getTime()) {
       return;
     }
 
     const passphrase = buildStableGistPassphrase(gistBackup);
-    const result = await backupToGist({
+    const result = await restoreFromGist({
       token: gistBackup.token,
       gistId: gistBackup.gistId || "",
       passphrase,
-      payload: bundle,
+      passphrases: [passphrase, gistBackup.token],
     });
 
     state.lastSyncedAt = Date.now();
-    state.lastCoreHash = nextCoreHash;
-    if (includeUsage) {
-      state.lastUsageHash = nextUsageHash;
-      state.lastUsageSyncedAt = now;
-    }
 
     await updateSettings({
       gistBackup: {
@@ -111,7 +79,7 @@ async function runBackupOnce() {
       },
     });
   } catch (error) {
-    console.log("[GistSync] Scheduled backup failed:", error.message);
+    console.log("[GistSync] Auto restore failed:", error.message);
   } finally {
     state.running = false;
   }
@@ -121,13 +89,13 @@ export async function startGistSyncScheduler(intervalMs = DEFAULT_INTERVAL_MS) {
   if (state.interval) return state;
 
   state.interval = setInterval(() => {
-    runBackupOnce().catch(() => {});
+    runAutoRestoreOnce().catch(() => {});
   }, intervalMs);
 
   if (state.interval.unref) state.interval.unref();
 
   setTimeout(() => {
-    runBackupOnce().catch(() => {});
+    runAutoRestoreOnce().catch(() => {});
   }, 15 * 1000).unref?.();
 
   return state;
@@ -141,7 +109,7 @@ export function stopGistSyncScheduler() {
 }
 
 export async function runGistSyncNow() {
-  await runBackupOnce();
+  await runAutoRestoreOnce();
 }
 
 export default startGistSyncScheduler;
