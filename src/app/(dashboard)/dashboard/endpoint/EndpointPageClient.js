@@ -696,17 +696,12 @@ export default function APIPageClient() {
           }
         }
 
-        if (authUrl) {
-          if (tab) tab.location.href = authUrl;
-          else window.open(authUrl, "tailscale_auth", "width=600,height=700");
-        } else {
-          if (tab) tab.close();
-          setTsStatus({
-            type: "warning",
-            message: "Tailscale needs login in Desktop app (no auth URL). Please login in Tailscale app, then click Enable again.",
-          });
-          return;
+        if (!authUrl) {
+          authUrl = "https://login.tailscale.com/start";
         }
+
+        if (tab) tab.location.href = authUrl;
+        else window.open(authUrl, "tailscale_auth", "width=600,height=700");
         setTsProgress("Waiting for login...");
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
