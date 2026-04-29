@@ -1,9 +1,12 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import { loadState, saveState, generateShortId } from "./state.js";
 import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
 import { spawnNgrok, killNgrok, isNgrokRunning } from "./ngrok.js";
 import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword } from "./tailscale.js";
 import { getSettings, updateSettings } from "@/lib/localDb";
+import { DATA_DIR } from "@/lib/dataDir.js";
 import { getCachedPassword, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
 
 initDbHooks(getSettings, updateSettings);
@@ -71,6 +74,37 @@ function getComputedPublicUrl(shortId) {
   return TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
 }
 
+function createRuntimeBackup(tag) {
+  try {
+    if (!DATA_DIR || !fs.existsSync(DATA_DIR)) return;
+
+    const backupDir = path.join(DATA_DIR, "backups", "runtime");
+    fs.mkdirSync(backupDir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const suffix = tag ? `-${tag}` : "";
+
+    const files = ["db.json", "usage.json", "request-details.json"];
+    for (const file of files) {
+      const source = path.join(DATA_DIR, file);
+      if (!fs.existsSync(source)) continue;
+      const target = path.join(backupDir, `${stamp}${suffix}-${file}`);
+      fs.copyFileSync(source, target);
+    }
+
+    const allBackups = fs.readdirSync(backupDir)
+      .map((name) => ({ name, path: path.join(backupDir, name), mtime: fs.statSync(path.join(backupDir, name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+
+    const maxBackupFiles = 90;
+    for (const backup of allBackups.slice(maxBackupFiles)) {
+      try { fs.unlinkSync(backup.path); } catch { /* ignore */ }
+    }
+  } catch {
+    // Ignore backup errors to avoid blocking tunnel operations
+  }
+}
+
 function isNgrokUrl(url) {
   if (!url) return false;
   return /https:\/\/.+ngrok.+/i.test(url);
@@ -112,6 +146,7 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 }
 
 export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
+  createRuntimeBackup(`before-enable-${provider}`);
   manualDisabled = false;
   cachedTunnelStatusAt = 0;
   cachedTunnelStatus = null;
@@ -232,6 +267,7 @@ async function scheduleReconnect(attempt) {
 }
 
 export async function disableTunnel() {
+  createRuntimeBackup("before-disable-tunnel");
   manualDisabled = true;
   isReconnecting = true;
   cachedTunnelStatusAt = 0;
@@ -311,6 +347,7 @@ export async function getTunnelStatus(settingsOverride) {
 // ─── Tailscale Funnel ─────────────────────────────────────────────────────────
 
 export async function enableTailscale(localPort = 1212) {
+  createRuntimeBackup("before-enable-tailscale");
   // Ensure daemon is running (needs sudo for TUN mode)
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
   await startDaemonWithPassword(sudoPass);
@@ -347,6 +384,7 @@ export async function enableTailscale(localPort = 1212) {
 }
 
 export async function disableTailscale() {
+  createRuntimeBackup("before-disable-tailscale");
   stopFunnel();
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
   await stopDaemon(sudoPass);
