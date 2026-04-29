@@ -67,6 +67,14 @@ const DEFAULT_SETTINGS = {
     updatedAt: "",
     fileName: "xlabrouter-backup.enc.json",
   },
+  cloudflare: {
+    apiToken: process.env.CLOUDFLARE_API_TOKEN || "",
+    zoneId: process.env.CLOUDFLARE_ZONE_ID || "",
+    domain: process.env.CLOUDFLARE_DOMAIN || "",
+    tunnelId: process.env.CLOUDFLARE_TUNNEL_ID || "",
+    tunnelToken: process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",
+    tunnelPublicUrl: process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "",
+  },
   aiIntegrations: {
     enabled: false,
     autoConnect: false,

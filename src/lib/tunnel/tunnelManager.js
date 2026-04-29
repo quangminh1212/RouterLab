@@ -1,4 +1,4 @@
-import crypto from "crypto";
+﻿import crypto from "crypto";
 import os from "os";
 import fs from "fs";
 import path from "path";
@@ -15,8 +15,6 @@ initDbHooks(getSettings, updateSettings);
 const TUNNEL_PUBLIC_DOMAIN = process.env.TUNNEL_PUBLIC_DOMAIN || "";
 const TUNNEL_WORKER_URL = process.env.TUNNEL_WORKER_URL || "";
 const WORKER_URL = TUNNEL_WORKER_URL || (TUNNEL_PUBLIC_DOMAIN ? `https://${TUNNEL_PUBLIC_DOMAIN}` : "");
-const CLOUDFLARE_TUNNEL_TOKEN = process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "";
-const CLOUDFLARE_TUNNEL_PUBLIC_URL = process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "";
 const NGROK_AUTHTOKEN = process.env.NGROK_AUTHTOKEN || process.env.NGROK_AUTH_TOKEN || "";
 const NGROK_DOMAIN = process.env.NGROK_DOMAIN || "";
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
@@ -65,13 +63,21 @@ function normalizeUrl(url) {
   return `https://${url}`;
 }
 
-function getNamedTunnelPublicUrl() {
-  return normalizeUrl(CLOUDFLARE_TUNNEL_PUBLIC_URL);
+function getCloudflareRuntimeConfig(settings = null) {
+  const cf = settings?.cloudflare || {};
+  return {
+    tunnelToken: cf.tunnelToken || process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",
+    tunnelPublicUrl: cf.tunnelPublicUrl || process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "",
+  };
+}
+
+function getNamedTunnelPublicUrl(settings = null) {
+  return normalizeUrl(getCloudflareRuntimeConfig(settings).tunnelPublicUrl);
 }
 
 function getComputedPublicUrl(shortId) {
   if (!shortId) return "";
-  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
+  const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
   if (namedTunnelPublicUrl) return namedTunnelPublicUrl;
   return TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
 }
@@ -124,7 +130,7 @@ async function resolveNgrokPublicUrl() {
   }
 }
 
-// ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
+// â”€â”€â”€ Cloudflare Tunnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function registerTunnelUrl(shortId, tunnelUrl) {
   if (!WORKER_URL) return false;
@@ -148,12 +154,14 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 }
 
 export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
+  const settings = await getSettings();
+  const cloudflareConfig = getCloudflareRuntimeConfig(settings);
   createRuntimeBackup(`before-enable-${provider}`);
   manualDisabled = false;
   cachedTunnelStatusAt = 0;
   cachedTunnelStatus = null;
-  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
-  const useNamedTunnel = !!CLOUDFLARE_TUNNEL_TOKEN;
+  const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
+  const useNamedTunnel = !!cloudflareConfig.tunnelToken;
 
   if (provider === "ngrok") {
     if (isNgrokRunning()) {
@@ -199,7 +207,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
-    const cloudflared = await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
+    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({
@@ -398,7 +406,7 @@ export async function getTunnelProviderStatuses(settingsOverride) {
   const cloudflareRunning = isCloudflaredRunning();
   const ngrokRunning = isNgrokRunning();
 
-  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
+  const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
   const settingsTunnelUrl = settings?.tunnelUrl || "";
   const stateTunnelUrl = state?.tunnelUrl || "";
 
@@ -443,7 +451,7 @@ export async function getTunnelProviderStatuses(settingsOverride) {
   };
 }
 
-// ─── Tailscale Funnel ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Tailscale Funnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function enableTailscale(localPort = 1212) {
   if (IS_WINDOWS && !isTailscaleLoggedIn()) {
@@ -476,7 +484,7 @@ export async function enableTailscale(localPort = 1212) {
   stopFunnel();
   const result = await startFunnel(localPort);
 
-  // Funnel not enabled on tailnet — return enable URL
+  // Funnel not enabled on tailnet â€” return enable URL
   if (result.funnelNotEnabled) {
     return { success: false, funnelNotEnabled: true, enableUrl: result.enableUrl };
   }
@@ -532,3 +540,4 @@ export async function getTailscaleStatus(settingsOverride) {
     running
   };
 }
+
