@@ -548,6 +548,16 @@ export default function APIPageClient() {
         return;
       }
 
+      if (provider === "cloudflare") {
+        setCloudflareUrl(url);
+        setCloudflareEnabled(true);
+        setNgrokEnabled(false);
+      } else if (provider === "ngrok") {
+        setNgrokUrl(url);
+        setNgrokEnabled(true);
+        setCloudflareEnabled(false);
+      }
+
       setTunnelServiceInstalled(!!data.serviceInstalled);
       
       if (provider === "cloudflare") {

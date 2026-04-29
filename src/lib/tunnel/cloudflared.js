@@ -202,10 +202,13 @@ export async function spawnCloudflared(tunnelToken) {
     if (isCloudflaredServiceInstalled()) {
       try {
         execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
+        if (isCloudflaredServiceRunning()) {
+          return { serviceInstalled: true };
+        }
       } catch {
-        // Ignore: service may already be running
+        // Ignore and fallback to process mode below
       }
-      return { serviceInstalled: true };
+      // Service exists but could not start now, fallback to process mode for immediate availability
     }
 
     try {
@@ -214,12 +217,26 @@ export async function spawnCloudflared(tunnelToken) {
         windowsHide: true, 
         timeout: 10000 
       });
+      try {
+        execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
+      } catch {
+        // Ignore start failure and fallback to process mode below
+      }
+      if (isCloudflaredServiceRunning()) {
+        console.log("[cloudflared] Installed and started as Windows service");
+        return { serviceInstalled: true };
+      }
       console.log("[cloudflared] Installed as Windows service");
-      // Service installed successfully, no need to spawn process
-      return { serviceInstalled: true };
     } catch (err) {
       if (isCloudflaredServiceInstalled()) {
-        return { serviceInstalled: true };
+        try {
+          execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
+        } catch {
+          // Ignore and fallback to process mode
+        }
+        if (isCloudflaredServiceRunning()) {
+          return { serviceInstalled: true };
+        }
       }
       // Service install failed (likely no admin), fall back to process spawn
       console.log("[cloudflared] Service install failed, using process mode:", err.message);
