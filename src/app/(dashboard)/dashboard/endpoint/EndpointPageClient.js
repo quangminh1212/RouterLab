@@ -54,6 +54,8 @@ export default function APIPageClient() {
   const [tunnelEnabled, setTunnelEnabled] = useState(false);
   const [tunnelUrl, setTunnelUrl] = useState("");
   const [tunnelPublicUrl, setTunnelPublicUrl] = useState("");
+  const [tunnelProvider, setTunnelProvider] = useState("cloudflare");
+  const [selectedTunnelProvider, setSelectedTunnelProvider] = useState("cloudflare");
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [tunnelProgress, setTunnelProgress] = useState("");
   const [tunnelStatus, setTunnelStatus] = useState(null);
@@ -92,6 +94,7 @@ export default function APIPageClient() {
     setTunnelUrl(tunnelData.tunnelUrl || "");
     setTunnelPublicUrl(tunnelData.publicUrl || "");
     setTunnelEnabled(tunnelData.enabled || false);
+    setTunnelProvider(tunnelData.provider || "cloudflare");
     setTsUrl(tailscaleData.tunnelUrl || "");
     setTsEnabled(tailscaleData.enabled || false);
   }
@@ -479,7 +482,7 @@ export default function APIPageClient() {
     return false;
   };
 
-  const handleEnableTunnel = async () => {
+  const handleEnableTunnel = async (provider = selectedTunnelProvider) => {
     setShowEnableTunnelModal(false);
     setTunnelLoading(true);
     setTunnelStatus(null);
@@ -506,7 +509,11 @@ export default function APIPageClient() {
     pollProgress();
 
     try {
-      const res = await fetch("/api/tunnel/enable", { method: "POST" });
+      const res = await fetch("/api/tunnel/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
       polling = false;
       const data = await res.json();
       if (!res.ok) {
@@ -522,6 +529,7 @@ export default function APIPageClient() {
 
       setTunnelUrl(data.tunnelUrl || "");
       setTunnelPublicUrl(data.publicUrl || "");
+      setTunnelProvider(data.provider || provider);
       await pingTunnelHealth(url);
     } catch (error) {
       setTunnelStatus({ type: "error", message: error.message });
@@ -1036,6 +1044,7 @@ export default function APIPageClient() {
               </Button>
             )}
           </div>
+
           {/* Tailscale */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
@@ -1558,48 +1567,30 @@ export default function APIPageClient() {
       {/* Enable Tunnel Modal */}
       <Modal
         isOpen={showEnableTunnelModal}
-        title="Enable Tunnel"
+        title="Chọn Tunnel"
         onClose={() => setShowEnableTunnelModal(false)}
       >
         <div className="flex flex-col gap-4">
-          <div className="bg-primary/5 dark:bg-blue-900/20 border border-primary/20 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary dark:text-blue-400">cloud_upload</span>
-              <div>
-                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">
-                  Cloudflare Tunnel
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Expose your local XLab Router to the internet. No port forwarding, no static IP needed. Share endpoint URL with your team or use it in Cursor, Cline, and other AI tools from anywhere.
-                </p>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-text-muted">Chọn nhà cung cấp tunnel trước khi bật.</p>
 
-          <div className="grid grid-cols-2 gap-3">
-            {TUNNEL_BENEFITS.map((benefit) => (
-              <div key={benefit.title} className="flex flex-col items-center text-center p-3 rounded-lg bg-sidebar/50">
-                <span className="material-symbols-outlined text-xl text-primary mb-1">{benefit.icon}</span>
-                <p className="text-xs font-semibold">{benefit.title}</p>
-                <p className="text-xs text-text-muted">{benefit.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-xs text-text-muted">
-            Requires outbound port 7844 (TCP/UDP). Connection may take 10-30s.
-          </p>
-
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
-              onClick={handleEnableTunnel}
+              onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}
               fullWidth
               className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
             >
-              Start Tunnel
+              Cloudflare
             </Button>
-            <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Cancel</Button>
+            <Button
+              onClick={() => { setSelectedTunnelProvider("ngrok"); handleEnableTunnel("ngrok"); }}
+              fullWidth
+              className="bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white!"
+            >
+              Ngrok
+            </Button>
           </div>
+
+          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Hủy</Button>
         </div>
       </Modal>
 
