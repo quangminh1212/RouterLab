@@ -59,6 +59,7 @@ export default function APIPageClient() {
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [tunnelProgress, setTunnelProgress] = useState("");
   const [tunnelStatus, setTunnelStatus] = useState(null);
+  const [tunnelServiceInstalled, setTunnelServiceInstalled] = useState(false);
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
 
@@ -87,6 +88,14 @@ export default function APIPageClient() {
 
   const { copied, copy } = useCopyToClipboard();
 
+  const inferTunnelProvider = useCallback((provider, publicUrl, rawUrl) => {
+    const url = (publicUrl || rawUrl || "").toLowerCase();
+    if (url.includes("ngrok")) return "ngrok";
+    if (url.includes("trycloudflare.com") || url.includes("cfargotunnel.com")) return "cloudflare";
+    if (provider === "cloudflare" || provider === "ngrok") return provider;
+    return "cloudflare";
+  }, []);
+
   // Auto-scroll install log
   useEffect(() => {
     if (tsLogRef.current) tsLogRef.current.scrollTop = tsLogRef.current.scrollHeight;
@@ -95,11 +104,16 @@ export default function APIPageClient() {
   function applyTunnelStatus(data = {}) {
     const tunnelData = data.tunnel || {};
     const tailscaleData = data.tailscale || {};
+    const nextProvider = inferTunnelProvider(
+      tunnelData.provider,
+      tunnelData.publicUrl,
+      tunnelData.tunnelUrl,
+    );
 
     setTunnelUrl(tunnelData.tunnelUrl || "");
     setTunnelPublicUrl(tunnelData.publicUrl || "");
     setTunnelEnabled(tunnelData.enabled || false);
-    setTunnelProvider(tunnelData.provider || "cloudflare");
+    setTunnelProvider(nextProvider);
     setTsUrl(tailscaleData.tunnelUrl || "");
     setTsEnabled(tailscaleData.enabled || false);
   }
@@ -539,7 +553,17 @@ export default function APIPageClient() {
 
       setTunnelUrl(data.tunnelUrl || "");
       setTunnelPublicUrl(data.publicUrl || "");
-      setTunnelProvider(data.provider || provider);
+      setTunnelProvider(inferTunnelProvider(data.provider || provider, data.publicUrl, data.tunnelUrl));
+      setTunnelServiceInstalled(!!data.serviceInstalled);
+      
+      if (provider === "cloudflare") {
+        if (data.serviceInstalled) {
+          setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
+        } else {
+          setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
+        }
+      }
+      
       await pingTunnelHealth(url);
     } catch (error) {
       if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(error?.message || "")) {
@@ -1111,6 +1135,20 @@ export default function APIPageClient() {
                 </div>
                 <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}>Enable</Button>
               </>
+            ) : (tunnelStatus?.type === "success" && selectedTunnelProvider === "cloudflare") ? (
+              <>
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-green-300 dark:border-green-800 bg-green-500/5 text-sm text-green-600 dark:text-green-400">
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  {tunnelStatus.message}
+                </div>
+              </>
+            ) : (tunnelStatus?.type === "warning" && selectedTunnelProvider === "cloudflare") ? (
+              <>
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-yellow-300 dark:border-yellow-800 bg-yellow-500/5 text-sm text-yellow-600 dark:text-yellow-400">
+                  <span className="material-symbols-outlined text-sm">warning</span>
+                  {tunnelStatus.message}
+                </div>
+              </>
             ) : (tunnelChecking && selectedTunnelProvider === "cloudflare") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
@@ -1303,6 +1341,18 @@ export default function APIPageClient() {
         {/* Security warnings when tunnel or tailscale is active */}
         {(tunnelEnabled || tsEnabled) && (
           <div className="mt-4 flex flex-col gap-2">
+            {tunnelEnabled && tunnelProvider === "cloudflare" && tunnelServiceInstalled && tunnelStatus?.type === "success" && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded border border-green-300 dark:border-green-800 bg-green-500/5 text-sm text-green-600 dark:text-green-400">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                {tunnelStatus.message}
+              </div>
+            )}
+            {tunnelEnabled && tunnelProvider === "cloudflare" && tunnelStatus?.type === "warning" && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded border border-yellow-300 dark:border-yellow-800 bg-yellow-500/5 text-sm text-yellow-600 dark:text-yellow-400">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                {tunnelStatus.message}
+              </div>
+            )}
             {!requireApiKey && (
               <SecurityWarning
                 message="Require API key is disabled - your endpoint is publicly accessible without authentication."
