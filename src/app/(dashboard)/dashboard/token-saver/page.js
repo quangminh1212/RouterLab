@@ -13,6 +13,18 @@ const REPOS = [
   { name: "claude-context (Zilliz)", url: "https://github.com/zilliztech/claude-context", note: "Code search + retrieval thông minh để giảm context." },
 ];
 
+function getOwnerAvatar(url) {
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const owner = parts[0];
+    if (!owner) return "/topup.png";
+    return `https://github.com/${owner}.png`;
+  } catch {
+    return "/topup.png";
+  }
+}
+
 export default function TokenSaverPage() {
   return (
     <div className="p-6 space-y-5 max-w-6xl">
@@ -26,9 +38,12 @@ export default function TokenSaverPage() {
           {REPOS.map((repo) => (
             <div key={repo.url} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-primary/40 transition-colors flex items-center justify-between gap-3">
               <div className="min-w-0 flex items-center gap-3">
-                <div className="size-9 shrink-0 rounded-lg bg-white text-text-main flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">token</span>
-                </div>
+                <img
+                  src={getOwnerAvatar(repo.url)}
+                  alt={`${repo.name} owner avatar`}
+                  className="size-9 shrink-0 rounded-lg bg-white object-cover"
+                  loading="lazy"
+                />
 
                 <div className="min-w-0">
                 <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium text-text-main hover:text-primary transition-colors truncate block">
