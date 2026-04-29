@@ -460,7 +460,6 @@ export default function APIPageClient() {
         const ping = await fetch(healthUrl, { mode: "no-cors", cache: "no-store" });
         if (ping.ok || ping.type === "opaque") {
           const durationMs = Date.now() - start;
-          setTunnelEnabled(true);
           setTunnelLoading(false);
           setTunnelProgress("");
           logDashboardPerf("info", "pingTunnelHealth:success", { traceId, durationMs, attempts, url });
@@ -579,9 +578,10 @@ export default function APIPageClient() {
       const res = await fetch("/api/tunnel/disable", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setTunnelEnabled(false);
-        setTunnelUrl("");
-        setTunnelPublicUrl("");
+        setCloudflareEnabled(false);
+        setCloudflareUrl("");
+        setNgrokEnabled(false);
+        setNgrokUrl("");
         setShowDisableTunnelModal(false);
         setTunnelStatus({ type: "success", message: "Tunnel disabled" });
       } else {
