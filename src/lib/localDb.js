@@ -61,8 +61,6 @@ const DEFAULT_SETTINGS = {
   aiRules: [],
   gistBackup: {
     enabled: false,
-    autoSyncEnabled: true,
-    syncIntervalMinutes: 1,
     token: "",
     gistId: "",
     htmlUrl: "",

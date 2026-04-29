@@ -43,13 +43,7 @@ async function runAutoRestoreOnce() {
     const settings = await getSettings();
     const gistBackup = settings?.gistBackup || {};
 
-    if (gistBackup.enabled !== true || !gistBackup.token || gistBackup.autoSyncEnabled === false) {
-      return;
-    }
-
-    const intervalMinutes = Math.min(60, Math.max(1, Number(gistBackup.syncIntervalMinutes || 1)));
-    const minGapMs = intervalMinutes * 60 * 1000;
-    if (state.lastSyncedAt && Date.now() - state.lastSyncedAt < minGapMs) {
+    if (gistBackup.enabled !== true || !gistBackup.token) {
       return;
     }
 
@@ -86,6 +80,9 @@ async function runAutoRestoreOnce() {
 }
 
 export async function startGistSyncScheduler(intervalMs = DEFAULT_INTERVAL_MS) {
+  // Auto scheduler disabled by product decision: keep manual sync/backup/restore only.
+  return state;
+
   if (state.interval) return state;
 
   state.interval = setInterval(() => {
