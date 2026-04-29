@@ -607,7 +607,10 @@ export default function ProfilePage() {
                     <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
                       Dùng GitHub CLI
                     </Button>
-                    <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>`r`n                      Sync`r`n                    </Button>`r`n                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
+                    <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
+                      Sync
+                    </Button>
+                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
                       Backup
                     </Button>
                     <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
