@@ -62,6 +62,10 @@ function getAuthUrlFromStatus() {
   }
 }
 
+export function getTailscaleAuthUrl() {
+  return getAuthUrlFromStatus();
+}
+
 function triggerSystemLoginFlow() {
   const bin = getTailscaleBin();
   if (!bin) return;
@@ -75,6 +79,10 @@ function triggerSystemLoginFlow() {
   } catch {
     // ignore best-effort fallback
   }
+}
+
+export function triggerTailscaleSystemLogin() {
+  triggerSystemLoginFlow();
 }
 
 export function isTailscaleLoggedIn() {
