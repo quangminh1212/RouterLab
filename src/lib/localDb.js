@@ -69,6 +69,8 @@ const DEFAULT_SETTINGS = {
   },
   cloudflare: {
     apiToken: process.env.CLOUDFLARE_API_TOKEN || "",
+    apiKey: process.env.CLOUDFLARE_API_KEY || "",
+    email: process.env.CLOUDFLARE_EMAIL || "",
     zoneId: process.env.CLOUDFLARE_ZONE_ID || "",
     domain: process.env.CLOUDFLARE_DOMAIN || "",
     tunnelId: process.env.CLOUDFLARE_TUNNEL_ID || "",
