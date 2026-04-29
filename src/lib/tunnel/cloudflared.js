@@ -197,6 +197,23 @@ export function setUnexpectedExitHandler(handler) {
 export async function spawnCloudflared(tunnelToken) {
   const binaryPath = await ensureCloudflared();
 
+  // Try to install as Windows service first (requires admin)
+  if (IS_WINDOWS) {
+    try {
+      execSync(`"${binaryPath}" service install ${tunnelToken}`, { 
+        stdio: "pipe", 
+        windowsHide: true, 
+        timeout: 10000 
+      });
+      console.log("[cloudflared] Installed as Windows service");
+      // Service installed successfully, no need to spawn process
+      return { serviceInstalled: true };
+    } catch (err) {
+      // Service install failed (likely no admin), fall back to process spawn
+      console.log("[cloudflared] Service install failed, using process mode:", err.message);
+    }
+  }
+
   const child = spawn(binaryPath, ["tunnel", "run", "--dns-resolver-addrs", "1.1.1.1:53", "--token", tunnelToken], {
     detached: false,
     windowsHide: true,

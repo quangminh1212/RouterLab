@@ -199,7 +199,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
-    await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
+    const cloudflared = await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare" });
@@ -211,7 +211,14 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       exitHandlerRegistered = true;
     }
 
-    return { success: true, tunnelUrl, shortId, publicUrl: getComputedPublicUrl(shortId), mode: "named" };
+    return { 
+      success: true, 
+      tunnelUrl, 
+      shortId, 
+      publicUrl: getComputedPublicUrl(shortId), 
+      mode: "named",
+      serviceInstalled: !!cloudflared?.serviceInstalled
+    };
   }
 
   // onUrlUpdate: called when URL changes AFTER initial connect
