@@ -1074,7 +1074,7 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
-            ) : ngrokInstalled === false ? (
+            ) : false ? (
               <Button
                 size="sm"
                 icon="download"
@@ -1140,7 +1140,7 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
-            ) : ((ngrokInstalled === false || (tunnelStatus?.type === "error" && /binary not found|not found in path|enoent/i.test(tunnelStatus?.message || ""))) && selectedTunnelProvider === "ngrok") ? (
+            ) : (ngrokInstalled === false || (tunnelStatus?.type === "error" && /binary not found|not found in path|enoent/i.test(tunnelStatus?.message || ""))) ? (
               <Button
                 size="sm"
                 icon="download"
