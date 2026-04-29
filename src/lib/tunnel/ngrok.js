@@ -79,11 +79,42 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
 
     let resolved = false;
     let connected = false;
+    let settled = false;
+
+    const finishResolve = (value) => {
+      if (settled) return;
+      settled = true;
+      resolved = true;
+      connected = true;
+      clearTimeout(timeout);
+      clearInterval(pollInterval);
+      resolve(value);
+    };
+
+    const finishReject = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      clearInterval(pollInterval);
+      reject(error);
+    };
+
+    const extractTunnelUrl = (text) => {
+      if (!text) return "";
+      const ngrokMatch = text.match(/https:\/\/[\w.-]*ngrok[\w.-]*\/[\w\-./?=&%]*/i);
+      if (ngrokMatch?.[0]) return ngrokMatch[0].replace(/["'\s]+$/, "");
+
+      const genericMatch = text.match(/https:\/\/[\w.-]+\.[a-z]{2,}(?:\/[\w\-./?=&%]*)?/i);
+      if (genericMatch?.[0] && /ngrok/i.test(genericMatch[0])) {
+        return genericMatch[0].replace(/["'\s]+$/, "");
+      }
+      return "";
+    };
 
     const timeout = setTimeout(() => {
-      if (!resolved) {
+      if (!settled) {
         child.kill();
-        reject(new Error("Ngrok tunnel timed out"));
+        finishReject(new Error("Ngrok tunnel timed out"));
       }
     }, 30000);
 
@@ -95,25 +126,57 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
         
         if (tunnel?.public_url) {
           const tunnelUrl = tunnel.public_url;
-          
-          if (!resolved) {
-            clearTimeout(timeout);
-            clearInterval(pollInterval);
-            resolved = true;
-            connected = true;
+
+          if (!settled) {
             console.log(`[ngrok] Tunnel connected: ${tunnelUrl}`);
-            resolve({ child, tunnelUrl });
+            finishResolve({ child, tunnelUrl });
           }
         }
       } catch (e) {}
     }, 500);
 
     child.stdout.on("data", (data) => {
-      console.log(`[ngrok stdout] ${data.toString()}`);
+      const text = data.toString();
+      console.log(`[ngrok stdout] ${text}`);
+      if (!settled) {
+        const tunnelUrl = extractTunnelUrl(text);
+        if (tunnelUrl) {
+          console.log(`[ngrok] Tunnel connected from stdout: ${tunnelUrl}`);
+          finishResolve({ child, tunnelUrl });
+        }
+      }
     });
 
     child.stderr.on("data", (data) => {
-      console.log(`[ngrok stderr] ${data.toString()}`);
+      const text = data.toString();
+      console.log(`[ngrok stderr] ${text}`);
+      if (!settled) {
+        const tunnelUrl = extractTunnelUrl(text);
+        if (tunnelUrl) {
+          console.log(`[ngrok] Tunnel connected from stderr: ${tunnelUrl}`);
+          finishResolve({ child, tunnelUrl });
+          return;
+        }
+      }
+
+      if (!settled && /(failed|error|invalid|authtoken|authentication|ERR_NGROK)/i.test(text)) {
+        child.kill();
+        finishReject(new Error(text.trim() || "Ngrok failed to start"));
+      }
+    });
+
+    child.on("error", (error) => {
+      deletePid();
+      ngrokProcess = null;
+      cachedNgrokRunning = false;
+      cachedNgrokRunningAt = Date.now();
+
+      if (error?.code === "ENOENT") {
+        finishReject(new Error("Ngrok binary not found. Please install ngrok or add it to PATH."));
+        return;
+      }
+
+      finishReject(error);
     });
 
     child.on("exit", (code) => {
@@ -127,8 +190,8 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
       if (connected && unexpectedExitCallback) {
         console.log(`[ngrok] Unexpected exit (code ${code})`);
         unexpectedExitCallback();
-      } else if (!resolved) {
-        reject(new Error(`ngrok exited with code ${code}`));
+      } else if (!settled) {
+        finishReject(new Error(`ngrok exited with code ${code}`));
       }
     });
   });

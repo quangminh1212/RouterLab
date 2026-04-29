@@ -75,6 +75,10 @@ export default function APIPageClient() {
   const [tsConnecting, setTsConnecting] = useState(false);
   const [showTsModal, setShowTsModal] = useState(false);
   const [showDisableTsModal, setShowDisableTsModal] = useState(false);
+  
+  // Ngrok install state
+  const [ngrokInstalled, setNgrokInstalled] = useState(null); // null=checking, true/false
+  const [ngrokInstalling, setNgrokInstalling] = useState(false);
   const tsLogRef = useRef(null);
 
   // API key visibility toggle state
@@ -196,6 +200,7 @@ export default function APIPageClient() {
   useEffect(() => {
     const timer = setTimeout(() => {
       void fetchBootstrap();
+      void checkNgrokInstalled();
     }, 0);
     return () => clearTimeout(timer);
   }, [fetchBootstrap]);
@@ -786,6 +791,39 @@ export default function APIPageClient() {
     await checkTailscaleInstalled();
   };
 
+  const checkNgrokInstalled = async () => {
+    setNgrokInstalled(null);
+    try {
+      const res = await fetch("/api/tunnel/ngrok-check");
+      if (res.ok) {
+        const data = await res.json();
+        setNgrokInstalled(data.installed);
+        return data;
+      }
+    } catch { /* ignore */ }
+    setNgrokInstalled(false);
+    return { installed: false };
+  };
+
+  const handleInstallNgrok = async () => {
+    setNgrokInstalling(true);
+    setTunnelStatus(null);
+    try {
+      const res = await fetch("/api/tunnel/ngrok-install", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNgrokInstalled(true);
+        setTunnelStatus({ type: "success", message: "Ngrok installed successfully" });
+      } else {
+        setTunnelStatus({ type: "error", message: data.error || "Failed to install ngrok" });
+      }
+    } catch (e) {
+      setTunnelStatus({ type: "error", message: e.message });
+    } finally {
+      setNgrokInstalling(false);
+    }
+  };
+
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
 
@@ -969,29 +1007,29 @@ export default function APIPageClient() {
             copied={copied}
             onCopy={copy}
           />
-          {/* Cloudflare Tunnel */}
+          {/* Cloudflare */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
-              tunnelEnabled ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
-            }`}>Tunnel</span>
-            {tunnelEnabled && !tunnelLoading ? (
+              tunnelEnabled && tunnelProvider === "cloudflare" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
+            }`}>Cloudflare</span>
+            {tunnelEnabled && tunnelProvider === "cloudflare" && !tunnelLoading ? (
               <>
                 <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
                 <button
-                  onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "tunnel_url")}
+                  onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "cloudflare_url")}
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
                 >
-                  <span className="material-symbols-outlined text-[18px]">{copied === "tunnel_url" ? "check" : "content_copy"}</span>
+                  <span className="material-symbols-outlined text-[18px]">{copied === "cloudflare_url" ? "check" : "content_copy"}</span>
                 </button>
                 <button
                   onClick={() => setShowDisableTunnelModal(true)}
                   className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
-                  title="Disable Tunnel"
+                  title="Disable Cloudflare"
                 >
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
-            ) : tunnelLoading ? (
+            ) : (tunnelLoading && selectedTunnelProvider === "cloudflare") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
                   <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
@@ -1005,15 +1043,102 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
-            ) : tunnelStatus?.type === "error" ? (
+            ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "cloudflare") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-red-300 dark:border-red-800 bg-red-500/5 text-sm text-red-600 dark:text-red-400">
                   <span className="material-symbols-outlined text-sm">error</span>
                   {tunnelStatus.message}
                 </div>
-                <Button size="sm" icon="cloud_upload" onClick={() => setShowEnableTunnelModal(true)}>Enable</Button>
+                <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}>Enable</Button>
               </>
-            ) : tunnelChecking ? (
+            ) : (tunnelChecking && selectedTunnelProvider === "cloudflare") ? (
+              <>
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
+                  <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                  Checking...
+                </div>
+                <button
+                  onClick={() => setTunnelChecking(false)}
+                  className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
+                  title="Stop"
+                >
+                  <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+                </button>
+              </>
+            ) : ngrokInstalled === false ? (
+              <Button
+                size="sm"
+                icon="download"
+                onClick={handleInstallNgrok}
+                disabled={ngrokInstalling}
+                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
+              >
+                {ngrokInstalling ? "Installing..." : "Cài ngrok"}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                icon="cloud_upload"
+                onClick={() => {
+                  if (!requireApiKey) {
+                    setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
+                    return;
+                  }
+                  setSelectedTunnelProvider("cloudflare");
+                  handleEnableTunnel("cloudflare");
+                }}
+                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
+              >
+                Enable
+              </Button>
+            )}
+          </div>
+
+          {/* Ngrok */}
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
+              tunnelEnabled && tunnelProvider === "ngrok" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
+            }`}>Ngrok</span>
+            {tunnelEnabled && tunnelProvider === "ngrok" && !tunnelLoading ? (
+              <>
+                <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
+                <button
+                  onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "ngrok_url")}
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[18px]">{copied === "ngrok_url" ? "check" : "content_copy"}</span>
+                </button>
+                <button
+                  onClick={() => setShowDisableTunnelModal(true)}
+                  className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
+                  title="Disable Ngrok"
+                >
+                  <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+                </button>
+              </>
+            ) : (tunnelLoading && selectedTunnelProvider === "ngrok") ? (
+              <>
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
+                  <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                  {tunnelProgress || "Creating tunnel..."}
+                </div>
+                <button
+                  onClick={() => { setTunnelLoading(false); setTunnelProgress(""); }}
+                  className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
+                  title="Stop"
+                >
+                  <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+                </button>
+              </>
+            ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "ngrok") ? (
+              <>
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-red-300 dark:border-red-800 bg-red-500/5 text-sm text-red-600 dark:text-red-400">
+                  <span className="material-symbols-outlined text-sm">error</span>
+                  {tunnelStatus.message}
+                </div>
+                <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("ngrok"); handleEnableTunnel("ngrok"); }}>Enable</Button>
+              </>
+            ) : (tunnelChecking && selectedTunnelProvider === "ngrok") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
                   <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
@@ -1036,7 +1161,8 @@ export default function APIPageClient() {
                     setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
                     return;
                   }
-                  setShowEnableTunnelModal(true);
+                  setSelectedTunnelProvider("ngrok");
+                  handleEnableTunnel("ngrok");
                 }}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
