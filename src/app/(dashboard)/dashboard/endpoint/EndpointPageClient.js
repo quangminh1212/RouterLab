@@ -1348,7 +1348,7 @@ export default function APIPageClient() {
               >
                 RTK (Rust Token Killer)
               </a>
-              {" "}â€” ported to JavaScript. This feature is still under testing; disable it if you notice unexpected results.
+              {" "}— ported to JavaScript. This feature is still under testing; disable it if you notice unexpected results.
             </p>
           </div>
           <Toggle
