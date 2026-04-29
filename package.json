@@ -13,6 +13,7 @@
         "dev": "next dev --port 1212",
         "build": "next build",
         "start": "node ./bin/xlab_router.js --web",
+        "ddns:cloudflare": "node scripts/cloudflare-ddns.js",
         "dev:bun": "bun --bun next dev --port 1212",
         "build:bun": "bun --bun next build",
         "start:bun": "bun ./.next/standalone/server.js",
