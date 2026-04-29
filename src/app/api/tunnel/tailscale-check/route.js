@@ -11,11 +11,21 @@ function hasBrew() {
 
 function isDaemonRunning() {
   const platform = os.platform();
+  if (platform === "win32") {
+    try {
+      execSync("sc query Tailscale | findstr /I RUNNING", {
+        stdio: "ignore",
+        windowsHide: true,
+        timeout: 2000
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   try {
     // Windows does not use custom unix socket; other OS use userspace socket.
-    const statusCmd = platform === "win32"
-      ? "tailscale status --json"
-      : `tailscale --socket ${TAILSCALE_SOCKET} status --json`;
+    const statusCmd = `tailscale --socket ${TAILSCALE_SOCKET} status --json`;
     execSync(statusCmd, {
       stdio: "ignore",
       windowsHide: true,

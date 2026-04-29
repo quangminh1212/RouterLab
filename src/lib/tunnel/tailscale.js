@@ -88,6 +88,24 @@ export function triggerTailscaleSystemLogin() {
 export function isTailscaleLoggedIn() {
   const bin = getTailscaleBin();
   if (!bin) return false;
+  
+  // Windows: status --json often hangs, use text output instead
+  if (IS_WINDOWS) {
+    try {
+      const out = execSync(`"${bin}" status`, {
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 3000
+      });
+      // If status returns output without error, check for logged-in indicators
+      // Logged in: shows IP addresses and peer list
+      // Not logged in: shows "Logged out" or empty/error
+      return out.trim().length > 0 && !/logged out|not logged in/i.test(out);
+    } catch (e) {
+      return false;
+    }
+  }
+  
   try {
     const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} status --json`, {
       encoding: "utf8",
