@@ -51,10 +51,10 @@ export default function APIPageClient() {
 
   // Cloudflare Tunnel state
   const [tunnelChecking, setTunnelChecking] = useState(true);
-  const [tunnelEnabled, setTunnelEnabled] = useState(false);
-  const [tunnelUrl, setTunnelUrl] = useState("");
-  const [tunnelPublicUrl, setTunnelPublicUrl] = useState("");
-  const [tunnelProvider, setTunnelProvider] = useState("cloudflare");
+  const [cloudflareEnabled, setCloudflareEnabled] = useState(false);
+  const [cloudflareUrl, setCloudflareUrl] = useState("");
+  const [ngrokEnabled, setNgrokEnabled] = useState(false);
+  const [ngrokUrl, setNgrokUrl] = useState("");
   const [selectedTunnelProvider, setSelectedTunnelProvider] = useState("cloudflare");
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [tunnelProgress, setTunnelProgress] = useState("");
@@ -88,32 +88,30 @@ export default function APIPageClient() {
 
   const { copied, copy } = useCopyToClipboard();
 
-  const inferTunnelProvider = useCallback((provider, publicUrl, rawUrl) => {
-    const url = (publicUrl || rawUrl || "").toLowerCase();
-    if (url.includes("ngrok")) return "ngrok";
-    if (url.includes("trycloudflare.com") || url.includes("cfargotunnel.com")) return "cloudflare";
-    if (provider === "cloudflare" || provider === "ngrok") return provider;
-    return "cloudflare";
-  }, []);
-
   // Auto-scroll install log
   useEffect(() => {
     if (tsLogRef.current) tsLogRef.current.scrollTop = tsLogRef.current.scrollHeight;
   }, [tsInstallLog]);
 
   function applyTunnelStatus(data = {}) {
-    const tunnelData = data.tunnel || {};
+    const providers = data.providers || {};
     const tailscaleData = data.tailscale || {};
-    const nextProvider = inferTunnelProvider(
-      tunnelData.provider,
-      tunnelData.publicUrl,
-      tunnelData.tunnelUrl,
-    );
 
-    setTunnelUrl(tunnelData.tunnelUrl || "");
-    setTunnelPublicUrl(tunnelData.publicUrl || "");
-    setTunnelEnabled(tunnelData.enabled || false);
-    setTunnelProvider(nextProvider);
+    setCloudflareEnabled(providers.cloudflare?.enabled || false);
+    setCloudflareUrl(providers.cloudflare?.tunnelUrl || "");
+    setTunnelServiceInstalled(!!providers.cloudflare?.serviceInstalled);
+    
+    setNgrokEnabled(providers.ngrok?.enabled || false);
+    setNgrokUrl(providers.ngrok?.tunnelUrl || "");
+    
+    if (providers.cloudflare?.enabled) {
+      if (providers.cloudflare?.serviceInstalled) {
+        setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
+      } else {
+        setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
+      }
+    }
+    
     setTsUrl(tailscaleData.tunnelUrl || "");
     setTsEnabled(tailscaleData.enabled || false);
   }
@@ -551,9 +549,6 @@ export default function APIPageClient() {
         return;
       }
 
-      setTunnelUrl(data.tunnelUrl || "");
-      setTunnelPublicUrl(data.publicUrl || "");
-      setTunnelProvider(inferTunnelProvider(data.provider || provider, data.publicUrl, data.tunnelUrl));
       setTunnelServiceInstalled(!!data.serviceInstalled);
       
       if (provider === "cloudflare") {
@@ -1094,13 +1089,13 @@ export default function APIPageClient() {
           {/* Cloudflare */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
-              tunnelEnabled && tunnelProvider === "cloudflare" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
+              cloudflareEnabled ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
             }`}>Cloudflare</span>
-            {tunnelEnabled && tunnelProvider === "cloudflare" && !tunnelLoading ? (
+            {cloudflareEnabled && !tunnelLoading ? (
               <>
-                <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
+                <Input value={`${cloudflareUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
                 <button
-                  onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "cloudflare_url")}
+                  onClick={() => copy(`${cloudflareUrl}/v1`, "cloudflare_url")}
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px]">{copied === "cloudflare_url" ? "check" : "content_copy"}</span>
@@ -1196,13 +1191,13 @@ export default function APIPageClient() {
           {/* Ngrok */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
-              tunnelEnabled && tunnelProvider === "ngrok" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
+              ngrokEnabled ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
             }`}>Ngrok</span>
-            {tunnelEnabled && tunnelProvider === "ngrok" && !tunnelLoading ? (
+            {ngrokEnabled && !tunnelLoading ? (
               <>
-                <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
+                <Input value={`${ngrokUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
                 <button
-                  onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "ngrok_url")}
+                  onClick={() => copy(`${ngrokUrl}/v1`, "ngrok_url")}
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px]">{copied === "ngrok_url" ? "check" : "content_copy"}</span>
@@ -1339,15 +1334,15 @@ export default function APIPageClient() {
         </div>
 
         {/* Security warnings when tunnel or tailscale is active */}
-        {(tunnelEnabled || tsEnabled) && (
+        {(cloudflareEnabled || ngrokEnabled || tsEnabled) && (
           <div className="mt-4 flex flex-col gap-2">
-            {tunnelEnabled && tunnelProvider === "cloudflare" && tunnelServiceInstalled && tunnelStatus?.type === "success" && (
+            {cloudflareEnabled && tunnelServiceInstalled && tunnelStatus?.type === "success" && (
               <div className="flex items-center gap-2 px-3 py-2 rounded border border-green-300 dark:border-green-800 bg-green-500/5 text-sm text-green-600 dark:text-green-400">
                 <span className="material-symbols-outlined text-sm">check_circle</span>
                 {tunnelStatus.message}
               </div>
             )}
-            {tunnelEnabled && tunnelProvider === "cloudflare" && tunnelStatus?.type === "warning" && (
+            {cloudflareEnabled && tunnelStatus?.type === "warning" && (
               <div className="flex items-center gap-2 px-3 py-2 rounded border border-yellow-300 dark:border-yellow-800 bg-yellow-500/5 text-sm text-yellow-600 dark:text-yellow-400">
                 <span className="material-symbols-outlined text-sm">warning</span>
                 {tunnelStatus.message}
@@ -1376,7 +1371,7 @@ export default function APIPageClient() {
         )}
 
         {/* Tunnel dashboard access option */}
-        {(tunnelEnabled || tsEnabled) && (
+        {(cloudflareEnabled || ngrokEnabled || tsEnabled) && (
           <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
             <Toggle
               checked={tunnelDashboardAccess}
