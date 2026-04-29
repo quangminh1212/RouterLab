@@ -385,11 +385,13 @@ export function startLogin(hostname) {
       child.unref();
       const url = parseAuthUrl(output);
       if (url) resolve({ authUrl: url });
+      else if (isTailscaleLoggedIn()) resolve({ alreadyLoggedIn: true });
       else reject(new Error("tailscale up timed out without auth URL"));
-    }, 15000);
+    }, 45000);
 
     const parseAuthUrl = (text) => {
-      const match = text.match(/https:\/\/login\.tailscale\.com\/a\/[a-zA-Z0-9]+/);
+      if (!text) return null;
+      const match = text.match(/https:\/\/(?:login|controlplane)\.tailscale\.com\/[\w\-./?=&%]+/i);
       return match ? match[0] : null;
     };
 
