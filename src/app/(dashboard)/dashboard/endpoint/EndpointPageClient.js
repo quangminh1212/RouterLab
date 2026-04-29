@@ -1101,7 +1101,7 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">{copied === "cloudflare_url" ? "check" : "content_copy"}</span>
                 </button>
                 <button
-                  onClick={() => setShowDisableTunnelModal(true)}
+                  onClick={() => { setSelectedTunnelProvider("cloudflare"); setShowDisableTunnelModal(true); }}
                   className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
                   title="Disable Cloudflare"
                 >
@@ -1203,7 +1203,7 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">{copied === "ngrok_url" ? "check" : "content_copy"}</span>
                 </button>
                 <button
-                  onClick={() => setShowDisableTunnelModal(true)}
+                  onClick={() => { setSelectedTunnelProvider("ngrok"); setShowDisableTunnelModal(true); }}
                   className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
                   title="Disable Ngrok"
                 >
@@ -1837,14 +1837,16 @@ export default function APIPageClient() {
         </div>
       </Modal>
 
-      {/* Disable Cloudflare Tunnel Modal */}
+      {/* Disable Tunnel Modal */}
       <Modal
         isOpen={showDisableTunnelModal}
-        title="Disable Tunnel"
+        title={`Disable ${selectedTunnelProvider === "ngrok" ? "Ngrok" : "Cloudflare"} Tunnel`}
         onClose={() => !tunnelLoading && setShowDisableTunnelModal(false)}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">The Cloudflare tunnel will be disconnected. Remote access via tunnel URL will stop working.</p>
+          <p className="text-sm text-text-muted">
+            The {selectedTunnelProvider === "ngrok" ? "Ngrok" : "Cloudflare"} tunnel will be disconnected. Remote access via tunnel URL will stop working.
+          </p>
           <div className="flex gap-2">
             <Button onClick={handleDisableTunnel} fullWidth disabled={tunnelLoading} className="bg-red-500! hover:bg-red-600! text-white!">
               {tunnelLoading ? "Disabling..." : "Disable"}
