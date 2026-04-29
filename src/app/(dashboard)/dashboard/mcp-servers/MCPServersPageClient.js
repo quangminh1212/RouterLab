@@ -1187,16 +1187,14 @@ export default function MCPServersPageClient() {
                         )}
 
                         <div className="mt-0.5 flex items-center gap-1.5">
-                          {server ? (
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(server, existing.index)}
-                              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-                              title="Configure MCP server"
-                            >
-                              <span className="material-symbols-outlined text-[17px]">settings</span>
-                            </button>
-                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(server || catalogToServer(item), existing?.index ?? -1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/20 text-text-main hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+                            title="Configure MCP server"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">settings</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => toggleCatalogServer(item)}
