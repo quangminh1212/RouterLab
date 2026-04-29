@@ -1005,5 +1005,5 @@ export async function importUsageDb(payload) {
         ? payload.totalRequestsLifetime
         : 0,
   };
-  await safeWrite(db);
+  await db.write();
 }
