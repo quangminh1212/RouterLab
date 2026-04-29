@@ -1096,7 +1096,7 @@ export default function MCPServersPageClient() {
               className="mt-2 w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm text-text-main outline-none focus:border-primary dark:border-white/10"
             >
               {categoryOptions.map((item) => (
-                <option key={item} value={item} className="bg-[#111]">
+                <option key={item} value={item} className="bg-[#111]" suppressHydrationWarning>
                   {item === "all" ? "All" : item}
                 </option>
               ))}

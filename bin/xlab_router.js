@@ -777,6 +777,50 @@ function startTrayMode() {
   launchDetachedTrayHost();
 }
 
+function compareVersions(versionA, versionB) {
+  const a = String(versionA || "").split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const b = String(versionB || "").split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const maxLength = Math.max(a.length, b.length);
+
+  for (let i = 0; i < maxLength; i += 1) {
+    const av = a[i] || 0;
+    const bv = b[i] || 0;
+    if (av > bv) {
+      return 1;
+    }
+    if (av < bv) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+function runGlobalUpdate() {
+  return new Promise((resolve) => {
+    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    const child = spawn(npmCmd, ["install", "-g", pkg.name], {
+      stdio: "inherit",
+      shell: false,
+    });
+
+    child.on("error", (error) => {
+      console.log(`[ERROR] Auto update failed to start: ${error.message}`);
+      resolve(false);
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve(true);
+        return;
+      }
+
+      console.log(`[ERROR] Auto update failed (exit code ${code}).`);
+      resolve(false);
+    });
+  });
+}
+
 function checkForUpdates() {
   return new Promise((resolve) => {
     console.log(`\n[INFO] Checking for updates...`);
@@ -798,8 +842,9 @@ function checkForUpdates() {
           const latestVersion = json["dist-tags"]?.latest;
           if (latestVersion) {
             console.log(`[INFO] Latest version: ${latestVersion}`);
-            if (latestVersion !== pkg.version) {
-              console.log(`[WARN] New version available! Run: npm install -g ${pkg.name}`);
+            if (compareVersions(latestVersion, pkg.version) > 0) {
+              resolve({ hasUpdate: true, latestVersion });
+              return;
             } else {
               console.log(`[OK] You are using the latest version.`);
             }
@@ -809,19 +854,19 @@ function checkForUpdates() {
         } catch (e) {
           console.log(`[WARN] Failed to parse version info.`);
         }
-        resolve();
+        resolve({ hasUpdate: false, latestVersion: null });
       });
     });
 
     req.on("error", () => {
       console.log(`[WARN] Could not check for updates (network error).`);
-      resolve();
+      resolve({ hasUpdate: false, latestVersion: null });
     });
 
     req.setTimeout(5000, () => {
       req.destroy();
       console.log(`[WARN] Update check timed out.`);
-      resolve();
+      resolve({ hasUpdate: false, latestVersion: null });
     });
 
     req.end();
@@ -858,7 +903,30 @@ async function showMenu() {
       startTrayMode();
       break;
     case "update":
-      await checkForUpdates();
+      {
+        const updateInfo = await checkForUpdates();
+        if (updateInfo?.hasUpdate) {
+          console.log(`[WARN] New version available: ${updateInfo.latestVersion}`);
+          const answer = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "autoUpdate",
+              message: `Update now to v${updateInfo.latestVersion}?`,
+              default: true,
+            },
+          ]);
+
+          if (answer.autoUpdate) {
+            console.log(`[INFO] Running auto update: npm install -g ${pkg.name}`);
+            const success = await runGlobalUpdate();
+            if (success) {
+              console.log(`[OK] Update completed. Please restart XLab Router.`);
+            }
+          } else {
+            console.log(`[INFO] Skipped auto update.`);
+          }
+        }
+      }
       console.log("");
       await inquirer.prompt([{ type: "input", name: "continue", message: "Press Enter to continue..." }]);
       await showMenu();
