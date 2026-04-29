@@ -100,10 +100,6 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const useNamedTunnel = !!CLOUDFLARE_TUNNEL_TOKEN;
 
   if (provider === "ngrok") {
-    if (!NGROK_AUTHTOKEN) {
-      throw new Error("NGROK_AUTHTOKEN is missing");
-    }
-
     if (isNgrokRunning()) {
       const existingNgrok = loadState();
       if (existingNgrok?.tunnelUrl) {
@@ -124,7 +120,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     const machineId = getMachineId();
     const existingNgrok = loadState();
     const shortId = existingNgrok?.shortId || generateShortId();
-    const { tunnelUrl } = await spawnNgrok(localPort, NGROK_AUTHTOKEN, NGROK_DOMAIN || null);
+    // If NGROK_AUTHTOKEN is empty, ngrok can still use token saved by `ngrok config add-authtoken`.
+    const { tunnelUrl } = await spawnNgrok(localPort, NGROK_AUTHTOKEN || "", NGROK_DOMAIN || null);
 
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "ngrok" });
