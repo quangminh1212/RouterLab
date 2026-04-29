@@ -117,10 +117,10 @@ export default function APIPageClient() {
   }
 
   function applySettingsState(settings = {}) {
-    setRequireApiKey(settings.requireApiKey || false);
+    setRequireApiKey(settings.requireApiKey === true);
     setRequireLogin(settings.requireLogin !== false);
     setHasPassword(settings.hasPassword || false);
-    setTunnelDashboardAccess(settings.tunnelDashboardAccess || false);
+    setTunnelDashboardAccess(settings.tunnelDashboardAccess === true);
   }
 
   const fetchTunnelStatus = useCallback(async () => {
@@ -173,6 +173,7 @@ export default function APIPageClient() {
     try {
       const responseStart = performance.now();
       const res = await fetch("/api/dashboard/bootstrap", {
+        cache: "no-store",
         headers: { "x-debug-trace-id": traceId },
       });
       const responseDurationMs = Math.round(performance.now() - responseStart);
@@ -230,9 +231,11 @@ export default function APIPageClient() {
       const tunnelStart = performance.now();
       const [settingsRes, statusRes] = await Promise.all([
         fetch("/api/settings", {
+          cache: "no-store",
           headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:settings" },
         }),
         fetch("/api/tunnel/status", {
+          cache: "no-store",
           headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:tunnelStatus" },
         })
       ]);
@@ -292,9 +295,15 @@ export default function APIPageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requireApiKey: value }),
       });
-      if (res.ok) setRequireApiKey(value);
+      if (res.ok) {
+        setRequireApiKey(value);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setTunnelStatus({ type: "error", message: data.error || "Failed to update Require API key" });
+      }
     } catch (error) {
       console.log("Error updating requireApiKey:", error);
+      setTunnelStatus({ type: "error", message: "Failed to update Require API key" });
     }
   };
 

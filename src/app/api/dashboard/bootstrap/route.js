@@ -45,6 +45,12 @@ export async function GET(request) {
         hasPassword: !!settings.password,
         tunnelDashboardAccess: settings.tunnelDashboardAccess || false,
       },
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
   } catch (error) {
     logger.dashboardPerf.error("DASHBOARD_API", "bootstrap:error", {

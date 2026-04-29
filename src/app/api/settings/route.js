@@ -29,6 +29,12 @@ export async function GET() {
       enableRequestLogs,
       enableTranslator,
       hasPassword: !!settings?.password
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
   } catch (error) {
     console.log("Error getting settings:", error);

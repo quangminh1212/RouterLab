@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
   providerStrategies: {},
   comboStrategy: "fallback",
   comboStrategies: {},
+  requireApiKey: false,
   requireLogin: true,
   tunnelDashboardAccess: true,
   observabilityEnabled: true,
