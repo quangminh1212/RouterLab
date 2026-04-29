@@ -307,6 +307,14 @@ function cloneDefaultData() {
     apiKeys: [],
     settings: cloneDefaultSettings(),
     pricing: {},
+    usageData: {
+      history: [],
+      totalRequestsLifetime: 0,
+      dailySummary: {},
+    },
+    requestDetailsData: {
+      records: [],
+    },
   };
 }
 

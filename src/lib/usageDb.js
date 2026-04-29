@@ -4,6 +4,7 @@ import { EventEmitter } from "events";
 import path from "path";
 import fs from "fs";
 import { DATA_DIR } from "@/lib/dataDir.js";
+import { getDb as getMainDb } from "@/lib/localDb.js";
 
 const isCloud = typeof caches !== 'undefined' || typeof caches === 'object';
 const DB_FILE = isCloud ? null : path.join(DATA_DIR, "usage.json");
@@ -259,35 +260,59 @@ export async function getUsageDb() {
   }
 
   if (!dbInstance) {
-    const adapter = new JSONFile(DB_FILE);
-    dbInstance = new Low(adapter, defaultData);
+    dbInstance = {
+      _main: null,
+      async read() {
+        this._main = await getMainDb();
+        if (!this._main.data.usageData || typeof this._main.data.usageData !== "object") {
+          this._main.data.usageData = { ...defaultData };
+        }
 
-    // Try to read DB with error recovery for corrupt JSON
-    try {
-      await dbInstance.read();
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        console.warn('[DB] Corrupt Usage JSON detected, resetting to defaults...');
-        dbInstance.data = defaultData;
-        await dbInstance.write();
-      } else {
-        throw error;
-      }
-    }
+        // One-time migration from legacy usage.json
+        const hasAnyUsage = Array.isArray(this._main.data.usageData.history)
+          ? this._main.data.usageData.history.length > 0
+          : false;
+        if (!hasAnyUsage && DB_FILE && fs.existsSync(DB_FILE)) {
+          try {
+            const legacyRaw = fs.readFileSync(DB_FILE, "utf8");
+            const legacy = JSON.parse(legacyRaw || "{}");
+            if (legacy && typeof legacy === "object") {
+              this._main.data.usageData = {
+                history: Array.isArray(legacy.history) ? legacy.history : [],
+                totalRequestsLifetime: Number.isFinite(legacy.totalRequestsLifetime)
+                  ? legacy.totalRequestsLifetime
+                  : (Array.isArray(legacy.history) ? legacy.history.length : 0),
+                dailySummary: legacy.dailySummary && typeof legacy.dailySummary === "object"
+                  ? legacy.dailySummary
+                  : {},
+              };
+            }
+          } catch {
+            // ignore legacy migration failure
+          }
+        }
 
-    if (!dbInstance.data) {
-      dbInstance.data = { ...defaultData };
-      await dbInstance.write();
-    }
+        if (!this._main.data.usageData.dailySummary) {
+          if (migrateHistoryToDailySummary({ data: this._main.data.usageData })) {
+            await this._main.write();
+          } else {
+            this._main.data.usageData.dailySummary = {};
+          }
+        }
+      },
+      async write() {
+        if (this._main) await this._main.write();
+      },
+      get data() {
+        return this._main?.data?.usageData;
+      },
+      set data(value) {
+        if (!this._main) return;
+        this._main.data.usageData = value;
+      },
+    };
 
-    // Migration: build dailySummary from existing history (one-time)
-    if (!dbInstance.data.dailySummary) {
-      if (migrateHistoryToDailySummary(dbInstance)) {
-        await dbInstance.write();
-      } else {
-        dbInstance.data.dailySummary = {};
-      }
-    }
+    await dbInstance.read();
   }
   return dbInstance;
 }

@@ -3,6 +3,7 @@ import { JSONFile } from "lowdb/node";
 import path from "node:path";
 import fs from "node:fs";
 import { DATA_DIR } from "@/lib/dataDir.js";
+import { getDb as getMainDb } from "@/lib/localDb.js";
 
 const isCloud = typeof caches !== "undefined" && typeof caches === "object";
 
@@ -24,11 +25,47 @@ let dbInstance = null;
 async function getDb() {
   if (isCloud) return null;
   if (!dbInstance) {
-    const adapter = new JSONFile(DB_FILE);
-    const db = new Low(adapter, { records: [] });
-    await db.read();
-    if (!db.data?.records) db.data = { records: [] };
-    dbInstance = db;
+    dbInstance = {
+      _main: null,
+      async read() {
+        this._main = await getMainDb();
+        if (!this._main.data.requestDetailsData || typeof this._main.data.requestDetailsData !== "object") {
+          this._main.data.requestDetailsData = { records: [] };
+        }
+
+        // One-time migration from legacy request-details.json
+        const hasAnyRecords = Array.isArray(this._main.data.requestDetailsData.records)
+          ? this._main.data.requestDetailsData.records.length > 0
+          : false;
+        if (!hasAnyRecords && DB_FILE && fs.existsSync(DB_FILE)) {
+          try {
+            const legacyRaw = fs.readFileSync(DB_FILE, "utf8");
+            const legacy = JSON.parse(legacyRaw || "{}");
+            if (legacy?.records && Array.isArray(legacy.records)) {
+              this._main.data.requestDetailsData.records = legacy.records;
+            }
+          } catch {
+            // ignore legacy migration failure
+          }
+        }
+
+        if (!Array.isArray(this._main.data.requestDetailsData.records)) {
+          this._main.data.requestDetailsData.records = [];
+        }
+      },
+      async write() {
+        if (this._main) await this._main.write();
+      },
+      get data() {
+        return this._main?.data?.requestDetailsData;
+      },
+      set data(value) {
+        if (!this._main) return;
+        this._main.data.requestDetailsData = value;
+      },
+    };
+
+    await dbInstance.read();
   }
   return dbInstance;
 }
