@@ -7,6 +7,15 @@ import { execSync } from "child_process";
 const NGROK_PID_FILE = path.join(os.tmpdir(), "xlabrouter-ngrok.pid");
 const NGROK_RUNNING_CACHE_TTL_MS = 3000;
 
+function getManagedNgrokPath() {
+  if (os.platform() === "win32") {
+    const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
+    return path.join(home, ".xlabrouter", "bin", "ngrok.exe");
+  }
+  const home = process.env.HOME || os.homedir();
+  return path.join(home, ".xlabrouter", "bin", "ngrok");
+}
+
 let ngrokProcess = null;
 let cachedNgrokRunning = null;
 let cachedNgrokRunningAt = 0;
@@ -46,16 +55,22 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
     const ngrokBinary = process.platform === "win32" ? "ngrok.exe" : "ngrok";
     let ngrokPath = ngrokBinary;
 
-    try {
-      if (process.platform === "win32") {
-        const result = execSync("where ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
-        ngrokPath = result.trim().split("\\n")[0];
-      } else {
-        const result = execSync("which ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
-        ngrokPath = result.trim();
+    const managedPath = getManagedNgrokPath();
+    if (fs.existsSync(managedPath)) {
+      ngrokPath = managedPath;
+      console.log(`[ngrok] Using managed binary: ${ngrokPath}`);
+    } else {
+      try {
+        if (process.platform === "win32") {
+          const result = execSync("where ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+          ngrokPath = result.trim().split("\\n")[0];
+        } else {
+          const result = execSync("which ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+          ngrokPath = result.trim();
+        }
+      } catch (e) {
+        console.log("[ngrok] Not found in PATH, using default name");
       }
-    } catch (e) {
-      console.log("[ngrok] Not found in PATH, using default name");
     }
 
     const args = ["http", String(localPort)];
