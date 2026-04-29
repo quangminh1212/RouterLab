@@ -4,7 +4,7 @@ import path from "path";
 import { loadState, saveState, generateShortId } from "./state.js";
 import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
 import { spawnNgrok, killNgrok, isNgrokRunning } from "./ngrok.js";
-import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword } from "./tailscale.js";
+import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword, getTailscaleAuthUrl, triggerTailscaleSystemLogin } from "./tailscale.js";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { getCachedPassword, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
@@ -384,13 +384,13 @@ export async function enableTailscale(localPort = 1212) {
 
   // If not logged in, return auth URL for user to authenticate
   if (!isTailscaleLoggedIn()) {
-    const loginResult = await startLogin(tsHostname);
-    if (loginResult.authUrl) {
-      return { success: false, needsLogin: true, authUrl: loginResult.authUrl };
+    const immediateAuthUrl = getTailscaleAuthUrl();
+    triggerTailscaleSystemLogin();
+    Promise.resolve().then(() => startLogin(tsHostname)).catch(() => {});
+    if (immediateAuthUrl) {
+      return { success: false, needsLogin: true, authUrl: immediateAuthUrl };
     }
-    if (loginResult.needsLogin) {
-      return { success: false, needsLogin: true };
-    }
+    return { success: false, needsLogin: true };
   }
 
   stopFunnel();
