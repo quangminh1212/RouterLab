@@ -3,7 +3,7 @@ import os from "os";
 import fs from "fs";
 import path from "path";
 import { loadState, saveState, generateShortId } from "./state.js";
-import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
+import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, isCloudflaredServiceInstalled, setUnexpectedExitHandler } from "./cloudflared.js";
 import { spawnNgrok, killNgrok, isNgrokRunning } from "./ngrok.js";
 import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword, getTailscaleAuthUrl, triggerTailscaleSystemLogin } from "./tailscale.js";
 import { getSettings, updateSettings } from "@/lib/localDb";
@@ -202,7 +202,12 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     const cloudflared = await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare" });
+    await updateSettings({
+      tunnelEnabled: true,
+      tunnelUrl,
+      tunnelProvider: "cloudflare",
+      cloudflareServiceInstalled: !!cloudflared?.serviceInstalled,
+    });
 
     if (!exitHandlerRegistered) {
       setUnexpectedExitHandler(() => {
@@ -211,11 +216,11 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       exitHandlerRegistered = true;
     }
 
-    return { 
-      success: true, 
-      tunnelUrl, 
-      shortId, 
-      publicUrl: getComputedPublicUrl(shortId), 
+    return {
+      success: true,
+      tunnelUrl,
+      shortId,
+      publicUrl: getComputedPublicUrl(shortId),
       mode: "named",
       serviceInstalled: !!cloudflared?.serviceInstalled
     };
@@ -296,7 +301,7 @@ export async function disableTunnel() {
     saveState({ shortId: state.shortId, machineId: state.machineId, tunnelUrl: null });
   }
 
-  await updateSettings({ tunnelEnabled: false, tunnelUrl: "", tunnelProvider: "" });
+  await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
   isReconnecting = false;
   return { success: true };
 }
@@ -328,7 +333,8 @@ export async function getTunnelStatus(settingsOverride) {
       shortId,
       publicUrl,
       running: false,
-      provider: settings.tunnelProvider || "",
+      provider: settings.tunnelProvider || "cloudflare",
+      serviceInstalled: settings.cloudflareServiceInstalled === true,
     };
   }
 
@@ -336,15 +342,17 @@ export async function getTunnelStatus(settingsOverride) {
     return {
       ...cachedTunnelStatus,
       enabled: settings.tunnelEnabled === true && cachedTunnelStatus.running,
-      tunnelUrl: state?.tunnelUrl || cachedTunnelStatus.tunnelUrl || "",
+      tunnelUrl: settings.tunnelUrl || state?.tunnelUrl || cachedTunnelStatus.tunnelUrl || "",
       provider: cachedTunnelStatus.provider || settings.tunnelProvider || "cloudflare",
       shortId,
       publicUrl,
+      serviceInstalled: settings.cloudflareServiceInstalled === true,
     };
   }
 
   const provider = settings.tunnelProvider || "cloudflare";
   const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
+  const serviceInstalled = provider === "cloudflare" ? isCloudflaredServiceInstalled() : false;
 
   let tunnelUrl = state?.tunnelUrl || "";
   if (provider === "ngrok") {
@@ -368,13 +376,55 @@ export async function getTunnelStatus(settingsOverride) {
   cachedTunnelStatus = { running, tunnelUrl, provider };
   cachedTunnelStatusAt = Date.now();
 
+  if (provider === "cloudflare" && settings.cloudflareServiceInstalled !== serviceInstalled) {
+    await updateSettings({ cloudflareServiceInstalled: serviceInstalled });
+  }
+
   return {
     enabled: settings.tunnelEnabled === true && running,
-    tunnelUrl,
+    tunnelUrl: settings.tunnelUrl || tunnelUrl,
     shortId,
-    publicUrl,
+    publicUrl: settings.tunnelUrl || publicUrl,
     running,
-    provider
+    provider,
+    serviceInstalled,
+  };
+}
+
+export async function getTunnelProviderStatuses(settingsOverride) {
+  const settings = settingsOverride || await getSettings();
+  const state = loadState();
+
+  const cloudflareRunning = isCloudflaredRunning();
+  const ngrokRunning = isNgrokRunning();
+
+  const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
+  const settingsTunnelUrl = settings?.tunnelUrl || "";
+  const stateTunnelUrl = state?.tunnelUrl || "";
+
+  const cloudflareUrl =
+    namedTunnelPublicUrl ||
+    (!isNgrokUrl(settingsTunnelUrl) ? settingsTunnelUrl : "") ||
+    (!isNgrokUrl(stateTunnelUrl) ? stateTunnelUrl : "");
+
+  const ngrokUrl = ngrokRunning
+    ? (await resolveNgrokPublicUrl()) || (isNgrokUrl(settingsTunnelUrl) ? settingsTunnelUrl : "") || (isNgrokUrl(stateTunnelUrl) ? stateTunnelUrl : "")
+    : "";
+
+  return {
+    cloudflare: {
+      enabled: settings.tunnelEnabled === true && cloudflareRunning && !!cloudflareUrl,
+      running: cloudflareRunning,
+      tunnelUrl: cloudflareUrl,
+      publicUrl: cloudflareUrl,
+      serviceInstalled: isCloudflaredServiceInstalled(),
+    },
+    ngrok: {
+      enabled: settings.tunnelEnabled === true && ngrokRunning && !!ngrokUrl,
+      running: ngrokRunning,
+      tunnelUrl: ngrokUrl,
+      publicUrl: ngrokUrl,
+    },
   };
 }
 

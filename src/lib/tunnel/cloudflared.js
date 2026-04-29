@@ -199,6 +199,15 @@ export async function spawnCloudflared(tunnelToken) {
 
   // Try to install as Windows service first (requires admin)
   if (IS_WINDOWS) {
+    if (isCloudflaredServiceInstalled()) {
+      try {
+        execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
+      } catch {
+        // Ignore: service may already be running
+      }
+      return { serviceInstalled: true };
+    }
+
     try {
       execSync(`"${binaryPath}" service install ${tunnelToken}`, { 
         stdio: "pipe", 
@@ -209,6 +218,9 @@ export async function spawnCloudflared(tunnelToken) {
       // Service installed successfully, no need to spawn process
       return { serviceInstalled: true };
     } catch (err) {
+      if (isCloudflaredServiceInstalled()) {
+        return { serviceInstalled: true };
+      }
       // Service install failed (likely no admin), fall back to process spawn
       console.log("[cloudflared] Service install failed, using process mode:", err.message);
     }
@@ -276,6 +288,26 @@ export async function spawnCloudflared(tunnelToken) {
       }
     });
   });
+}
+
+export function isCloudflaredServiceInstalled() {
+  if (!IS_WINDOWS) return false;
+  try {
+    const output = execSync("sc query cloudflared", { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
+    return /SERVICE_NAME\s*:\s*cloudflared/i.test(output);
+  } catch {
+    return false;
+  }
+}
+
+export function isCloudflaredServiceRunning() {
+  if (!IS_WINDOWS) return false;
+  try {
+    const output = execSync("sc query cloudflared", { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
+    return /STATE\s*:\s*\d+\s+RUNNING/i.test(output);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -417,6 +449,13 @@ export function isCloudflaredRunning() {
   // Return cached result if still valid
   if (cachedCloudflaredRunning !== null && Date.now() - cachedCloudflaredRunningAt < CLOUDFLARED_RUNNING_CACHE_TTL_MS) {
     return cachedCloudflaredRunning;
+  }
+
+  // Windows service mode may run without pid file
+  if (IS_WINDOWS && isCloudflaredServiceRunning()) {
+    cachedCloudflaredRunning = true;
+    cachedCloudflaredRunningAt = Date.now();
+    return true;
   }
 
   const pid = loadPid();
