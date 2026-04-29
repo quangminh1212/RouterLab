@@ -196,7 +196,8 @@ async function scheduleReconnect(attempt) {
     if (manualDisabled) { isReconnecting = false; return; }
     const settings = await getSettings();
     if (!settings.tunnelEnabled) { isReconnecting = false; return; }
-    await enableTunnel();
+    const provider = settings.tunnelProvider || "cloudflare";
+    await enableTunnel(1212, provider);
     console.log("[Tunnel] Reconnected successfully");
     isReconnecting = false;
   } catch (err) {

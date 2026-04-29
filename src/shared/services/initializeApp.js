@@ -1,6 +1,7 @@
 import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
 import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
+import { killNgrok, isNgrokRunning } from "@/lib/tunnel/ngrok";
 import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
 import { startGistSyncScheduler } from "@/shared/services/gistSyncScheduler";
 import { fileURLToPath } from "url";
@@ -66,10 +67,12 @@ export async function initializeApp() {
     // Auto-reconnect tunnel if it was enabled before restart
     // Run in background to avoid delaying first-response path.
     const settings = await getSettings();
-    if (!fastStartup && settings.tunnelEnabled && !isCloudflaredRunning()) {
+    const provider = settings.tunnelProvider || "cloudflare";
+    const tunnelRunning = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
+    if (!fastStartup && settings.tunnelEnabled && !tunnelRunning) {
       console.log("[InitApp] Tunnel was enabled, auto-reconnecting...");
       Promise.resolve()
-        .then(() => enableTunnel())
+        .then(() => enableTunnel(1212, provider))
         .then(() => {
           console.log("[InitApp] Tunnel reconnected");
         })
@@ -157,11 +160,13 @@ function startWatchdog() {
       if (g.tunnelRestartInProgress) return;
       const settings = await getSettings();
       if (!settings.tunnelEnabled) return;
-      if (isCloudflaredRunning()) return;
+      const provider = settings.tunnelProvider || "cloudflare";
+      const tunnelRunning = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
+      if (tunnelRunning) return;
       console.log("[Watchdog] Tunnel process is down, attempting recovery...");
       g.tunnelRestartInProgress = true;
       try {
-        await enableTunnel();
+        await enableTunnel(1212, provider);
         console.log("[Watchdog] Tunnel recovered");
       } finally {
         g.tunnelRestartInProgress = false;
@@ -226,9 +231,11 @@ function startNetworkMonitor() {
       g.tunnelRestartInProgress = true;
       g.lastTunnelRestartAt = now;
       try {
-        killCloudflared();
+        if ((settings.tunnelProvider || "cloudflare") === "ngrok") killNgrok();
+        else killCloudflared();
         await new Promise(r => setTimeout(r, 2000));
-        await enableTunnel();
+        const provider = settings.tunnelProvider || "cloudflare";
+        await enableTunnel(1212, provider);
         console.log("[NetworkMonitor] Tunnel restarted");
         g.lastNetworkFingerprint = getNetworkFingerprint();
       } finally {
