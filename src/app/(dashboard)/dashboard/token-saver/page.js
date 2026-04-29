@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const REPOS = [
   { name: "RTK (Rust Token Killer)", url: "https://github.com/rtk-ai/rtk", note: "Giảm token output terminal/log/build/test." },
   { name: "Context Mode", url: "https://github.com/mksglu/context-mode", note: "Đẩy output tool vào SQLite, chỉ đọc bản tóm tắt." },
@@ -23,10 +25,33 @@ export default function TokenSaverPage() {
         <h2 className="text-base font-semibold text-text-main">10 GitHub repos nên tham khảo</h2>
         <div className="grid grid-cols-1 gap-3">
           {REPOS.map((repo) => (
-            <a key={repo.url} href={repo.url} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-primary/40 transition-colors">
-              <p className="font-medium text-text-main">{repo.name}</p>
-              <p className="text-sm text-text-muted mt-1">{repo.note}</p>
-            </a>
+            <div key={repo.url} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-primary/40 transition-colors flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium text-text-main hover:text-primary transition-colors truncate block">
+                  {repo.name}
+                </a>
+                <p className="text-sm text-text-muted mt-1 truncate">{repo.note}</p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/dashboard/mcp-servers"
+                  className="size-9 rounded-full border border-white/15 hover:border-primary/50 hover:bg-primary/10 transition-colors flex items-center justify-center"
+                  title="Cài đặt / tích hợp"
+                >
+                  <span className="material-symbols-outlined text-[20px]">settings</span>
+                </Link>
+                <a
+                  href={repo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-white/15 hover:border-primary/50 hover:bg-primary/10 transition-colors flex items-center justify-center"
+                  title="Thêm / mở repo"
+                >
+                  <span className="material-symbols-outlined text-[22px]">add</span>
+                </a>
+              </div>
+            </div>
           ))}
         </div>
       </section>
