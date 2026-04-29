@@ -814,10 +814,15 @@ function compareVersions(versionA, versionB) {
 
 function runGlobalUpdate() {
   return new Promise((resolve) => {
-    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-    const child = spawn(npmCmd, ["install", "-g", pkg.name], {
+    const isWin = process.platform === "win32";
+    const command = isWin ? "cmd.exe" : "npm";
+    const args = isWin
+      ? ["/d", "/s", "/c", `npm install -g ${pkg.name}`]
+      : ["install", "-g", pkg.name];
+    const child = spawn(command, args, {
       stdio: "inherit",
       shell: false,
+      windowsHide: false,
     });
 
     child.on("error", (error) => {
