@@ -580,7 +580,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-text-muted">Backup mã hóa qua GitHub CLI.</p>
                   {gistConfig.gistId ? (
                     <p className="text-xs text-text-muted mt-1 break-all">
-                      Gist: {gistConfig.htmlUrl ? <a className="text-primary hover:underline" href={gistConfig.htmlUrl} target="_blank" rel="noreferrer">{gistConfig.gistId}</a> : gistConfig.gistId}
+                      Gist connected
                       {gistConfig.updatedAt ? ` - Updated ${new Date(gistConfig.updatedAt).toLocaleString()}` : ""}
                     </p>
                   ) : null}

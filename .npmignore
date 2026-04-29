@@ -42,3 +42,10 @@ images/*
 *.tgz
 .tmp-*/
 log.txt
+
+# Generated local test artifacts
+.playwright-mcp/
+next-dev-*.log
+
+logs/
+
