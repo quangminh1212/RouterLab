@@ -2,6 +2,27 @@ $ErrorActionPreference = "Continue"
 
 $logPath = "next-dev.log"
 
+function Resolve-LogPath {
+    param([string]$PreferredPath)
+
+    try {
+        if (Test-Path $PreferredPath) {
+            $stream = [System.IO.File]::Open($PreferredPath, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+            $stream.Close()
+            return $PreferredPath
+        }
+
+        $stream = [System.IO.File]::Open($PreferredPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+        $stream.Close()
+        return $PreferredPath
+    } catch {
+        $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+        $fallback = [System.IO.Path]::GetFileNameWithoutExtension($PreferredPath) + "-$stamp" + [System.IO.Path]::GetExtension($PreferredPath)
+        Write-Host "[WARN] Log file '$PreferredPath' is locked. Using '$fallback' instead." -ForegroundColor Yellow
+        return $fallback
+    }
+}
+
 function Write-ColoredLine {
     param([string]$Line)
 
@@ -45,8 +66,10 @@ function Write-ColoredLine {
     Write-Host $Line -ForegroundColor Gray
 }
 
+$resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
+
 npm run dev 2>&1 |
-    Tee-Object -FilePath $logPath |
+    Tee-Object -FilePath $resolvedLogPath |
     ForEach-Object { Write-ColoredLine $_.ToString() }
 
 exit $LASTEXITCODE
