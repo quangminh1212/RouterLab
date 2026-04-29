@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Continue"
 
 $logPath = "next-dev.log"
+$targetPort = 1212
+$maxRetries = 2
 
 function Resolve-LogPath {
     param([string]$PreferredPath)
@@ -66,10 +68,49 @@ function Write-ColoredLine {
     Write-Host $Line -ForegroundColor Gray
 }
 
+function Kill-PortProcess {
+    param([int]$Port)
+    Write-Host "[WARN] Port $Port is in use. Attempting to kill process..." -ForegroundColor Yellow
+    try {
+        $conn = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($conn) {
+            $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
+            if ($proc) {
+                Write-Host "[INFO] Killing process: $($proc.Name) (PID $($proc.Id))" -ForegroundColor Cyan
+                Stop-Process -Id $proc.Id -Force
+                Start-Sleep -Seconds 2
+                return $true
+            }
+        }
+    } catch {
+        Write-Host "[ERROR] Failed to kill port process: $_" -ForegroundColor Red
+    }
+    return $false
+}
+
 $resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
 
-npm run dev 2>&1 |
-    Tee-Object -FilePath $resolvedLogPath |
-    ForEach-Object { Write-ColoredLine $_.ToString() }
+$attempt = 0
+$success = $false
+
+while ($attempt -lt $maxRetries -and -not $success) {
+    $attempt++
+    if ($attempt -gt 1) {
+        Write-Host "[INFO] Retry attempt $attempt/$maxRetries" -ForegroundColor Cyan
+    }
+
+    $output = npm run dev 2>&1 | Tee-Object -FilePath $resolvedLogPath
+    $output | ForEach-Object { Write-ColoredLine $_.ToString() }
+
+    if ($LASTEXITCODE -ne 0 -and ($output -match "EADDRINUSE")) {
+        if (Kill-PortProcess -Port $targetPort) {
+            Write-Host "[INFO] Port cleared. Retrying..." -ForegroundColor Green
+            Start-Sleep -Seconds 1
+            continue
+        }
+    }
+
+    $success = $true
+}
 
 exit $LASTEXITCODE
