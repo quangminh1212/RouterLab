@@ -703,6 +703,7 @@ export default function APIPageClient() {
         if (tab) tab.location.href = authUrl;
         else window.open(authUrl, "tailscale_auth", "width=600,height=700");
         setTsProgress("Waiting for login...");
+        let notLoggedInCount = 0;
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
           try {
@@ -712,6 +713,13 @@ export default function APIPageClient() {
             const isLoggedIn = Boolean(checkData?.loggedIn);
 
             if (!isLoggedIn) {
+              notLoggedInCount += 1;
+              if (notLoggedInCount >= 6 && checkData?.daemonRunning) {
+                setTsStatus({
+                  type: "warning",
+                  message: "Tailscale service is running but this device is not joined yet. Open Tailscale app and complete 'tailscale up' login for this machine."
+                });
+              }
               setTsProgress("Waiting for login...");
               continue;
             }
@@ -744,7 +752,7 @@ export default function APIPageClient() {
             return;
           } catch { /* retry */ }
         }
-        setTsStatus({ type: "error", message: "Login timed out. Please try again." });
+        setTsStatus({ type: "error", message: "Login timed out. Website login alone is not enough; this machine must be added to tailnet in Tailscale client." });
         return;
       }
 

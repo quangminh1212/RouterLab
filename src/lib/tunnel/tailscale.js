@@ -46,6 +46,9 @@ function tsArgs(...args) {
 }
 
 function getAuthUrlFromStatus() {
+  if (IS_WINDOWS) {
+    return "https://login.tailscale.com/start";
+  }
   const bin = getTailscaleBin();
   if (!bin) return null;
   try {
@@ -70,7 +73,8 @@ function triggerSystemLoginFlow() {
   const bin = getTailscaleBin();
   if (!bin) return;
   try {
-    const child = spawn(bin, tsArgs("login"), {
+    const args = IS_WINDOWS ? ["up", "--accept-routes"] : tsArgs("login");
+    const child = spawn(bin, args, {
       stdio: ["ignore", "ignore", "ignore"],
       detached: true,
       windowsHide: true,
@@ -413,6 +417,26 @@ function ensureDaemon() {
 export function startLogin(hostname) {
   const bin = getTailscaleBin();
   if (!bin) return Promise.reject(new Error("Tailscale not installed"));
+
+  if (IS_WINDOWS) {
+    ensureDaemon();
+    if (isTailscaleLoggedIn()) {
+      return Promise.resolve({ alreadyLoggedIn: true });
+    }
+    const args = ["up", "--accept-routes"];
+    if (hostname) args.push(`--hostname=${hostname}`);
+    try {
+      const child = spawn(bin, args, {
+        stdio: ["ignore", "ignore", "ignore"],
+        detached: true,
+        windowsHide: true
+      });
+      child.unref();
+    } catch {
+      triggerSystemLoginFlow();
+    }
+    return Promise.resolve({ needsLogin: true, authUrl: "https://login.tailscale.com/start" });
+  }
 
   return new Promise((resolve, reject) => {
     // Ensure daemon is running (best-effort, no sudo)
