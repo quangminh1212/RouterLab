@@ -407,23 +407,38 @@ export async function getTunnelProviderStatuses(settingsOverride) {
     (!isNgrokUrl(settingsTunnelUrl) ? settingsTunnelUrl : "") ||
     (!isNgrokUrl(stateTunnelUrl) ? stateTunnelUrl : "");
 
-  const ngrokUrl = ngrokRunning
-    ? (await resolveNgrokPublicUrl()) || (isNgrokUrl(settingsTunnelUrl) ? settingsTunnelUrl : "") || (isNgrokUrl(stateTunnelUrl) ? stateTunnelUrl : "")
-    : "";
+  const resolvedNgrokUrl = ngrokRunning ? await resolveNgrokPublicUrl() : "";
+  const ngrokUrl =
+    resolvedNgrokUrl ||
+    (isNgrokUrl(settingsTunnelUrl) ? settingsTunnelUrl : "") ||
+    (isNgrokUrl(stateTunnelUrl) ? stateTunnelUrl : "");
+
+  // Resolve stale provider state:
+  // - If current tunnel URL is clearly Cloudflare/non-ngrok and cloudflared is running,
+  //   force Cloudflare active and keep Ngrok inactive even if settings.tunnelProvider is stale.
+  // - If ngrok URL is detected (via ngrok API or ngrok-pattern URL), allow Ngrok active.
+  const hasCloudflareUrl = !!cloudflareUrl;
+  const hasNgrokUrl = !!ngrokUrl;
+  const settingSaysNgrok = settings.tunnelProvider === "ngrok";
+  const settingSaysCloudflare = settings.tunnelProvider === "cloudflare";
+
+  const forceCloudflare = hasCloudflareUrl && cloudflareRunning && (!hasNgrokUrl || !ngrokRunning);
+  const effectiveCloudflareEnabled = settings.tunnelEnabled === true && (settingSaysCloudflare || forceCloudflare) && cloudflareRunning && hasCloudflareUrl;
+  const effectiveNgrokEnabled = settings.tunnelEnabled === true && !forceCloudflare && settingSaysNgrok && ngrokRunning && hasNgrokUrl;
 
   return {
     cloudflare: {
-      enabled: settings.tunnelEnabled === true && settings.tunnelProvider === "cloudflare" && cloudflareRunning && !!cloudflareUrl,
+      enabled: effectiveCloudflareEnabled,
       running: cloudflareRunning,
       tunnelUrl: cloudflareUrl,
       publicUrl: cloudflareUrl,
       serviceInstalled: isCloudflaredServiceInstalled(),
     },
     ngrok: {
-      enabled: settings.tunnelEnabled === true && settings.tunnelProvider === "ngrok" && ngrokRunning && !!ngrokUrl,
+      enabled: effectiveNgrokEnabled,
       running: ngrokRunning,
-      tunnelUrl: ngrokUrl,
-      publicUrl: ngrokUrl,
+      tunnelUrl: effectiveNgrokEnabled ? ngrokUrl : "",
+      publicUrl: effectiveNgrokEnabled ? ngrokUrl : "",
     },
   };
 }
