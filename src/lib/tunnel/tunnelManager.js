@@ -71,6 +71,23 @@ function getComputedPublicUrl(shortId) {
   return TUNNEL_PUBLIC_DOMAIN ? `https://r${shortId}.${TUNNEL_PUBLIC_DOMAIN}` : "";
 }
 
+function isNgrokUrl(url) {
+  if (!url) return false;
+  return /https:\/\/.+ngrok.+/i.test(url);
+}
+
+async function resolveNgrokPublicUrl() {
+  try {
+    const response = await fetch("http://127.0.0.1:4040/api/tunnels");
+    if (!response.ok) return "";
+    const data = await response.json();
+    const tunnel = data?.tunnels?.find((item) => item?.proto === "https");
+    return tunnel?.public_url || "";
+  } catch {
+    return "";
+  }
+}
+
 // ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
 
 async function registerTunnelUrl(shortId, tunnelUrl) {
@@ -104,7 +121,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   if (provider === "ngrok") {
     if (isNgrokRunning()) {
       const existingNgrok = loadState();
-      if (existingNgrok?.tunnelUrl) {
+      if (isNgrokUrl(existingNgrok?.tunnelUrl)) {
         return {
           success: true,
           tunnelUrl: existingNgrok.tunnelUrl,
@@ -258,12 +275,32 @@ export async function getTunnelStatus(settingsOverride) {
 
   const provider = settings.tunnelProvider || "cloudflare";
   const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
-  cachedTunnelStatus = { running, tunnelUrl: state?.tunnelUrl || "", provider };
+
+  let tunnelUrl = state?.tunnelUrl || "";
+  if (provider === "ngrok") {
+    const liveNgrokUrl = running ? await resolveNgrokPublicUrl() : "";
+    if (liveNgrokUrl) {
+      tunnelUrl = liveNgrokUrl;
+      const existing = loadState();
+      if (existing?.shortId || existing?.machineId) {
+        saveState({
+          shortId: existing.shortId,
+          machineId: existing.machineId,
+          tunnelUrl: liveNgrokUrl,
+        });
+      }
+      await updateSettings({ tunnelUrl: liveNgrokUrl, tunnelProvider: "ngrok" });
+    } else if (!isNgrokUrl(tunnelUrl)) {
+      tunnelUrl = "";
+    }
+  }
+
+  cachedTunnelStatus = { running, tunnelUrl, provider };
   cachedTunnelStatusAt = Date.now();
 
   return {
     enabled: settings.tunnelEnabled === true && running,
-    tunnelUrl: state?.tunnelUrl || "",
+    tunnelUrl,
     shortId,
     publicUrl,
     running,
