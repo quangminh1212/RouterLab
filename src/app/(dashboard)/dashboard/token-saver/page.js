@@ -25,11 +25,17 @@ export default function TokenSaverPage() {
         <div className="grid grid-cols-1 gap-3">
           {REPOS.map((repo) => (
             <div key={repo.url} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-primary/40 transition-colors flex items-center justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-center gap-3">
+                <div className="size-9 shrink-0 rounded-lg bg-white text-text-main flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">token</span>
+                </div>
+
+                <div className="min-w-0">
                 <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium text-text-main hover:text-primary transition-colors truncate block">
                   {repo.name}
                 </a>
                 <p className="text-sm text-text-muted mt-1 truncate">{repo.note}</p>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
