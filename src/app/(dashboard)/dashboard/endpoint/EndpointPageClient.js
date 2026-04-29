@@ -700,9 +700,7 @@ export default function APIPageClient() {
           if (tab) tab.location.href = authUrl;
           else window.open(authUrl, "tailscale_auth", "width=600,height=700");
         } else {
-          if (tab) {
-            tab.document.body.innerHTML = "<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Please login from Tailscale Desktop app, then click Enable again.</p>";
-          }
+          if (tab) tab.close();
           setTsStatus({
             type: "warning",
             message: "Tailscale needs login in Desktop app (no auth URL). Please login in Tailscale app, then click Enable again.",
