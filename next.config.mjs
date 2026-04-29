@@ -6,6 +6,12 @@ const hideDevIndicators = process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR === "1"
 const nextConfig = {
   output: "standalone",
   devIndicators: hideDevIndicators ? false : undefined,
+  allowedDevOrigins: [
+    "api.xlabrnd.com",
+    "*.xlabrnd.com",
+    "*.ngrok-free.app",
+    "*.ngrok.io",
+  ],
   serverExternalPackages: ["better-sqlite3"],
   images: {
     unoptimized: true

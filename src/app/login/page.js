@@ -30,7 +30,7 @@ export default function LoginPage() {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
       try {
-        const res = await fetch(`${baseUrl}/api/settings`, {
+        const res = await fetch(`${baseUrl}/api/settings/require-login`, {
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -42,7 +42,7 @@ export default function LoginPage() {
             router.refresh();
             return;
           }
-          setHasPassword(!!data.hasPassword);
+          setHasPassword(data.hasPassword !== false);
         } else {
           // Safe fallback on non-OK response to avoid infinite loading state.
           setHasPassword(true);
