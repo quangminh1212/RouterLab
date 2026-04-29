@@ -706,7 +706,17 @@ export default function APIPageClient() {
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
           try {
-            setTsProgress("Starting funnel...");
+            setTsProgress("Checking login status...");
+            const checkRes = await fetch("/api/tunnel/tailscale-check");
+            const checkData = checkRes.ok ? await checkRes.json() : null;
+            const isLoggedIn = Boolean(checkData?.loggedIn);
+
+            if (!isLoggedIn) {
+              setTsProgress("Waiting for login...");
+              continue;
+            }
+
+            setTsProgress("Login detected. Starting funnel...");
             const res2 = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
             const data2 = await res2.json();
             if (res2.ok && data2.success) {

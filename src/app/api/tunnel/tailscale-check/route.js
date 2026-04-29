@@ -10,9 +10,13 @@ function hasBrew() {
 }
 
 function isDaemonRunning() {
+  const platform = os.platform();
   try {
-    // Use custom socket + --json; exit 0 even when not logged in
-    execSync(`tailscale --socket ${TAILSCALE_SOCKET} status --json`, {
+    // Windows does not use custom unix socket; other OS use userspace socket.
+    const statusCmd = platform === "win32"
+      ? "tailscale status --json"
+      : `tailscale --socket ${TAILSCALE_SOCKET} status --json`;
+    execSync(statusCmd, {
       stdio: "ignore",
       windowsHide: true,
       env: { ...process.env, PATH: EXTENDED_PATH },
@@ -22,7 +26,11 @@ function isDaemonRunning() {
   } catch {
     // Fallback: check if tailscaled process is alive
     try {
-      execSync("pgrep -x tailscaled", { stdio: "ignore", windowsHide: true, timeout: 2000 });
+      if (platform === "win32") {
+        execSync("sc query Tailscale | findstr /I RUNNING", { stdio: "ignore", windowsHide: true, timeout: 2000 });
+      } else {
+        execSync("pgrep -x tailscaled", { stdio: "ignore", windowsHide: true, timeout: 2000 });
+      }
       return true;
     } catch { return false; }
   }
