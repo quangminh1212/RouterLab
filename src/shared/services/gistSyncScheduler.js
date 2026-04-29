@@ -62,7 +62,13 @@ async function runBackupOnce() {
     const settings = await getSettings();
     const gistBackup = settings?.gistBackup || {};
 
-    if (gistBackup.enabled !== true || !gistBackup.token) {
+    if (gistBackup.enabled !== true || !gistBackup.token || gistBackup.autoSyncEnabled === false) {
+      return;
+    }
+
+    const intervalMinutes = Math.min(60, Math.max(1, Number(gistBackup.syncIntervalMinutes || 1)));
+    const minGapMs = intervalMinutes * 60 * 1000;
+    if (state.lastSyncedAt && Date.now() - state.lastSyncedAt < minGapMs) {
       return;
     }
 

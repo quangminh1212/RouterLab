@@ -10,6 +10,8 @@ function toPublicConfig(settings) {
   const gistBackup = settings?.gistBackup || {};
   return {
     enabled: gistBackup.enabled === true,
+    autoSyncEnabled: gistBackup.autoSyncEnabled !== false,
+    syncIntervalMinutes: Number(gistBackup.syncIntervalMinutes || 1),
     hasToken: !!gistBackup.token,
     gistId: gistBackup.gistId || "",
     htmlUrl: gistBackup.htmlUrl || "",
@@ -98,6 +100,19 @@ export async function POST(request) {
     const action = body?.action || "";
     const settings = await getSettings();
     const current = settings?.gistBackup || {};
+
+    if (action === "set-sync-settings") {
+      const autoSyncEnabled = body?.autoSyncEnabled !== false;
+      const rawMinutes = Number(body?.syncIntervalMinutes || 1);
+      const syncIntervalMinutes = Math.min(60, Math.max(1, Number.isFinite(rawMinutes) ? rawMinutes : 1));
+      const nextConfig = {
+        ...current,
+        autoSyncEnabled,
+        syncIntervalMinutes,
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, action, config: toPublicConfig({ gistBackup: nextConfig }) });
+    }
 
     if (action === "use-gh-cli") {
       const token = await getGitHubCliToken();

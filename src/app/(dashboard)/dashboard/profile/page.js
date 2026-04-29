@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, Toggle, Input } from "@/shared/components";
@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
-  const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
+  const [gistConfig, setGistConfig] = useState({ enabled: false, autoSyncEnabled: true, syncIntervalMinutes: 1, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
   const [gistLoading, setGistLoading] = useState(false);
   const [gistExpanded, setGistExpanded] = useState(false);
   const [googleStatus, setGoogleStatus] = useState({
@@ -549,6 +549,30 @@ export default function ProfilePage() {
             </div>
             
             <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-bg-subtle">
+                      <span className="text-xs text-text-muted">Auto Sync</span>
+                      <Toggle checked={gistConfig.autoSyncEnabled !== false} onChange={async (checked) => {
+                        setGistLoading(true);
+                        try {
+                          const data = await postGistBackup({ action: "set-sync-settings", autoSyncEnabled: checked, syncIntervalMinutes: gistConfig.syncIntervalMinutes || 1 });
+                          if (data?.config) setGistConfig(data.config);
+                        } catch (err) {
+                          setDbStatus({ type: "error", message: err.message || "Failed to update auto sync" });
+                        } finally { setGistLoading(false); }
+                      }} />
+                      <select value={gistConfig.syncIntervalMinutes || 1} onChange={async (e) => {
+                        const minutes = Number(e.target.value || 1);
+                        setGistLoading(true);
+                        try {
+                          const data = await postGistBackup({ action: "set-sync-settings", autoSyncEnabled: gistConfig.autoSyncEnabled !== false, syncIntervalMinutes: minutes });
+                          if (data?.config) setGistConfig(data.config);
+                        } catch (err) {
+                          setDbStatus({ type: "error", message: err.message || "Failed to update sync interval" });
+                        } finally { setGistLoading(false); }
+                      }} className="px-2 py-1 rounded border border-border bg-bg text-xs">
+                        <option value={1}>1m</option><option value={5}>5m</option><option value={10}>10m</option><option value={15}>15m</option><option value={30}>30m</option><option value={60}>60m</option>
+                      </select>
+                    </div>
               <Button
                 variant="secondary"
                 icon="download"
@@ -577,7 +601,7 @@ export default function ProfilePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">GitHub Gist Backup</p>
-                  <p className="text-sm text-text-muted">Backup mã hóa qua GitHub CLI.</p>
+                  <p className="text-sm text-text-muted">Backup mÃ£ hÃ³a qua GitHub CLI.</p>
                   {gistConfig.gistId ? (
                     <p className="text-xs text-text-muted mt-1 break-all">
                       Gist connected
@@ -596,7 +620,7 @@ export default function ProfilePage() {
                     onClick={() => setGistExpanded((prev) => !prev)}
                     disabled={gistLoading}
                   >
-                    {gistExpanded ? "Thu gọn" : "Mở rộng"}
+                    {gistExpanded ? "Thu gá»n" : "Má»Ÿ rá»™ng"}
                   </Button>
                 </div>
               </div>
@@ -604,8 +628,32 @@ export default function ProfilePage() {
                 <>
 
                   <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-bg-subtle">
+                      <span className="text-xs text-text-muted">Auto Sync</span>
+                      <Toggle checked={gistConfig.autoSyncEnabled !== false} onChange={async (checked) => {
+                        setGistLoading(true);
+                        try {
+                          const data = await postGistBackup({ action: "set-sync-settings", autoSyncEnabled: checked, syncIntervalMinutes: gistConfig.syncIntervalMinutes || 1 });
+                          if (data?.config) setGistConfig(data.config);
+                        } catch (err) {
+                          setDbStatus({ type: "error", message: err.message || "Failed to update auto sync" });
+                        } finally { setGistLoading(false); }
+                      }} />
+                      <select value={gistConfig.syncIntervalMinutes || 1} onChange={async (e) => {
+                        const minutes = Number(e.target.value || 1);
+                        setGistLoading(true);
+                        try {
+                          const data = await postGistBackup({ action: "set-sync-settings", autoSyncEnabled: gistConfig.autoSyncEnabled !== false, syncIntervalMinutes: minutes });
+                          if (data?.config) setGistConfig(data.config);
+                        } catch (err) {
+                          setDbStatus({ type: "error", message: err.message || "Failed to update sync interval" });
+                        } finally { setGistLoading(false); }
+                      }} className="px-2 py-1 rounded border border-border bg-bg text-xs">
+                        <option value={1}>1m</option><option value={5}>5m</option><option value={10}>10m</option><option value={15}>15m</option><option value={30}>30m</option><option value={60}>60m</option>
+                      </select>
+                    </div>
                     <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
-                      Dùng GitHub CLI
+                      DÃ¹ng GitHub CLI
                     </Button>
                     <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
                       Sync
@@ -912,3 +960,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
