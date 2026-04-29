@@ -1,6 +1,6 @@
 {
     "name": "xlabrouter",
-    "version": "1.0.30",
+    "version": "1.0.31",
     "description": "Global CLI and web dashboard for XLab Router",
     "private": false,
     "preferGlobal": true,
