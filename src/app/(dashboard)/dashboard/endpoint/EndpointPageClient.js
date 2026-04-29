@@ -1446,17 +1446,17 @@ export default function APIPageClient() {
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
                       <span>
-                        Chi PhÃ­: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                        Chi phí: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
                           ? `$${Number(key.costLimit).toFixed(2)}`
                           : "Unlimited"}
                       </span>
-                      <span>â€¢</span>
+                      <span>•</span>
                       <span>
                         RPM: {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
                           ? Math.floor(Number(key.rpmLimit))
                           : "Unlimited"}
                       </span>
-                      <span>â€¢</span>
+                      <span>•</span>
                       <span>
                         Models: {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
                           ? `${key.allowedModels.length} model${key.allowedModels.length > 1 ? "s" : ""}`
@@ -1539,7 +1539,7 @@ export default function APIPageClient() {
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium text-text-main">Limit cost</p>
-              <p className="text-xs text-text-muted">Báº­t Ä‘á»ƒ giá»›i háº¡n tá»•ng chi phÃ­ cho key nÃ y</p>
+              <p className="text-xs text-text-muted">Bật để giới hạn tổng chi phí cho key này</p>
             </div>
             <Toggle
               checked={newKeyHasLimit}
@@ -1562,7 +1562,7 @@ export default function APIPageClient() {
               value={newKeyCostLimit}
               onChange={(e) => setNewKeyCostLimit(e.target.value)}
               placeholder="10.00"
-              hint="Khi tá»•ng chi phÃ­ Ä‘áº¡t ngÆ°á»¡ng nÃ y, key sáº½ tá»± bá»‹ tá»« chá»‘i"
+              hint="Khi tổng chi phí đạt ngưỡng này, key sẽ tự bị từ chối"
               error={createKeyError || undefined}
             />
           )}
@@ -1604,7 +1604,7 @@ export default function APIPageClient() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-text-main">Allowed Models</p>
-                <p className="text-xs text-text-muted">Äá»ƒ trá»‘ng Ä‘á»ƒ cho phÃ©p táº¥t cáº£.</p>
+                <p className="text-xs text-text-muted">Để trống để cho phép tất cả.</p>
               </div>
               <button
                 type="button"
@@ -1747,11 +1747,11 @@ export default function APIPageClient() {
       {/* Enable Tunnel Modal */}
       <Modal
         isOpen={showEnableTunnelModal}
-        title="Chá»n Tunnel"
+        title="Chọn Tunnel"
         onClose={() => setShowEnableTunnelModal(false)}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Chá»n nhÃ  cung cáº¥p tunnel trÆ°á»›c khi báº­t.</p>
+          <p className="text-sm text-text-muted">Chọn nhà cung cấp tunnel trước khi bật.</p>
 
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -1770,7 +1770,7 @@ export default function APIPageClient() {
             </Button>
           </div>
 
-          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Há»§y</Button>
+          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Hủy</Button>
         </div>
       </Modal>
 
@@ -1809,7 +1809,7 @@ export default function APIPageClient() {
           {/* Not installed */}
           {tsInstalled === false && !tsInstalling && (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-muted">Tailscale chÆ°a Ä‘Æ°á»£c cÃ i. CÃ i Ä‘áº·t Ä‘á»ƒ cÃ³ link tunnel cá»‘ Ä‘á»‹nh (miá»…n phÃ­, truy cáº­p public).</p>
+              <p className="text-sm text-text-muted">Tailscale chưa được cài. Cài đặt để có link tunnel cố định (miễn phí, truy cập public).</p>
               <div className="flex gap-2">
                 <Button
                   onClick={handleInstallTailscale}
