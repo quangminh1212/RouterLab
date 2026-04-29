@@ -669,7 +669,8 @@ function launchDetachedTrayHost() {
 }
 
 async function openPathOrUrl(target) {
-  const openTarget = require("open");
+  const openImport = require("open");
+  const openTarget = openImport?.default || openImport;
   await openTarget(target, { wait: false });
 }
 
