@@ -396,7 +396,17 @@ export function startLogin(hostname) {
     };
 
     const handleData = (data) => {
-      output += data.toString();
+      const text = data.toString();
+      output += text;
+
+      if (!resolved && /no backend|not logged in|logged out/i.test(text)) {
+        resolved = true;
+        clearTimeout(timeout);
+        child.unref();
+        resolve({ needsLogin: true });
+        return;
+      }
+
       const url = parseAuthUrl(output);
       if (url && !resolved) {
         resolved = true;

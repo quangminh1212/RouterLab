@@ -686,8 +686,15 @@ export default function APIPageClient() {
         if (data.authUrl) {
           if (tab) tab.location.href = data.authUrl;
           else window.open(data.authUrl, "tailscale_auth", "width=600,height=700");
-        } else if (tab) {
-          tab.document.body.innerHTML = "<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Please complete Tailscale login in system browser/app...</p>";
+        } else {
+          if (tab) {
+            tab.document.body.innerHTML = "<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Please login from Tailscale Desktop app, then click Enable again.</p>";
+          }
+          setTsStatus({
+            type: "warning",
+            message: "Tailscale needs login in Desktop app (no auth URL). Please login in Tailscale app, then click Enable again.",
+          });
+          return;
         }
         setTsProgress("Waiting for login...");
         for (let i = 0; i < 40; i++) {
