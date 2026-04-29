@@ -683,9 +683,22 @@ export default function APIPageClient() {
 
       // Needs login: redirect pre-opened tab or keep manual-login waiting mode
       if (data.needsLogin) {
-        if (data.authUrl) {
-          if (tab) tab.location.href = data.authUrl;
-          else window.open(data.authUrl, "tailscale_auth", "width=600,height=700");
+        let authUrl = data.authUrl || "";
+        if (!authUrl) {
+          try {
+            const loginRes = await fetch("/api/tunnel/tailscale-login", { method: "POST" });
+            if (loginRes.ok) {
+              const loginData = await loginRes.json();
+              authUrl = loginData?.authUrl || "";
+            }
+          } catch {
+            // ignore fallback fetch error
+          }
+        }
+
+        if (authUrl) {
+          if (tab) tab.location.href = authUrl;
+          else window.open(authUrl, "tailscale_auth", "width=600,height=700");
         } else {
           if (tab) {
             tab.document.body.innerHTML = "<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Please login from Tailscale Desktop app, then click Enable again.</p>";
