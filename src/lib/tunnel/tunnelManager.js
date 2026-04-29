@@ -96,6 +96,8 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 
 export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   manualDisabled = false;
+  cachedTunnelStatusAt = 0;
+  cachedTunnelStatus = null;
   const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
   const useNamedTunnel = !!CLOUDFLARE_TUNNEL_TOKEN;
 
@@ -215,6 +217,8 @@ async function scheduleReconnect(attempt) {
 export async function disableTunnel() {
   manualDisabled = true;
   isReconnecting = true;
+  cachedTunnelStatusAt = 0;
+  cachedTunnelStatus = null;
   if (reconnectTimeoutId) {
     clearTimeout(reconnectTimeoutId);
     reconnectTimeoutId = null;
@@ -246,6 +250,7 @@ export async function getTunnelStatus(settingsOverride) {
       ...cachedTunnelStatus,
       enabled: settings.tunnelEnabled === true && cachedTunnelStatus.running,
       tunnelUrl: state?.tunnelUrl || cachedTunnelStatus.tunnelUrl || "",
+      provider: cachedTunnelStatus.provider || settings.tunnelProvider || "cloudflare",
       shortId,
       publicUrl,
     };
@@ -253,7 +258,7 @@ export async function getTunnelStatus(settingsOverride) {
 
   const provider = settings.tunnelProvider || "cloudflare";
   const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
-  cachedTunnelStatus = { running, tunnelUrl: state?.tunnelUrl || "" };
+  cachedTunnelStatus = { running, tunnelUrl: state?.tunnelUrl || "", provider };
   cachedTunnelStatusAt = Date.now();
 
   return {
