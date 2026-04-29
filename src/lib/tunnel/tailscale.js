@@ -45,6 +45,38 @@ function tsArgs(...args) {
   return [...SOCKET_FLAG, ...args];
 }
 
+function getAuthUrlFromStatus() {
+  const bin = getTailscaleBin();
+  if (!bin) return null;
+  try {
+    const out = execSync(`"${bin}" ${SOCKET_FLAG.join(" ")} status --json`, {
+      encoding: "utf8",
+      windowsHide: true,
+      env: { ...process.env, PATH: EXTENDED_PATH },
+      timeout: 5000,
+    });
+    const json = JSON.parse(out);
+    return json?.AuthURL || null;
+  } catch {
+    return null;
+  }
+}
+
+function triggerSystemLoginFlow() {
+  const bin = getTailscaleBin();
+  if (!bin) return;
+  try {
+    const child = spawn(bin, tsArgs("login"), {
+      stdio: ["ignore", "ignore", "ignore"],
+      detached: true,
+      windowsHide: true,
+    });
+    child.unref();
+  } catch {
+    // ignore best-effort fallback
+  }
+}
+
 export function isTailscaleLoggedIn() {
   const bin = getTailscaleBin();
   if (!bin) return false;
@@ -386,7 +418,14 @@ export function startLogin(hostname) {
       const url = parseAuthUrl(output);
       if (url) resolve({ authUrl: url });
       else if (isTailscaleLoggedIn()) resolve({ alreadyLoggedIn: true });
-      else resolve({ needsLogin: true });
+      else {
+        const statusUrl = getAuthUrlFromStatus();
+        if (statusUrl) resolve({ authUrl: statusUrl, needsLogin: true });
+        else {
+          triggerSystemLoginFlow();
+          resolve({ needsLogin: true });
+        }
+      }
     }, 45000);
 
     const parseAuthUrl = (text) => {
@@ -434,7 +473,14 @@ export function startLogin(hostname) {
       const url = parseAuthUrl(output);
       if (url) resolve({ authUrl: url });
       else if (code === 0 || isTailscaleLoggedIn()) resolve({ alreadyLoggedIn: true });
-      else resolve({ needsLogin: true });
+      else {
+        const statusUrl = getAuthUrlFromStatus();
+        if (statusUrl) resolve({ authUrl: statusUrl, needsLogin: true });
+        else {
+          triggerSystemLoginFlow();
+          resolve({ needsLogin: true });
+        }
+      }
     });
   });
 }
