@@ -413,14 +413,14 @@ export async function getTunnelProviderStatuses(settingsOverride) {
 
   return {
     cloudflare: {
-      enabled: settings.tunnelEnabled === true && cloudflareRunning && !!cloudflareUrl,
+      enabled: settings.tunnelEnabled === true && settings.tunnelProvider === "cloudflare" && cloudflareRunning && !!cloudflareUrl,
       running: cloudflareRunning,
       tunnelUrl: cloudflareUrl,
       publicUrl: cloudflareUrl,
       serviceInstalled: isCloudflaredServiceInstalled(),
     },
     ngrok: {
-      enabled: settings.tunnelEnabled === true && ngrokRunning && !!ngrokUrl,
+      enabled: settings.tunnelEnabled === true && settings.tunnelProvider === "ngrok" && ngrokRunning && !!ngrokUrl,
       running: ngrokRunning,
       tunnelUrl: ngrokUrl,
       publicUrl: ngrokUrl,
