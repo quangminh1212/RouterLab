@@ -386,7 +386,7 @@ export function startLogin(hostname) {
       const url = parseAuthUrl(output);
       if (url) resolve({ authUrl: url });
       else if (isTailscaleLoggedIn()) resolve({ alreadyLoggedIn: true });
-      else reject(new Error("tailscale up timed out without auth URL"));
+      else resolve({ needsLogin: true });
     }, 45000);
 
     const parseAuthUrl = (text) => {
@@ -424,7 +424,7 @@ export function startLogin(hostname) {
       const url = parseAuthUrl(output);
       if (url) resolve({ authUrl: url });
       else if (code === 0 || isTailscaleLoggedIn()) resolve({ alreadyLoggedIn: true });
-      else reject(new Error(`tailscale up exited with code ${code}`));
+      else resolve({ needsLogin: true });
     });
   });
 }

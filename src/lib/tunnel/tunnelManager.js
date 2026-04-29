@@ -363,6 +363,9 @@ export async function enableTailscale(localPort = 1212) {
     if (loginResult.authUrl) {
       return { success: false, needsLogin: true, authUrl: loginResult.authUrl };
     }
+    if (loginResult.needsLogin) {
+      return { success: false, needsLogin: true };
+    }
   }
 
   stopFunnel();

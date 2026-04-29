@@ -681,10 +681,14 @@ export default function APIPageClient() {
         return;
       }
 
-      // Needs login: redirect pre-opened tab or open new
-      if (data.needsLogin && data.authUrl) {
-        if (tab) tab.location.href = data.authUrl;
-        else window.open(data.authUrl, "tailscale_auth", "width=600,height=700");
+      // Needs login: redirect pre-opened tab or keep manual-login waiting mode
+      if (data.needsLogin) {
+        if (data.authUrl) {
+          if (tab) tab.location.href = data.authUrl;
+          else window.open(data.authUrl, "tailscale_auth", "width=600,height=700");
+        } else if (tab) {
+          tab.document.body.innerHTML = "<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Please complete Tailscale login in system browser/app...</p>";
+        }
         setTsProgress("Waiting for login...");
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
