@@ -599,9 +599,20 @@ async function startWebUI() {
   if (process.platform === "win32" && process.env.XLABROUTER_BACKGROUND !== "1") {
     launchDetachedWebHost();
     printWebLaunchMessage();
+    setTimeout(() => {
+      openPathOrUrl(getDashboardUrl()).catch((error) => {
+        console.log(`[WARN] Could not open browser automatically: ${error.message}`);
+      });
+    }, 1200);
     return;
   }
-  await launchWebUIProcess();
+  await launchWebUIProcess({
+    onReady: ({ baseUrl }) => {
+      openPathOrUrl(baseUrl).catch((error) => {
+        console.log(`[WARN] Could not open browser automatically: ${error.message}`);
+      });
+    },
+  });
 }
 
 function printTrayLaunchMessage() {
@@ -775,6 +786,11 @@ async function startTrayHost() {
 function startTrayMode() {
   printTrayLaunchMessage();
   launchDetachedTrayHost();
+  setTimeout(() => {
+    openPathOrUrl(getDashboardUrl()).catch((error) => {
+      console.log(`[WARN] Could not open browser automatically: ${error.message}`);
+    });
+  }, 1500);
 }
 
 function compareVersions(versionA, versionB) {
