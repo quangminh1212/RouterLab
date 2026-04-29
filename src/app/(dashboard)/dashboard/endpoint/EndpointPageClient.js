@@ -814,6 +814,7 @@ export default function APIPageClient() {
   };
 
   const handleInstallNgrok = async () => {
+    setSelectedTunnelProvider("ngrok");
     setNgrokInstalling(true);
     setNgrokInstallProgress(3);
     setTunnelStatus(null);
@@ -835,9 +836,11 @@ export default function APIPageClient() {
         setTunnelStatus({ type: "success", message: "Ngrok installed successfully. Enabling tunnel..." });
         await handleEnableTunnel("ngrok");
       } else {
+        setSelectedTunnelProvider("ngrok");
         setTunnelStatus({ type: "error", message: data.error || "Failed to install ngrok" });
       }
     } catch (e) {
+      setSelectedTunnelProvider("ngrok");
       setTunnelStatus({ type: "error", message: e.message });
     } finally {
       clearInterval(progressTimer);
