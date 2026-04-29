@@ -27,7 +27,6 @@ export default function ProfilePage() {
   const importFileRef = useRef(null);
   const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
   const [gistLoading, setGistLoading] = useState(false);
-  const [gistExpanded, setGistExpanded] = useState(false);
   const [googleStatus, setGoogleStatus] = useState({
     loading: true,
     configured: false,
@@ -589,39 +588,25 @@ export default function ProfilePage() {
                   <span className={cn("text-xs px-2 py-1 rounded-full border whitespace-nowrap", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
                     {gistConfig.hasToken ? "CLI" : "Off"}
                   </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={gistExpanded ? "expand_less" : "expand_more"}
-                    onClick={() => setGistExpanded((prev) => !prev)}
-                    disabled={gistLoading}
-                  >
-                    {gistExpanded ? "Thu gọn" : "Mở rộng"}
-                  </Button>
                 </div>
               </div>
-              {gistExpanded ? (
-                <>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
-                      Dùng GitHub CLI
-                    </Button>
-                    <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
-                      Sync
-                    </Button>
-                    <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
-                      Backup
-                    </Button>
-                    <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
-                      Restore
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
-                      Disconnect
-                    </Button>
-                  </div>
-                </>
-              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
+                  Dùng GitHub CLI
+                </Button>
+                <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
+                  Sync
+                </Button>
+                <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
+                  Backup
+                </Button>
+                <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
+                  Restore
+                </Button>
+                <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
+                  Disconnect
+                </Button>
+              </div>
             </div>
             {dbStatus.message && (
               <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
