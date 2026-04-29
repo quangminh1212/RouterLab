@@ -488,6 +488,7 @@ export default function APIPageClient() {
   };
 
   const handleEnableTunnel = async (provider = selectedTunnelProvider) => {
+    setSelectedTunnelProvider(provider);
     setShowEnableTunnelModal(false);
     setTunnelLoading(true);
     setTunnelStatus(null);
@@ -522,6 +523,9 @@ export default function APIPageClient() {
       polling = false;
       const data = await res.json();
       if (!res.ok) {
+        if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(data.error || "")) {
+          setNgrokInstalled(false);
+        }
         setTunnelStatus({ type: "error", message: data.error || "Failed to enable tunnel" });
         return;
       }
@@ -537,6 +541,9 @@ export default function APIPageClient() {
       setTunnelProvider(data.provider || provider);
       await pingTunnelHealth(url);
     } catch (error) {
+      if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(error?.message || "")) {
+        setNgrokInstalled(false);
+      }
       setTunnelStatus({ type: "error", message: error.message });
     } finally {
       polling = false;
@@ -813,7 +820,9 @@ export default function APIPageClient() {
       const data = await res.json();
       if (res.ok && data.success) {
         setNgrokInstalled(true);
-        setTunnelStatus({ type: "success", message: "Ngrok installed successfully" });
+        setSelectedTunnelProvider("ngrok");
+        setTunnelStatus({ type: "success", message: "Ngrok installed successfully. Enabling tunnel..." });
+        await handleEnableTunnel("ngrok");
       } else {
         setTunnelStatus({ type: "error", message: data.error || "Failed to install ngrok" });
       }
@@ -1081,6 +1090,7 @@ export default function APIPageClient() {
                 icon="cloud_upload"
                 onClick={() => {
                   if (!requireApiKey) {
+                    setSelectedTunnelProvider("cloudflare");
                     setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
                     return;
                   }
@@ -1130,6 +1140,16 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
+            ) : ((ngrokInstalled === false || (tunnelStatus?.type === "error" && /binary not found|not found in path|enoent/i.test(tunnelStatus?.message || ""))) && selectedTunnelProvider === "ngrok") ? (
+              <Button
+                size="sm"
+                icon="download"
+                onClick={handleInstallNgrok}
+                disabled={ngrokInstalling}
+                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
+              >
+                {ngrokInstalling ? "Installing..." : "Cài ngrok"}
+              </Button>
             ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "ngrok") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-red-300 dark:border-red-800 bg-red-500/5 text-sm text-red-600 dark:text-red-400">
@@ -1158,6 +1178,7 @@ export default function APIPageClient() {
                 icon="cloud_upload"
                 onClick={() => {
                   if (!requireApiKey) {
+                    setSelectedTunnelProvider("ngrok");
                     setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
                     return;
                   }
