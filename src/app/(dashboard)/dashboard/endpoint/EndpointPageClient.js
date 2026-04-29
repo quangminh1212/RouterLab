@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle, ModelSelectModal } from "@/shared/components";
@@ -79,6 +79,7 @@ export default function APIPageClient() {
   // Ngrok install state
   const [ngrokInstalled, setNgrokInstalled] = useState(null); // null=checking, true/false
   const [ngrokInstalling, setNgrokInstalling] = useState(false);
+  const [ngrokInstallProgress, setNgrokInstallProgress] = useState(0);
   const tsLogRef = useRef(null);
 
   // API key visibility toggle state
@@ -814,12 +815,22 @@ export default function APIPageClient() {
 
   const handleInstallNgrok = async () => {
     setNgrokInstalling(true);
+    setNgrokInstallProgress(3);
     setTunnelStatus(null);
+    const progressTimer = setInterval(() => {
+      setNgrokInstallProgress((prev) => {
+        if (prev >= 90) return prev;
+        if (prev < 20) return prev + 7;
+        if (prev < 50) return prev + 5;
+        return prev + 2;
+      });
+    }, 700);
     try {
       const res = await fetch("/api/tunnel/ngrok-install", { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) {
         setNgrokInstalled(true);
+        setNgrokInstallProgress(100);
         setSelectedTunnelProvider("ngrok");
         setTunnelStatus({ type: "success", message: "Ngrok installed successfully. Enabling tunnel..." });
         await handleEnableTunnel("ngrok");
@@ -829,7 +840,9 @@ export default function APIPageClient() {
     } catch (e) {
       setTunnelStatus({ type: "error", message: e.message });
     } finally {
+      clearInterval(progressTimer);
       setNgrokInstalling(false);
+      setTimeout(() => setNgrokInstallProgress(0), 1200);
     }
   };
 
@@ -1082,7 +1095,7 @@ export default function APIPageClient() {
                 disabled={ngrokInstalling}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
-                {ngrokInstalling ? "Installing..." : "Cài ngrok"}
+                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
               </Button>
             ) : (
               <Button
@@ -1148,7 +1161,7 @@ export default function APIPageClient() {
                 disabled={ngrokInstalling}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
-                {ngrokInstalling ? "Installing..." : "Cài ngrok"}
+                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
               </Button>
             ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "ngrok") ? (
               <>
@@ -1315,7 +1328,7 @@ export default function APIPageClient() {
               >
                 RTK (Rust Token Killer)
               </a>
-              {" "}— ported to JavaScript. This feature is still under testing; disable it if you notice unexpected results.
+              {" "}â€” ported to JavaScript. This feature is still under testing; disable it if you notice unexpected results.
             </p>
           </div>
           <Toggle
@@ -1413,17 +1426,17 @@ export default function APIPageClient() {
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
                       <span>
-                        Chi Phí: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                        Chi PhÃ­: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
                           ? `$${Number(key.costLimit).toFixed(2)}`
                           : "Unlimited"}
                       </span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span>
                         RPM: {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
                           ? Math.floor(Number(key.rpmLimit))
                           : "Unlimited"}
                       </span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span>
                         Models: {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
                           ? `${key.allowedModels.length} model${key.allowedModels.length > 1 ? "s" : ""}`
@@ -1506,7 +1519,7 @@ export default function APIPageClient() {
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium text-text-main">Limit cost</p>
-              <p className="text-xs text-text-muted">Bật để giới hạn tổng chi phí cho key này</p>
+              <p className="text-xs text-text-muted">Báº­t Ä‘á»ƒ giá»›i háº¡n tá»•ng chi phÃ­ cho key nÃ y</p>
             </div>
             <Toggle
               checked={newKeyHasLimit}
@@ -1529,7 +1542,7 @@ export default function APIPageClient() {
               value={newKeyCostLimit}
               onChange={(e) => setNewKeyCostLimit(e.target.value)}
               placeholder="10.00"
-              hint="Khi tổng chi phí đạt ngưỡng này, key sẽ tự bị từ chối"
+              hint="Khi tá»•ng chi phÃ­ Ä‘áº¡t ngÆ°á»¡ng nÃ y, key sáº½ tá»± bá»‹ tá»« chá»‘i"
               error={createKeyError || undefined}
             />
           )}
@@ -1571,7 +1584,7 @@ export default function APIPageClient() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-text-main">Allowed Models</p>
-                <p className="text-xs text-text-muted">Để trống để cho phép tất cả.</p>
+                <p className="text-xs text-text-muted">Äá»ƒ trá»‘ng Ä‘á»ƒ cho phÃ©p táº¥t cáº£.</p>
               </div>
               <button
                 type="button"
@@ -1714,11 +1727,11 @@ export default function APIPageClient() {
       {/* Enable Tunnel Modal */}
       <Modal
         isOpen={showEnableTunnelModal}
-        title="Chọn Tunnel"
+        title="Chá»n Tunnel"
         onClose={() => setShowEnableTunnelModal(false)}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Chọn nhà cung cấp tunnel trước khi bật.</p>
+          <p className="text-sm text-text-muted">Chá»n nhÃ  cung cáº¥p tunnel trÆ°á»›c khi báº­t.</p>
 
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -1737,7 +1750,7 @@ export default function APIPageClient() {
             </Button>
           </div>
 
-          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Hủy</Button>
+          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Há»§y</Button>
         </div>
       </Modal>
 
@@ -1776,7 +1789,7 @@ export default function APIPageClient() {
           {/* Not installed */}
           {tsInstalled === false && !tsInstalling && (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-muted">Tailscale chưa được cài. Cài đặt để có link tunnel cố định (miễn phí, truy cập public).</p>
+              <p className="text-sm text-text-muted">Tailscale chÆ°a Ä‘Æ°á»£c cÃ i. CÃ i Ä‘áº·t Ä‘á»ƒ cÃ³ link tunnel cá»‘ Ä‘á»‹nh (miá»…n phÃ­, truy cáº­p public).</p>
               <div className="flex gap-2">
                 <Button
                   onClick={handleInstallTailscale}
@@ -1931,3 +1944,4 @@ function SecurityWarning({ message, action }) {
     </div>
   );
 }
+
