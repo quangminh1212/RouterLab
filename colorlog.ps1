@@ -2,7 +2,7 @@ $ErrorActionPreference = "Continue"
 
 $logPath = "next-dev.log"
 $targetPort = 1212
-$maxRetries = 2
+$maxRetries = 3
 
 function Resolve-LogPath {
     param([string]$PreferredPath)
@@ -92,6 +92,7 @@ $resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
 
 $attempt = 0
 $success = $false
+$currentPort = $targetPort
 
 while ($attempt -lt $maxRetries -and -not $success) {
     $attempt++
@@ -99,15 +100,21 @@ while ($attempt -lt $maxRetries -and -not $success) {
         Write-Host "[INFO] Retry attempt $attempt/$maxRetries" -ForegroundColor Cyan
     }
 
-    $output = npm run dev 2>&1 | Tee-Object -FilePath $resolvedLogPath
+    Write-Host "[INFO] Starting dev server on port $currentPort" -ForegroundColor Cyan
+    $output = npx next dev --port $currentPort 2>&1 | Tee-Object -FilePath $resolvedLogPath
     $output | ForEach-Object { Write-ColoredLine $_.ToString() }
 
     if ($LASTEXITCODE -ne 0 -and ($output -match "EADDRINUSE")) {
-        if (Kill-PortProcess -Port $targetPort) {
-            Write-Host "[INFO] Port cleared. Retrying..." -ForegroundColor Green
+        if (Kill-PortProcess -Port $currentPort) {
+            Write-Host "[INFO] Port $currentPort cleared. Retrying..." -ForegroundColor Green
             Start-Sleep -Seconds 1
             continue
         }
+
+        $currentPort++
+        Write-Host "[WARN] Auto-switching to new port $currentPort" -ForegroundColor Yellow
+        Start-Sleep -Seconds 1
+        continue
     }
 
     $success = $true
