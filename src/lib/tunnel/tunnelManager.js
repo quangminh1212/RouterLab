@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { loadState, saveState, generateShortId } from "./state.js";
 import { spawnQuickTunnel, spawnCloudflared, killCloudflared, isCloudflaredRunning, setUnexpectedExitHandler } from "./cloudflared.js";
+import { spawnNgrok, killNgrok, isNgrokRunning } from "./ngrok.js";
 import { startFunnel, stopFunnel, stopDaemon, isTailscaleRunning, isTailscaleLoggedIn, startLogin, startDaemonWithPassword } from "./tailscale.js";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { getCachedPassword, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
@@ -12,6 +13,8 @@ const TUNNEL_WORKER_URL = process.env.TUNNEL_WORKER_URL || "";
 const WORKER_URL = TUNNEL_WORKER_URL || (TUNNEL_PUBLIC_DOMAIN ? `https://${TUNNEL_PUBLIC_DOMAIN}` : "");
 const CLOUDFLARE_TUNNEL_TOKEN = process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "";
 const CLOUDFLARE_TUNNEL_PUBLIC_URL = process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "";
+const NGROK_AUTHTOKEN = process.env.NGROK_AUTHTOKEN || process.env.NGROK_AUTH_TOKEN || "";
+const NGROK_DOMAIN = process.env.NGROK_DOMAIN || "";
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
@@ -91,10 +94,42 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
   }
 }
 
-export async function enableTunnel(localPort = 1212) {
+export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   manualDisabled = false;
   const namedTunnelPublicUrl = getNamedTunnelPublicUrl();
   const useNamedTunnel = !!CLOUDFLARE_TUNNEL_TOKEN;
+
+  if (provider === "ngrok") {
+    if (!NGROK_AUTHTOKEN) {
+      throw new Error("NGROK_AUTHTOKEN is missing");
+    }
+
+    if (isNgrokRunning()) {
+      const existingNgrok = loadState();
+      if (existingNgrok?.tunnelUrl) {
+        return {
+          success: true,
+          tunnelUrl: existingNgrok.tunnelUrl,
+          shortId: existingNgrok.shortId,
+          publicUrl: existingNgrok.tunnelUrl,
+          provider: "ngrok",
+          alreadyRunning: true
+        };
+      }
+    }
+
+    killCloudflared();
+    killNgrok();
+
+    const machineId = getMachineId();
+    const existingNgrok = loadState();
+    const shortId = existingNgrok?.shortId || generateShortId();
+    const { tunnelUrl } = await spawnNgrok(localPort, NGROK_AUTHTOKEN, NGROK_DOMAIN || null);
+
+    saveState({ shortId, machineId, tunnelUrl });
+    await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "ngrok" });
+    return { success: true, tunnelUrl, shortId, publicUrl: tunnelUrl, provider: "ngrok" };
+  }
 
   if (isCloudflaredRunning()) {
     const existing = loadState();
@@ -114,7 +149,7 @@ export async function enableTunnel(localPort = 1212) {
     await spawnCloudflared(CLOUDFLARE_TUNNEL_TOKEN);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl });
+    await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare" });
 
     if (!exitHandlerRegistered) {
       setUnexpectedExitHandler(() => {
@@ -131,14 +166,14 @@ export async function enableTunnel(localPort = 1212) {
     if (manualDisabled) return;
     await registerTunnelUrl(shortId, url);
     saveState({ shortId, machineId, tunnelUrl: url });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl: url });
+    await updateSettings({ tunnelEnabled: true, tunnelUrl: url, tunnelProvider: "cloudflare" });
   };
 
   const { tunnelUrl } = await spawnQuickTunnel(localPort, onUrlUpdate);
 
   await registerTunnelUrl(shortId, tunnelUrl);
   saveState({ shortId, machineId, tunnelUrl });
-  await updateSettings({ tunnelEnabled: true, tunnelUrl });
+  await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare" });
 
   if (!exitHandlerRegistered) {
     setUnexpectedExitHandler(() => {
@@ -148,7 +183,7 @@ export async function enableTunnel(localPort = 1212) {
   }
 
   const publicUrl = getComputedPublicUrl(shortId);
-  return { success: true, tunnelUrl, shortId, publicUrl };
+  return { success: true, tunnelUrl, shortId, publicUrl, provider: "cloudflare" };
 }
 
 async function scheduleReconnect(attempt) {
@@ -190,13 +225,14 @@ export async function disableTunnel() {
   exitHandlerRegistered = false;
 
   killCloudflared();
+  killNgrok();
 
   const state = loadState();
   if (state) {
     saveState({ shortId: state.shortId, machineId: state.machineId, tunnelUrl: null });
   }
 
-  await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
+  await updateSettings({ tunnelEnabled: false, tunnelUrl: "", tunnelProvider: "" });
   isReconnecting = false;
   return { success: true };
 }
@@ -217,7 +253,8 @@ export async function getTunnelStatus(settingsOverride) {
     };
   }
 
-  const running = isCloudflaredRunning();
+  const provider = settings.tunnelProvider || "cloudflare";
+  const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
   cachedTunnelStatus = { running, tunnelUrl: state?.tunnelUrl || "" };
   cachedTunnelStatusAt = Date.now();
 
@@ -226,7 +263,8 @@ export async function getTunnelStatus(settingsOverride) {
     tunnelUrl: state?.tunnelUrl || "",
     shortId,
     publicUrl,
-    running
+    running,
+    provider
   };
 }
 
