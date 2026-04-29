@@ -22,7 +22,6 @@ export default function TokenSaverPage() {
       </header>
 
       <section className="rounded-2xl border border-white/10 bg-black/10 p-4 md:p-5 space-y-3">
-        <h2 className="text-base font-semibold text-text-main">10 GitHub repos nên tham khảo</h2>
         <div className="grid grid-cols-1 gap-3">
           {REPOS.map((repo) => (
             <div key={repo.url} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 hover:border-primary/40 transition-colors flex items-center justify-between gap-3">
@@ -58,4 +57,3 @@ export default function TokenSaverPage() {
     </div>
   );
 }
-
