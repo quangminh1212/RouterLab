@@ -53,7 +53,7 @@ function getAuthUrlFromStatus() {
       encoding: "utf8",
       windowsHide: true,
       env: { ...process.env, PATH: EXTENDED_PATH },
-      timeout: 5000,
+      timeout: IS_WINDOWS ? 1200 : 5000,
     });
     const json = JSON.parse(out);
     return json?.AuthURL || null;
@@ -93,7 +93,7 @@ export function isTailscaleLoggedIn() {
       encoding: "utf8",
       windowsHide: true,
       env: { ...process.env, PATH: EXTENDED_PATH },
-      timeout: 5000
+      timeout: IS_WINDOWS ? 1200 : 5000
     });
     const json = JSON.parse(out);
     // BackendState "Running" means fully logged in and connected

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import os from "os";
 import fs from "fs";
 import path from "path";
 import { loadState, saveState, generateShortId } from "./state.js";
@@ -21,6 +22,7 @@ const NGROK_DOMAIN = process.env.NGROK_DOMAIN || "";
 const MACHINE_ID_SALT = "xlabrouter-tunnel-salt";
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000, 60000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
+const IS_WINDOWS = os.platform() === "win32";
 const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
   ? Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS)
   : 30000;
@@ -372,6 +374,12 @@ export async function getTunnelStatus(settingsOverride) {
 // ─── Tailscale Funnel ─────────────────────────────────────────────────────────
 
 export async function enableTailscale(localPort = 1212) {
+  if (IS_WINDOWS && !isTailscaleLoggedIn()) {
+    const immediateAuthUrl = getTailscaleAuthUrl() || "https://login.tailscale.com/start";
+    triggerTailscaleSystemLogin();
+    return { success: false, needsLogin: true, authUrl: immediateAuthUrl };
+  }
+
   createRuntimeBackup("before-enable-tailscale");
   // Ensure daemon is running (needs sudo for TUN mode)
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
