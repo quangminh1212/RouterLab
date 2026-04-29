@@ -85,7 +85,7 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
 
     const child = spawn(ngrokPath, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
+      detached: true,
       windowsHide: true,
     });
 
@@ -101,6 +101,7 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
       settled = true;
       resolved = true;
       connected = true;
+      try { child.unref(); } catch {}
       clearTimeout(timeout);
       clearInterval(pollInterval);
       resolve(value);
