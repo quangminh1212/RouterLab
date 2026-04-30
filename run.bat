@@ -9,6 +9,9 @@ set DEV_RUN_LOG=next-dev.log
 echo Starting XLab Router...
 echo.
 
+REM Always clear old dev server processes before starting
+call "%~dp0stop.bat" >nul 2>&1
+
 REM Check Node.js
 where node >nul 2>&1
 if errorlevel 1 (
@@ -61,6 +64,9 @@ if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 REM Start dev server with realtime colored output
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0colorlog.ps1"
 set EXIT_CODE=!ERRORLEVEL!
+
+REM Always cleanup leftover processes after PowerShell exits (including Ctrl+C)
+call "%~dp0stop.bat" >nul 2>&1
 
 if exist "%DEV_RUN_LOG%" type "%DEV_RUN_LOG%" >> "%LOG_FILE%"
 

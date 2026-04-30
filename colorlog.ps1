@@ -72,15 +72,20 @@ function Kill-PortProcess {
     param([int]$Port)
     Write-Host "[WARN] Port $Port is in use. Attempting to kill process..." -ForegroundColor Yellow
     try {
-        $conn = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($conn) {
-            $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
-            if ($proc) {
-                Write-Host "[INFO] Killing process: $($proc.Name) (PID $($proc.Id))" -ForegroundColor Cyan
-                Stop-Process -Id $proc.Id -Force
-                Start-Sleep -Seconds 2
-                return $true
+        $conns = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+        if ($conns) {
+            foreach ($pid in $conns) {
+                if ($pid -and $pid -ne $PID) {
+                    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                    if ($proc) {
+                        Write-Host "[INFO] Killing process: $($proc.Name) (PID $($proc.Id))" -ForegroundColor Cyan
+                        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+                    }
+                }
             }
+            Start-Sleep -Seconds 2
+            return $true
         }
     } catch {
         Write-Host "[ERROR] Failed to kill port process: $_" -ForegroundColor Red
@@ -94,6 +99,9 @@ $attempt = 0
 $success = $false
 $currentPort = $targetPort
 
+# Pre-clear stale listeners before first start to avoid EADDRINUSE race
+Kill-PortProcess -Port $currentPort | Out-Null
+
 while ($attempt -lt $maxRetries -and -not $success) {
     $attempt++
     if ($attempt -gt 1) {
@@ -101,10 +109,16 @@ while ($attempt -lt $maxRetries -and -not $success) {
     }
 
     Write-Host "[INFO] Starting dev server on port $currentPort" -ForegroundColor Cyan
-    $output = npx next dev --port $currentPort 2>&1 | Tee-Object -FilePath $resolvedLogPath
-    $output | ForEach-Object { Write-ColoredLine $_.ToString() }
+    try {
+        $output = npx next dev --port $currentPort 2>&1 | Tee-Object -FilePath $resolvedLogPath
+        $output | ForEach-Object { Write-ColoredLine $_.ToString() }
+        $exitCode = $LASTEXITCODE
+    } finally {
+        # Always clear listener after process exits or Ctrl+C interruption
+        Kill-PortProcess -Port $targetPort | Out-Null
+    }
 
-    if ($LASTEXITCODE -ne 0 -and ($output -match "EADDRINUSE")) {
+    if ($exitCode -ne 0 -and ($output -match "EADDRINUSE")) {
         if (Kill-PortProcess -Port $currentPort) {
             Write-Host "[INFO] Port $currentPort cleared. Retrying..." -ForegroundColor Green
             Start-Sleep -Seconds 1
@@ -120,4 +134,4 @@ while ($attempt -lt $maxRetries -and -not $success) {
     $success = $true
 }
 
-exit $LASTEXITCODE
+exit $exitCode
