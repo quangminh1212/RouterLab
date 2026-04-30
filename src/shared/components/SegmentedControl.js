@@ -40,7 +40,7 @@ export default function SegmentedControl({
               {option.icon}
             </span>
           )}
-          {option.label}
+          <span data-i18n-skip="true">{option.label}</span>
         </button>
       ))}
     </div>
