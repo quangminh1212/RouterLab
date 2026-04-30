@@ -9,9 +9,6 @@ set DEV_RUN_LOG=next-dev.log
 echo Starting XLab Router...
 echo.
 
-REM Kill existing node processes
-taskkill /F /IM node.exe >nul 2>&1
-
 REM Check Node.js
 where node >nul 2>&1
 if errorlevel 1 (
@@ -59,7 +56,6 @@ echo Logs are shown in realtime with colors and also saved to %DEV_RUN_LOG%
 echo Press Ctrl+C to stop
 echo.
 
-:DEV_LOOP
 if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 
 REM Start dev server with realtime colored output
@@ -76,7 +72,10 @@ findstr /I /C:".next\dev\server" "%DEV_RUN_LOG%" >nul 2>&1
 if !ERRORLEVEL! EQU 0 goto CACHE_ERROR
 
 findstr /I /C:"ENOENT: no such file or directory" "%DEV_RUN_LOG%" >nul 2>&1
-if !ERRORLEVEL! EQU 0 goto CACHE_ERROR
+if !ERRORLEVEL! EQU 0 (
+    echo.
+    echo [WARN] Next.js cache-related error detected in logs.
+)
 
 REM Normal exit
 if !EXIT_CODE! EQU 0 (
@@ -85,15 +84,7 @@ if !EXIT_CODE! EQU 0 (
     exit /b 0
 )
 
-REM Restart on crash
+REM Exit on crash (no auto-restart)
 echo.
-echo [WARN] Server crashed (exit code !EXIT_CODE!). Restarting in 3 seconds...
-ping -n 4 127.0.0.1 >nul
-goto DEV_LOOP
-
-:CACHE_ERROR
-echo.
-echo [WARN] Next.js cache error detected. Clearing .next and restarting...
-if exist ".next" rmdir /s /q ".next" >nul 2>&1
-ping -n 2 127.0.0.1 >nul
-goto DEV_LOOP
+echo [WARN] Server exited with code !EXIT_CODE!.
+exit /b !EXIT_CODE!
