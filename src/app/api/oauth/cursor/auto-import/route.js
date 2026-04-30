@@ -131,6 +131,7 @@ async function extractTokensViaCLI(dbPath) {
   const query = async (sql) => {
     const { stdout } = await execFileAsync("sqlite3", [dbPath, sql], {
       timeout: 10000,
+      windowsHide: true,
     });
     return stdout.trim();
   };

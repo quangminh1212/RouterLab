@@ -129,7 +129,7 @@ export async function killAppProcesses() {
       if (platform === "win32") {
         execSync(`taskkill /F /PID ${pid} 2>nul`, { stdio: "ignore", shell: true, windowsHide: true, timeout: 3000 });
       } else {
-        execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+        execSync(`kill -9 ${pid} 2>/dev/null`, { stdio: "ignore", windowsHide: true, timeout: 3000 });
       }
     } catch { /* already dead */ }
   });

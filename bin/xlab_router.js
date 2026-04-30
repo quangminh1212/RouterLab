@@ -699,14 +699,14 @@ async function openPathOrUrl(target) {
 
   const platform = process.platform;
   if (platform === "win32") {
-    exec(`start "" "${target.replace(/"/g, '""')}"`);
+    exec(`start "" "${target.replace(/"/g, '""')}"`, { windowsHide: true });
     return;
   }
   if (platform === "darwin") {
-    exec(`open "${target.replace(/"/g, '\\"')}"`);
+    exec(`open "${target.replace(/"/g, '\\"')}"`, { windowsHide: true });
     return;
   }
-  exec(`xdg-open "${target.replace(/"/g, '\\"')}"`);
+  exec(`xdg-open "${target.replace(/"/g, '\\"')}"`, { windowsHide: true });
 }
 
 async function startTrayHost() {

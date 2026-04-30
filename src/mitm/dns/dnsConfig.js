@@ -201,9 +201,9 @@ function removeAllDNSEntriesSync() {
     if (IS_WIN) {
       try { execSync("ipconfig /flushdns", { windowsHide: true, stdio: "ignore" }); } catch { /* ignore */ }
     } else if (IS_MAC) {
-      try { execSync("dscacheutil -flushcache && killall -HUP mDNSResponder", { stdio: "ignore" }); } catch { /* ignore */ }
+      try { execSync("dscacheutil -flushcache && killall -HUP mDNSResponder", { windowsHide: true, stdio: "ignore" }); } catch { /* ignore */ }
     } else {
-      try { execSync("resolvectl flush-caches 2>/dev/null || true", { stdio: "ignore" }); } catch { /* ignore */ }
+      try { execSync("resolvectl flush-caches 2>/dev/null || true", { windowsHide: true, stdio: "ignore" }); } catch { /* ignore */ }
     }
   } catch { /* best effort during shutdown */ }
 }

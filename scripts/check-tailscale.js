@@ -9,9 +9,9 @@ const isLinux = platform === 'linux';
 function checkTailscale() {
   try {
     if (isWindows) {
-      execSync('where tailscale', { stdio: 'ignore' });
+      execSync('where tailscale', { stdio: 'ignore', windowsHide: true });
     } else {
-      execSync('which tailscale', { stdio: 'ignore' });
+      execSync('which tailscale', { stdio: 'ignore', windowsHide: true });
     }
     console.log('\u2713 Tailscale \u0111\u00e3 \u0111\u01b0\u1ee3c c\u00e0i \u0111\u1eb7t');
     return true;

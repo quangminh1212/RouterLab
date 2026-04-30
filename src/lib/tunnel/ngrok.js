@@ -62,10 +62,10 @@ export async function spawnNgrok(localPort, authtoken, domain = null) {
     } else {
       try {
         if (process.platform === "win32") {
-          const result = execSync("where ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+          const result = execSync("where ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
           ngrokPath = result.trim().split("\\n")[0];
         } else {
-          const result = execSync("which ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+          const result = execSync("which ngrok", { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
           ngrokPath = result.trim();
         }
       } catch (e) {
