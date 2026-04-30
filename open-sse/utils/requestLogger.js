@@ -6,6 +6,7 @@ const LOGGING_ENABLED = typeof process !== "undefined" && process.env?.ENABLE_RE
 
 let fs = null;
 let path = null;
+let os = null;
 let LOGS_DIR = null;
 
 // Lazy load Node.js modules (avoid top-level await)
@@ -14,7 +15,12 @@ async function ensureNodeModules() {
   try {
     fs = await import("fs");
     path = await import("path");
-    LOGS_DIR = path.join(typeof process !== "undefined" && process.cwd ? process.cwd() : ".", "logs");
+    os = await import("os");
+    const dataDir = process.env.DATA_DIR
+      || (process.platform === "win32"
+        ? path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "xlabrouter")
+        : path.join(os.homedir(), ".xlabrouter"));
+    LOGS_DIR = path.join(dataDir, "logs");
   } catch {
     // Running in non-Node environment (Worker, Browser, etc.)
   }
