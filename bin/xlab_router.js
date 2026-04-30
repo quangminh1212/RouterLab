@@ -670,8 +670,29 @@ function launchDetachedTrayHost() {
 
 async function openPathOrUrl(target) {
   const openImport = require("open");
-  const openTarget = openImport?.default || openImport;
-  await openTarget(target, { wait: false });
+  const candidates = [
+    openImport,
+    openImport?.default,
+    openImport?.open,
+    openImport?.default?.open,
+  ];
+  const openTarget = candidates.find((candidate) => typeof candidate === "function");
+
+  if (openTarget) {
+    await openTarget(target, { wait: false });
+    return;
+  }
+
+  const platform = process.platform;
+  if (platform === "win32") {
+    exec(`start "" "${target.replace(/"/g, '""')}"`);
+    return;
+  }
+  if (platform === "darwin") {
+    exec(`open "${target.replace(/"/g, '\\"')}"`);
+    return;
+  }
+  exec(`xdg-open "${target.replace(/"/g, '\\"')}"`);
 }
 
 async function startTrayHost() {
