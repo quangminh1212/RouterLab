@@ -48,6 +48,8 @@ export default function APIPageClient() {
   const [hasPassword, setHasPassword] = useState(true);
   const [tunnelDashboardAccess, setTunnelDashboardAccess] = useState(false);
   const [rtkEnabled, setRtkEnabledState] = useState(false);
+  const [cavemanEnabled, setCavemanEnabledState] = useState(false);
+  const [cavemanLevel, setCavemanLevelState] = useState("full");
 
   // Cloudflare Tunnel state
   const [tunnelChecking, setTunnelChecking] = useState(true);
@@ -121,6 +123,8 @@ export default function APIPageClient() {
     setRequireLogin(settings.requireLogin !== false);
     setHasPassword(settings.hasPassword || false);
     setTunnelDashboardAccess(settings.tunnelDashboardAccess === true);
+    setCavemanEnabledState(settings.cavemanEnabled === true);
+    setCavemanLevelState(settings.cavemanLevel || "full");
   }
 
   const fetchTunnelStatus = useCallback(async () => {
@@ -317,6 +321,32 @@ export default function APIPageClient() {
       if (res.ok) setRtkEnabledState(value);
     } catch (error) {
       console.log("Error updating rtkEnabled:", error);
+    }
+  };
+
+  const handleCavemanEnabled = async (value) => {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cavemanEnabled: value }),
+      });
+      if (res.ok) setCavemanEnabledState(value);
+    } catch (error) {
+      console.log("Error updating cavemanEnabled:", error);
+    }
+  };
+
+  const handleCavemanLevel = async (value) => {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cavemanLevel: value }),
+      });
+      if (res.ok) setCavemanLevelState(value);
+    } catch (error) {
+      console.log("Error updating cavemanLevel:", error);
     }
   };
 
@@ -1438,6 +1468,37 @@ export default function APIPageClient() {
             onChange={() => handleRtkEnabled(!rtkEnabled)}
           />
         </div>
+
+        <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+          <div className="pr-4">
+            <p className="font-medium">Caveman replies</p>
+            <p className="text-sm text-text-muted">
+              Inject a terse system instruction before dispatch to reduce output tokens while keeping code, paths, commands, errors, and warnings exact.
+            </p>
+          </div>
+          <Toggle
+            checked={cavemanEnabled}
+            onChange={() => handleCavemanEnabled(!cavemanEnabled)}
+          />
+        </div>
+
+        {cavemanEnabled && (
+          <div className="flex items-center justify-between pt-3">
+            <div className="pr-4">
+              <p className="font-medium text-sm">Compression level</p>
+              <p className="text-xs text-text-muted">Lite keeps normal grammar, Full is terse, Ultra is maximum compression.</p>
+            </div>
+            <select
+              value={cavemanLevel}
+              onChange={(event) => handleCavemanLevel(event.target.value)}
+              className="min-w-[120px] rounded-lg border border-border bg-input px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
+            >
+              <option value="lite">Lite</option>
+              <option value="full">Full</option>
+              <option value="ultra">Ultra</option>
+            </select>
+          </div>
+        )}
       </Card>
 
       {/* API Keys */}

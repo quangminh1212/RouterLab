@@ -302,6 +302,8 @@ const DEFAULT_SETTINGS = {
   },
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   rtkEnabled: false,
+  cavemanEnabled: false,
+  cavemanLevel: "full",
 };
 
 function cloneDefaultSettings() {
