@@ -583,6 +583,17 @@ async function calculateCost(provider, model, tokens) {
 
 const PERIOD_MS = { "24h": 86400000, "7d": 604800000, "30d": 2592000000, "60d": 5184000000 };
 
+function countActiveMinutes(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return 0;
+  const minuteBuckets = new Set();
+  for (const entry of entries) {
+    const ts = new Date(entry?.timestamp).getTime();
+    if (!Number.isFinite(ts)) continue;
+    minuteBuckets.add(Math.floor(ts / 60000));
+  }
+  return minuteBuckets.size;
+}
+
 /**
  * Get aggregated usage stats
  * @param {"24h"|"7d"|"30d"|"60d"|"all"} period - Time period to filter
@@ -922,23 +933,13 @@ export async function getUsageStats(period = "all") {
 
   stats.totalRequests = period === "all" ? lifetimeTotalRequests : periodTotalRequests;
 
-  const periodMinutes = {
-    "24h": 24 * 60,
-    "7d": 7 * 24 * 60,
-    "30d": 30 * 24 * 60,
-    "60d": 60 * 24 * 60,
-  };
-
-  if (period === "all") {
-    const allDates = Object.keys(dailySummary).sort();
-    if (allDates.length > 0) {
-      const firstDate = new Date(allDates[0]);
-      const minutesSinceFirst = Math.max(1, Math.floor((Date.now() - firstDate.getTime()) / 60000));
-      stats.rpm = stats.totalRequests / minutesSinceFirst;
-    }
-  } else if (periodMinutes[period]) {
-    stats.rpm = stats.totalRequests / periodMinutes[period];
+  let rpmEntries = history;
+  if (period !== "all" && PERIOD_MS[period]) {
+    const cutoff = Date.now() - PERIOD_MS[period];
+    rpmEntries = history.filter((entry) => new Date(entry.timestamp).getTime() >= cutoff);
   }
+  const activeMinutes = countActiveMinutes(rpmEntries);
+  stats.rpm = activeMinutes > 0 ? stats.totalRequests / activeMinutes : 0;
 
   return stats;
 }
