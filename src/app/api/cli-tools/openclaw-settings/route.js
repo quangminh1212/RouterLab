@@ -4,8 +4,40 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { headers, cookies } from "next/headers";
+import { jwtVerify } from "jose";
+import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
 const execAsync = promisify(exec);
+const SECRET = getAuthSecret();
+const CLI_TOKEN_HEADER = "x-9r-cli-token";
+const CLI_TOKEN_SALT = "9r-cli-auth";
+
+async function hasValidCliToken() {
+  const hdrs = await headers();
+  const token = hdrs.get(CLI_TOKEN_HEADER);
+  if (!token) return false;
+  return token === await getConsistentMachineId(CLI_TOKEN_SALT);
+}
+
+async function hasValidJwtCookie() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token")?.value;
+  if (!token) return false;
+  try {
+    await jwtVerify(token, SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function requireAuth() {
+  if (await hasValidCliToken()) return null;
+  if (await hasValidJwtCookie()) return null;
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
 
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
@@ -64,6 +96,8 @@ const readAgentModel = async (agentDir) => {
 
 // GET - Check openclaw CLI and read current settings
 export async function GET() {
+  const unauthorized = await requireAuth();
+  if (unauthorized) return unauthorized;
   try {
     const isInstalled = await checkOpenClawInstalled();
     
@@ -121,6 +155,8 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
 
 // POST - Update xlabrouter settings (merge with existing settings)
 export async function POST(request) {
+  const unauthorized = await requireAuth();
+  if (unauthorized) return unauthorized;
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
     const { baseUrl, apiKey, model, agentModels = {} } = await request.json();
@@ -220,6 +256,8 @@ export async function POST(request) {
 
 // DELETE - Remove xlabrouter settings only (keep other settings)
 export async function DELETE() {
+  const unauthorized = await requireAuth();
+  if (unauthorized) return unauthorized;
   try {
     const settingsPath = getOpenClawSettingsPath();
 
