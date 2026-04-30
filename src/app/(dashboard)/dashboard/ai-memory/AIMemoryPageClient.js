@@ -7,7 +7,6 @@ import { cn } from "@/shared/utils/cn";
 const MEMORY_REPOS = [
   {
     id: "mcp-modelcontextprotocol-memory",
-    section: "MCP",
     name: "MCP Memory Server",
     repo: "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
     description: "Knowledge graph memory server chính thức của Model Context Protocol.",
@@ -15,7 +14,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "mcp-mem0",
-    section: "MCP",
     name: "Mem0 MCP",
     repo: "https://github.com/mem0ai/mem0-mcp",
     description: "MCP server cho long-term memory và semantic retrieval.",
@@ -23,7 +21,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "mcp-memory-bank",
-    section: "MCP",
     name: "Memory Bank MCP",
     repo: "https://github.com/alioshr/memory-bank-mcp",
     description: "Bộ nhớ lâu dài tối ưu cho agent workflow chạy dài hạn.",
@@ -31,7 +28,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "mcp-supermemory",
-    section: "MCP",
     name: "Supermemory MCP",
     repo: "https://github.com/supermemoryai/supermemory-mcp",
     description: "Kết nối công cụ Supermemory để lưu và truy hồi tri thức cá nhân.",
@@ -39,7 +35,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "mcp-letta",
-    section: "MCP",
     name: "Letta MCP Server",
     repo: "https://github.com/letta-ai/letta-mcp-server",
     description: "MCP server cho stateful agents với memory nhiều tầng.",
@@ -47,7 +42,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "plugin-mem0",
-    section: "Plugins",
     name: "Mem0",
     repo: "https://github.com/mem0ai/mem0",
     description: "Nền tảng memory cho trợ lý AI cá nhân hóa theo người dùng.",
@@ -55,7 +49,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "plugin-zep",
-    section: "Plugins",
     name: "Zep",
     repo: "https://github.com/getzep/zep",
     description: "Memory API cho hội thoại dài với search và session profile.",
@@ -63,7 +56,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "plugin-letta",
-    section: "Plugins",
     name: "Letta",
     repo: "https://github.com/letta-ai/letta",
     description: "Framework agent stateful có kiến trúc memory-first.",
@@ -71,7 +63,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "plugin-langmem",
-    section: "Plugins",
     name: "LangMem",
     repo: "https://github.com/langchain-ai/langmem",
     description: "Toolkit memory extraction/recall cho ứng dụng LLM production.",
@@ -79,7 +70,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "plugin-grazie-memory",
-    section: "Plugins",
     name: "Memary",
     repo: "https://github.com/kingjulio8238/memary",
     description: "Bộ nhớ semantic mã nguồn mở để cải thiện context cho AI app.",
@@ -87,7 +77,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "skill-agent-memory-mcp",
-    section: "Skills",
     name: "Agent Memory MCP Skill",
     repo: "https://github.com/agent-memory/mcp-server",
     description: "Mẫu triển khai hybrid memory và recall patterns cho agent.",
@@ -95,7 +84,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "skill-agent-memory-systems",
-    section: "Skills",
     name: "Agent Memory Systems Skill",
     repo: "https://github.com/sickn33/antigravity-awesome-skills",
     description: "Bộ skill thiết kế short-term, long-term và episodic memory.",
@@ -103,7 +91,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "skill-langmem",
-    section: "Skills",
     name: "LangMem Patterns",
     repo: "https://github.com/langchain-ai/langmem",
     description: "Pattern set cho memory extraction, consolidation và retrieval.",
@@ -111,7 +98,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "skill-mem0-guides",
-    section: "Skills",
     name: "Mem0 Guides",
     repo: "https://github.com/mem0ai/mem0",
     description: "Thực hành tích hợp memory theo user, thread, và team context.",
@@ -119,7 +105,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "skill-letta-recipes",
-    section: "Skills",
     name: "Letta Recipes",
     repo: "https://github.com/letta-ai/letta",
     description: "Recipe cho stateful-agent memory loop và tool + memory planning.",
@@ -127,7 +112,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "rules-memory-rag",
-    section: "Rules",
     name: "RAG Security Rules",
     repo: "https://github.com/protectai/rebom",
     description: "Quy tắc an toàn và governance khi dùng memory + retrieval cho AI.",
@@ -135,7 +119,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "rules-prompt-injection",
-    section: "Rules",
     name: "Prompt Injection Defenses",
     repo: "https://github.com/tldrsec/prompt-injection-defenses",
     description: "Rulebook bảo vệ memory context trước prompt injection.",
@@ -143,7 +126,6 @@ const MEMORY_REPOS = [
   },
   {
     id: "token-saver-minference",
-    section: "Token Saver",
     name: "MInference",
     repo: "https://github.com/microsoft/MInference",
     description: "Giảm chi phí context dài khi dùng memory history rất lớn.",
@@ -151,23 +133,12 @@ const MEMORY_REPOS = [
   },
   {
     id: "token-saver-llmlingua",
-    section: "Token Saver",
     name: "LLMLingua",
     repo: "https://github.com/microsoft/LLMLingua",
     description: "Nén prompt/context để tiết kiệm token khi kết hợp memory.",
     tags: ["token", "compression", "memory"],
   },
 ];
-
-const SECTION_ORDER = ["MCP", "Plugins", "Skills", "Rules", "Token Saver"];
-
-const SECTION_ICON = {
-  MCP: "dns",
-  Plugins: "extension",
-  Skills: "psychology",
-  Rules: "gavel",
-  "Token Saver": "token",
-};
 
 function resolveRepoAvatar(repo) {
   try {
@@ -179,10 +150,6 @@ function resolveRepoAvatar(repo) {
   } catch {
   }
   return "";
-}
-
-function sectionIcon(section) {
-  return SECTION_ICON[section] || "hub";
 }
 
 function RepoCard({ item }) {
@@ -214,7 +181,7 @@ function RepoCard({ item }) {
                 }}
               />
             ) : null}
-            <span className={cn("material-symbols-outlined flex h-full w-full items-center justify-center text-[20px] text-text-muted", avatar ? "hidden" : "")}>{sectionIcon(item.section)}</span>
+            <span className={cn("material-symbols-outlined flex h-full w-full items-center justify-center text-[20px] text-text-muted", avatar ? "hidden" : "")}>memory</span>
           </div>
 
           <div className="min-w-0">
@@ -245,28 +212,16 @@ export default function AIMemoryPageClient() {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return MEMORY_REPOS;
     return MEMORY_REPOS.filter((item) => {
-      const text = `${item.section} ${item.name} ${item.description} ${item.tags.join(" ")} ${item.repo}`.toLowerCase();
+      const text = `${item.name} ${item.description} ${item.tags.join(" ")} ${item.repo}`.toLowerCase();
       return text.includes(keyword);
     });
   }, [query]);
 
-  const grouped = useMemo(() => {
-    const map = new Map();
-    for (const section of SECTION_ORDER) map.set(section, []);
-    for (const item of filtered) {
-      if (!map.has(item.section)) map.set(item.section, []);
-      map.get(item.section).push(item);
-    }
-    return SECTION_ORDER
-      .map((section) => [section, map.get(section) || []])
-      .filter(([, items]) => items.length > 0);
-  }, [filtered]);
-
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-text-main">AI Memory Repositories</h1>
-        <p className="mt-1 text-text-muted">Danh sách repo memory cho từng mục trong Power Up (mỗi item là 1 repo).</p>
+        <h1 className="text-2xl font-bold text-text-main">Memory</h1>
+        <p className="mt-1 text-text-muted">Danh sách toàn bộ repo memory trong Power Up.</p>
       </div>
 
       <Card className="p-4">
@@ -279,23 +234,24 @@ export default function AIMemoryPageClient() {
         <p className="mt-2 text-xs text-text-muted">{filtered.length}/{MEMORY_REPOS.length} repositories</p>
       </Card>
 
-      {grouped.length === 0 ? (
-        <Card className="p-6 text-sm text-text-muted">Không có repository phù hợp với từ khóa.</Card>
-      ) : (
-        grouped.map(([section, items]) => (
-          <Card key={section} className="p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-text-main">{section}</h2>
-              <span className="text-xs text-text-muted">{items.length} repos</span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {items.map((item) => (
-                <RepoCard key={item.id} item={item} />
-              ))}
-            </div>
-          </Card>
-        ))
-      )}
+      <Card className="p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-text-main">Memory</h2>
+          <span className="text-xs text-text-muted">{filtered.length} repos</span>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="rounded-xl border border-black/10 p-6 text-sm text-text-muted dark:border-white/10">
+            Không có repository phù hợp với từ khóa.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map((item) => (
+              <RepoCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
