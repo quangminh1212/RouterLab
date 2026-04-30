@@ -1,10 +1,10 @@
-﻿import { NextResponse } from "next/server";
-import { enableTunnel } from "@/lib/tunnel/tunnelManager";
+import { NextResponse } from "next/server";
 
 const DNS_WARMUP_DELAY_MS = 8000;
 
 export async function POST(request) {
   try {
+    const { enableTunnel } = await import("@/lib/tunnel/tunnelManager");
     const body = await request.json().catch(() => ({}));
     const provider = body.provider || "cloudflare";
     const result = await enableTunnel(1212, provider);

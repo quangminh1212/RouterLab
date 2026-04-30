@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getTailscaleAuthUrl, startLogin, triggerTailscaleSystemLogin } from "@/lib/tunnel/tailscale";
 
 function normalizeLoginUrl(url) {
   if (!url) return "";
@@ -11,6 +10,7 @@ function normalizeLoginUrl(url) {
 
 export async function POST() {
   try {
+    const { getTailscaleAuthUrl, startLogin, triggerTailscaleSystemLogin } = await import("@/lib/tunnel/tailscale");
     const login = await startLogin();
     if (login?.alreadyLoggedIn) {
       return NextResponse.json({ success: true, alreadyLoggedIn: true });
@@ -26,9 +26,7 @@ export async function POST() {
       return NextResponse.json({ success: false, needsLogin: true, authUrl: immediateUrl });
     }
 
-    // Trigger native/system login flow first so user sees login immediately.
     triggerTailscaleSystemLogin();
-    // Return immediately to avoid UI hang; client will poll login status.
     return NextResponse.json({ success: false, needsLogin: true });
   } catch (error) {
     console.error("Tailscale login error:", error);

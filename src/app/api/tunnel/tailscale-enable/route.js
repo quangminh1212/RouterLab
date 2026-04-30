@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { enableTailscale } from "@/lib/tunnel/tunnelManager";
 
 export async function POST() {
   try {
+    const { enableTailscale } = await import("@/lib/tunnel/tunnelManager");
     const result = await enableTailscale();
     return NextResponse.json(result);
   } catch (error) {

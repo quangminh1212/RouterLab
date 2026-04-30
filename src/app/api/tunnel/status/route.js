@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getTunnelStatus, getTailscaleStatus, getTunnelProviderStatuses } from "@/lib/tunnel/tunnelManager";
-import { getDownloadStatus } from "@/lib/tunnel/cloudflared";
 
 export async function GET() {
   try {
+    const [{ getTunnelStatus, getTailscaleStatus, getTunnelProviderStatuses }, { getDownloadStatus }] = await Promise.all([
+      import("@/lib/tunnel/tunnelManager"),
+      import("@/lib/tunnel/cloudflared"),
+    ]);
     const [tunnel, tailscale, providers] = await Promise.all([getTunnelStatus(), getTailscaleStatus(), getTunnelProviderStatuses()]);
     const download = getDownloadStatus();
     return NextResponse.json({ tunnel, tailscale, providers, download });
