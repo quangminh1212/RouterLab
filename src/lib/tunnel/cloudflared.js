@@ -188,6 +188,7 @@ async function _ensureCloudflared() {
 let cloudflaredProcess = null;
 let unexpectedExitHandler = null;
 let suppressUnexpectedExitOnce = false;
+let skipWindowsServiceInstallForSession = false;
 
 /** Register a callback to be called when cloudflared exits unexpectedly after connecting */
 export function setUnexpectedExitHandler(handler) {
@@ -211,7 +212,8 @@ export async function spawnCloudflared(tunnelToken) {
       // Service exists but could not start now, fallback to process mode for immediate availability
     }
 
-    try {
+    if (!skipWindowsServiceInstallForSession) {
+      try {
       execSync(`"${binaryPath}" service install ${tunnelToken}`, { 
         stdio: "pipe", 
         windowsHide: true, 
@@ -227,19 +229,23 @@ export async function spawnCloudflared(tunnelToken) {
         return { serviceInstalled: true };
       }
       console.log("[cloudflared] Installed as Windows service");
-    } catch (err) {
-      if (isCloudflaredServiceInstalled()) {
-        try {
-          execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
-        } catch {
-          // Ignore and fallback to process mode
+      } catch (err) {
+        if (isCloudflaredServiceInstalled()) {
+          try {
+            execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
+          } catch {
+            // Ignore and fallback to process mode
+          }
+          if (isCloudflaredServiceRunning()) {
+            return { serviceInstalled: true };
+          }
         }
-        if (isCloudflaredServiceRunning()) {
-          return { serviceInstalled: true };
+        if (/Access is denied/i.test(String(err?.message || ""))) {
+          skipWindowsServiceInstallForSession = true;
         }
+        // Service install failed (likely no admin), fall back to process spawn
+        console.log("[cloudflared] Service install failed, using process mode:", err.message);
       }
-      // Service install failed (likely no admin), fall back to process spawn
-      console.log("[cloudflared] Service install failed, using process mode:", err.message);
     }
   }
 

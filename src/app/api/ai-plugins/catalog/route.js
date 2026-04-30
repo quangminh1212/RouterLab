@@ -99,9 +99,15 @@ function extensionFromUrl(url = "") {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchPluginManifest(pluginDir) {
@@ -186,7 +192,7 @@ async function loadOpenAiCatalog() {
   const marketplace = await fetchJson(MARKETPLACE_URL);
   const marketplacePlugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
   const manifests = [];
-  const batchSize = 6;
+  const batchSize = 12;
   for (let index = 0; index < marketplacePlugins.length; index += batchSize) {
     const batch = marketplacePlugins.slice(index, index + batchSize);
     const batchResults = await Promise.allSettled(

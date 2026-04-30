@@ -2,6 +2,8 @@ import https from "https";
 import pkg from "../../../../package.json" with { type: "json" };
 
 const NPM_PACKAGE_NAME = "xlabrouter";
+const VERSION_CACHE_TTL_MS = 10 * 60 * 1000;
+let versionCache = { ts: 0, data: null };
 
 // Fetch latest version from npm registry
 function fetchLatestVersion() {
@@ -37,9 +39,16 @@ function compareVersions(a, b) {
 }
 
 export async function GET() {
+  const now = Date.now();
+  if (versionCache.data && now - versionCache.ts < VERSION_CACHE_TTL_MS) {
+    return Response.json(versionCache.data);
+  }
+
   const latestVersion = await fetchLatestVersion();
   const currentVersion = pkg.version;
   const hasUpdate = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
+  const payload = { currentVersion, latestVersion, hasUpdate };
+  versionCache = { ts: now, data: payload };
 
-  return Response.json({ currentVersion, latestVersion, hasUpdate });
+  return Response.json(payload);
 }
