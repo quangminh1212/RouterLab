@@ -837,30 +837,74 @@ function compareVersions(versionA, versionB) {
 function runGlobalUpdate() {
   return new Promise((resolve) => {
     const isWin = process.platform === "win32";
-    const command = isWin ? "cmd.exe" : "npm";
-    const args = isWin
-      ? ["/d", "/s", "/c", `npm install -g ${pkg.name}`]
-      : ["install", "-g", pkg.name];
-    const child = spawn(command, args, {
-      stdio: "inherit",
+    const npmCommand = isWin ? "npm.cmd" : "npm";
+    const npmArgs = ["install", "-g", pkg.name];
+    let finished = false;
+    let fallbackActive = false;
+
+    const finish = (ok, message) => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      if (!ok && message) {
+        console.log(message);
+      }
+      resolve(ok);
+    };
+
+    const pipeOutput = (stream, writer) => {
+      if (!stream || typeof stream.on !== "function" || typeof writer !== "function") {
+        return;
+      }
+      stream.on("data", (chunk) => writer(chunk.toString()));
+    };
+
+    const attachExitHandlers = (childProcess, options = {}) => {
+      const { ignoreWhileFallback = false } = options;
+      pipeOutput(childProcess.stdout, (text) => process.stdout?.write?.(text));
+      pipeOutput(childProcess.stderr, (text) => process.stderr?.write?.(text));
+
+      childProcess.on("exit", (code) => {
+        if (ignoreWhileFallback && fallbackActive) {
+          return;
+        }
+        if (code === 0) {
+          finish(true);
+          return;
+        }
+        finish(false, `[ERROR] Auto update failed (exit code ${code}).`);
+      });
+    };
+
+    const primary = spawn(npmCommand, npmArgs, {
+      stdio: ["ignore", "pipe", "pipe"],
       shell: false,
       windowsHide: false,
     });
 
-    child.on("error", (error) => {
-      console.log(`[ERROR] Auto update failed to start: ${error.message}`);
-      resolve(false);
-    });
+    primary.on("error", (error) => {
+      if (isWin && error?.code === "EINVAL") {
+        fallbackActive = true;
+        const command = process.env.ComSpec || "cmd.exe";
+        const fallback = spawn(command, ["/d", "/s", "/c", `npm install -g ${pkg.name}`], {
+          stdio: ["ignore", "pipe", "pipe"],
+          shell: false,
+          windowsHide: false,
+        });
 
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve(true);
+        fallback.on("error", (fallbackError) => {
+          finish(false, `[ERROR] Auto update failed to start: ${fallbackError.message}`);
+        });
+
+        attachExitHandlers(fallback);
         return;
       }
 
-      console.log(`[ERROR] Auto update failed (exit code ${code}).`);
-      resolve(false);
+      finish(false, `[ERROR] Auto update failed to start: ${error.message}`);
     });
+
+    attachExitHandlers(primary, { ignoreWhileFallback: true });
   });
 }
 
