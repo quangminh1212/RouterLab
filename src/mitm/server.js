@@ -15,6 +15,9 @@ const IS_WIN = process.platform === "win32";
 const ENABLE_FILE_LOG = false;
 const LOG_DIR = path.join(DATA_DIR, "logs", "mitm");
 const INTERNAL_REQUEST_HEADER = { name: "x-request-source", value: "local" };
+const HOST_REWRITE = {
+  "cloudcode-pa.googleapis.com": "daily-cloudcode-pa.googleapis.com",
+};
 
 if (ENABLE_FILE_LOG && !fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
 
@@ -130,7 +133,8 @@ function saveRequestLog(url, bodyBuffer) {
  * so it's both forwarded to client AND passed to the callback for inspection.
  */
 async function passthrough(req, res, bodyBuffer, onResponse) {
-  const targetHost = (req.headers.host || TARGET_HOSTS[0]).split(":")[0];
+  const originalHost = (req.headers.host || TARGET_HOSTS[0]).split(":")[0];
+  const targetHost = HOST_REWRITE[originalHost] || originalHost;
   const targetIP = await resolveTargetIP(targetHost);
 
   const forwardReq = https.request({

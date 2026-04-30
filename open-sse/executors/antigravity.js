@@ -5,8 +5,17 @@ import { OAUTH_ENDPOINTS, ANTIGRAVITY_HEADERS, INTERNAL_REQUEST_HEADER, AG_DEFAU
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { deriveSessionId } from "../utils/sessionManager.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
+import { cleanJSONSchemaForAntigravity } from "../translator/helpers/geminiHelper.js";
 
 const MAX_RETRY_AFTER_MS = 10000;
+const MAX_ANTIGRAVITY_OUTPUT_TOKENS = 16384;
+
+function sanitizeFunctionName(name) {
+  if (!name) return "_unknown";
+  let safeName = name.replace(/[^a-zA-Z0-9_.:\-]/g, "_");
+  if (!/^[a-zA-Z_]/.test(safeName)) safeName = `_${safeName}`;
+  return safeName.substring(0, 64);
+}
 
 export class AntigravityExecutor extends BaseExecutor {
   constructor() {
@@ -53,14 +62,35 @@ export class AntigravityExecutor extends BaseExecutor {
       return c;
     });
 
+    let tools = body.request?.tools;
+
+    if (tools && tools.length > 0) {
+      const allDeclarations = tools.flatMap(group =>
+        (group.functionDeclarations || []).map(fn => ({
+          ...fn,
+          name: sanitizeFunctionName(fn.name),
+          parameters: fn.parameters
+            ? cleanJSONSchemaForAntigravity(structuredClone(fn.parameters))
+            : { type: "object", properties: { reason: { type: "string", description: "Brief explanation" } }, required: ["reason"] }
+        }))
+      );
+      tools = allDeclarations.length > 0 ? [{ functionDeclarations: allDeclarations }] : [];
+    }
+
+    const { tools: _originalTools, toolConfig: _originalToolConfig, ...requestWithoutTools } = body.request || {};
+    const generationConfig = { ...(requestWithoutTools.generationConfig || {}) };
+    if (generationConfig.maxOutputTokens > MAX_ANTIGRAVITY_OUTPUT_TOKENS) {
+      generationConfig.maxOutputTokens = MAX_ANTIGRAVITY_OUTPUT_TOKENS;
+    }
+
     const transformedRequest = {
-      ...body.request,
+      ...requestWithoutTools,
+      generationConfig,
       ...(contents && { contents }),
+      ...(tools && { tools }),
       sessionId: body.request?.sessionId || deriveSessionId(credentials?.email || credentials?.connectionId),
       safetySettings: undefined,
-      toolConfig: body.request?.tools?.length > 0
-        ? { functionCallingConfig: { mode: "VALIDATED" } }
-        : body.request?.toolConfig
+      ...(tools?.length > 0 && { toolConfig: { functionCallingConfig: { mode: "VALIDATED" } } })
     };
 
     return {
