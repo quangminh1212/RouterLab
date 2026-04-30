@@ -28,6 +28,26 @@ const defaultData = {
   dailySummary: {},
 };
 
+function createUsageData() {
+  return {
+    history: [],
+    totalRequestsLifetime: 0,
+    dailySummary: {},
+  };
+}
+
+function ensureUsageDataShape(value) {
+  const data = value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : createUsageData();
+
+  if (!Array.isArray(data.history)) data.history = [];
+  if (typeof data.totalRequestsLifetime !== "number") data.totalRequestsLifetime = data.history.length;
+  if (!data.dailySummary || typeof data.dailySummary !== "object" || Array.isArray(data.dailySummary)) data.dailySummary = {};
+
+  return data;
+}
+
 function getLocalDateKey(timestamp) {
   const d = timestamp ? new Date(timestamp) : new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -280,9 +300,7 @@ export async function getUsageDb() {
       _main: null,
       async read() {
         this._main = await getMainDb();
-        if (!this._main.data.usageData || typeof this._main.data.usageData !== "object") {
-          this._main.data.usageData = { ...defaultData };
-        }
+        this._main.data.usageData = ensureUsageDataShape(this._main.data.usageData);
 
         // One-time migration from legacy usage.json
         const hasAnyUsage = Array.isArray(this._main.data.usageData.history)
@@ -293,7 +311,7 @@ export async function getUsageDb() {
             const legacyRaw = fs.readFileSync(DB_FILE, "utf8");
             const legacy = JSON.parse(legacyRaw || "{}");
             if (legacy && typeof legacy === "object") {
-              this._main.data.usageData = {
+              this._main.data.usageData = ensureUsageDataShape({
                 history: Array.isArray(legacy.history) ? legacy.history : [],
                 totalRequestsLifetime: Number.isFinite(legacy.totalRequestsLifetime)
                   ? legacy.totalRequestsLifetime
@@ -301,7 +319,7 @@ export async function getUsageDb() {
                 dailySummary: legacy.dailySummary && typeof legacy.dailySummary === "object"
                   ? legacy.dailySummary
                   : {},
-              };
+              });
             }
           } catch {
             // ignore legacy migration failure
@@ -320,11 +338,13 @@ export async function getUsageDb() {
         if (this._main) await this._main.write();
       },
       get data() {
-        return this._main?.data?.usageData;
+        if (!this._main?.data) return createUsageData();
+        this._main.data.usageData = ensureUsageDataShape(this._main.data.usageData);
+        return this._main.data.usageData;
       },
       set data(value) {
         if (!this._main) return;
-        this._main.data.usageData = value;
+        this._main.data.usageData = ensureUsageDataShape(value);
       },
     };
 
