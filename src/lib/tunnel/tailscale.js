@@ -22,8 +22,12 @@ let cachedTailscaleRunning = null;
 let cachedTailscaleRunningAt = 0;
 const TAILSCALE_RUNNING_CACHE_TTL_MS = 30000; // 30s cache
 
-// Well-known Windows install path
-const WINDOWS_TAILSCALE_BIN = "C:\\Program Files\\Tailscale\\tailscale.exe";
+function getWindowsTailscaleBin() {
+  if (!IS_WINDOWS) return null;
+  const programFiles = process.env.ProgramFiles;
+  if (!programFiles) return null;
+  return path.join(programFiles, "Tailscale", "tailscale.exe");
+}
 
 // Prefer system tailscale, fallback to local bin, then Windows default path
 function getTailscaleBin() {
@@ -32,7 +36,8 @@ function getTailscaleBin() {
     if (systemPath) return systemPath;
   } catch (e) { /* not in PATH */ }
   if (fs.existsSync(TAILSCALE_BIN)) return TAILSCALE_BIN;
-  if (IS_WINDOWS && fs.existsSync(WINDOWS_TAILSCALE_BIN)) return WINDOWS_TAILSCALE_BIN;
+  const windowsBin = getWindowsTailscaleBin();
+  if (windowsBin && fs.existsSync(windowsBin)) return windowsBin;
   return null;
 }
 

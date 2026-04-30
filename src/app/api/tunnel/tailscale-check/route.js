@@ -1,9 +1,70 @@
 import os from "os";
+import fs from "fs";
+import path from "path";
 import { execSync } from "child_process";
 import { NextResponse } from "next/server";
-import { isTailscaleInstalled, isTailscaleLoggedIn, TAILSCALE_SOCKET } from "@/lib/tunnel/tailscale";
+import { DATA_DIR } from "@/lib/dataDir.js";
 
 const EXTENDED_PATH = `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:${process.env.PATH || ""}`;
+const IS_WINDOWS = os.platform() === "win32";
+const LOCAL_TAILSCALE_BIN = path.join(DATA_DIR, "bin", IS_WINDOWS ? "tailscale.exe" : "tailscale");
+const TAILSCALE_SOCKET = path.join(DATA_DIR, "tailscale", "tailscaled.sock");
+
+function getTailscaleBin() {
+  try {
+    const systemPath = execSync("which tailscale 2>/dev/null || where tailscale 2>nul", {
+      encoding: "utf8",
+      windowsHide: true,
+    }).trim();
+    if (systemPath) return systemPath;
+  } catch {
+    // ignore lookup errors
+  }
+
+  if (fs.existsSync(LOCAL_TAILSCALE_BIN)) return LOCAL_TAILSCALE_BIN;
+
+  if (IS_WINDOWS && process.env.ProgramFiles) {
+    const programFilesBin = path.join(process.env.ProgramFiles, "Tailscale", "tailscale.exe");
+    if (fs.existsSync(programFilesBin)) return programFilesBin;
+  }
+
+  return null;
+}
+
+function isTailscaleInstalled() {
+  return getTailscaleBin() !== null;
+}
+
+function isTailscaleLoggedIn() {
+  const bin = getTailscaleBin();
+  if (!bin) return false;
+
+  if (IS_WINDOWS) {
+    try {
+      const out = execSync(`"${bin}" status`, {
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 3000,
+      });
+      return out.trim().length > 0 && !/logged out|not logged in/i.test(out);
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    const out = execSync(`"${bin}" --socket "${TAILSCALE_SOCKET}" status --json`, {
+      encoding: "utf8",
+      windowsHide: true,
+      env: { ...process.env, PATH: EXTENDED_PATH },
+      timeout: 5000,
+    });
+    const json = JSON.parse(out);
+    return json.BackendState === "Running";
+  } catch {
+    return false;
+  }
+}
 
 function hasBrew() {
   try { execSync("which brew", { stdio: "ignore", windowsHide: true, env: { ...process.env, PATH: EXTENDED_PATH } }); return true; } catch { return false; }

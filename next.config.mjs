@@ -1,6 +1,8 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const hideDevIndicators = process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR === "1";
+const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -17,11 +19,13 @@ const nextConfig = {
     unoptimized: true
   },
   env: {},
-  turbopack: {},
+  turbopack: {
+    root: PROJECT_ROOT,
+  },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      "@": path.resolve(process.cwd(), "src"),
+      "@": path.resolve(PROJECT_ROOT, "src"),
     };
 
     // Ignore fs/path modules in browser bundle
