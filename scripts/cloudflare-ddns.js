@@ -67,7 +67,6 @@ async function main() {
 
   if (!record) throw new Error(`A record not found: ${domain}`);
   if (record.content === publicIp && record.proxied === true) {
-    console.log(`No change: ${domain} -> ${publicIp}`);
     return;
   }
 
