@@ -19,27 +19,31 @@ export function injectCaveman(body, format, level) {
     case FORMATS.GEMINI_CLI:
     case FORMATS.VERTEX:
     case FORMATS.ANTIGRAVITY:
+      // Antigravity wraps Gemini shape in body.request → injectGeminiSystem handles it
       injectGeminiSystem(body, prompt);
       return;
     default:
+      // OpenAI and OpenAI-shaped formats (responses/codex/cursor/kiro/ollama)
       injectMessagesSystem(body, prompt);
   }
 }
 
+// OpenAI-shaped: messages[] (chat) or input[] (responses) or instructions (responses string)
 function injectMessagesSystem(body, prompt) {
+  // OpenAI Responses API: top-level string field
   if (typeof body.instructions === "string") {
-    body.instructions = body.instructions ? `${body.instructions}${SEP}${prompt}` : prompt;
+    body.instructions = body.instructions
+      ? `${body.instructions}${SEP}${prompt}`
+      : prompt;
     return;
   }
 
-  const arr = Array.isArray(body.messages)
-    ? body.messages
-    : Array.isArray(body.input)
-      ? body.input
-      : null;
+  const arr = Array.isArray(body.messages) ? body.messages
+    : Array.isArray(body.input) ? body.input
+    : null;
   if (!arr) return;
 
-  const idx = arr.findIndex((message) => message && (message.role === "system" || message.role === "developer"));
+  const idx = arr.findIndex(m => m && (m.role === "system" || m.role === "developer"));
   if (idx >= 0) {
     appendToOpenAIMessage(arr[idx], prompt);
   } else {
@@ -47,30 +51,29 @@ function injectMessagesSystem(body, prompt) {
   }
 }
 
-function appendToOpenAIMessage(message, prompt) {
-  if (typeof message.content === "string") {
-    message.content = `${message.content}${SEP}${prompt}`;
-  } else if (Array.isArray(message.content)) {
-    message.content.push({ type: "input_text", text: prompt });
+function appendToOpenAIMessage(msg, prompt) {
+  if (typeof msg.content === "string") {
+    msg.content = `${msg.content}${SEP}${prompt}`;
+  } else if (Array.isArray(msg.content)) {
+    // Responses-style array of parts {type:"input_text"|"text", text}
+    msg.content.push({ type: "input_text", text: prompt });
   } else {
-    message.content = prompt;
+    msg.content = prompt;
   }
 }
 
+// Claude shape: body.system as string | array of {type:"text", text}
+// Insert before the last cache_control block to keep caveman inside the cached prefix.
 function injectClaudeSystem(body, prompt) {
   if (typeof body.system === "string" && body.system.length > 0) {
     body.system = `${body.system}${SEP}${prompt}`;
     return;
   }
-
   if (Array.isArray(body.system)) {
     const block = { type: "text", text: prompt };
     let lastCacheIdx = -1;
-    for (let index = body.system.length - 1; index >= 0; index -= 1) {
-      if (body.system[index]?.cache_control) {
-        lastCacheIdx = index;
-        break;
-      }
+    for (let i = body.system.length - 1; i >= 0; i--) {
+      if (body.system[i]?.cache_control) { lastCacheIdx = i; break; }
     }
     if (lastCacheIdx >= 0) {
       body.system.splice(lastCacheIdx, 0, block);
@@ -79,10 +82,11 @@ function injectClaudeSystem(body, prompt) {
     }
     return;
   }
-
   body.system = prompt;
 }
 
+// Gemini shape: body.system_instruction | body.systemInstruction | body.request.systemInstruction
+// Each shape: { parts: [{ text }] }
 function injectGeminiSystem(body, prompt) {
   const target = body.request && typeof body.request === "object" ? body.request : body;
   const useSnake = Object.prototype.hasOwnProperty.call(target, "system_instruction");

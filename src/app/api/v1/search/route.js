@@ -1,22 +1,21 @@
-import { handleWebSearch } from "@/sse/handlers/webSearch.js";
-import { withRouteGuard } from "@/lib/runtimeGuard";
+import { handleSearch } from "@/sse/handlers/search.js";
 
+/**
+ * Handle CORS preflight
+ */
 export async function OPTIONS() {
   return new Response(null, {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-    },
+      "Access-Control-Allow-Headers": "*"
+    }
   });
 }
 
-async function postHandler(request) {
-  return await handleWebSearch(request);
+/**
+ * POST /v1/search - Web search endpoint
+ */
+export async function POST(request) {
+  return await handleSearch(request);
 }
-
-export const POST = withRouteGuard(
-  "v1/search",
-  postHandler,
-  { timeoutMs: 120000 },
-);
