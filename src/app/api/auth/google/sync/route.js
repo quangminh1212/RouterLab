@@ -2,10 +2,9 @@
 import { jwtVerify } from "jose";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 import { getValidGoogleAccessToken, findDriveBackupFile, uploadDriveBackup, downloadDriveBackup } from "@/lib/googleDriveSync";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
-);
+const SECRET = getAuthSecret();
 
 async function hasValidAuth(request) {
   const token = request.cookies.get("auth_token")?.value;

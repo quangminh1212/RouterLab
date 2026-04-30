@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
-);
+const SECRET = getAuthSecret();
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
@@ -32,6 +31,14 @@ const ALWAYS_PROTECTED = [
 const PROTECTED_API_PATHS = [
   "/api/settings",
   "/api/keys",
+  "/api/cli-tools",
+  "/api/tunnel",
+  "/api/proxy-pools",
+  "/api/providers",
+  "/api/provider-nodes",
+  "/api/combos",
+  "/api/usage",
+  "/api/dashboard/bootstrap",
   "/api/providers/client",
   "/api/provider-nodes/validate",
 ];
@@ -171,5 +178,19 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"],
+  matcher: [
+    "/",
+    "/dashboard/:path*",
+    "/api/settings/:path*",
+    "/api/keys/:path*",
+    "/api/cli-tools/:path*",
+    "/api/tunnel/:path*",
+    "/api/proxy-pools/:path*",
+    "/api/providers/:path*",
+    "/api/provider-nodes/:path*",
+    "/api/combos/:path*",
+    "/api/usage/:path*",
+    "/api/dashboard/bootstrap",
+    "/api/shutdown",
+  ],
 };

@@ -3,10 +3,9 @@ import { getSettings } from "@/lib/localDb";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
-);
+const SECRET = getAuthSecret();
 const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 
 function safeHostname(urlValue) {
@@ -77,8 +76,9 @@ export async function POST(request) {
         isValid = true;
       }
     } else {
-      // Use env var or default
-      isValid = password === initialPassword;
+      // Security hardening: when no password is set yet, only allow bootstrap login from localhost.
+      // This prevents remote login with default password on fresh installations.
+      isValid = password === initialPassword && isLocalhostRequest(request);
     }
 
     if (isValid) {

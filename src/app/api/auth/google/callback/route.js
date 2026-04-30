@@ -11,10 +11,9 @@ import {
   hasMeaningfulBackupData,
 } from "@/lib/googleDriveSync";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "xlabrouter-default-secret-change-me"
-);
+const SECRET = getAuthSecret();
 const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 
 async function setAuthCookie(email) {
