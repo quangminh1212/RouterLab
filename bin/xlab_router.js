@@ -3,6 +3,7 @@
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const pkg = require("../package.json");
 const inquirer = require("inquirer").default || require("inquirer");
 const https = require("https");
@@ -133,9 +134,22 @@ function ensureWorkspaceRoot(repoRoot) {
   return { appRoot: workspaceRoot, sourceNodeModules };
 }
 
+function getRuntimeDataDir() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  if (process.platform === "win32") {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "xlabrouter");
+  }
+  return path.join(os.homedir(), ".xlabrouter");
+}
+
 function setupFileLogging() {
-  const repoRoot = path.resolve(__dirname, "..");
-  const logFilePath = path.join(repoRoot, LOG_FILE_NAME);
+  const logFilePath = getLogFilePath();
+
+  try {
+    fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
+  } catch (error) {
+    process.stderr.write(`[WARN] Failed to ensure log directory: ${error.message}\n`);
+  }
 
   try {
     if (fs.existsSync(logFilePath)) {
@@ -438,8 +452,8 @@ function getDashboardUrl() {
   return `http://localhost:${port}`;
 }
 
-function getLogFilePath(repoRoot) {
-  return path.join(repoRoot, LOG_FILE_NAME);
+function getLogFilePath() {
+  return path.join(getRuntimeDataDir(), LOG_FILE_NAME);
 }
 
 async function launchWebUIProcess(options = {}) {
@@ -474,7 +488,7 @@ async function launchWebUIProcess(options = {}) {
   }
 
   console.log(`[INFO] Visit ${getDashboardUrl()}`);
-  console.log(`[INFO] Logging to ${getLogFilePath(repoRoot)} (auto-delete at 100MB)`);
+  console.log(`[INFO] Logging to ${getLogFilePath()} (auto-delete at 100MB)`);
   if (!suppressCtrlCMessage) {
     console.log("[INFO] Press Ctrl+C to stop\n");
   } else {
@@ -752,7 +766,7 @@ async function startTrayHost() {
           enabled: true,
         },
         {
-          title: `Open Logs: ${path.basename(getLogFilePath(launch.repoRoot))}`,
+          title: `Open Logs: ${path.basename(getLogFilePath())}`,
           tooltip: "Open log file",
           checked: false,
           enabled: true,
@@ -789,7 +803,7 @@ async function startTrayHost() {
         return;
       }
       if (event.seq_id === 1) {
-        await openPathOrUrl(getLogFilePath(launch.repoRoot));
+        await openPathOrUrl(getLogFilePath());
         return;
       }
       if (event.seq_id === 2) {
