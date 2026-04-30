@@ -222,14 +222,30 @@ export async function getActiveRequests() {
   await db.read();
   const history = db.data.history || [];
   const seen = new Set();
-  const recentRequests = [...history]
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .map((e) => {
-      const t = e.tokens || {};
-      const promptTokens = t.prompt_tokens || t.input_tokens || 0;
-      const completionTokens = t.completion_tokens || t.output_tokens || 0;
-      return { timestamp: e.timestamp, model: e.model, provider: e.provider || "", promptTokens, completionTokens, status: e.status || "ok" };
-    })
+  const recentRequestsRaw = await Promise.all(
+    [...history]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .map(async (e) => {
+        const t = e.tokens || {};
+        const promptTokens = t.prompt_tokens || t.input_tokens || 0;
+        const completionTokens = t.completion_tokens || t.output_tokens || 0;
+        const existingCost = Number(e.cost || 0);
+        const computedCost = existingCost > 0
+          ? existingCost
+          : await calculateCost(e.provider, e.model, t);
+        return {
+          timestamp: e.timestamp,
+          model: e.model,
+          provider: e.provider || "",
+          promptTokens,
+          completionTokens,
+          cost: computedCost,
+          status: e.status || "ok",
+        };
+      })
+  );
+
+  const recentRequests = recentRequestsRaw
     .filter((e) => {
       if (e.promptTokens === 0 && e.completionTokens === 0) return false;
       const minute = e.timestamp ? e.timestamp.slice(0, 16) : "";
