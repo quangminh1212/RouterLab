@@ -141,9 +141,35 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
 
   const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "GET" });
   const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_BACKUP_FILE_NAME];
-  if (!file?.content) throw new Error("XLab Router backup file not found in Gist");
+  if (!file) throw new Error("XLab Router backup file not found in Gist");
 
-  const envelope = JSON.parse(file.content);
+  let content = typeof file.content === "string" ? file.content : "";
+  if ((!content || file.truncated === true) && typeof file.raw_url === "string" && file.raw_url) {
+    const rawRes = await fetch(file.raw_url, {
+      headers: {
+        Accept: "application/vnd.github.raw",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+
+    if (!rawRes.ok) {
+      throw new Error("Failed to download full Gist backup content");
+    }
+    content = await rawRes.text();
+  }
+
+  if (!content) {
+    throw new Error("XLab Router backup file content is empty");
+  }
+
+  let envelope;
+  try {
+    envelope = JSON.parse(content);
+  } catch {
+    throw new Error("Gist backup content is corrupted or incomplete");
+  }
   const payload = decryptPayloadWithFallback(envelope, passphrases || passphrase);
   const result = await restoreBackupBundle(payload);
 
