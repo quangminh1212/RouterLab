@@ -197,9 +197,10 @@ export function setUnexpectedExitHandler(handler) {
 
 export async function spawnCloudflared(tunnelToken, localPort = 1212) {
   const binaryPath = await ensureCloudflared();
+  const preferProcessMode = true;
 
   // Try to install as Windows service first (requires admin)
-  if (IS_WINDOWS) {
+  if (IS_WINDOWS && !preferProcessMode) {
     if (isCloudflaredServiceInstalled()) {
       try {
         execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
