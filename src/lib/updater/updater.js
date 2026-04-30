@@ -140,7 +140,7 @@ function runInstall() {
   const child = spawn(cmd, args, {
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
-    shell: isWin,
+    shell: false,
   });
 
   child.stdout.on("data", (buf) => {
@@ -184,7 +184,7 @@ function relaunchApp() {
       detached: true,
       stdio: "ignore",
       windowsHide: true,
-      shell: isWin,
+      shell: false,
       env: { ...process.env, UPDATER_RELAUNCH: "", UPDATER_RELAUNCH_CMD: "", UPDATER_RELAUNCH_ARGS: "" },
     });
     child.unref();
