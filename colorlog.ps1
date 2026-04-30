@@ -95,6 +95,21 @@ function Kill-PortProcess {
 
 $resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
 
+# Ensure cleanup even when PowerShell is interrupted (Ctrl+C / host exit)
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+    try {
+        $conns = Get-NetTCPConnection -LocalPort $using:targetPort -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+        if ($conns) {
+            foreach ($pid in $conns) {
+                if ($pid -and $pid -ne $PID) {
+                    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    } catch {}
+} | Out-Null
+
 $attempt = 0
 $success = $false
 $currentPort = $targetPort
