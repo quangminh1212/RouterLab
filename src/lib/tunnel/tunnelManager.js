@@ -75,7 +75,7 @@ function getNamedTunnelPublicUrl(settings = null) {
   return normalizeUrl(getCloudflareRuntimeConfig(settings).tunnelPublicUrl);
 }
 
-function getComputedPublicUrl(shortId) {
+function getComputedPublicUrl(shortId, settings = null) {
   if (!shortId) return "";
   const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
   if (namedTunnelPublicUrl) return namedTunnelPublicUrl;
@@ -195,7 +195,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   if (isCloudflaredRunning()) {
     const existing = loadState();
     if (existing?.tunnelUrl) {
-      const publicUrl = getComputedPublicUrl(existing.shortId);
+      const publicUrl = getComputedPublicUrl(existing.shortId, settings);
       return { success: true, tunnelUrl: existing.tunnelUrl, shortId: existing.shortId, publicUrl, alreadyRunning: true };
     }
   }
@@ -228,7 +228,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       success: true,
       tunnelUrl,
       shortId,
-      publicUrl: getComputedPublicUrl(shortId),
+      publicUrl: getComputedPublicUrl(shortId, settings),
       mode: "named",
       serviceInstalled: !!cloudflared?.serviceInstalled
     };
@@ -255,7 +255,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     exitHandlerRegistered = true;
   }
 
-  const publicUrl = getComputedPublicUrl(shortId);
+  const publicUrl = getComputedPublicUrl(shortId, settings);
   return { success: true, tunnelUrl, shortId, publicUrl, provider: "cloudflare" };
 }
 
@@ -318,7 +318,7 @@ export async function getTunnelStatus(settingsOverride) {
   const state = loadState();
   const settings = settingsOverride || await getSettings();
   const shortId = state?.shortId || "";
-  const publicUrl = getComputedPublicUrl(shortId);
+  const publicUrl = getComputedPublicUrl(shortId, settings);
 
   if (settings.tunnelEnabled !== true) {
     try {
