@@ -382,9 +382,6 @@ model = "${effectiveSubagentModel}"
                 <Button variant="outline" size="sm" onClick={handleResetSettings} disabled={restoring} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleDownloadBat} disabled={(!selectedApiKey && (cloudEnabled && apiKeys.length > 0)) || !selectedModel}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
-                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
                 </Button>

@@ -438,9 +438,6 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 <Button variant="outline" size="sm" onClick={handleReset} disabled={!status.hasxlabrouter} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleDownloadBat} disabled={selectedModels.length === 0}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
-                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
                 </Button>

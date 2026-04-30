@@ -633,9 +633,6 @@ export default function ClaudeToolCard({
                 <Button variant="outline" size="sm" onClick={handleResetSettings} disabled={!claudeStatus?.hasxlabrouter} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleDownloadBat}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">download</span>Download .bat
-                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
                 </Button>
