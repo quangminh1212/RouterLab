@@ -207,7 +207,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
-    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken);
+    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, localPort);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({

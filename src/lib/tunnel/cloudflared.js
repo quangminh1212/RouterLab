@@ -195,7 +195,7 @@ export function setUnexpectedExitHandler(handler) {
   unexpectedExitHandler = handler;
 }
 
-export async function spawnCloudflared(tunnelToken) {
+export async function spawnCloudflared(tunnelToken, localPort = 1212) {
   const binaryPath = await ensureCloudflared();
 
   // Try to install as Windows service first (requires admin)
@@ -249,7 +249,20 @@ export async function spawnCloudflared(tunnelToken) {
     }
   }
 
-  const child = spawn(binaryPath, ["tunnel", "run", "--dns-resolver-addrs", "1.1.1.1:53", "--token", tunnelToken], {
+  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "cloudflared-named-"));
+  const configPath = path.join(configDir, "config.yml");
+  fs.writeFileSync(configPath, "# named-tunnel config placeholder\n", "utf8");
+
+  const args = [
+    "tunnel",
+    "--config", configPath,
+    "--url", `http://localhost:${localPort}`,
+    "run",
+    "--dns-resolver-addrs", "1.1.1.1:53",
+    "--token", tunnelToken,
+  ];
+
+  const child = spawn(binaryPath, args, {
     detached: false,
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"]
@@ -292,6 +305,11 @@ export async function spawnCloudflared(tunnelToken) {
     });
 
     child.on("exit", (code) => {
+      try {
+        fs.rmSync(configDir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors
+      }
       cloudflaredProcess = null;
       clearPid();
       const wasConnected = resolved; // true = already connected successfully
