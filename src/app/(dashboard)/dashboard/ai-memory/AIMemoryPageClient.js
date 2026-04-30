@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { Card, Input } from "@/shared/components";
@@ -161,7 +161,33 @@ const MEMORY_REPOS = [
 
 const SECTION_ORDER = ["MCP", "Plugins", "Skills", "Rules", "Token Saver"];
 
+const SECTION_ICON = {
+  MCP: "dns",
+  Plugins: "extension",
+  Skills: "psychology",
+  Rules: "gavel",
+  "Token Saver": "token",
+};
+
+function resolveRepoAvatar(repo) {
+  try {
+    const url = new URL(repo);
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return `https://github.com/${parts[0]}.png?size=64`;
+    }
+  } catch {
+  }
+  return "";
+}
+
+function sectionIcon(section) {
+  return SECTION_ICON[section] || "hub";
+}
+
 function RepoCard({ item }) {
+  const avatar = resolveRepoAvatar(item.repo);
+
   return (
     <a
       href={item.repo}
@@ -173,13 +199,34 @@ function RepoCard({ item }) {
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold text-text-main">{item.name}</p>
-          <p className="mt-1 text-sm text-text-muted">{item.description}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={item.name}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  const fallback = event.currentTarget.nextElementSibling;
+                  if (fallback) fallback.classList.remove("hidden");
+                }}
+              />
+            ) : null}
+            <span className={cn("material-symbols-outlined flex h-full w-full items-center justify-center text-[20px] text-text-muted", avatar ? "hidden" : "")}>{sectionIcon(item.section)}</span>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-base font-semibold text-text-main">{item.name}</p>
+            <p className="mt-1 text-sm text-text-muted">{item.description}</p>
+            <p className="mt-3 text-xs text-primary break-all">{item.repo}</p>
+          </div>
         </div>
+
         <span className="material-symbols-outlined text-text-muted">open_in_new</span>
       </div>
-      <p className="mt-3 text-xs text-primary break-all">{item.repo}</p>
+
       <div className="mt-3 flex flex-wrap gap-2">
         {item.tags.map((tag) => (
           <span key={`${item.id}:${tag}`} className="rounded-md bg-black/5 dark:bg-white/5 px-2 py-1 text-[11px] text-text-muted">
@@ -241,7 +288,7 @@ export default function AIMemoryPageClient() {
               <h2 className="text-lg font-semibold text-text-main">{section}</h2>
               <span className="text-xs text-text-muted">{items.length} repos</span>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col gap-3">
               {items.map((item) => (
                 <RepoCard key={item.id} item={item} />
               ))}
