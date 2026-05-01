@@ -48,9 +48,9 @@ export const metadata = {
   title: "XLab Router - AI Infrastructure Management",
   description: "One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.",
   icons: {
-    icon: "/topup.png",
-    shortcut: "/topup.png",
-    apple: "/topup.png",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/apple-icon.png",
   },
 };
 
