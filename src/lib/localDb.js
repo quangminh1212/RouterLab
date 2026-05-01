@@ -72,6 +72,7 @@ const DEFAULT_SETTINGS = {
     apiKey: process.env.CLOUDFLARE_API_KEY || "",
     email: process.env.CLOUDFLARE_EMAIL || "",
     zoneId: process.env.CLOUDFLARE_ZONE_ID || "",
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID || "",
     domain: process.env.CLOUDFLARE_DOMAIN || "",
     tunnelId: process.env.CLOUDFLARE_TUNNEL_ID || "",
     tunnelToken: process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",

@@ -66,10 +66,76 @@ function normalizeUrl(url) {
 function getCloudflareRuntimeConfig(settings = null) {
   const cf = settings?.cloudflare || {};
   return {
+    apiToken: cf.apiToken || process.env.CLOUDFLARE_API_TOKEN || "",
+    accountId: cf.accountId || process.env.CLOUDFLARE_ACCOUNT_ID || "",
+    zoneId: cf.zoneId || process.env.CLOUDFLARE_ZONE_ID || "",
+    tunnelId: cf.tunnelId || process.env.CLOUDFLARE_TUNNEL_ID || "",
     tunnelToken: cf.tunnelToken || process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",
     tunnelPublicUrl: cf.tunnelPublicUrl || process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "",
     tunnelOriginUrl: cf.tunnelOriginUrl || process.env.CLOUDFLARE_TUNNEL_ORIGIN_URL || "http://127.0.0.1:1212",
   };
+}
+
+async function cloudflareApiRequest(pathname, config, options = {}) {
+  if (!config.apiToken) return null;
+  const response = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${config.apiToken}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  if (!response.ok || payload?.success === false) {
+    const message = payload?.errors?.[0]?.message || `Cloudflare API failed (${response.status})`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+async function resolveCloudflareAccountId(config) {
+  if (config.accountId) return config.accountId;
+  if (!config.zoneId) return "";
+  const payload = await cloudflareApiRequest(`/zones/${config.zoneId}`, config);
+  return payload?.result?.account?.id || "";
+}
+
+function getCloudflareConnectorId(connection) {
+  return connection?.id || connection?.uuid || connection?.connector_id || "";
+}
+
+async function pruneCloudflareTunnelConnectors(config) {
+  if (!config.apiToken || !config.tunnelId) return { skipped: true, reason: "missing_config" };
+  const accountId = await resolveCloudflareAccountId(config);
+  if (!accountId) return { skipped: true, reason: "missing_account_id" };
+
+  const currentHostname = os.hostname().toLowerCase();
+  const payload = await cloudflareApiRequest(`/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`, config);
+  const connections = Array.isArray(payload?.result) ? payload.result : [];
+  const staleConnections = connections.filter((connection) => {
+    const hostname = String(connection?.hostname || connection?.host || "").toLowerCase();
+    return hostname && hostname !== currentHostname;
+  });
+
+  let deleted = 0;
+  for (const connection of staleConnections) {
+    const connectorId = getCloudflareConnectorId(connection);
+    if (!connectorId) continue;
+    await cloudflareApiRequest(
+      `/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections/${connectorId}`,
+      config,
+      { method: "DELETE" }
+    );
+    deleted += 1;
+  }
+
+  return { skipped: false, deleted, keptHostname: currentHostname };
 }
 
 function getNamedTunnelPublicUrl(settings = null) {
@@ -208,8 +274,26 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
+    try {
+      const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
+      if (!pruneResult.skipped && pruneResult.deleted > 0) {
+        console.log(`[cloudflare] Removed ${pruneResult.deleted} stale tunnel connector(s)`);
+      }
+    } catch (err) {
+      console.warn(`[cloudflare] Could not prune stale tunnel connectors: ${err.message}`);
+    }
+
     const originUrl = cloudflareConfig.tunnelOriginUrl || `http://127.0.0.1:${localPort}`;
     const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, originUrl);
+
+    try {
+      const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
+      if (!pruneResult.skipped && pruneResult.deleted > 0) {
+        console.log(`[cloudflare] Removed ${pruneResult.deleted} stale tunnel connector(s) after connect`);
+      }
+    } catch (err) {
+      console.warn(`[cloudflare] Could not prune stale tunnel connectors after connect: ${err.message}`);
+    }
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({
