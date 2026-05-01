@@ -27,7 +27,7 @@ function getCloudflareConnectorCleanupMessage(cleanup) {
     return `Cloudflare account ID missing - set ${cleanup.recommendedEnv || "CLOUDFLARE_ACCOUNT_ID"} to enable auto-switch.${permissions}`;
   }
   if (cleanup.reason === "error" && /Authentication error|10000/i.test(cleanup.error || "")) {
-    return `Cloudflare API token lacks connector/tunnel permissions - cannot auto-switch connectors.${permissions} Create a new token at https://dash.cloudflare.com with these permissions, then update CLOUDFLARE_API_TOKEN in .env and restart.`;
+    return `Cloudflare API token is valid but lacks connector/tunnel permissions - cannot auto-switch connectors.${permissions} You can update this token's permissions in Cloudflare, or replace it with another token that has the required scopes.`;
   }
   if (cleanup.reason === "error" && cleanup.error) {
     return `Cloudflare connector auto-switch unavailable: ${cleanup.error}.${permissions}`;
@@ -45,7 +45,7 @@ function getCloudflareDnsSetupMessage(dnsSetup) {
   }
   if (dnsSetup.skipped && dnsSetup.reason === "error") {
     const hint = /Authentication error|10000/i.test(dnsSetup.error || "")
-      ? ` Create a new token at https://dash.cloudflare.com with these permissions, then update CLOUDFLARE_API_TOKEN in .env and restart.`
+      ? ` The token is accepted by Cloudflare but is missing the DNS scopes listed above. Update the token permissions or use another token with the required scopes.`
       : "";
     return `Cloudflare DNS auto-setup failed: ${dnsSetup.error || "unknown error"}.${permissions}${hint}`;
   }
