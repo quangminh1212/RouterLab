@@ -21,6 +21,54 @@ import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection } from "open-sse/services/projectId.js";
 
+function flattenMessageText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((part) => part?.type === "text" && typeof part.text === "string")
+      .map((part) => part.text)
+      .join("\n");
+  }
+  return "";
+}
+
+function mergeSystemIntoFirstUserMessage(body) {
+  if (!Array.isArray(body?.messages) || body.__systemPromptMerged) return null;
+
+  const systemText = body.messages
+    .filter((message) => message?.role === "system")
+    .map((message) => flattenMessageText(message?.content))
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+
+  if (!systemText) return null;
+
+  const messages = body.messages
+    .filter((message) => message?.role !== "system")
+    .map((message) => ({ ...message }));
+
+  const firstUserIndex = messages.findIndex((message) => message?.role === "user");
+  const prefix = `[System Instructions]\n${systemText}`;
+
+  if (firstUserIndex >= 0) {
+    const firstUser = messages[firstUserIndex];
+    const userText = flattenMessageText(firstUser?.content).trim();
+    messages[firstUserIndex] = {
+      ...firstUser,
+      content: userText ? `${prefix}\n\n[User]\n${userText}` : prefix,
+    };
+  } else {
+    messages.unshift({ role: "user", content: prefix });
+  }
+
+  return {
+    ...body,
+    __systemPromptMerged: true,
+    messages,
+  };
+}
+
 /**
  * Handle chat completion request
  * Supports: OpenAI, Claude, Gemini, OpenAI Responses API formats
@@ -198,8 +246,8 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     // Use shared chatCore
     const chatSettings = await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
-    const result = await handleChatCore({
-      body: { ...body, model: `${provider}/${model}` },
+    const runChatCore = async (requestBody) => handleChatCore({
+      body: { ...requestBody, model: `${provider}/${model}` },
       modelInfo: { provider, model },
       credentials: refreshedCredentials,
       log,
@@ -213,7 +261,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       cavemanLevel: chatSettings.cavemanLevel || "full",
       providerThinking,
       // Detect source format by endpoint + body
-      sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, body) : null,
+      sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, requestBody) : null,
       onCredentialsRefreshed: async (newCreds) => {
         await updateProviderCredentials(credentials.connectionId, {
           accessToken: newCreds.accessToken,
@@ -226,6 +274,16 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         await clearAccountError(credentials.connectionId, credentials, model);
       }
     });
+
+    let result = await runChatCore(body);
+
+    if (!result.success && [HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.FORBIDDEN, HTTP_STATUS.BAD_GATEWAY].includes(result.status)) {
+      const mergedBody = mergeSystemIntoFirstUserMessage(body);
+      if (mergedBody) {
+        log.warn("CHAT", `[${provider}/${model}] retrying with merged system prompt after upstream ${result.status}`);
+        result = await runChatCore(mergedBody);
+      }
+    }
 
     if (result.success) return result.response;
 
