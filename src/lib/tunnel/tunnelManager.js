@@ -253,6 +253,63 @@ async function deleteAllCloudflareTunnelConnectors(config) {
   return { skipped: false, deleted, accountId, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
 }
 
+async function getCloudflareTunnelConnectionsSnapshot(config) {
+  if (!getCloudflareAuthHeaders(config) || !config.tunnelId) {
+    return { skipped: true, reason: "missing_config" };
+  }
+  const accountId = await resolveCloudflareAccountId(config);
+  if (!accountId) {
+    return { skipped: true, reason: "missing_account_id" };
+  }
+
+  const payload = await cloudflareApiRequest(`/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`, config);
+  const connectors = Array.isArray(payload?.result) ? payload.result : [];
+  const connectorCount = connectors.length;
+  const streamCount = connectors.reduce((total, item) => total + (Array.isArray(item?.conns) ? item.conns.length : 0), 0);
+
+  return {
+    skipped: false,
+    accountId,
+    connectorCount,
+    streamCount,
+    connectorIds: connectors.map((item) => item?.id).filter(Boolean),
+  };
+}
+
+async function verifyCloudflarePublicEndpoint(publicUrl) {
+  const endpoint = `${normalizeUrl(publicUrl).replace(/\/$/, "")}/v1/chat/completions`;
+  const { getApiKeys } = await import("@/lib/localDb.js");
+  const keys = await getApiKeys();
+  const apiKey = keys.find((k) => k.isActive !== false)?.key || keys[0]?.key || "";
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  const body = JSON.stringify({
+    model: "XLab",
+    stream: false,
+    messages: [{ role: "user", content: "ping" }],
+  });
+
+  const maxAttempts = 12;
+  let lastStatus = 0;
+  let lastError = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(endpoint, { method: "POST", headers, body });
+      lastStatus = response.status;
+      if (response.ok) {
+        return { ok: true, endpoint, attempts: attempt, status: response.status };
+      }
+      lastError = (await response.text()).slice(0, 300);
+    } catch (error) {
+      lastError = error.message || String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+
+  return { ok: false, endpoint, attempts: maxAttempts, status: lastStatus, error: lastError };
+}
+
 function getNamedTunnelPublicUrl(settings = null) {
   return normalizeUrl(getCloudflareRuntimeConfig(settings).tunnelPublicUrl);
 }
@@ -600,6 +657,56 @@ export async function forceResetCloudflareTunnel(localPort = 1212) {
     ...enabled,
     connectorReset,
   };
+}
+
+export async function switchCloudflareToThisMachine(localPort = 1212) {
+  createRuntimeBackup("before-switch-cloudflare-host");
+  const settings = await getSettings();
+  const cloudflareConfig = getCloudflareRuntimeConfig(settings);
+
+  if (!cloudflareConfig.tunnelToken || !cloudflareConfig.tunnelPublicUrl) {
+    throw new Error("Cloudflare tunnel token or public URL is missing");
+  }
+
+  const maxAttempts = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      killCloudflared();
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      const connectorReset = await deleteAllCloudflareTunnelConnectors(cloudflareConfig);
+      const enabled = await enableTunnel(localPort, "cloudflare");
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      const verify = await getCloudflareTunnelConnectionsSnapshot(cloudflareConfig);
+      const switched = !verify.skipped && verify.connectorCount === 1;
+
+      if (switched) {
+        const publicUrl = enabled.publicUrl || enabled.tunnelUrl || cloudflareConfig.tunnelPublicUrl;
+        const endpointVerify = await verifyCloudflarePublicEndpoint(publicUrl);
+        if (!endpointVerify.ok) {
+          lastError = new Error(`Public endpoint verify failed after attempt ${attempt}: ${endpointVerify.status || endpointVerify.error || "unknown error"}`);
+          continue;
+        }
+        return {
+          ...enabled,
+          switched: true,
+          attempts: attempt,
+          connectorReset,
+          connectorVerify: verify,
+          endpointVerify,
+        };
+      }
+
+      lastError = new Error(`Connector verify failed after attempt ${attempt}: found ${verify.connectorCount || 0} connector(s)`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Failed to switch Cloudflare tunnel to this machine");
 }
 
 export async function getTunnelStatus(settingsOverride) {

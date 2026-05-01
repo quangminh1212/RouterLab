@@ -108,6 +108,7 @@ export default function APIPageClient() {
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
   const [cloudflareResetLoading, setCloudflareResetLoading] = useState(false);
+  const [cloudflareSwitchLoading, setCloudflareSwitchLoading] = useState(false);
 
   // Tailscale state
   const [tsEnabled, setTsEnabled] = useState(false);
@@ -771,6 +772,47 @@ export default function APIPageClient() {
     }
   };
 
+  const handleSwitchCloudflareToThisMachine = async () => {
+    setSelectedTunnelProvider("cloudflare");
+    setCloudflareSwitchLoading(true);
+    setTunnelLoading(true);
+    setTunnelStatus(null);
+    setTunnelProgress("Switching Cloudflare tunnel to this machine...");
+    try {
+      const res = await fetch("/api/tunnel/cloudflare-switch-host", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setTunnelStatus({ type: "error", message: data.error || "Failed to switch Cloudflare host" });
+        return;
+      }
+
+      const url = data.publicUrl || data.tunnelUrl || cloudflareUrl;
+      if (url) {
+        setCloudflareUrl(url);
+        setCloudflareEnabled(true);
+      }
+
+      const connectorCount = Number(data.connectorVerify?.connectorCount || 0);
+      const streamCount = Number(data.connectorVerify?.streamCount || 0);
+      const attemptText = data.attempts ? ` (attempt ${data.attempts})` : "";
+      const verifyMessage = connectorCount === 1
+        ? `Cloudflare switched to this machine${attemptText}. Active connectors: ${connectorCount}, streams: ${streamCount}.`
+        : `Switch completed but verification is not single-host yet. Active connectors: ${connectorCount}.`;
+
+      setTunnelStatus({ type: connectorCount === 1 ? "success" : "warning", message: verifyMessage });
+
+      if (url) {
+        await pingTunnelHealth(url);
+      }
+    } catch (error) {
+      setTunnelStatus({ type: "error", message: error.message || "Failed to switch Cloudflare host" });
+    } finally {
+      setCloudflareSwitchLoading(false);
+      setTunnelLoading(false);
+      setTunnelProgress("");
+    }
+  };
+
   // u2500u2500u2500 Tailscale handlers
   const checkTailscaleInstalled = async () => {
     setTsInstalled(null);
@@ -1308,6 +1350,9 @@ export default function APIPageClient() {
                 <Button size="sm" icon="restart_alt" onClick={handleForceResetCloudflare} disabled={cloudflareResetLoading}>
                   {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
                 </Button>
+                <Button size="sm" icon="sync_alt" onClick={handleSwitchCloudflareToThisMachine} disabled={cloudflareSwitchLoading}>
+                  {cloudflareSwitchLoading ? "Switching..." : "Switch Here"}
+                </Button>
                 <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}>Enable</Button>
               </>
             ) : (tunnelStatus?.type === "success" && selectedTunnelProvider === "cloudflare") ? (
@@ -1358,6 +1403,15 @@ export default function APIPageClient() {
                   className="bg-sidebar border border-border text-text-muted hover:text-primary"
                 >
                   {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
+                </Button>
+                <Button
+                  size="sm"
+                  icon="sync_alt"
+                  onClick={handleSwitchCloudflareToThisMachine}
+                  disabled={cloudflareSwitchLoading}
+                  className="bg-sidebar border border-border text-text-muted hover:text-primary"
+                >
+                  {cloudflareSwitchLoading ? "Switching..." : "Switch Here"}
                 </Button>
                 <Button
                   size="sm"
