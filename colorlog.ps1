@@ -96,9 +96,9 @@ function Kill-PortProcess {
         $conns = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty OwningProcess -Unique
         if ($conns) {
-            foreach ($pid in $conns) {
-                if ($pid -and $pid -ne $PID) {
-                    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+            foreach ($owningPid in $conns) {
+                if ($owningPid -and $owningPid -ne $PID) {
+                    $proc = Get-Process -Id $owningPid -ErrorAction SilentlyContinue
                     if ($proc) {
                         Write-Host "[INFO] Killing process: $($proc.Name) (PID $($proc.Id))" -ForegroundColor Cyan
                         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
@@ -122,9 +122,9 @@ Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
         $conns = Get-NetTCPConnection -LocalPort $using:targetPort -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty OwningProcess -Unique
         if ($conns) {
-            foreach ($pid in $conns) {
-                if ($pid -and $pid -ne $PID) {
-                    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+            foreach ($owningPid in $conns) {
+                if ($owningPid -and $owningPid -ne $PID) {
+                    Stop-Process -Id $owningPid -Force -ErrorAction SilentlyContinue
                 }
             }
         }
