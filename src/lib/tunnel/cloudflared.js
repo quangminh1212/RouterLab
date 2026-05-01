@@ -315,6 +315,8 @@ export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.
 
   cloudflaredProcess = child;
   savePid(child.pid);
+  cachedCloudflaredRunning = true;
+  cachedCloudflaredRunningAt = Date.now();
 
   return new Promise((resolve, reject) => {
     let connectionCount = 0;
@@ -532,9 +534,11 @@ export function killCloudflared() {
 }
 
 export function isCloudflaredRunning() {
-  // Return cached result if still valid
-  if (cachedCloudflaredRunning !== null && Date.now() - cachedCloudflaredRunningAt < CLOUDFLARED_RUNNING_CACHE_TTL_MS) {
-    return cachedCloudflaredRunning;
+  // Return cached positive result if still valid.
+  // Do not trust cached negative result after recent restart attempts,
+  // otherwise we can incorrectly report "not running" for up to TTL.
+  if (cachedCloudflaredRunning === true && Date.now() - cachedCloudflaredRunningAt < CLOUDFLARED_RUNNING_CACHE_TTL_MS) {
+    return true;
   }
 
   // Windows service mode may run without pid file
