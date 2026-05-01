@@ -19,6 +19,8 @@ import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.j
 import { injectCaveman } from "../rtk/caveman.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
 
+const CHAT_UPSTREAM_TIMEOUT_MS = Number(process.env.CHAT_UPSTREAM_TIMEOUT_MS) || 40000;
+
 /**
  * Core chat handler - shared between SSE and Worker
  * @param {object} options.body - Request body
@@ -165,7 +167,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   while (true) {
     try {
-      const result = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
+      const result = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions, requestTimeoutMs: CHAT_UPSTREAM_TIMEOUT_MS });
       providerResponse = result.response;
       providerUrl = result.url;
       providerHeaders = result.headers;
@@ -186,6 +188,24 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
         })).catch(() => {});
         streamController.handleError(error);
         return createErrorResult(499, "Request aborted");
+      }
+
+      if (error.name === "FetchTimeoutError") {
+        trackPendingRequest(model, provider, connectionId, false, true);
+        appendRequestLog({ model, provider, connectionId, status: "FAILED 504" }).catch(() => {});
+        saveRequestDetail(buildRequestDetail({
+          provider, model, connectionId,
+          latency: { ttft: 0, total: Date.now() - requestStartTime },
+          tokens: { prompt_tokens: 0, completion_tokens: 0 },
+          request: extractRequestConfig(body, stream),
+          providerRequest: translatedBody || null,
+          response: { error: error.message || String(error), status: 504, thinking: null },
+          status: "error"
+        })).catch(() => {});
+
+        const errMsg = formatProviderError(new Error(`Upstream timeout after ${CHAT_UPSTREAM_TIMEOUT_MS}ms`), provider, model, HTTP_STATUS.GATEWAY_TIMEOUT);
+        console.log(`${COLORS.red}[ERROR] ${errMsg}${COLORS.reset}`);
+        return createErrorResult(HTTP_STATUS.GATEWAY_TIMEOUT, errMsg);
       }
 
       if (upstreamRetryCount < MAX_UPSTREAM_RETRIES) {
@@ -223,7 +243,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
             try { await onCredentialsRefreshed(newCredentials); } catch (e) { log?.warn?.("TOKEN", `onCredentialsRefreshed failed: ${e.message}`); }
           }
           try {
-            const retryResult = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions });
+            const retryResult = await executor.execute({ model, body: translatedBody, stream, credentials, signal: streamController.signal, log, proxyOptions, requestTimeoutMs: CHAT_UPSTREAM_TIMEOUT_MS });
             if (retryResult.response.ok) {
               providerResponse = retryResult.response;
               providerUrl = retryResult.url;

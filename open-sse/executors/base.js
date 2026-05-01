@@ -95,7 +95,7 @@ export class BaseExecutor {
     return { status: response.status, message: bodyText || `HTTP ${response.status}` };
   }
 
-  async execute({ model, body, stream, credentials, signal, log, proxyOptions = null }) {
+  async execute({ model, body, stream, credentials, signal, log, proxyOptions = null, requestTimeoutMs = null }) {
     const fallbackCount = this.getFallbackCount();
     let lastError = null;
     let lastStatus = 0;
@@ -126,7 +126,8 @@ export class BaseExecutor {
           method: "POST",
           headers,
           body: JSON.stringify(transformedBody),
-          signal
+          signal,
+          ...(requestTimeoutMs ? { _fetchTimeout: requestTimeoutMs } : {})
         }, proxyOptions);
 
         if (await tryRetry(urlIndex, response.status, `status ${response.status}`)) { urlIndex--; continue; }
@@ -141,6 +142,7 @@ export class BaseExecutor {
       } catch (error) {
         lastError = error;
         if (error.name === "AbortError") throw error;
+        if (error.name === "FetchTimeoutError") throw error;
 
         // Map network/fetch exceptions to 502 retry config
         if (await tryRetry(urlIndex, HTTP_STATUS.BAD_GATEWAY, `network "${error.message}"`)) { urlIndex--; continue; }
