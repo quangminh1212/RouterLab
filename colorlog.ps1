@@ -68,6 +68,27 @@ function Write-ColoredLine {
     Write-Host $Line -ForegroundColor Gray
 }
 
+
+function Kill-StaleRouterProcesses {
+    try {
+        $repo = [regex]::Escape((Get-Location).Path)
+        $procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            ($_.Name -eq 'node.exe' -or $_.Name -eq 'nodew.exe') -and
+            $_.CommandLine -and
+            $_.CommandLine -match $repo -and
+            ($_.CommandLine -match 'xlab_router\.js' -or $_.CommandLine -match 'next\s+dev' -or $_.CommandLine -match '\.next[\/]+standalone[\/]+server\.js')
+        }
+        foreach ($proc in $procs) {
+            if ($proc.ProcessId -and $proc.ProcessId -ne $PID) {
+                Write-Host "[INFO] Killing stale router process PID $($proc.ProcessId)" -ForegroundColor Cyan
+                Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {
+        Write-Host "[WARN] Failed to cleanup stale router processes: $_" -ForegroundColor Yellow
+    }
+}
+
 function Kill-PortProcess {
     param([int]$Port)
     Write-Host "[WARN] Port $Port is in use. Attempting to kill process..." -ForegroundColor Yellow
@@ -114,7 +135,8 @@ $attempt = 0
 $success = $false
 $currentPort = $targetPort
 
-# Pre-clear stale listeners before first start to avoid EADDRINUSE race
+# Pre-clear stale router processes/listeners before first start
+Kill-StaleRouterProcesses
 Kill-PortProcess -Port $currentPort | Out-Null
 
 while ($attempt -lt $maxRetries -and -not $success) {
@@ -140,10 +162,8 @@ while ($attempt -lt $maxRetries -and -not $success) {
             continue
         }
 
-        $currentPort++
-        Write-Host "[WARN] Auto-switching to new port $currentPort" -ForegroundColor Yellow
-        Start-Sleep -Seconds 1
-        continue
+        Write-Host "[ERROR] Port $currentPort is still busy after cleanup. Keep fixed port mode enabled." -ForegroundColor Red
+        break
     }
 
     $success = $true
