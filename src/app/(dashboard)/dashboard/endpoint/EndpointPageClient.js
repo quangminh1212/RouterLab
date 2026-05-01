@@ -691,10 +691,19 @@ export default function APIPageClient() {
 
   const handleEnableSecuredTunnel = async (provider) => {
     setSelectedTunnelProvider(provider);
-    const enabled = await ensureRequireApiKeyEnabled();
+    let enabled = await ensureRequireApiKeyEnabled();
     if (!enabled) {
-      setTunnelStatus({ type: "error", message: "Security required: Enable \\\"Require API key\\\" before activating the tunnel." });
-      return;
+      const keysRes = await fetch("/api/keys").catch(() => null);
+      const keysData = keysRes?.ok ? await keysRes.json().catch(() => null) : null;
+      const hasKeys = Array.isArray(keysData?.keys) && keysData.keys.length > 0;
+      if (hasKeys) {
+        setTunnelProgress("Auto-enabling API key requirement...");
+        await handleRequireApiKey(true);
+        enabled = true;
+      } else {
+        setTunnelStatus({ type: "error", message: "Security required: Create at least one API key before activating the tunnel." });
+        return;
+      }
     }
     handleEnableTunnel(provider);
   };
