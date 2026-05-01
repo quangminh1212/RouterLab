@@ -25,6 +25,35 @@ export async function OPTIONS() {
   });
 }
 
+function shouldSkipHeader(key) {
+  const lower = key.toLowerCase();
+  return [
+    "host",
+    "content-length",
+    "connection",
+    "cf-connecting-ip",
+    "cf-ipcountry",
+    "cf-ray",
+    "cf-visitor",
+    "cf-warp-tag-id",
+    "cdn-loop",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-proto",
+  ].includes(lower);
+}
+
+function isCaptureSelfLoop(request) {
+  try {
+    const incomingHost = new URL(request.url).host;
+    const upstreamHost = new URL(OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL).host;
+    return incomingHost.toLowerCase() === upstreamHost.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 async function writeOpenClawCapture(stage, payload) {
   if (!OPENCLAW_CAPTURE_PROXY_ENABLED) return;
   const [{ promises: fs }, path, os] = await Promise.all([
@@ -58,8 +87,7 @@ async function proxyOpenClawCapture(request) {
 
   const outboundHeaders = new Headers();
   for (const [key, value] of Object.entries(inboundHeaders)) {
-    const lower = key.toLowerCase();
-    if (lower === "host" || lower === "content-length") continue;
+    if (shouldSkipHeader(key)) continue;
     outboundHeaders.set(key, value);
   }
 
@@ -89,8 +117,16 @@ async function proxyOpenClawCapture(request) {
 }
 
 async function postHandler(request) {
-  if (OPENCLAW_CAPTURE_PROXY_ENABLED) {
+  if (OPENCLAW_CAPTURE_PROXY_ENABLED && !isCaptureSelfLoop(request)) {
     return proxyOpenClawCapture(request);
+  }
+
+  if (OPENCLAW_CAPTURE_PROXY_ENABLED && isCaptureSelfLoop(request)) {
+    await writeOpenClawCapture("capture-bypass", {
+      reason: "self-loop-detected",
+      incomingUrl: request.url,
+      upstreamUrl: OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL,
+    });
   }
 
   await ensureInitialized();
