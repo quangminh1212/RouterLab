@@ -11,6 +11,7 @@ const BINARY_NAME = "cloudflared";
 const IS_WINDOWS = os.platform() === "win32";
 const BIN_NAME = IS_WINDOWS ? `${BINARY_NAME}.exe` : BINARY_NAME;
 const BIN_PATH = path.join(BIN_DIR, BIN_NAME);
+const EDGE_IP_VERSION = process.env.CLOUDFLARED_EDGE_IP_VERSION || "4";
 
 const GITHUB_BASE_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download";
 
@@ -299,6 +300,7 @@ export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.
     "tunnel",
     "--config", configPath,
     "--url", originUrl,
+    "--edge-ip-version", EDGE_IP_VERSION,
     "run",
     "--dns-resolver-addrs", "1.1.1.1:53",
     "--token", tunnelToken,
