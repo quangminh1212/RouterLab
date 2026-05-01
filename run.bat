@@ -5,6 +5,8 @@ cd /d "%~dp0"
 
 set LOG_FILE=log.txt
 set DEV_RUN_LOG=next-dev.log
+set CLOUDFLARED_PROCESS_MODE=true
+set CLOUDFLARED_WINDOWS_SERVICE_MODE=false
 
 echo Starting XLab Router...
 echo.

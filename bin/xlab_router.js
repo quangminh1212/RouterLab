@@ -503,6 +503,8 @@ async function launchWebUIProcess(options = {}) {
     NODE_PATH: sourceNodeModules,
     NODE_OPTIONS: `--max-old-space-size=${ramMB}`,
     XLABROUTER_HIDE_NEXT_DEV_INDICATOR: installedFromNpm ? "1" : (process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR || "0"),
+    CLOUDFLARED_PROCESS_MODE: process.platform === "win32" ? (process.env.CLOUDFLARED_PROCESS_MODE || "true") : process.env.CLOUDFLARED_PROCESS_MODE,
+    CLOUDFLARED_WINDOWS_SERVICE_MODE: process.platform === "win32" ? (process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE || "false") : process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE,
   };
 
   if (runProd) {

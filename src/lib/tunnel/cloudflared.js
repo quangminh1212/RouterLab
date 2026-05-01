@@ -12,6 +12,7 @@ const IS_WINDOWS = os.platform() === "win32";
 const BIN_NAME = IS_WINDOWS ? `${BINARY_NAME}.exe` : BINARY_NAME;
 const BIN_PATH = path.join(BIN_DIR, BIN_NAME);
 const EDGE_IP_VERSION = process.env.CLOUDFLARED_EDGE_IP_VERSION || "4";
+const FORCE_WINDOWS_PROCESS_MODE = process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE !== "true";
 
 const GITHUB_BASE_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download";
 
@@ -235,7 +236,7 @@ export function setUnexpectedExitHandler(handler) {
 
 export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.1:1212") {
   const binaryPath = await ensureCloudflared();
-  const preferProcessMode = process.env.CLOUDFLARED_PROCESS_MODE === "true";
+  const preferProcessMode = process.env.CLOUDFLARED_PROCESS_MODE === "true" || (IS_WINDOWS && FORCE_WINDOWS_PROCESS_MODE);
 
   // Try to install as Windows service first (requires admin)
   if (IS_WINDOWS && !preferProcessMode) {
