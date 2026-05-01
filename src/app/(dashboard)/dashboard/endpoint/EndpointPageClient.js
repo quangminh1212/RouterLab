@@ -27,10 +27,33 @@ function getCloudflareConnectorCleanupMessage(cleanup) {
     return `Cloudflare account ID missing - set ${cleanup.recommendedEnv || "CLOUDFLARE_ACCOUNT_ID"} to enable auto-switch.${permissions}`;
   }
   if (cleanup.reason === "error" && /Authentication error|10000/i.test(cleanup.error || "")) {
-    return `Cloudflare API token lacks connector/tunnel permissions - cannot auto-switch connectors.${permissions}`;
+    return `Cloudflare API token lacks connector/tunnel permissions - cannot auto-switch connectors.${permissions} Create a new token at https://dash.cloudflare.com with these permissions, then update CLOUDFLARE_API_TOKEN in .env and restart.`;
   }
   if (cleanup.reason === "error" && cleanup.error) {
     return `Cloudflare connector auto-switch unavailable: ${cleanup.error}.${permissions}`;
+  }
+  return "";
+}
+
+function getCloudflareDnsSetupMessage(dnsSetup) {
+  if (!dnsSetup) return "";
+  const permissions = Array.isArray(dnsSetup.requiredPermissions) && dnsSetup.requiredPermissions.length
+    ? ` Required token permissions: ${dnsSetup.requiredPermissions.join(", ")}.`
+    : "";
+  if (dnsSetup.skipped && dnsSetup.reason === "missing_config") {
+    return `Cloudflare DNS auto-setup skipped because zone/domain/tunnel config is incomplete.${permissions}`;
+  }
+  if (dnsSetup.skipped && dnsSetup.reason === "error") {
+    const hint = /Authentication error|10000/i.test(dnsSetup.error || "")
+      ? ` Create a new token at https://dash.cloudflare.com with these permissions, then update CLOUDFLARE_API_TOKEN in .env and restart.`
+      : "";
+    return `Cloudflare DNS auto-setup failed: ${dnsSetup.error || "unknown error"}.${permissions}${hint}`;
+  }
+  if (dnsSetup.changed) {
+    return `Cloudflare DNS configured: ${dnsSetup.hostname} -> ${dnsSetup.target}`;
+  }
+  if (dnsSetup.skipped === false && dnsSetup.hostname && dnsSetup.target) {
+    return `Cloudflare DNS already configured: ${dnsSetup.hostname} -> ${dnsSetup.target}`;
   }
   return "";
 }
@@ -624,9 +647,14 @@ export default function APIPageClient() {
       setTunnelServiceInstalled(!!data.serviceInstalled);
       
       if (provider === "cloudflare") {
+        const dnsMessage = getCloudflareDnsSetupMessage(data.dnsSetup);
         const cleanupMessage = getCloudflareConnectorCleanupMessage(data.connectorCleanup);
-        if (cleanupMessage) {
+        if (dnsMessage && data.dnsSetup?.skipped) {
+          setTunnelStatus({ type: "warning", message: `${dnsMessage}${cleanupMessage ? ` ${cleanupMessage}` : ""}` });
+        } else if (cleanupMessage) {
           setTunnelStatus({ type: "warning", message: cleanupMessage });
+        } else if (dnsMessage) {
+          setTunnelStatus({ type: "success", message: dnsMessage });
         } else if (data.serviceInstalled) {
           setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
         } else {

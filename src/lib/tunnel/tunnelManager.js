@@ -29,6 +29,10 @@ const CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS = [
   "Cloudflare One Connector: cloudflared Write",
   "Cloudflare Tunnel Write",
 ];
+const CLOUDFLARE_DNS_WRITE_PERMISSIONS = [
+  "Zone DNS Read",
+  "Zone DNS Edit",
+];
 
 let isReconnecting = false;
 let exitHandlerRegistered = false;
@@ -115,6 +119,70 @@ async function resolveCloudflareAccountId(config) {
 
 function getCloudflareConnectorId(connection) {
   return connection?.id || connection?.uuid || connection?.connector_id || "";
+}
+
+function getHostnameFromUrl(url) {
+  try {
+    return new URL(normalizeUrl(url)).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function getCloudflareTunnelCnameTarget(tunnelId) {
+  return tunnelId ? `${tunnelId}.cfargotunnel.com` : "";
+}
+
+async function ensureCloudflareDnsRecord(config) {
+  const hostname = getHostnameFromUrl(config.tunnelPublicUrl);
+  const cnameTarget = getCloudflareTunnelCnameTarget(config.tunnelId);
+  if (!config.apiToken || !config.zoneId || !hostname || !cnameTarget) {
+    return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_DNS_WRITE_PERMISSIONS };
+  }
+
+  const recordsPayload = await cloudflareApiRequest(
+    `/zones/${config.zoneId}/dns_records?name=${encodeURIComponent(hostname)}`,
+    config
+  );
+  const records = Array.isArray(recordsPayload?.result) ? recordsPayload.result : [];
+  const expectedContent = cnameTarget.toLowerCase();
+  const existingCname = records.find((record) => (
+    record?.type === "CNAME"
+    && String(record?.content || "").toLowerCase() === expectedContent
+    && record?.proxied === true
+  ));
+
+  if (existingCname) {
+    return { skipped: false, changed: false, hostname, target: cnameTarget, recordId: existingCname.id };
+  }
+
+  let deleted = 0;
+  for (const record of records) {
+    if (!record?.id) continue;
+    await cloudflareApiRequest(`/zones/${config.zoneId}/dns_records/${record.id}`, config, { method: "DELETE" });
+    deleted += 1;
+  }
+
+  const createPayload = await cloudflareApiRequest(`/zones/${config.zoneId}/dns_records`, config, {
+    method: "POST",
+    body: JSON.stringify({
+      type: "CNAME",
+      name: hostname,
+      content: cnameTarget,
+      ttl: 1,
+      proxied: true,
+    }),
+  });
+
+  return {
+    skipped: false,
+    changed: true,
+    deleted,
+    hostname,
+    target: cnameTarget,
+    recordId: createPayload?.result?.id || "",
+    requiredPermissions: CLOUDFLARE_DNS_WRITE_PERMISSIONS,
+  };
 }
 
 async function pruneCloudflareTunnelConnectors(config) {
@@ -285,6 +353,17 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
 
   if (useNamedTunnel) {
     let cleanupResult = { skipped: true, reason: "not_attempted" };
+    let dnsResult = { skipped: true, reason: "not_attempted" };
+    try {
+      dnsResult = await ensureCloudflareDnsRecord(cloudflareConfig);
+      if (!dnsResult.skipped && dnsResult.changed) {
+        console.log(`[cloudflare] Updated DNS ${dnsResult.hostname} -> ${dnsResult.target}`);
+      }
+    } catch (err) {
+      dnsResult = { skipped: true, reason: "error", error: err.message, requiredPermissions: CLOUDFLARE_DNS_WRITE_PERMISSIONS };
+      console.warn(`[cloudflare] Could not auto-configure DNS record: ${err.message}`);
+    }
+
     try {
       const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
       cleanupResult = pruneResult;
@@ -356,6 +435,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       publicUrl: getComputedPublicUrl(shortId, settings),
       mode: "named",
       serviceInstalled: !!cloudflared?.serviceInstalled,
+      dnsSetup: dnsResult,
       connectorCleanup: cleanupResult
     };
   }
@@ -688,4 +768,3 @@ export async function getTailscaleStatus(settingsOverride) {
     running
   };
 }
-
