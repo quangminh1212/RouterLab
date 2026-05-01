@@ -4,6 +4,8 @@ import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
+const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 45000;
+
 /**
  * Initialize translators once
  */
@@ -37,5 +39,5 @@ async function postHandler(request) {
 export const POST = withRouteGuard(
   "v1/chat/completions",
   postHandler,
-  { timeoutMs: 180000 },
+  { timeoutMs: CHAT_COMPLETIONS_TIMEOUT_MS },
 );

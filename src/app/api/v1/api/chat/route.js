@@ -5,6 +5,8 @@ import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
 
+const API_CHAT_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 45000;
+
 async function ensureInitialized() {
   if (!initialized) {
     await initTranslators();
@@ -39,5 +41,5 @@ async function postHandler(request) {
 export const POST = withRouteGuard(
   "v1/api/chat",
   postHandler,
-  { timeoutMs: 180000 },
+  { timeoutMs: API_CHAT_TIMEOUT_MS },
 );

@@ -127,6 +127,21 @@ function buildJsonResponse(status, body, extraHeaders = {}) {
   });
 }
 
+function buildOpenAIErrorResponse(status, message, code, extra = {}, extraHeaders = {}) {
+  return buildJsonResponse(
+    status,
+    {
+      error: {
+        message,
+        type: status === 504 ? "timeout_error" : "server_error",
+        code,
+        ...extra,
+      },
+    },
+    extraHeaders,
+  );
+}
+
 function createRejectionResponse(routeName, reason, status = 503) {
   const retryAfterSeconds = 2;
   logger.warn("RUNTIME_GUARD", `Rejecting request: ${routeName}`, { reason, inFlight: runtimeState.inFlight });
@@ -261,14 +276,11 @@ export function withRouteGuard(routeName, handler, options = {}) {
     } catch (error) {
       if (error instanceof RouteTimeoutError) {
         handleTimeout(routeName, timeoutMs);
-        return buildJsonResponse(
+        return buildOpenAIErrorResponse(
           504,
-          {
-            error: "Upstream request timeout",
-            code: "RUNTIME_GUARD_TIMEOUT",
-            route: routeName,
-            timeoutMs,
-          },
+          `Request timed out after ${timeoutMs}ms`,
+          "RUNTIME_GUARD_TIMEOUT",
+          { route: routeName, timeoutMs },
           { "Retry-After": "2" },
         );
       }
