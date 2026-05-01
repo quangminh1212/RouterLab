@@ -405,10 +405,10 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     }
 
     try {
-      const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
-      cleanupResult = pruneResult;
-      if (!pruneResult.skipped && pruneResult.deleted > 0) {
-        console.log(`[cloudflare] Removed ${pruneResult.deleted} stale tunnel connector(s)`);
+      const resetResult = await deleteAllCloudflareTunnelConnectors(cloudflareConfig);
+      cleanupResult = resetResult;
+      if (!resetResult.skipped && resetResult.deleted > 0) {
+        console.log(`[cloudflare] Reset ${resetResult.deleted} tunnel connector(s) before starting this machine`);
       }
     } catch (err) {
       cleanupResult = { skipped: true, reason: "error", error: err.message, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
