@@ -24,6 +24,11 @@ const IS_WINDOWS = os.platform() === "win32";
 const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
   ? Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS)
   : 30000;
+const CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS = [
+  "Cloudflare One Connectors Write",
+  "Cloudflare One Connector: cloudflared Write",
+  "Cloudflare Tunnel Write",
+];
 
 let isReconnecting = false;
 let exitHandlerRegistered = false;
@@ -33,6 +38,7 @@ let cachedTunnelStatus = null;
 let cachedTunnelStatusAt = 0;
 let cachedTailscaleStatus = null;
 let cachedTailscaleStatusAt = 0;
+let lastConnectorCleanupResult = null;
 
 
 export function isTunnelManuallyDisabled() {
@@ -111,9 +117,9 @@ function getCloudflareConnectorId(connection) {
 }
 
 async function pruneCloudflareTunnelConnectors(config) {
-  if (!config.apiToken || !config.tunnelId) return { skipped: true, reason: "missing_config" };
+  if (!config.apiToken || !config.tunnelId) return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
   const accountId = await resolveCloudflareAccountId(config);
-  if (!accountId) return { skipped: true, reason: "missing_account_id" };
+  if (!accountId) return { skipped: true, reason: "missing_account_id", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
 
   const currentHostname = os.hostname().toLowerCase();
   const payload = await cloudflareApiRequest(`/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`, config);
@@ -135,7 +141,7 @@ async function pruneCloudflareTunnelConnectors(config) {
     deleted += 1;
   }
 
-  return { skipped: false, deleted, keptHostname: currentHostname };
+  return { skipped: false, deleted, keptHostname: currentHostname, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
 }
 
 function getNamedTunnelPublicUrl(settings = null) {
@@ -274,12 +280,15 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
+    let cleanupResult = { skipped: true, reason: "not_attempted" };
     try {
       const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
+      cleanupResult = pruneResult;
       if (!pruneResult.skipped && pruneResult.deleted > 0) {
         console.log(`[cloudflare] Removed ${pruneResult.deleted} stale tunnel connector(s)`);
       }
     } catch (err) {
+      cleanupResult = { skipped: true, reason: "error", error: err.message, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
       console.warn(`[cloudflare] Could not prune stale tunnel connectors: ${err.message}`);
     }
 
@@ -288,12 +297,19 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
 
     try {
       const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
+      if (!pruneResult.skipped) {
+        cleanupResult = pruneResult;
+      }
       if (!pruneResult.skipped && pruneResult.deleted > 0) {
         console.log(`[cloudflare] Removed ${pruneResult.deleted} stale tunnel connector(s) after connect`);
       }
     } catch (err) {
+      if (cleanupResult.skipped) {
+        cleanupResult = { skipped: true, reason: "error", error: err.message, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
+      }
       console.warn(`[cloudflare] Could not prune stale tunnel connectors after connect: ${err.message}`);
     }
+    lastConnectorCleanupResult = cleanupResult;
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({
@@ -316,7 +332,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       shortId,
       publicUrl: getComputedPublicUrl(shortId, settings),
       mode: "named",
-      serviceInstalled: !!cloudflared?.serviceInstalled
+      serviceInstalled: !!cloudflared?.serviceInstalled,
+      connectorCleanup: cleanupResult
     };
   }
 
@@ -482,6 +499,7 @@ export async function getTunnelStatus(settingsOverride) {
     running,
     provider,
     serviceInstalled,
+    connectorCleanup: provider === "cloudflare" ? lastConnectorCleanupResult : null,
   };
 }
 
@@ -527,6 +545,7 @@ export async function getTunnelProviderStatuses(settingsOverride) {
       tunnelUrl: cloudflareUrl,
       publicUrl: cloudflareUrl,
       serviceInstalled: isCloudflaredServiceInstalled(),
+      connectorCleanup: lastConnectorCleanupResult,
     },
     ngrok: {
       enabled: effectiveNgrokEnabled,

@@ -15,6 +15,26 @@ const TUNNEL_BENEFITS = [
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
 
+function getCloudflareConnectorCleanupMessage(cleanup) {
+  if (!cleanup?.skipped) return "";
+  const permissions = Array.isArray(cleanup.requiredPermissions) && cleanup.requiredPermissions.length
+    ? ` Required token permissions: ${cleanup.requiredPermissions.join(", ")}.`
+    : "";
+  if (cleanup.reason === "missing_config") {
+    return `Cloudflare API token missing - cannot auto-switch connectors between machines.${permissions}`;
+  }
+  if (cleanup.reason === "missing_account_id") {
+    return `Cloudflare account ID missing - set ${cleanup.recommendedEnv || "CLOUDFLARE_ACCOUNT_ID"} to enable auto-switch.${permissions}`;
+  }
+  if (cleanup.reason === "error" && /Authentication error|10000/i.test(cleanup.error || "")) {
+    return `Cloudflare API token lacks connector/tunnel permissions - cannot auto-switch connectors.${permissions}`;
+  }
+  if (cleanup.reason === "error" && cleanup.error) {
+    return `Cloudflare connector auto-switch unavailable: ${cleanup.error}.${permissions}`;
+  }
+  return "";
+}
+
 function createDashboardTraceId(prefix) {
   return logger.dashboardPerf.traceId(prefix);
 }
@@ -107,7 +127,11 @@ export default function APIPageClient() {
     setNgrokUrl(providers.ngrok?.tunnelUrl || "");
     
     if (providers.cloudflare?.enabled) {
-      if (providers.cloudflare?.serviceInstalled) {
+      const cleanup = providers.cloudflare?.connectorCleanup;
+      const cleanupMessage = getCloudflareConnectorCleanupMessage(cleanup);
+      if (cleanupMessage) {
+        setTunnelStatus({ type: "warning", message: cleanupMessage });
+      } else if (providers.cloudflare?.serviceInstalled) {
         setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
       } else {
         setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
@@ -600,7 +624,10 @@ export default function APIPageClient() {
       setTunnelServiceInstalled(!!data.serviceInstalled);
       
       if (provider === "cloudflare") {
-        if (data.serviceInstalled) {
+        const cleanupMessage = getCloudflareConnectorCleanupMessage(data.connectorCleanup);
+        if (cleanupMessage) {
+          setTunnelStatus({ type: "warning", message: cleanupMessage });
+        } else if (data.serviceInstalled) {
           setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
         } else {
           setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
