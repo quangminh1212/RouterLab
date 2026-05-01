@@ -39,6 +39,7 @@ let cachedTunnelStatusAt = 0;
 let cachedTailscaleStatus = null;
 let cachedTailscaleStatusAt = 0;
 let lastConnectorCleanupResult = null;
+let isTunnelEnableInProgress = false;
 
 
 export function isTunnelManuallyDisabled() {
@@ -227,6 +228,7 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 }
 
 export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
+  isTunnelEnableInProgress = true;
   const settings = await getSettings();
   const cloudflareConfig = getCloudflareRuntimeConfig(settings);
   createRuntimeBackup(`before-enable-${provider}`);
@@ -235,6 +237,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   cachedTunnelStatus = null;
   const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
   const useNamedTunnel = !!cloudflareConfig.tunnelToken;
+
+  try {
 
   if (provider === "ngrok") {
     if (isNgrokRunning()) {
@@ -293,7 +297,26 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     }
 
     const originUrl = cloudflareConfig.tunnelOriginUrl || `http://127.0.0.1:${localPort}`;
-    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, originUrl);
+    let cloudflared = null;
+    let lastSpawnError = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, originUrl);
+        if (isCloudflaredRunning()) {
+          lastSpawnError = null;
+          break;
+        }
+        lastSpawnError = new Error("cloudflared not running after startup");
+      } catch (error) {
+        lastSpawnError = error;
+      }
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    if (lastSpawnError) {
+      throw lastSpawnError;
+    }
 
     try {
       const pruneResult = await pruneCloudflareTunnelConnectors(cloudflareConfig);
@@ -360,6 +383,9 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
 
   const publicUrl = getComputedPublicUrl(shortId, settings);
   return { success: true, tunnelUrl, shortId, publicUrl, provider: "cloudflare" };
+  } finally {
+    isTunnelEnableInProgress = false;
+  }
 }
 
 async function scheduleReconnect(attempt) {
@@ -395,6 +421,7 @@ export async function disableTunnel() {
   createRuntimeBackup("before-disable-tunnel");
   manualDisabled = true;
   isReconnecting = true;
+  isTunnelEnableInProgress = false;
   cachedTunnelStatusAt = 0;
   cachedTunnelStatus = null;
   if (reconnectTimeoutId) {
@@ -424,6 +451,22 @@ export async function getTunnelStatus(settingsOverride) {
   const publicUrl = getComputedPublicUrl(shortId, settings);
 
   if (settings.tunnelEnabled !== true) {
+    if (isTunnelEnableInProgress) {
+      const provider = settings.tunnelProvider || "cloudflare";
+      const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
+      return {
+        enabled: running,
+        tunnelUrl: settings.tunnelUrl || state?.tunnelUrl || "",
+        shortId,
+        publicUrl: settings.tunnelUrl || publicUrl,
+        running,
+        provider,
+        serviceInstalled: provider === "cloudflare" ? isCloudflaredServiceInstalled() : false,
+        starting: true,
+        connectorCleanup: provider === "cloudflare" ? lastConnectorCleanupResult : null,
+      };
+    }
+
     try {
       if (isNgrokRunning()) killNgrok();
       if (isCloudflaredRunning()) killCloudflared();
