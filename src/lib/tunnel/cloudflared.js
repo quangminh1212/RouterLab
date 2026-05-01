@@ -529,8 +529,18 @@ export function killCloudflared() {
 
   // Kill any remaining cloudflared processes
   try {
-    execSync("pkill -f cloudflared 2>/dev/null || true", { stdio: "ignore", windowsHide: true, timeout: 3000 });
+    if (IS_WINDOWS) {
+      execSync('taskkill /F /IM cloudflared.exe /T', { stdio: "ignore", windowsHide: true, timeout: 5000 });
+    } else {
+      execSync("pkill -f cloudflared 2>/dev/null || true", { stdio: "ignore", windowsHide: true, timeout: 3000 });
+    }
   } catch (e) { /* ignore */ }
+
+  if (IS_WINDOWS && isCloudflaredServiceInstalled()) {
+    try {
+      execSync('sc stop cloudflared', { stdio: "ignore", windowsHide: true, timeout: 5000 });
+    } catch (e) { /* ignore */ }
+  }
 }
 
 export function isCloudflaredRunning() {
