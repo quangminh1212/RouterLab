@@ -205,6 +205,20 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     translatedResponse.usage = filterUsageForFormat(addBufferToUsage(translatedResponse.usage), sourceFormat);
   }
 
+  // Compatibility fallback: if provider returns reasoning-only text, mirror it into content
+  // before stripping reasoning_content so downstream clients/channels still get a visible reply.
+  if (translatedResponse?.choices) {
+    for (const choice of translatedResponse.choices) {
+      if (!choice?.message) continue;
+      const content = typeof choice.message.content === "string" ? choice.message.content.trim() : "";
+      const reasoning = typeof choice.message.reasoning_content === "string" ? choice.message.reasoning_content.trim() : "";
+      const hasToolCalls = Array.isArray(choice.message.tool_calls) && choice.message.tool_calls.length > 0;
+      if (!content && reasoning && !hasToolCalls) {
+        choice.message.content = reasoning;
+      }
+    }
+  }
+
   // Strip reasoning_content — some clients (e.g. Firecrawl AI SDK) have JSON parsers that
   // break on this non-standard field, even though OpenAI allows it in extensions.
   if (translatedResponse?.choices) {
