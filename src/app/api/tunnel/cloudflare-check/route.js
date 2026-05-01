@@ -4,9 +4,22 @@ import { getSettings } from "@/lib/localDb";
 const DNS_PERMISSIONS = ["Zone DNS Read", "Zone DNS Edit"];
 const CONNECTOR_PERMISSIONS = ["Cloudflare Tunnel Read", "Cloudflare Tunnel Write", "Cloudflare One Connectors Write"];
 
-async function cloudflareRequest(pathname, token) {
+function getAuthHeaders(cf) {
+  const apiKey = cf.apiKey || process.env.CLOUDFLARE_API_KEY || "";
+  const email = cf.email || process.env.CLOUDFLARE_EMAIL || "";
+  const token = cf.apiToken || process.env.CLOUDFLARE_API_TOKEN || "";
+  if (apiKey && email) {
+    return { "X-Auth-Key": apiKey, "X-Auth-Email": email, "Content-Type": "application/json" };
+  }
+  if (token) {
+    return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  }
+  return null;
+}
+
+async function cloudflareRequest(pathname, headers) {
   const response = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers,
   });
   let payload = null;
   try {
@@ -21,19 +34,19 @@ export async function GET() {
   try {
     const settings = await getSettings();
     const cf = settings.cloudflare || {};
-    const token = cf.apiToken || process.env.CLOUDFLARE_API_TOKEN || "";
+    const headers = getAuthHeaders(cf);
     const zoneId = cf.zoneId || process.env.CLOUDFLARE_ZONE_ID || "";
     const tunnelId = cf.tunnelId || process.env.CLOUDFLARE_TUNNEL_ID || "";
 
-    if (!token || !zoneId) {
+    if (!headers || !zoneId) {
       return NextResponse.json({
         ok: false,
-        error: "Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ZONE_ID",
+        error: "Missing Cloudflare credentials or CLOUDFLARE_ZONE_ID",
         requiredPermissions: [...DNS_PERMISSIONS, ...CONNECTOR_PERMISSIONS],
       });
     }
 
-    const zone = await cloudflareRequest(`/zones/${zoneId}`, token);
+    const zone = await cloudflareRequest(`/zones/${zoneId}`, headers);
     const accountId = zone.payload?.result?.account?.id || cf.accountId || process.env.CLOUDFLARE_ACCOUNT_ID || "";
     const dnsOk = zone.ok && Array.isArray(zone.payload?.result?.permissions)
       && zone.payload.result.permissions.includes("#dns_records:edit")
@@ -41,7 +54,7 @@ export async function GET() {
 
     let connector = { ok: false, skipped: true, reason: "missing_tunnel_or_account" };
     if (accountId && tunnelId) {
-      const response = await cloudflareRequest(`/accounts/${accountId}/cfd_tunnel/${tunnelId}/connections`, token);
+      const response = await cloudflareRequest(`/accounts/${accountId}/cfd_tunnel/${tunnelId}/connections`, headers);
       connector = {
         ok: response.ok,
         skipped: false,

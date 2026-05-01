@@ -78,6 +78,8 @@ function getCloudflareRuntimeConfig(settings = null) {
   const cf = settings?.cloudflare || {};
   return {
     apiToken: cf.apiToken || process.env.CLOUDFLARE_API_TOKEN || "",
+    apiKey: cf.apiKey || process.env.CLOUDFLARE_API_KEY || "",
+    email: cf.email || process.env.CLOUDFLARE_EMAIL || "",
     accountId: cf.accountId || process.env.CLOUDFLARE_ACCOUNT_ID || "",
     zoneId: cf.zoneId || process.env.CLOUDFLARE_ZONE_ID || "",
     tunnelId: cf.tunnelId || process.env.CLOUDFLARE_TUNNEL_ID || "",
@@ -87,13 +89,30 @@ function getCloudflareRuntimeConfig(settings = null) {
   };
 }
 
+function getCloudflareAuthHeaders(config) {
+  if (config.apiKey && config.email) {
+    return {
+      "X-Auth-Key": config.apiKey,
+      "X-Auth-Email": config.email,
+      "Content-Type": "application/json",
+    };
+  }
+  if (config.apiToken) {
+    return {
+      Authorization: `Bearer ${config.apiToken}`,
+      "Content-Type": "application/json",
+    };
+  }
+  return null;
+}
+
 async function cloudflareApiRequest(pathname, config, options = {}) {
-  if (!config.apiToken) return null;
+  const authHeaders = getCloudflareAuthHeaders(config);
+  if (!authHeaders) return null;
   const response = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
     ...options,
     headers: {
-      Authorization: `Bearer ${config.apiToken}`,
-      "Content-Type": "application/json",
+      ...authHeaders,
       ...(options.headers || {}),
     },
   });
@@ -136,7 +155,7 @@ function getCloudflareTunnelCnameTarget(tunnelId) {
 async function ensureCloudflareDnsRecord(config) {
   const hostname = getHostnameFromUrl(config.tunnelPublicUrl);
   const cnameTarget = getCloudflareTunnelCnameTarget(config.tunnelId);
-  if (!config.apiToken || !config.zoneId || !hostname || !cnameTarget) {
+  if (!getCloudflareAuthHeaders(config) || !config.zoneId || !hostname || !cnameTarget) {
     return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_DNS_WRITE_PERMISSIONS };
   }
 
@@ -186,7 +205,7 @@ async function ensureCloudflareDnsRecord(config) {
 }
 
 async function pruneCloudflareTunnelConnectors(config) {
-  if (!config.apiToken || !config.tunnelId) return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
+  if (!getCloudflareAuthHeaders(config) || !config.tunnelId) return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
   const accountId = await resolveCloudflareAccountId(config);
   if (!accountId) return { skipped: true, reason: "missing_account_id", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
 
@@ -214,7 +233,7 @@ async function pruneCloudflareTunnelConnectors(config) {
 }
 
 async function deleteAllCloudflareTunnelConnectors(config) {
-  if (!config.apiToken || !config.tunnelId) {
+  if (!getCloudflareAuthHeaders(config) || !config.tunnelId) {
     return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
   }
   const accountId = await resolveCloudflareAccountId(config);
@@ -224,17 +243,12 @@ async function deleteAllCloudflareTunnelConnectors(config) {
 
   const payload = await cloudflareApiRequest(`/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`, config);
   const connections = Array.isArray(payload?.result) ? payload.result : [];
-  let deleted = 0;
-  for (const connection of connections) {
-    const connectorId = getCloudflareConnectorId(connection);
-    if (!connectorId) continue;
-    await cloudflareApiRequest(
-      `/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections/${connectorId}`,
-      config,
-      { method: "DELETE" }
-    );
-    deleted += 1;
-  }
+  const deleted = connections.reduce((total, connection) => total + (Array.isArray(connection?.conns) ? connection.conns.length : 1), 0);
+  await cloudflareApiRequest(
+    `/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`,
+    config,
+    { method: "DELETE" }
+  );
 
   return { skipped: false, deleted, accountId, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
 }
