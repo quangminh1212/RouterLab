@@ -41,6 +41,7 @@ async function requireAuth() {
 
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
+const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
 
 // Check if openclaw CLI is installed (via which/where or config file exists)
 const checkOpenClawInstalled = async () => {
@@ -153,6 +154,16 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
+const getConfiguredAgentModelDirs = (settings) => {
+  const dirs = new Set();
+  const agentList = Array.isArray(settings?.agents?.list) ? settings.agents.list : [];
+  for (const agent of agentList) {
+    if (agent?.agentDir) dirs.add(agent.agentDir);
+  }
+  dirs.add(getDefaultAgentModelsDir());
+  return [...dirs];
+};
+
 // POST - Update xlabrouter settings (merge with existing settings)
 export async function POST(request) {
   const unauthorized = await requireAuth();
@@ -230,16 +241,17 @@ export async function POST(request) {
         return agent;
       });
 
-      // Write per-agent models.json for agents with agentDir
-      await Promise.all(
-        settings.agents.list.map(async (agent) => {
-          if (!agent.agentDir) return;
-          const agentModel = agentModels[agent.id];
-          const modelToWrite = agentModel || model; // fallback to default
-          await writeAgentModels(agent.agentDir, modelToWrite, normalizedBaseUrl, apiKey);
-        })
-      );
     }
+
+    // OpenClaw also keeps a runtime model cache under agents/main/agent/models.json
+    // even when agents.list is absent. Keep every known cache in sync.
+    await Promise.all(
+      getConfiguredAgentModelDirs(settings).map(async (agentDir) => {
+        const agent = settings.agents?.list?.find((item) => item.agentDir === agentDir);
+        const modelToWrite = (agent?.id && agentModels[agent.id]) || model;
+        await writeAgentModels(agentDir, modelToWrite, normalizedBaseUrl, apiKey);
+      })
+    );
 
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 
