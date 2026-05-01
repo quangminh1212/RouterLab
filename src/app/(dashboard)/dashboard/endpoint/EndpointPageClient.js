@@ -647,6 +647,30 @@ export default function APIPageClient() {
     }
   };
 
+  const ensureRequireApiKeyEnabled = async () => {
+    if (requireApiKey) return true;
+    try {
+      const res = await fetch("/api/settings", { cache: "no-store" });
+      if (!res.ok) return false;
+      const settings = await res.json();
+      const enabled = settings.requireApiKey === true;
+      setRequireApiKey(enabled);
+      return enabled;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleEnableSecuredTunnel = async (provider) => {
+    setSelectedTunnelProvider(provider);
+    const enabled = await ensureRequireApiKeyEnabled();
+    if (!enabled) {
+      setTunnelStatus({ type: "error", message: "Security required: Enable \\\"Require API key\\\" before activating the tunnel." });
+      return;
+    }
+    handleEnableTunnel(provider);
+  };
+
   const handleDisableTunnel = async () => {
     setTunnelLoading(true);
     setTunnelStatus(null);
@@ -1248,15 +1272,7 @@ export default function APIPageClient() {
               <Button
                 size="sm"
                 icon="cloud_upload"
-                onClick={() => {
-                  if (!requireApiKey) {
-                    setSelectedTunnelProvider("cloudflare");
-                    setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
-                    return;
-                  }
-                  setSelectedTunnelProvider("cloudflare");
-                  handleEnableTunnel("cloudflare");
-                }}
+                onClick={() => handleEnableSecuredTunnel("cloudflare")}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
                 Enable
@@ -1336,15 +1352,7 @@ export default function APIPageClient() {
               <Button
                 size="sm"
                 icon="cloud_upload"
-                onClick={() => {
-                  if (!requireApiKey) {
-                    setSelectedTunnelProvider("ngrok");
-                    setTunnelStatus({ type: "error", message: "Security required: Enable \"Require API key\" before activating the tunnel." });
-                    return;
-                  }
-                  setSelectedTunnelProvider("ngrok");
-                  handleEnableTunnel("ngrok");
-                }}
+                onClick={() => handleEnableSecuredTunnel("ngrok")}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
                 Enable
@@ -2142,4 +2150,5 @@ function SecurityWarning({ message, action }) {
     </div>
   );
 }
+
 
