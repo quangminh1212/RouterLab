@@ -213,6 +213,32 @@ async function pruneCloudflareTunnelConnectors(config) {
   return { skipped: false, deleted, keptHostname: currentHostname, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
 }
 
+async function deleteAllCloudflareTunnelConnectors(config) {
+  if (!config.apiToken || !config.tunnelId) {
+    return { skipped: true, reason: "missing_config", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
+  }
+  const accountId = await resolveCloudflareAccountId(config);
+  if (!accountId) {
+    return { skipped: true, reason: "missing_account_id", requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS, recommendedEnv: "CLOUDFLARE_ACCOUNT_ID" };
+  }
+
+  const payload = await cloudflareApiRequest(`/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections`, config);
+  const connections = Array.isArray(payload?.result) ? payload.result : [];
+  let deleted = 0;
+  for (const connection of connections) {
+    const connectorId = getCloudflareConnectorId(connection);
+    if (!connectorId) continue;
+    await cloudflareApiRequest(
+      `/accounts/${accountId}/cfd_tunnel/${config.tunnelId}/connections/${connectorId}`,
+      config,
+      { method: "DELETE" }
+    );
+    deleted += 1;
+  }
+
+  return { skipped: false, deleted, accountId, requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS };
+}
+
 function getNamedTunnelPublicUrl(settings = null) {
   return normalizeUrl(getCloudflareRuntimeConfig(settings).tunnelPublicUrl);
 }
@@ -522,6 +548,44 @@ export async function disableTunnel() {
   await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
   isReconnecting = false;
   return { success: true };
+}
+
+export async function forceResetCloudflareTunnel(localPort = 1212) {
+  createRuntimeBackup("before-force-reset-cloudflare");
+  manualDisabled = false;
+  isReconnecting = false;
+  isTunnelEnableInProgress = false;
+  cachedTunnelStatusAt = 0;
+  cachedTunnelStatus = null;
+
+  const settings = await getSettings();
+  const cloudflareConfig = getCloudflareRuntimeConfig(settings);
+  let connectorReset = { skipped: true, reason: "not_attempted" };
+
+  killCloudflared();
+  killNgrok();
+
+  try {
+    connectorReset = await deleteAllCloudflareTunnelConnectors(cloudflareConfig);
+    if (!connectorReset.skipped) {
+      console.log(`[cloudflare] Force reset deleted ${connectorReset.deleted} tunnel connector(s)`);
+    }
+  } catch (err) {
+    connectorReset = {
+      skipped: true,
+      reason: "error",
+      error: err.message,
+      requiredPermissions: CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS,
+      recommendedEnv: "CLOUDFLARE_ACCOUNT_ID",
+    };
+    console.warn(`[cloudflare] Force reset could not delete tunnel connectors: ${err.message}`);
+  }
+
+  const enabled = await enableTunnel(localPort, "cloudflare");
+  return {
+    ...enabled,
+    connectorReset,
+  };
 }
 
 export async function getTunnelStatus(settingsOverride) {

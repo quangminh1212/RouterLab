@@ -107,6 +107,7 @@ export default function APIPageClient() {
   const [tunnelServiceInstalled, setTunnelServiceInstalled] = useState(false);
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
+  const [cloudflareResetLoading, setCloudflareResetLoading] = useState(false);
 
   // Tailscale state
   const [tsEnabled, setTsEnabled] = useState(false);
@@ -731,6 +732,45 @@ export default function APIPageClient() {
     }
   };
 
+  const handleForceResetCloudflare = async () => {
+    setSelectedTunnelProvider("cloudflare");
+    setCloudflareResetLoading(true);
+    setTunnelLoading(true);
+    setTunnelStatus(null);
+    setTunnelProgress("Resetting Cloudflare connectors...");
+    try {
+      const res = await fetch("/api/tunnel/cloudflare-force-reset", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setTunnelStatus({ type: "error", message: data.error || "Failed to reset Cloudflare connectors" });
+        return;
+      }
+
+      const url = data.publicUrl || data.tunnelUrl || cloudflareUrl;
+      if (url) {
+        setCloudflareUrl(url);
+        setCloudflareEnabled(true);
+      }
+
+      const deleted = Number(data.connectorReset?.deleted || 0);
+      const resetMessage = data.connectorReset?.skipped
+        ? (getCloudflareConnectorCleanupMessage(data.connectorReset) || "Cloudflare connector reset skipped")
+        : `Cloudflare connectors reset complete${deleted > 0 ? ` (${deleted} deleted)` : ""}.`;
+
+      setTunnelStatus({ type: data.connectorReset?.skipped ? "warning" : "success", message: resetMessage });
+
+      if (url) {
+        await pingTunnelHealth(url);
+      }
+    } catch (error) {
+      setTunnelStatus({ type: "error", message: error.message || "Failed to reset Cloudflare connectors" });
+    } finally {
+      setCloudflareResetLoading(false);
+      setTunnelLoading(false);
+      setTunnelProgress("");
+    }
+  };
+
   // u2500u2500u2500 Tailscale handlers
   const checkTailscaleInstalled = async () => {
     setTsInstalled(null);
@@ -1265,6 +1305,9 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-sm">error</span>
                   {tunnelStatus.message}
                 </div>
+                <Button size="sm" icon="restart_alt" onClick={handleForceResetCloudflare} disabled={cloudflareResetLoading}>
+                  {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
+                </Button>
                 <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}>Enable</Button>
               </>
             ) : (tunnelStatus?.type === "success" && selectedTunnelProvider === "cloudflare") ? (
@@ -1306,14 +1349,25 @@ export default function APIPageClient() {
                 {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
               </Button>
             ) : (
-              <Button
-                size="sm"
-                icon="cloud_upload"
-                onClick={() => handleEnableSecuredTunnel("cloudflare")}
-                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
-              >
-                Enable
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  icon="restart_alt"
+                  onClick={handleForceResetCloudflare}
+                  disabled={cloudflareResetLoading}
+                  className="bg-sidebar border border-border text-text-muted hover:text-primary"
+                >
+                  {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
+                </Button>
+                <Button
+                  size="sm"
+                  icon="cloud_upload"
+                  onClick={() => handleEnableSecuredTunnel("cloudflare")}
+                  className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
+                >
+                  Enable
+                </Button>
+              </div>
             )}
           </div>
 
