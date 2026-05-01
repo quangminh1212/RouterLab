@@ -76,6 +76,7 @@ const DEFAULT_SETTINGS = {
     tunnelId: process.env.CLOUDFLARE_TUNNEL_ID || "",
     tunnelToken: process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",
     tunnelPublicUrl: process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "",
+    tunnelOriginUrl: process.env.CLOUDFLARE_TUNNEL_ORIGIN_URL || "http://127.0.0.1:1212",
   },
   aiIntegrations: {
     enabled: false,

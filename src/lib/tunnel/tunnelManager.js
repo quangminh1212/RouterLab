@@ -68,6 +68,7 @@ function getCloudflareRuntimeConfig(settings = null) {
   return {
     tunnelToken: cf.tunnelToken || process.env.CLOUDFLARE_TUNNEL_TOKEN || process.env.TUNNEL_TOKEN || "",
     tunnelPublicUrl: cf.tunnelPublicUrl || process.env.CLOUDFLARE_TUNNEL_PUBLIC_URL || process.env.CLOUDFLARE_TUNNEL_HOSTNAME || "",
+    tunnelOriginUrl: cf.tunnelOriginUrl || process.env.CLOUDFLARE_TUNNEL_ORIGIN_URL || "http://127.0.0.1:1212",
   };
 }
 
@@ -194,7 +195,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
 
   if (isCloudflaredRunning()) {
     const existing = loadState();
-    if (existing?.tunnelUrl) {
+    if (settings.tunnelEnabled === true && existing?.tunnelUrl) {
       const publicUrl = getComputedPublicUrl(existing.shortId, settings);
       return { success: true, tunnelUrl: existing.tunnelUrl, shortId: existing.shortId, publicUrl, alreadyRunning: true };
     }
@@ -207,7 +208,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const shortId = existing?.shortId || generateShortId();
 
   if (useNamedTunnel) {
-    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, localPort);
+    const originUrl = cloudflareConfig.tunnelOriginUrl || `http://127.0.0.1:${localPort}`;
+    const cloudflared = await spawnCloudflared(cloudflareConfig.tunnelToken, originUrl);
     const tunnelUrl = namedTunnelPublicUrl || existing?.tunnelUrl || "";
     saveState({ shortId, machineId, tunnelUrl });
     await updateSettings({

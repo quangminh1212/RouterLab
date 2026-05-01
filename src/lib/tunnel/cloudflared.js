@@ -190,14 +190,51 @@ let unexpectedExitHandler = null;
 let suppressUnexpectedExitOnce = false;
 let skipWindowsServiceInstallForSession = false;
 
+function isRunningAsAdministrator() {
+  if (!IS_WINDOWS) return false;
+  try {
+    const output = execSync(
+      "powershell -NoProfile -NonInteractive -Command \"([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"",
+      { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 5000 }
+    ).toString().trim();
+    return /^true$/i.test(output);
+  } catch {
+    return false;
+  }
+}
+
+function startElevatedCloudflaredServiceInstall(binaryPath, tunnelToken) {
+  const escapedBinaryPath = binaryPath.replace(/'/g, "''");
+  const escapedToken = tunnelToken.replace(/'/g, "''");
+  const command = [
+    `$ErrorActionPreference = 'Stop'`,
+    `& '${escapedBinaryPath}' service install '${escapedToken}'`,
+    `Start-Service cloudflared`,
+  ].join("; ");
+  const encodedCommand = Buffer.from(command, "utf16le").toString("base64");
+  execSync(
+    `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encodedCommand}' -Wait"`,
+    { stdio: "ignore", windowsHide: true, timeout: 120000 }
+  );
+}
+
+async function waitForCloudflaredServiceRunning(timeoutMs = 20000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (isCloudflaredServiceRunning()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return false;
+}
+
 /** Register a callback to be called when cloudflared exits unexpectedly after connecting */
 export function setUnexpectedExitHandler(handler) {
   unexpectedExitHandler = handler;
 }
 
-export async function spawnCloudflared(tunnelToken, localPort = 1212) {
+export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.1:1212") {
   const binaryPath = await ensureCloudflared();
-  const preferProcessMode = true;
+  const preferProcessMode = process.env.CLOUDFLARED_PROCESS_MODE === "true";
 
   // Try to install as Windows service first (requires admin)
   if (IS_WINDOWS && !preferProcessMode) {
@@ -215,17 +252,21 @@ export async function spawnCloudflared(tunnelToken, localPort = 1212) {
 
     if (!skipWindowsServiceInstallForSession) {
       try {
-      execSync(`"${binaryPath}" service install ${tunnelToken}`, { 
-        stdio: "pipe", 
-        windowsHide: true, 
-        timeout: 10000 
-      });
+      if (isRunningAsAdministrator()) {
+        execSync(`"${binaryPath}" service install ${tunnelToken}`, {
+          stdio: "pipe",
+          windowsHide: true,
+          timeout: 10000
+        });
+      } else {
+        startElevatedCloudflaredServiceInstall(binaryPath, tunnelToken);
+      }
       try {
         execSync("sc start cloudflared", { stdio: "ignore", windowsHide: true, timeout: 5000 });
       } catch {
         // Ignore start failure and fallback to process mode below
       }
-      if (isCloudflaredServiceRunning()) {
+      if (isCloudflaredServiceRunning() || await waitForCloudflaredServiceRunning()) {
         console.log("[cloudflared] Installed and started as Windows service");
         return { serviceInstalled: true };
       }
@@ -257,7 +298,7 @@ export async function spawnCloudflared(tunnelToken, localPort = 1212) {
   const args = [
     "tunnel",
     "--config", configPath,
-    "--url", `http://localhost:${localPort}`,
+    "--url", originUrl,
     "run",
     "--dns-resolver-addrs", "1.1.1.1:53",
     "--token", tunnelToken,
