@@ -10,6 +10,9 @@ import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
 const execAsync = promisify(exec);
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const SECRET = getAuthSecret();
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
@@ -59,75 +62,102 @@ const fileExists = async (targetPath) => {
   }
 };
 
-const checkWindowsOpenClawInstalled = async () => {
-  const pathParts = [];
+const parseJsonFile = async (targetPath) => {
+  const content = await fs.readFile(targetPath, "utf-8");
+  return JSON.parse(String(content).replace(/^\uFEFF/, "").trim());
+};
+
+const findWindowsOpenClawInstallation = async () => {
+  const candidateBins = [];
   const appData = process.env.APPDATA;
   const userProfile = process.env.USERPROFILE;
   const localAppData = process.env.LOCALAPPDATA;
 
-  if (appData) pathParts.push(path.join(appData, "npm"));
-  if (userProfile) pathParts.push(path.join(userProfile, "AppData", "Roaming", "npm"));
-  if (localAppData) pathParts.push(path.join(localAppData, "Programs", "npm"));
+  if (appData) candidateBins.push(path.join(appData, "npm"));
+  if (userProfile) candidateBins.push(path.join(userProfile, "AppData", "Roaming", "npm"));
+  if (localAppData) candidateBins.push(path.join(localAppData, "Programs", "npm"));
 
-  // Try npm prefix as another reliable global bin location
   try {
     const { stdout } = await execAsync("npm config get prefix", { windowsHide: true });
     const prefix = String(stdout || "").trim();
-    if (prefix) pathParts.push(prefix);
+    if (prefix) candidateBins.push(prefix);
   } catch {}
 
-  const uniqueBins = [...new Set(pathParts.filter(Boolean))];
-  const augmentedPath = [...uniqueBins, process.env.PATH || ""].join(";");
-  const env = { ...process.env, PATH: augmentedPath };
+  const uniqueBins = [...new Set(candidateBins.filter(Boolean))];
+  const env = { ...process.env, PATH: [...uniqueBins, process.env.PATH || ""].join(";") };
 
-  // Prefer where.exe explicitly on Windows
-  try {
-    await execAsync("where.exe openclaw", { windowsHide: true, env });
-    return true;
-  } catch {
+  for (const command of ["where.exe openclaw", "where.exe openclaw.cmd", "where.exe openclaw.ps1"]) {
     try {
-      await execAsync("where.exe openclaw.cmd", { windowsHide: true, env });
-      return true;
+      const { stdout } = await execAsync(command, { windowsHide: true, env });
+      const detectedPath = String(stdout || "").split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+      if (detectedPath) {
+        return { installed: true, method: command, cliPath: detectedPath, checkedBins: uniqueBins };
+      }
     } catch {}
   }
 
-  // Direct file checks in known npm global bins
   for (const binDir of uniqueBins) {
-    if (await fileExists(path.join(binDir, "openclaw.cmd"))) return true;
-    if (await fileExists(path.join(binDir, "openclaw"))) return true;
-    if (await fileExists(path.join(binDir, "openclaw.ps1"))) return true;
+    for (const executable of ["openclaw.cmd", "openclaw.ps1", "openclaw"]) {
+      const candidate = path.join(binDir, executable);
+      if (await fileExists(candidate)) {
+        return { installed: true, method: `file:${executable}`, cliPath: candidate, checkedBins: uniqueBins };
+      }
+    }
   }
 
-  // Last-resort: scan user profiles (common issue when app runs elevated under another profile)
   const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
   try {
     const userDirs = await fs.readdir(usersRoot, { withFileTypes: true });
     for (const dirent of userDirs) {
       if (!dirent.isDirectory()) continue;
-      const candidate = path.join(usersRoot, dirent.name, "AppData", "Roaming", "npm", "openclaw.cmd");
-      if (await fileExists(candidate)) return true;
+      for (const executable of ["openclaw.cmd", "openclaw.ps1", "openclaw"]) {
+        const candidate = path.join(usersRoot, dirent.name, "AppData", "Roaming", "npm", executable);
+        if (await fileExists(candidate)) {
+          return { installed: true, method: `scan:${executable}`, cliPath: candidate, checkedBins: uniqueBins };
+        }
+      }
     }
   } catch {}
 
-  return false;
+  return { installed: false, method: null, cliPath: null, checkedBins: uniqueBins };
 };
 
 // Check if openclaw CLI is installed (via which/where or config file exists)
 const checkOpenClawInstalled = async () => {
+  const detection = {
+    installed: false,
+    method: null,
+    cliPath: null,
+    settingsPath: null,
+    checkedBins: [],
+  };
+
   try {
     const isWindows = os.platform() === "win32";
     if (isWindows) {
-      if (await checkWindowsOpenClawInstalled()) return true;
+      const windowsDetection = await findWindowsOpenClawInstallation();
+      Object.assign(detection, windowsDetection);
+      if (windowsDetection.installed) return detection;
     } else {
-      await execAsync("which openclaw", { windowsHide: true, env: process.env });
-      return true;
+      const { stdout } = await execAsync("which openclaw", { windowsHide: true, env: process.env });
+      const cliPath = String(stdout || "").split(/\r?\n/).map((line) => line.trim()).find(Boolean) || null;
+      if (cliPath) {
+        return { ...detection, installed: true, method: "which openclaw", cliPath };
+      }
     }
   } catch {
     // fall through to settings file check below
   }
 
   // Fallback: existing local config means OpenClaw was configured at least once
-  if (await fileExists(getOpenClawSettingsPath())) return true;
+  if (await fileExists(getOpenClawSettingsPath())) {
+    return {
+      ...detection,
+      installed: true,
+      method: "settings-file",
+      settingsPath: getOpenClawSettingsPath(),
+    };
+  }
 
   // Optional fallback for elevated process using another homedir
   const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
@@ -136,19 +166,25 @@ const checkOpenClawInstalled = async () => {
     for (const dirent of userDirs) {
       if (!dirent.isDirectory()) continue;
       const candidate = path.join(usersRoot, dirent.name, ".openclaw", "openclaw.json");
-      if (await fileExists(candidate)) return true;
+      if (await fileExists(candidate)) {
+        return {
+          ...detection,
+          installed: true,
+          method: "settings-scan",
+          settingsPath: candidate,
+        };
+      }
     }
   } catch {}
 
-  return false;
+  return detection;
 };
 
 // Read current settings.json
 const readSettings = async () => {
   try {
     const settingsPath = getOpenClawSettingsPath();
-    const content = await fs.readFile(settingsPath, "utf-8");
-    return JSON.parse(content);
+    return await parseJsonFile(settingsPath);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -179,13 +215,14 @@ export async function GET() {
   const unauthorized = await requireAuth();
   if (unauthorized) return unauthorized;
   try {
-    const isInstalled = await checkOpenClawInstalled();
+    const detection = await checkOpenClawInstalled();
     
-    if (!isInstalled) {
+    if (!detection.installed) {
       return NextResponse.json({
         installed: false,
         settings: null,
         message: "Open Claw CLI is not installed",
+        detection,
       });
     }
 
@@ -206,6 +243,7 @@ export async function GET() {
       agents: enrichedAgents,
       hasxlabrouter: hasxlabrouterConfig(settings),
       settingsPath: getOpenClawSettingsPath(),
+      detection,
     });
   } catch (error) {
     console.log("Error checking openclaw settings:", error);
