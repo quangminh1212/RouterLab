@@ -93,8 +93,9 @@ export default function CLIToolsPageClient() {
       }
       if (tunnelRes.ok) {
         const data = await tunnelRes.json();
-        setTunnelEnabled(data.enabled || false);
-        setTunnelPublicUrl(data.publicUrl || "");
+        const tunnel = data.tunnel || data;
+        setTunnelEnabled(tunnel.enabled || false);
+        setTunnelPublicUrl(tunnel.publicUrl || tunnel.tunnelUrl || "");
       }
     } catch (error) {
       console.log("Error loading settings:", error);
