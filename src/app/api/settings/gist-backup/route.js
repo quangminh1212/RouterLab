@@ -174,14 +174,16 @@ export async function POST(request) {
       const stablePassphrase = buildStableGistPassphrase({ token: auth.token, githubLogin: auth.githubLogin || current.githubLogin });
 
       let pulled = null;
+      let pullError = null;
       try {
         pulled = await restoreFromGist({
           token: auth.token,
           gistId: current.gistId || "",
           passphrases: [stablePassphrase, auth.token],
         });
-      } catch {
+      } catch (error) {
         pulled = null;
+        pullError = error;
       }
 
       const localUpdatedAt = current.updatedAt ? new Date(current.updatedAt).getTime() : 0;
@@ -200,7 +202,13 @@ export async function POST(request) {
           updatedAt: backup.updatedAt,
         };
         await updateSettings({ gistBackup: nextConfig });
-        return NextResponse.json({ success: true, action, direction: "push", config: toPublicConfig({ gistBackup: nextConfig }) });
+        return NextResponse.json({
+          success: true,
+          action,
+          direction: "push",
+          config: toPublicConfig({ gistBackup: nextConfig }),
+          warning: pullError?.message || "",
+        });
       }
 
       const nextConfig = {

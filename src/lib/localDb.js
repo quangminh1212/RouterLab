@@ -791,6 +791,30 @@ async function safeWrite(db) {
   dbHydrated = true;
 }
 
+async function tryRepairDbJsonFile(filePath) {
+  if (!filePath) return false;
+  let raw = "";
+  try {
+    raw = await fs.promises.readFile(filePath, "utf8");
+  } catch {
+    return false;
+  }
+
+  if (!raw) return false;
+  const sanitized = raw.replace(/^\uFEFF/, "").trimStart();
+  if (!sanitized) return false;
+
+  try {
+    JSON.parse(sanitized);
+  } catch {
+    return false;
+  }
+
+  if (sanitized === raw) return false;
+  await fs.promises.writeFile(filePath, sanitized, "utf8");
+  return true;
+}
+
 export async function getDb() {
   if (isCloud) {
     if (!dbInstance) {
@@ -811,9 +835,15 @@ export async function getDb() {
     await refreshDbSnapshot(dbInstance);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
-      dbInstance.data = cloneDefaultData();
-      await safeWrite(dbInstance);
+      const repaired = await tryRepairDbJsonFile(DB_FILE);
+      if (repaired) {
+        logger.warn("DB", "Recovered DB JSON by stripping invalid prefix/BOM");
+        await refreshDbSnapshot(dbInstance);
+      } else {
+        logger.warn("DB", "Corrupt JSON detected, resetting to defaults");
+        dbInstance.data = cloneDefaultData();
+        await safeWrite(dbInstance);
+      }
     } else {
       throw error;
     }

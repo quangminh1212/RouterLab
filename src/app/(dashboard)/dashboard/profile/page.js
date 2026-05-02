@@ -363,7 +363,15 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json().catch(() => ({}));
+    const rawText = await res.text().catch(() => "");
+    let data = {};
+    if (rawText) {
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { error: rawText };
+      }
+    }
     if (!res.ok) throw new Error(data.error || "GitHub Gist backup failed");
     if (data.config) {
       setGistConfig(data.config);
@@ -400,6 +408,9 @@ export default function ProfilePage() {
             ? "Synced from shared GitHub Gist to this machine"
             : "Synced this machine to shared GitHub Gist",
         });
+        if (data.warning) {
+          setDbStatus({ type: "success", message: `${data.direction === "pull" ? "Synced from shared GitHub Gist to this machine" : "Synced this machine to shared GitHub Gist"} (remote backup had issues, local backup replaced it)` });
+        }
         if (data.direction === "pull") reloadSettings();
       } else {
         setDbStatus({ type: "success", message: `Encrypted backup saved to GitHub Gist ${data.config?.gistId || ""}` });

@@ -89,7 +89,15 @@ async function githubRequest(token, url, options = {}) {
     cache: "no-store",
   });
 
-  const data = await response.json().catch(() => ({}));
+  const rawText = await response.text().catch(() => "");
+  let data = {};
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { message: rawText.slice(0, 500) };
+    }
+  }
   if (!response.ok) {
     throw new Error(data?.message || "GitHub Gist request failed");
   }
@@ -105,6 +113,44 @@ async function findExistingBackupGist(token) {
     const hasBackupDescription = gist?.description === BACKUP_GIST_DESCRIPTION || gist?.description === LEGACY_BACKUP_GIST_DESCRIPTION;
     return hasBackupFile || hasBackupDescription;
   }) || null;
+}
+
+async function readFullGistFileContent(token, file) {
+  let content = typeof file?.content === "string" ? file.content : "";
+  if ((!content || file?.truncated === true) && typeof file?.raw_url === "string" && file.raw_url) {
+    const rawRes = await fetch(file.raw_url, {
+      headers: {
+        Accept: "application/vnd.github.raw",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+
+    if (!rawRes.ok) {
+      throw new Error("Failed to download full Gist backup content");
+    }
+    content = await rawRes.text();
+  }
+  return content;
+}
+
+async function verifyBackupGist(token, gist) {
+  const file = gist?.files?.[BACKUP_FILE_NAME] || gist?.files?.[LEGACY_BACKUP_FILE_NAME];
+  if (!file) throw new Error("Backup file missing after Gist write");
+  const content = await readFullGistFileContent(token, file);
+  if (!content) throw new Error("Backup file content is empty after Gist write");
+
+  let envelope;
+  try {
+    envelope = JSON.parse(content);
+  } catch {
+    throw new Error("Backup file content is not valid JSON after Gist write");
+  }
+
+  if (envelope?.format !== "xlabrouter-gist-backup") {
+    throw new Error("Backup file format is invalid after Gist write");
+  }
 }
 
 export async function backupToGist({ token, gistId = "", passphrase, payload = null }) {
@@ -127,6 +173,8 @@ export async function backupToGist({ token, gistId = "", passphrase, payload = n
     ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "PATCH", body: JSON.stringify(body) })
     : await githubRequest(token, GITHUB_GISTS_URL, { method: "POST", body: JSON.stringify(body) });
 
+  await verifyBackupGist(token, gist);
+
   return {
     gistId: gist.id,
     htmlUrl: gist.html_url,
@@ -143,22 +191,7 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
   const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_BACKUP_FILE_NAME];
   if (!file) throw new Error("XLab Router backup file not found in Gist");
 
-  let content = typeof file.content === "string" ? file.content : "";
-  if ((!content || file.truncated === true) && typeof file.raw_url === "string" && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, {
-      headers: {
-        Accept: "application/vnd.github.raw",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      cache: "no-store",
-    });
-
-    if (!rawRes.ok) {
-      throw new Error("Failed to download full Gist backup content");
-    }
-    content = await rawRes.text();
-  }
+  const content = await readFullGistFileContent(token, file);
 
   if (!content) {
     throw new Error("XLab Router backup file content is empty");
