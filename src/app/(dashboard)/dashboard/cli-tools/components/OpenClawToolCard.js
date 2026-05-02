@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
@@ -293,7 +293,7 @@ export default function OpenClawToolCard({
             </div>
           )}
 
-          {!checkingOpenclaw && openclawStatus && !openclawStatus.installed && (
+          {!checkingOpenclaw && openclawStatus && !openclawStatus.installed && !openclawStatus.error && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -323,6 +323,30 @@ export default function OpenClawToolCard({
             </div>
           )}
 
+
+          {!checkingOpenclaw && openclawStatus?.error && (
+            <div className="flex flex-col gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-red-500">error</span>
+                <div className="flex-1">
+                  <p className="font-medium text-red-600 dark:text-red-400">Không thể kiểm tra Open Claw CLI</p>
+                  <p className="text-sm text-text-muted">{openclawStatus.error}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pl-9">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={checkOpenclawStatus}
+                  disabled={checkingOpenclaw}
+                  className="!bg-black/10 !border-border !text-text-main hover:!bg-black/20 dark:hover:!bg-white/10"
+                >
+                  <span className={`material-symbols-outlined text-[18px] mr-1 ${checkingOpenclaw ? "animate-spin" : ""}`}>refresh</span>
+                  Refresh
+                </Button>
+              </div>
+            </div>
+          )}
           {!checkingOpenclaw && openclawStatus && (
             <>
               <div className="flex flex-col gap-2">
@@ -449,3 +473,4 @@ export default function OpenClawToolCard({
     </Card>
   );
 }
+
