@@ -256,6 +256,10 @@ export default function DroidToolCard({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pl-9">
+                  <Button variant="secondary" size="sm" onClick={checkDroidStatus} disabled={checkingDroid} className="!bg-black/10 !border-border !text-text-main hover:!bg-black/20 dark:hover:!bg-white/10">
+                    <span className={`material-symbols-outlined text-[18px] mr-1 ${checkingDroid ? "animate-spin" : ""}`}>refresh</span>
+                    Refresh
+                  </Button>
                   <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
                     <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
                     Manual Config

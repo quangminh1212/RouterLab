@@ -501,6 +501,10 @@ export default function ClaudeToolCard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pl-9">
+                    <Button variant="secondary" size="sm" onClick={checkClaudeStatus} disabled={checkingClaude} className="!bg-black/10 !border-border !text-text-main hover:!bg-black/20 dark:hover:!bg-white/10">
+                      <span className={`material-symbols-outlined text-[18px] mr-1 ${checkingClaude ? "animate-spin" : ""}`}>refresh</span>
+                      Refresh
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setShowInstallGuide(!showInstallGuide)}>
                       <span className="material-symbols-outlined text-[18px] mr-1">{showInstallGuide ? "expand_less" : "help"}</span>
                       {showInstallGuide ? "Hide" : "How to Install"}

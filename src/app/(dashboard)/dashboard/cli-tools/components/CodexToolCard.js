@@ -246,13 +246,17 @@ model = "${effectiveSubagentModel}"
                       <div className="flex-1">
                         <p className="font-medium text-yellow-600 dark:text-yellow-400">Codex CLI not detected locally</p>
                         <p className="text-sm text-text-muted">Manual configuration is still available if XLab Router is deployed on a remote server.</p>
-                      </div>
                     </div>
-                    <div className="flex items-center gap-2 pl-9">
-                      <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
-                        <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
-                        Manual Config
-                      </Button>
+                  </div>
+                  <div className="flex items-center gap-2 pl-9">
+                    <Button variant="secondary" size="sm" onClick={checkCodexStatus} disabled={checkingCodex} className="!bg-black/10 !border-border !text-text-main hover:!bg-black/20 dark:hover:!bg-white/10">
+                      <span className={`material-symbols-outlined text-[18px] mr-1 ${checkingCodex ? "animate-spin" : ""}`}>refresh</span>
+                      Refresh
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
+                      <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
+                      Manual Config
+                    </Button>
                       <Button variant="outline" size="sm" onClick={() => setShowInstallGuide(!showInstallGuide)}>
                         <span className="material-symbols-outlined text-[18px] mr-1">{showInstallGuide ? "expand_less" : "help"}</span>
                         {showInstallGuide ? "Hide" : "How to Install"}
