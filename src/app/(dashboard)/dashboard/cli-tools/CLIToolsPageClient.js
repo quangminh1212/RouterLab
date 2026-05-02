@@ -22,6 +22,8 @@ function normalizeCloudUrl(url) {
   }
 }
 
+const DEFAULT_OPENCLAW_TUNNEL_URL = "https://api.xlabrnd.com";
+
 const STATUS_ENDPOINTS = {
   claude: "/api/cli-tools/claude-settings",
   codex: "/api/cli-tools/codex-settings",
@@ -167,6 +169,7 @@ export default function CLIToolsPageClient() {
   const getBaseUrl = () => {
     if (tunnelEnabled && tunnelPublicUrl) return tunnelPublicUrl;
     if (cloudEnabled && cloudUrl) return cloudUrl;
+    if (tunnelEnabled || cloudEnabled) return DEFAULT_OPENCLAW_TUNNEL_URL;
     if (typeof window !== "undefined") return window.location.origin;
     return "http://localhost:1212";
   };

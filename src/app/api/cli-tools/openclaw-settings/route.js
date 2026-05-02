@@ -42,26 +42,105 @@ async function requireAuth() {
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
+const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-haiku-4.5";
+
+const normalizeOpenClawModel = (model) => {
+  const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
+  return !normalized || normalized.toLowerCase() === "xlab" ? OPENCLAW_RECOMMENDED_MODEL : normalized;
+};
+
+const fileExists = async (targetPath) => {
+  if (!targetPath) return false;
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const checkWindowsOpenClawInstalled = async () => {
+  const pathParts = [];
+  const appData = process.env.APPDATA;
+  const userProfile = process.env.USERPROFILE;
+  const localAppData = process.env.LOCALAPPDATA;
+
+  if (appData) pathParts.push(path.join(appData, "npm"));
+  if (userProfile) pathParts.push(path.join(userProfile, "AppData", "Roaming", "npm"));
+  if (localAppData) pathParts.push(path.join(localAppData, "Programs", "npm"));
+
+  // Try npm prefix as another reliable global bin location
+  try {
+    const { stdout } = await execAsync("npm config get prefix", { windowsHide: true });
+    const prefix = String(stdout || "").trim();
+    if (prefix) pathParts.push(prefix);
+  } catch {}
+
+  const uniqueBins = [...new Set(pathParts.filter(Boolean))];
+  const augmentedPath = [...uniqueBins, process.env.PATH || ""].join(";");
+  const env = { ...process.env, PATH: augmentedPath };
+
+  // Prefer where.exe explicitly on Windows
+  try {
+    await execAsync("where.exe openclaw", { windowsHide: true, env });
+    return true;
+  } catch {
+    try {
+      await execAsync("where.exe openclaw.cmd", { windowsHide: true, env });
+      return true;
+    } catch {}
+  }
+
+  // Direct file checks in known npm global bins
+  for (const binDir of uniqueBins) {
+    if (await fileExists(path.join(binDir, "openclaw.cmd"))) return true;
+    if (await fileExists(path.join(binDir, "openclaw"))) return true;
+    if (await fileExists(path.join(binDir, "openclaw.ps1"))) return true;
+  }
+
+  // Last-resort: scan user profiles (common issue when app runs elevated under another profile)
+  const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
+  try {
+    const userDirs = await fs.readdir(usersRoot, { withFileTypes: true });
+    for (const dirent of userDirs) {
+      if (!dirent.isDirectory()) continue;
+      const candidate = path.join(usersRoot, dirent.name, "AppData", "Roaming", "npm", "openclaw.cmd");
+      if (await fileExists(candidate)) return true;
+    }
+  } catch {}
+
+  return false;
+};
 
 // Check if openclaw CLI is installed (via which/where or config file exists)
 const checkOpenClawInstalled = async () => {
   try {
     const isWindows = os.platform() === "win32";
-    const command = isWindows ? "where openclaw" : "which openclaw";
-    // On Windows, inject %APPDATA%\npm into PATH so npm global packages are found
-    const env = isWindows
-      ? { ...process.env, PATH: `${process.env.APPDATA}\\npm;${process.env.PATH}` }
-      : process.env;
-    await execAsync(command, { windowsHide: true, env });
-    return true;
-  } catch {
-    try {
-      await fs.access(getOpenClawSettingsPath());
+    if (isWindows) {
+      if (await checkWindowsOpenClawInstalled()) return true;
+    } else {
+      await execAsync("which openclaw", { windowsHide: true, env: process.env });
       return true;
-    } catch {
-      return false;
     }
+  } catch {
+    // fall through to settings file check below
   }
+
+  // Fallback: existing local config means OpenClaw was configured at least once
+  if (await fileExists(getOpenClawSettingsPath())) return true;
+
+  // Optional fallback for elevated process using another homedir
+  const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
+  try {
+    const userDirs = await fs.readdir(usersRoot, { withFileTypes: true });
+    for (const dirent of userDirs) {
+      if (!dirent.isDirectory()) continue;
+      const candidate = path.join(usersRoot, dirent.name, ".openclaw", "openclaw.json");
+      if (await fileExists(candidate)) return true;
+    }
+  } catch {}
+
+  return false;
 };
 
 // Read current settings.json
@@ -195,7 +274,11 @@ export async function POST(request) {
     if (!settings.models.providers) settings.models.providers = {};
 
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
-    const fullModelId = `xlabrouter/${model}`;
+    const normalizedModel = normalizeOpenClawModel(model);
+    const normalizedAgentModels = Object.fromEntries(
+      Object.entries(agentModels).map(([agentId, agentModel]) => [agentId, normalizeOpenClawModel(agentModel)])
+    );
+    const fullModelId = `xlabrouter/${normalizedModel}`;
 
     // Remove all old xlabrouter/* entries from agents.defaults.models
     Object.keys(settings.agents.defaults.models)
@@ -206,8 +289,8 @@ export async function POST(request) {
     settings.agents.defaults.model.primary = fullModelId;
 
     // Collect all unique models (default + per-agent)
-    const allModelIds = new Set([model]);
-    Object.values(agentModels).forEach((m) => { if (m) allModelIds.add(m); });
+    const allModelIds = new Set([normalizedModel]);
+    Object.values(normalizedAgentModels).forEach((m) => { if (m) allModelIds.add(m); });
 
     // Add fresh xlabrouter models to allowlist
     allModelIds.forEach((m) => {
@@ -236,7 +319,7 @@ export async function POST(request) {
     // Set per-agent model in agents.list and write models.json
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
-        const agentModel = agentModels[agent.id];
+        const agentModel = normalizedAgentModels[agent.id];
         if (agentModel) return { ...agent, model: `xlabrouter/${agentModel}` };
         return agent;
       });
@@ -248,7 +331,7 @@ export async function POST(request) {
     await Promise.all(
       getConfiguredAgentModelDirs(settings).map(async (agentDir) => {
         const agent = settings.agents?.list?.find((item) => item.agentDir === agentDir);
-        const modelToWrite = (agent?.id && agentModels[agent.id]) || model;
+        const modelToWrite = (agent?.id && normalizedAgentModels[agent.id]) || normalizedModel;
         await writeAgentModels(agentDir, modelToWrite, normalizedBaseUrl, apiKey);
       })
     );

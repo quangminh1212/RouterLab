@@ -4,6 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
 
+const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-haiku-4.5";
+const normalizeOpenClawModel = (model) => {
+  const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
+  return !normalized || normalized.toLowerCase() === "xlab" ? OPENCLAW_RECOMMENDED_MODEL : normalized;
+};
+
 export default function OpenClawToolCard({
   tool,
   isExpanded,
@@ -20,8 +26,10 @@ export default function OpenClawToolCard({
   const [applying, setApplying] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [message, setMessage] = useState(null);
+  const [modelCheck, setModelCheck] = useState(null);
+  const [checkingModel, setCheckingModel] = useState(false);
   const [selectedApiKey, setSelectedApiKey] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedModel, setSelectedModel] = useState(OPENCLAW_RECOMMENDED_MODEL);
   const [agentModels, setAgentModels] = useState({}); // { [agentId]: modelId }
   const [agentModalFor, setAgentModalFor] = useState(null); // agentId opening modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,6 +61,10 @@ export default function OpenClawToolCard({
   }, [initialStatus]);
 
   useEffect(() => {
+    setModelCheck(null);
+  }, [selectedModel]);
+
+  useEffect(() => {
     if (isExpanded && !openclawStatus) {
       checkOpenclawStatus();
       fetchModelAliases();
@@ -76,7 +88,7 @@ export default function OpenClawToolCard({
       const provider = openclawStatus.settings?.models?.providers?.["xlabrouter"];
       if (provider) {
         const primaryModel = openclawStatus.settings?.agents?.defaults?.model?.primary;
-        if (primaryModel) setSelectedModel(primaryModel.replace("xlabrouter/", ""));
+        if (primaryModel) setSelectedModel(normalizeOpenClawModel(primaryModel));
         if (provider.apiKey && apiKeys?.some(k => k.key === provider.apiKey)) {
           setSelectedApiKey(provider.apiKey);
         }
@@ -94,7 +106,7 @@ export default function OpenClawToolCard({
   const checkOpenclawStatus = async () => {
     setCheckingOpenclaw(true);
     try {
-      const res = await fetch("/api/cli-tools/openclaw-settings");
+      const res = await fetch("/api/cli-tools/openclaw-settings", { cache: "no-store" });
       const data = await res.json();
       setOpenclawStatus(data);
     } catch (error) {
@@ -113,13 +125,15 @@ export default function OpenClawToolCard({
     return "http://127.0.0.1:1212";
   };
 
+  const getDefaultBaseUrl = () => baseUrl || getLocalBaseUrl();
+
   const getEffectiveBaseUrl = () => {
-    const url = customBaseUrl || getLocalBaseUrl();
+    const url = customBaseUrl || getDefaultBaseUrl();
     return url.endsWith("/v1") ? url : `${url}/v1`;
   };
 
   const getDisplayUrl = () => {
-    const url = customBaseUrl || getLocalBaseUrl();
+    const url = customBaseUrl || getDefaultBaseUrl();
     return url.endsWith("/v1") ? url : `${url}/v1`;
   };
 
@@ -137,7 +151,7 @@ export default function OpenClawToolCard({
         body: JSON.stringify({ 
           baseUrl: getEffectiveBaseUrl(), 
           apiKey: keyToUse,
-          model: selectedModel,
+          model: normalizeOpenClawModel(selectedModel),
           agentModels,
         }),
       });
@@ -186,6 +200,32 @@ export default function OpenClawToolCard({
     setModalOpen(false);
   };
 
+  const handleCheckModel = async () => {
+    const modelToTest = normalizeOpenClawModel(selectedModel);
+    if (!modelToTest) return;
+
+    setCheckingModel(true);
+    setModelCheck(null);
+    try {
+      const res = await fetch("/api/models/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: modelToTest }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.ok) {
+        setModelCheck({ type: "success", text: `Model available (${data.latencyMs ?? "?"}ms)` });
+      } else {
+        const errorText = data?.error || `HTTP ${res.status}`;
+        setModelCheck({ type: "error", text: `Model unavailable: ${errorText}` });
+      }
+    } catch (error) {
+      setModelCheck({ type: "error", text: `Model check failed: ${error.message}` });
+    } finally {
+      setCheckingModel(false);
+    }
+  };
+
   const getManualConfigs = () => {
     const keyToUse = (selectedApiKey && selectedApiKey.trim()) 
       ? selectedApiKey 
@@ -195,7 +235,7 @@ export default function OpenClawToolCard({
       agents: {
         defaults: {
           model: {
-            primary: `xlabrouter/${selectedModel || "provider/model-id"}`,
+            primary: `xlabrouter/${normalizeOpenClawModel(selectedModel)}`,
           },
         },
       },
@@ -207,8 +247,8 @@ export default function OpenClawToolCard({
             api: "openai-completions",
             models: [
               {
-                id: selectedModel || "provider/model-id",
-                name: (selectedModel || "provider/model-id").split("/").pop(),
+                id: normalizeOpenClawModel(selectedModel),
+                name: normalizeOpenClawModel(selectedModel).split("/").pop(),
               },
             ],
           },
@@ -264,6 +304,16 @@ export default function OpenClawToolCard({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pl-9">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={checkOpenclawStatus}
+                    disabled={checkingOpenclaw}
+                    className="!bg-black/10 !border-border !text-text-main hover:!bg-black/20 dark:hover:!bg-white/10"
+                  >
+                    <span className={`material-symbols-outlined text-[18px] mr-1 ${checkingOpenclaw ? "animate-spin" : ""}`}>refresh</span>
+                    Refresh
+                  </Button>
                   <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
                     <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
                     Manual Config
@@ -276,10 +326,10 @@ export default function OpenClawToolCard({
           {!checkingOpenclaw && openclawStatus && (
             <>
               <div className="flex flex-col gap-2">
-                {/* Current Base URL */}
+                {/* Current Tunnel URL */}
                 {openclawStatus?.settings?.models?.providers?.["xlabrouter"]?.baseUrl && (
                   <div className="flex items-center gap-2">
-                    <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Current</span>
+                    <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Current Tunnel</span>
                     <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                     <span className="flex-1 px-2 py-1.5 text-xs text-text-muted truncate">
                       {openclawStatus.settings.models.providers["xlabrouter"].baseUrl}
@@ -287,9 +337,9 @@ export default function OpenClawToolCard({
                   </div>
                 )}
 
-                {/* Base URL */}
+                {/* Tunnel URL */}
                 <div className="flex items-center gap-2">
-                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Base URL</span>
+                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Tunnel URL</span>
                   <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                   <input 
                     type="text" 
@@ -326,8 +376,18 @@ export default function OpenClawToolCard({
                   <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
                   <input type="text" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} placeholder="provider/model-id" className="flex-1 px-2 py-1.5 bg-surface rounded border border-border text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
                   <button onClick={() => { setAgentModalFor(null); setModalOpen(true); }} disabled={!hasActiveProviders} className={`px-2 py-1.5 rounded border text-xs transition-colors shrink-0 whitespace-nowrap ${hasActiveProviders ? "bg-surface border-border text-text-main hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-border"}`}>Select</button>
+                  <button onClick={handleCheckModel} disabled={!selectedModel || checkingModel} className={`px-2 py-1.5 rounded border text-xs transition-colors shrink-0 whitespace-nowrap ${!selectedModel || checkingModel ? "opacity-50 cursor-not-allowed border-border" : "bg-surface border-border text-text-main hover:border-primary cursor-pointer"}`}>
+                    {checkingModel ? "Checking..." : "Check Model"}
+                  </button>
                   {selectedModel && <button onClick={() => setSelectedModel("")} className="p-1 text-text-muted hover:text-red-500 rounded transition-colors" title="Clear"><span className="material-symbols-outlined text-[14px]">close</span></button>}
                 </div>
+
+                {modelCheck && (
+                  <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs ${modelCheck.type === "success" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
+                    <span className="material-symbols-outlined text-[14px]">{modelCheck.type === "success" ? "check_circle" : "error"}</span>
+                    <span>{modelCheck.text}</span>
+                  </div>
+                )}
 
                 {/* Per-agent model overrides */}
                 {(openclawStatus.agents || []).filter(a => a.agentDir).map((agent) => (
