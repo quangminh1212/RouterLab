@@ -252,7 +252,7 @@ export async function GET() {
 }
 
 // Write per-agent models.json
-const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
+const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
   await fs.mkdir(agentDir, { recursive: true });
   const modelsPath = path.join(agentDir, "models.json");
   let existing = {};
@@ -262,11 +262,12 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   } catch { /* No existing */ }
 
   if (!existing.providers) existing.providers = {};
+  const modelIds = [...new Set(models.map((item) => normalizeOpenClawModel(item)).filter(Boolean))];
   existing.providers["xlabrouter"] = {
     baseUrl,
     apiKey: apiKey || "your_api_key",
     api: "openai-completions",
-    models: [{ id: model, name: model.split("/").pop() || model }],
+    models: modelIds.map((id) => ({ id, name: id.split("/").pop() || id })),
   };
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
@@ -371,7 +372,7 @@ export async function POST(request) {
       getConfiguredAgentModelDirs(settings).map(async (agentDir) => {
         const agent = settings.agents?.list?.find((item) => item.agentDir === agentDir);
         const modelToWrite = (agent?.id && normalizedAgentModels[agent.id]) || normalizedModel;
-        await writeAgentModels(agentDir, modelToWrite, normalizedBaseUrl, apiKey);
+        await writeAgentModels(agentDir, [...allModelIds, modelToWrite], normalizedBaseUrl, apiKey);
       })
     );
 
