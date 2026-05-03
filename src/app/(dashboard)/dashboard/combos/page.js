@@ -139,36 +139,68 @@ export default function CombosPage() {
         </Button>
       </div>
 
-      {/* Combos List */}
-      {combos.length === 0 ? (
-        <Card>
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-              <span className="material-symbols-outlined text-[32px]">layers</span>
+      {/* OpenClaw Combo Section */}
+      {(() => {
+        const openclawCombo = combos.find(c => c.name === "openclaw");
+        if (openclawCombo) {
+          return (
+            <div className="flex flex-col gap-2">
+              <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">OpenClaw</h2>
+              <ComboCard
+                combo={openclawCombo}
+                copied={copied}
+                onCopy={copy}
+                onEdit={() => setEditingCombo(openclawCombo)}
+                onDelete={() => handleDelete(openclawCombo.id)}
+                roundRobinEnabled={comboStrategies[openclawCombo.name]?.fallbackStrategy === "round-robin"}
+                onToggleRoundRobin={(enabled) => handleToggleRoundRobin(openclawCombo.name, enabled)}
+              />
             </div>
-            <p className="text-text-main font-medium mb-1">No combos yet</p>
-            <p className="text-sm text-text-muted mb-4">Create model combos with fallback support</p>
-            <Button icon="add" onClick={() => setShowCreateModal(true)}>
-              Create Combo
-            </Button>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Other Combos Section */}
+      {(() => {
+        const otherCombos = combos.filter(c => c.name !== "openclaw");
+        if (otherCombos.length === 0 && !combos.find(c => c.name === "openclaw")) {
+          return (
+            <Card>
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+                  <span className="material-symbols-outlined text-[32px]">layers</span>
+                </div>
+                <p className="text-text-main font-medium mb-1">No combos yet</p>
+                <p className="text-sm text-text-muted mb-4">Create model combos with fallback support</p>
+                <Button icon="add" onClick={() => setShowCreateModal(true)}>
+                  Create Combo
+                </Button>
+              </div>
+            </Card>
+          );
+        }
+        if (otherCombos.length === 0) return null;
+        return (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">Kết hợp</h2>
+            <div className="flex flex-col gap-4">
+              {otherCombos.map((combo) => (
+                <ComboCard
+                  key={combo.id}
+                  combo={combo}
+                  copied={copied}
+                  onCopy={copy}
+                  onEdit={() => setEditingCombo(combo)}
+                  onDelete={() => handleDelete(combo.id)}
+                  roundRobinEnabled={comboStrategies[combo.name]?.fallbackStrategy === "round-robin"}
+                  onToggleRoundRobin={(enabled) => handleToggleRoundRobin(combo.name, enabled)}
+                />
+              ))}
+            </div>
           </div>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {combos.map((combo) => (
-            <ComboCard
-              key={combo.id}
-              combo={combo}
-              copied={copied}
-              onCopy={copy}
-              onEdit={() => setEditingCombo(combo)}
-              onDelete={() => handleDelete(combo.id)}
-              roundRobinEnabled={comboStrategies[combo.name]?.fallbackStrategy === "round-robin"}
-              onToggleRoundRobin={(enabled) => handleToggleRoundRobin(combo.name, enabled)}
-            />
-          ))}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Create Modal - Use key to force remount and reset state */}
       <ComboFormModal
