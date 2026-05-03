@@ -99,7 +99,11 @@ async function githubRequest(token, url, options = {}) {
     }
   }
   if (!response.ok) {
-    throw new Error(data?.message || "GitHub Gist request failed");
+    const details = Array.isArray(data?.errors)
+      ? data.errors.map((item) => [item.resource, item.field, item.code].filter(Boolean).join(".")).filter(Boolean).join(", ")
+      : "";
+    const message = [data?.message || "GitHub Gist request failed", details].filter(Boolean).join(": ");
+    throw new Error(message);
   }
   return data;
 }
@@ -154,7 +158,7 @@ async function verifyBackupGist(token, gist) {
 }
 
 export async function backupToGist({ token, gistId = "", passphrase, payload = null }) {
-  const backup = payload || await createBackupBundle();
+  const backup = payload || await createBackupBundle({ includeUsage: false, includeRequestDetails: false });
   const encrypted = encryptPayload(backup, passphrase);
   const content = JSON.stringify(encrypted, null, 2);
 
@@ -169,9 +173,17 @@ export async function backupToGist({ token, gistId = "", passphrase, payload = n
   const existingGist = gistId ? null : await findExistingBackupGist(token);
   const resolvedGistId = gistId || existingGist?.id || "";
 
-  const gist = resolvedGistId
-    ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "PATCH", body: JSON.stringify(body) })
-    : await githubRequest(token, GITHUB_GISTS_URL, { method: "POST", body: JSON.stringify(body) });
+  let gist;
+  try {
+    gist = resolvedGistId
+      ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "PATCH", body: JSON.stringify(body) })
+      : await githubRequest(token, GITHUB_GISTS_URL, { method: "POST", body: JSON.stringify(body) });
+  } catch (error) {
+    if (!resolvedGistId || !/validation failed|not found/i.test(error?.message || "")) {
+      throw error;
+    }
+    gist = await githubRequest(token, GITHUB_GISTS_URL, { method: "POST", body: JSON.stringify(body) });
+  }
 
   await verifyBackupGist(token, gist);
 

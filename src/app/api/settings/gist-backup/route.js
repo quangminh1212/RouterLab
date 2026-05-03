@@ -228,6 +228,7 @@ export async function POST(request) {
 
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
   } catch (error) {
+    console.error("[gist-backup] action failed:", error);
     return NextResponse.json({ error: error.message || "GitHub Gist backup failed" }, { status: 400 });
   }
 }
