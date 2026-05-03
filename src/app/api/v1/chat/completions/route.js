@@ -7,6 +7,7 @@ let initialized = false;
 const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 45000;
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
 const OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL || "https://api.xlabrnd.com/v1/chat/completions";
+const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS) || 30000;
 
 async function ensureInitialized() {
   if (!initialized) {
@@ -91,12 +92,47 @@ async function proxyOpenClawCapture(request) {
     outboundHeaders.set(key, value);
   }
 
-  const upstreamResponse = await fetch(OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL, {
-    method: request.method,
-    headers: outboundHeaders,
-    body: rawBody,
-    redirect: "manual",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS);
+
+  let upstreamResponse;
+  try {
+    upstreamResponse = await fetch(OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL, {
+      method: request.method,
+      headers: outboundHeaders,
+      body: rawBody,
+      redirect: "manual",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    await writeOpenClawCapture("upstream-error", {
+      upstreamUrl: OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL,
+      requestHeaders: Object.fromEntries(outboundHeaders.entries()),
+      requestBodyText: rawBody,
+      errorName: error?.name,
+      errorMessage: error?.message,
+      timeoutMs: OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS,
+    });
+
+    const timedOut = error?.name === "AbortError";
+    return new Response(JSON.stringify({
+      error: {
+        message: timedOut
+          ? `OpenClaw upstream timed out after ${OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS}ms`
+          : `OpenClaw upstream request failed: ${error?.message || "unknown error"}`,
+        type: timedOut ? "timeout_error" : "server_error",
+        code: timedOut ? "OPENCLAW_UPSTREAM_TIMEOUT" : "OPENCLAW_UPSTREAM_ERROR",
+      },
+    }), {
+      status: timedOut ? 504 : 502,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const upstreamText = await upstreamResponse.text();
   await writeOpenClawCapture("upstream", {
