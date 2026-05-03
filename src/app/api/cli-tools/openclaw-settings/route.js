@@ -46,6 +46,7 @@ async function requireAuth() {
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
+const getDefaultAgentSessionsDir = () => path.join(getOpenClawDir(), "agents", "main", "sessions");
 const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
 const OPENCLAW_LOCAL_BASE_URL = "http://127.0.0.1:1212/v1";
 const OPENCLAW_DEFAULT_TUNNEL_BASE_URL = "https://api.xlabrnd.com/v1";
@@ -391,6 +392,14 @@ const syncOpenClawModelAliases = async (normalizedModel) => {
   ]);
 };
 
+const resetOpenClawSessionState = async () => {
+  const sessionsDir = getDefaultAgentSessionsDir();
+  const sessionsPath = path.join(sessionsDir, "sessions.json");
+  await fs.mkdir(sessionsDir, { recursive: true });
+  await fs.rm(`${sessionsPath}.lock`, { force: true }).catch(() => {});
+  await fs.writeFile(sessionsPath, JSON.stringify({}, null, 2));
+};
+
 // POST - Update xlabrouter settings (merge with existing settings)
 export async function POST(request) {
   const unauthorized = await requireAuth();
@@ -535,6 +544,7 @@ export async function POST(request) {
     await fs.writeFile(settingsPath, serializedSettings);
     await fs.writeFile(`${settingsPath}.bak`, serializedSettings).catch(() => {});
     await fs.writeFile(`${settingsPath}.last-good`, serializedSettings).catch(() => {});
+    await resetOpenClawSessionState();
     await syncOpenClawModelAliases(normalizedModel);
 
     return NextResponse.json({
@@ -675,5 +685,6 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
   }
 
   await writeAgentModels(getDefaultAgentModelsDir(), modelIdsToWrite, restoredBaseUrl, restoredApiKey);
+  await resetOpenClawSessionState();
   await syncOpenClawModelAliases(modelIdsToWrite[0] || OPENCLAW_RECOMMENDED_MODEL);
 };
