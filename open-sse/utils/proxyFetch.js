@@ -323,6 +323,17 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
       ? NETWORK_GUARD_CONFIG.streamingFetchTimeoutMs
       : NETWORK_GUARD_CONFIG.defaultFetchTimeoutMs);
 
+  if (targetUrl.includes("api.xlabrnd.com")) {
+    const headers = options.headers || {};
+    if (typeof headers.set === "function") {
+      headers.set("User-Agent", "OpenClaw/2026.4.27");
+    } else {
+      headers["User-Agent"] = "OpenClaw/2026.4.27";
+      delete headers["user-agent"];
+    }
+    options = { ...options, headers };
+  }
+
   // Vercel relay: forward request via relay headers
   const vercelRelayUrl = normalizeString(proxyOptions?.vercelRelayUrl);
   if (vercelRelayUrl) {
