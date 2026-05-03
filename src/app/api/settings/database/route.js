@@ -24,6 +24,13 @@ export async function POST(request) {
   try {
     const payload = await request.json();
 
+    if (payload?.format === "xlabrouter-gist-backup") {
+      return NextResponse.json(
+        { error: "Encrypted Gist backup file is not supported here. Use GitHub Gist Restore instead of Import Backup." },
+        { status: 400 }
+      );
+    }
+
     // Enforce lightweight restore: never import heavy per-request logs.
     if (payload && typeof payload === "object") {
       if (payload.database && typeof payload.database === "object") {

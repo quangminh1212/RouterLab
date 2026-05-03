@@ -30,6 +30,22 @@ export function isUsageBackupPayload(payload) {
   );
 }
 
+function isLikelyDatabasePayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+
+  const knownKeys = [
+    "settings",
+    "providers",
+    "providerNodes",
+    "apiKeys",
+    "usageData",
+    "modelAliases",
+    "activeModels",
+  ];
+
+  return knownKeys.some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+}
+
 function stripRequestDataFromDatabase(database) {
   if (!database || typeof database !== "object" || Array.isArray(database)) return database;
 
@@ -166,6 +182,8 @@ export async function restoreBackupBundle(payload) {
 
     if (payload.usage && typeof payload.usage === "object") {
       await importUsageDb(payload.usage);
+    } else if (payload.database?.usageData && typeof payload.database.usageData === "object") {
+      await importUsageDb(payload.database.usageData);
     }
 
     await importRequestDetailsDb(
@@ -179,6 +197,9 @@ export async function restoreBackupBundle(payload) {
     await importUsageDb(stripRequestDataFromUsage(payload));
     importMode = "usage";
   } else {
+    if (!isLikelyDatabasePayload(payload)) {
+      throw new Error("Invalid backup format: unsupported JSON structure");
+    }
     await importDb(stripRequestDataFromDatabase(payload));
     importedDb = true;
     importMode = "database";

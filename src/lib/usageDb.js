@@ -303,9 +303,17 @@ export async function getUsageDb() {
         this._main.data.usageData = ensureUsageDataShape(this._main.data.usageData);
 
         // One-time migration from legacy usage.json
-        const hasAnyUsage = Array.isArray(this._main.data.usageData.history)
-          ? this._main.data.usageData.history.length > 0
+        const usageData = this._main.data.usageData;
+        const hasHistoryUsage = Array.isArray(usageData.history)
+          ? usageData.history.length > 0
           : false;
+        const hasDailySummaryUsage = usageData.dailySummary
+          && typeof usageData.dailySummary === "object"
+          && !Array.isArray(usageData.dailySummary)
+          && Object.keys(usageData.dailySummary).length > 0;
+        const hasLifetimeUsage = Number.isFinite(usageData.totalRequestsLifetime)
+          && usageData.totalRequestsLifetime > 0;
+        const hasAnyUsage = hasHistoryUsage || hasDailySummaryUsage || hasLifetimeUsage;
         if (!hasAnyUsage && DB_FILE && fs.existsSync(DB_FILE)) {
           try {
             const legacyRaw = fs.readFileSync(DB_FILE, "utf8");
@@ -629,6 +637,9 @@ function countActiveMinutes(entries) {
  */
 export async function getUsageStats(period = "all") {
   const db = await getUsageDb();
+  if (typeof db.read === "function") {
+    await db.read();
+  }
   const history = db.data.history || [];
   const dailySummary = db.data.dailySummary || {};
 
@@ -980,6 +991,9 @@ export async function getUsageStats(period = "all") {
  */
 export async function getChartData(period = "7d") {
   const db = await getUsageDb();
+  if (typeof db.read === "function") {
+    await db.read();
+  }
   const history = db.data.history || [];
   const dailySummary = db.data.dailySummary || {};
   const now = Date.now();
@@ -1048,6 +1062,9 @@ export { saveRequestDetail, getRequestDetails, getRequestDetailById } from "./re
  */
 export async function exportUsageDb() {
   const db = await getUsageDb();
+  if (typeof db.read === "function") {
+    await db.read();
+  }
   const history = db.data.history || [];
   const dailySummary = db.data.dailySummary || {};
   const totalRequestsLifetime = db.data.totalRequestsLifetime || 0;
