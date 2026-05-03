@@ -15,6 +15,48 @@ import { decloakToolNames } from "../../utils/claudeCloaking.js";
 export function translateNonStreamingResponse(responseBody, targetFormat, sourceFormat) {
   if (targetFormat === sourceFormat || targetFormat === FORMATS.OPENAI) return responseBody;
 
+  if (targetFormat === FORMATS.OPENAI_RESPONSES) {
+    const output = Array.isArray(responseBody.output) ? responseBody.output : [];
+    const messageItem = [...output].reverse().find((item) => item?.type === "message") || output.find((item) => item?.type === "message");
+    const contentParts = Array.isArray(messageItem?.content) ? messageItem.content : [];
+    const textContent = contentParts
+      .map((part) => part?.text || part?.output_text || "")
+      .filter(Boolean)
+      .join("");
+    const toolCalls = output
+      .filter((item) => item?.type === "function_call")
+      .map((item, index) => ({
+        id: item.call_id || `call_${item.name || "tool"}_${Date.now()}_${index}`,
+        type: "function",
+        function: {
+          name: item.name || "",
+          arguments: typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments || {}),
+        },
+      }));
+    const usage = responseBody.usage || {};
+
+    return {
+      id: responseBody.id || `chatcmpl-${Date.now()}`,
+      object: "chat.completion",
+      created: responseBody.created_at || Math.floor(Date.now() / 1000),
+      model: responseBody.model || "unknown",
+      choices: [{
+        index: 0,
+        message: {
+          role: "assistant",
+          content: textContent || (toolCalls.length ? null : ""),
+          ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
+        },
+        finish_reason: toolCalls.length ? "tool_calls" : (responseBody.status === "completed" ? "stop" : (responseBody.status || "stop")),
+      }],
+      usage: {
+        prompt_tokens: usage.input_tokens || usage.prompt_tokens || 0,
+        completion_tokens: usage.output_tokens || usage.completion_tokens || 0,
+        total_tokens: usage.total_tokens || ((usage.input_tokens || usage.prompt_tokens || 0) + (usage.output_tokens || usage.completion_tokens || 0)),
+      },
+    };
+  }
+
   // Gemini / Antigravity
   if (targetFormat === FORMATS.GEMINI || targetFormat === FORMATS.ANTIGRAVITY || targetFormat === FORMATS.GEMINI_CLI || targetFormat === FORMATS.VERTEX) {
     const response = responseBody.response || responseBody;

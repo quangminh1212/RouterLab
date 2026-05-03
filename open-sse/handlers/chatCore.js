@@ -40,7 +40,10 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   const alias = PROVIDER_ID_TO_ALIAS[provider] || provider;
   const modelTargetFormat = getModelTargetFormat(alias, model);
-  const targetFormat = modelTargetFormat || getTargetFormat(provider);
+  const targetFormat = modelTargetFormat
+    || (provider?.startsWith?.("openai-compatible-") && credentials?.providerSpecificData?.apiType === "responses"
+      ? FORMATS.OPENAI_RESPONSES
+      : getTargetFormat(provider));
   const stripList = getModelStrip(alias, model);
 
   // Inject provider-level thinking config override (only if client hasn't set)

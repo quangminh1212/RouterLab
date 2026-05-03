@@ -19,8 +19,10 @@ function isAnthropicCompatible(provider) {
   return typeof provider === "string" && provider.startsWith(ANTHROPIC_COMPATIBLE_PREFIX);
 }
 
-function getOpenAICompatibleType(provider) {
+function getOpenAICompatibleType(provider, options = {}) {
   if (!isOpenAICompatible(provider)) return "chat";
+  const explicitType = options?.apiType || options?.providerSpecificData?.apiType;
+  if (explicitType === "responses") return "responses";
   return provider.includes("responses") ? "responses" : "chat";
 }
 
@@ -154,7 +156,7 @@ export function getProviderFallbackCount(provider) {
 // Build provider URL
 export function buildProviderUrl(provider, model, stream = true, options = {}) {
   if (isOpenAICompatible(provider)) {
-    const apiType = getOpenAICompatibleType(provider);
+    const apiType = getOpenAICompatibleType(provider, options);
     const baseUrl = options?.baseUrl || OPENAI_COMPATIBLE_DEFAULTS.baseUrl;
     return buildOpenAICompatibleUrl(baseUrl, apiType);
   }
