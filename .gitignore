@@ -79,6 +79,8 @@ SECURITY_AUDIT_*.txt
 .tmp_start_*.log
 .start_*.log
 .tmp-*.log.err
+.tmp-openclaw-gw-run.log
+.tmp-openclaw-gw-run.log.err
 .tmp_cookies.txt
 bench_*.log
 dev_run.*

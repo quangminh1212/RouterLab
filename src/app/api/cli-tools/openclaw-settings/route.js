@@ -48,6 +48,7 @@ const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
 const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
 const OPENCLAW_LOCAL_BASE_URL = "http://127.0.0.1:1212/v1";
+const OPENCLAW_TELEGRAM_API_ROOT = "https://api.telegram.org";
 
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
@@ -320,10 +321,19 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   if (!next.channels) next.channels = {};
   if (!next.channels.telegram) next.channels.telegram = {};
   if (!next.channels.telegram.network) next.channels.telegram.network = {};
-  next.channels.telegram.network.autoSelectFamily = true;
+  next.channels.telegram.network.autoSelectFamily = false;
   next.channels.telegram.network.dnsResultOrder = "ipv4first";
+  if (process.env.OPENCLAW_PROXY_URL?.trim()) next.channels.telegram.proxy = process.env.OPENCLAW_PROXY_URL.trim();
   next.channels.telegram.timeoutSeconds = 70;
   next.channels.telegram.pollingStallThresholdMs = 240000;
+  next.channels.telegram.retry = {
+    attempts: 2,
+    minDelayMs: 1000,
+    maxDelayMs: 8000,
+    jitter: 0.2,
+  };
+  next.channels.telegram.errorCooldownMs = 15000;
+  next.channels.telegram.apiRoot = OPENCLAW_TELEGRAM_API_ROOT;
   const telegramToken = getPreferredTelegramBotToken(
     process.env.OPENCLAW_TELEGRAM_BOT_TOKEN,
     restoredTelegramToken,
@@ -473,10 +483,19 @@ export async function POST(request) {
     if (!settings.channels) settings.channels = {};
     if (!settings.channels.telegram) settings.channels.telegram = {};
     if (!settings.channels.telegram.network) settings.channels.telegram.network = {};
-    settings.channels.telegram.network.autoSelectFamily = true;
+    settings.channels.telegram.network.autoSelectFamily = false;
     settings.channels.telegram.network.dnsResultOrder = "ipv4first";
+    if (process.env.OPENCLAW_PROXY_URL?.trim()) settings.channels.telegram.proxy = process.env.OPENCLAW_PROXY_URL.trim();
     settings.channels.telegram.timeoutSeconds = 70;
     settings.channels.telegram.pollingStallThresholdMs = 240000;
+    settings.channels.telegram.retry = {
+      attempts: 2,
+      minDelayMs: 1000,
+      maxDelayMs: 8000,
+      jitter: 0.2,
+    };
+    settings.channels.telegram.errorCooldownMs = 15000;
+    settings.channels.telegram.apiRoot = OPENCLAW_TELEGRAM_API_ROOT;
     if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
     settings.channels.telegram.commands.native = false;
     const nextTelegramToken = getPreferredTelegramBotToken(
