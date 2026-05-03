@@ -45,7 +45,7 @@ async function requireAuth() {
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
-const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-haiku-4.5";
+const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
 
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
