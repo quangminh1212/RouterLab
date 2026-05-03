@@ -14,7 +14,7 @@ function toPublicConfig(settings) {
     gistId: gistBackup.gistId || "",
     htmlUrl: gistBackup.htmlUrl || "",
     updatedAt: gistBackup.updatedAt || "",
-    fileName: gistBackup.fileName || "xlabrouter.enc.json",
+    fileName: gistBackup.fileName || "xlabrouter.backup.json",
     tokenSource: gistBackup.tokenSource || "",
     githubLogin: gistBackup.githubLogin || "",
   };
@@ -109,7 +109,7 @@ export async function POST(request) {
         token,
         tokenSource: "gh-cli",
         githubLogin: gitHubUser.login || current.githubLogin || "",
-        fileName: current.fileName || "xlabrouter.enc.json",
+        fileName: current.fileName || "xlabrouter.backup.json",
       };
       await updateSettings({ gistBackup: nextConfig });
       return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
@@ -124,7 +124,7 @@ export async function POST(request) {
         gistId: "",
         htmlUrl: "",
         updatedAt: "",
-        fileName: current.fileName || "xlabrouter.enc.json",
+        fileName: current.fileName || "xlabrouter.backup.json",
       };
       await updateSettings({ gistBackup: nextConfig });
       return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });

@@ -399,7 +399,7 @@ export default function ProfilePage() {
     try {
       const data = await postGistBackup({ action });
       if (action === "restore") {
-        setDbStatus({ type: "success", message: "Restored encrypted backup from GitHub Gist" });
+          setDbStatus({ type: "success", message: "Restored backup from GitHub Gist" });
         reloadSettings();
       } else if (action === "sync") {
         setDbStatus({
@@ -413,7 +413,7 @@ export default function ProfilePage() {
         }
         if (data.direction === "pull") reloadSettings();
       } else {
-        setDbStatus({ type: "success", message: `Encrypted backup saved to GitHub Gist ${data.config?.gistId || ""}` });
+          setDbStatus({ type: "success", message: `Backup saved to GitHub Gist ${data.config?.gistId || ""}` });
       }
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "GitHub Gist backup failed" });
@@ -587,7 +587,7 @@ export default function ProfilePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">GitHub Gist Backup</p>
-                  <p className="text-sm text-text-muted">Backup mã hóa qua GitHub CLI.</p>
+                  <p className="text-sm text-text-muted">Dùng chung 1 file JSON backup với Import/Export.</p>
                   {gistConfig.gistId ? (
                     <p className="text-xs text-text-muted mt-1 break-all">
                       Gist connected

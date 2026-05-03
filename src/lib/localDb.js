@@ -65,7 +65,7 @@ const DEFAULT_SETTINGS = {
     gistId: "",
     htmlUrl: "",
     updatedAt: "",
-    fileName: "xlabrouter-backup.enc.json",
+    fileName: "xlabrouter.backup.json",
   },
   cloudflare: {
     apiToken: process.env.CLOUDFLARE_API_TOKEN || "",
