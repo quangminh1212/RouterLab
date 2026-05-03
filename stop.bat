@@ -28,14 +28,23 @@ if "%FOUND%"=="0" (
     exit /b 0
 )
 
-timeout /t 1 /nobreak >nul
+for /L %%I in (1,1,8) do (
+    set "STILL_LISTENING=0"
+    for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"') do (
+        set "STILL_LISTENING=1"
+    )
+    if "!STILL_LISTENING!"=="0" goto STOPPED
+    timeout /t 1 /nobreak >nul
+)
 
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"') do (
     if not "%%P"=="0" (
         echo [WARN] Port %PORT% is still in use by PID %%P.
+        echo [WARN] If this keeps happening, run this file as Administrator.
         exit /b 1
     )
 )
 
+:STOPPED
 echo [OK] XLab Router stopped completely.
 exit /b 0

@@ -5,6 +5,7 @@ cd /d "%~dp0"
 
 set LOG_FILE=log.txt
 set DEV_RUN_LOG=next-dev.log
+if not defined XLABROUTER_NEXT_DEV_ENGINE set XLABROUTER_NEXT_DEV_ENGINE=webpack
 set CLOUDFLARED_PROCESS_MODE=true
 set CLOUDFLARED_WINDOWS_SERVICE_MODE=false
 
@@ -56,7 +57,7 @@ if not exist ".env" (
     )
 )
 
-echo Starting dev server on http://localhost:1212
+echo Starting dev server on http://localhost:1212 using %XLABROUTER_NEXT_DEV_ENGINE%
 echo Logs are shown in realtime with colors and also saved to %DEV_RUN_LOG%
 echo Press Ctrl+C to stop
 echo.

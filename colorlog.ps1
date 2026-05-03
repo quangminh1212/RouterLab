@@ -3,6 +3,7 @@ $ErrorActionPreference = "Continue"
 $logPath = "next-dev.log"
 $targetPort = 1212
 $maxRetries = 3
+$devEngine = if ($env:XLABROUTER_NEXT_DEV_ENGINE) { $env:XLABROUTER_NEXT_DEV_ENGINE } else { "webpack" }
 
 function Resolve-LogPath {
     param([string]$PreferredPath)
@@ -114,6 +115,24 @@ function Kill-PortProcess {
     return $false
 }
 
+function Clear-NextCache {
+    $nextDir = Join-Path (Get-Location).Path ".next"
+    if (-not (Test-Path $nextDir)) { return }
+
+    try {
+        Write-Host "[INFO] Removing stale Next.js cache: $nextDir" -ForegroundColor Cyan
+        Remove-Item -LiteralPath $nextDir -Recurse -Force -ErrorAction Stop
+    } catch {
+        Write-Host "[WARN] Could not remove .next cache. Close old node.exe processes or run as Administrator." -ForegroundColor Yellow
+    }
+}
+
+function Has-NextCacheCorruption {
+    param($Output)
+    $text = ($Output | ForEach-Object { $_.ToString() }) -join "`n"
+    return $text -match "Turbopack error|Failed to restore task data|Failed to open SST file|app-paths-manifest\.json|ChunkLoadError|ENOENT: no such file or directory"
+}
+
 $resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
 
 # Ensure cleanup even when PowerShell is interrupted (Ctrl+C / host exit)
@@ -138,6 +157,7 @@ $currentPort = $targetPort
 # Pre-clear stale router processes/listeners before first start
 Kill-StaleRouterProcesses
 Kill-PortProcess -Port $currentPort | Out-Null
+Clear-NextCache
 
 while ($attempt -lt $maxRetries -and -not $success) {
     $attempt++
@@ -145,9 +165,10 @@ while ($attempt -lt $maxRetries -and -not $success) {
         Write-Host "[INFO] Retry attempt $attempt/$maxRetries" -ForegroundColor Cyan
     }
 
-    Write-Host "[INFO] Starting dev server on port $currentPort" -ForegroundColor Cyan
+    Write-Host "[INFO] Starting dev server on port $currentPort using $devEngine" -ForegroundColor Cyan
     try {
-        $output = npx next dev --port $currentPort 2>&1 | Tee-Object -FilePath $resolvedLogPath
+        $engineFlag = if ($devEngine -eq "turbo" -or $devEngine -eq "turbopack") { "--turbo" } else { "--webpack" }
+        $output = npx next dev --port $currentPort $engineFlag 2>&1 | Tee-Object -FilePath $resolvedLogPath
         $output | ForEach-Object { Write-ColoredLine $_.ToString() }
         $exitCode = $LASTEXITCODE
     } finally {
@@ -164,6 +185,13 @@ while ($attempt -lt $maxRetries -and -not $success) {
 
         Write-Host "[ERROR] Port $currentPort is still busy after cleanup. Keep fixed port mode enabled." -ForegroundColor Red
         break
+    }
+
+    if ($exitCode -ne 0 -and (Has-NextCacheCorruption -Output $output)) {
+        Write-Host "[WARN] Next.js cache corruption detected. Clearing cache before retry..." -ForegroundColor Yellow
+        Clear-NextCache
+        Start-Sleep -Seconds 1
+        continue
     }
 
     $success = $true
