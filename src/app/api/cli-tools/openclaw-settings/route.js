@@ -289,11 +289,24 @@ const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
 
   if (!existing.providers) existing.providers = {};
   const modelIds = [...new Set(models.map((item) => normalizeOpenClawModel(item)).filter(Boolean))];
+  const primaryModel = modelIds[0] || OPENCLAW_RECOMMENDED_MODEL;
   existing.providers["xlabrouter"] = {
     baseUrl,
     apiKey: apiKey || "your_api_key",
     api: "openai-completions",
     models: modelIds.map((id) => ({ id, name: id.split("/").pop() || id })),
+  };
+  existing.defaults = {
+    ...(existing.defaults || {}),
+    model: {
+      ...(existing.defaults?.model || {}),
+      primary: `xlabrouter/${primaryModel}`,
+    },
+    models: {
+      ...(existing.defaults?.models || {}),
+      ...Object.fromEntries(modelIds.map((id) => [`xlabrouter/${id}`, {}])),
+    },
+    workspace: existing.defaults?.workspace || "C:\\Dev\\XLab_Router",
   };
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
@@ -397,6 +410,12 @@ const resetOpenClawSessionState = async () => {
   const sessionsPath = path.join(sessionsDir, "sessions.json");
   await fs.mkdir(sessionsDir, { recursive: true });
   await fs.rm(`${sessionsPath}.lock`, { force: true }).catch(() => {});
+  const sessionEntries = await fs.readdir(sessionsDir, { withFileTypes: true }).catch(() => []);
+  await Promise.all(sessionEntries.map(async (entry) => {
+    if (!entry.isFile()) return;
+    if (!/\.(jsonl|trajectory\.jsonl|trajectory-path\.json)$/i.test(entry.name)) return;
+    await fs.rm(path.join(sessionsDir, entry.name), { force: true }).catch(() => {});
+  }));
   await fs.writeFile(sessionsPath, JSON.stringify({}, null, 2));
 };
 
