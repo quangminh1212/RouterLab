@@ -9,6 +9,38 @@ import {
 } from "@/shared/constants/providers";
 import { testSingleConnection } from "../[id]/test/testUtils.js";
 
+async function fetchCompatibleModels(connection) {
+  const baseUrl = connection?.providerSpecificData?.baseUrl;
+  if (!baseUrl) return { ok: false, error: "Missing base URL", models: [] };
+
+  const normalizedBase = String(baseUrl).replace(/\/$/, "");
+  const headers = {
+    Authorization: `Bearer ${connection.apiKey}`,
+    "x-api-key": connection.apiKey,
+    "anthropic-version": "2023-06-01",
+  };
+
+  try {
+    const res = await fetch(`${normalizedBase}/models`, { headers });
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}`, models: [] };
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    const models = rows
+      .map((item) => ({
+        modelId: item?.id || "",
+        modelName: item?.name || item?.id || "",
+      }))
+      .filter((item) => item.modelId);
+
+    return { ok: true, error: null, models };
+  } catch (error) {
+    return { ok: false, error: error.message, models: [] };
+  }
+}
+
 function getAuthGroup(providerId, connection = null) {
   // Prioritize authType from connection if available
   if (connection?.authType) {
@@ -82,6 +114,59 @@ export async function POST(request) {
     }
 
     const results = [];
+
+    if (mode === "compatible") {
+      for (const conn of connectionsToTest) {
+        const modelFetch = await fetchCompatibleModels(conn);
+
+        if (!modelFetch.ok) {
+          results.push({
+            provider: conn.provider,
+            connectionId: conn.id,
+            connectionName: conn.name || conn.email || conn.provider,
+            authType: conn.authType || getAuthGroup(conn.provider, conn),
+            modelId: null,
+            valid: false,
+            latencyMs: 0,
+            error: modelFetch.error,
+            diagnosis: { type: "model_list_error", source: "provider", code: null, message: modelFetch.error },
+            statusCode: null,
+            testedAt: new Date().toISOString(),
+          });
+          continue;
+        }
+
+        for (const model of modelFetch.models) {
+          results.push({
+            provider: conn.provider,
+            connectionId: conn.id,
+            connectionName: conn.name || conn.email || conn.provider,
+            authType: conn.authType || getAuthGroup(conn.provider, conn),
+            modelId: model.modelId,
+            modelName: model.modelName,
+            valid: true,
+            latencyMs: 0,
+            error: null,
+            diagnosis: null,
+            statusCode: 200,
+            testedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      return NextResponse.json({
+        mode,
+        providerId: providerId || null,
+        results,
+        testedAt: new Date().toISOString(),
+        summary: {
+          total: results.length,
+          passed: results.filter((r) => r.valid).length,
+          failed: results.filter((r) => !r.valid).length,
+        },
+      });
+    }
+
     for (const conn of connectionsToTest) {
       try {
         const data = await testSingleConnection(conn.id);

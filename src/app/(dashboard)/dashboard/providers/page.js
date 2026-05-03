@@ -1146,6 +1146,7 @@ function ProviderTestResultsView({ results }) {
       oauth: "OAuth",
       free: "Free",
       apikey: "API Key",
+      compatible: "Compatible",
       provider: "Provider",
       all: "All",
     }[mode] || mode;
@@ -1170,7 +1171,7 @@ function ProviderTestResultsView({ results }) {
       )}
       {items.map((r, i) => (
         <div
-          key={r.connectionId || i}
+          key={`${r.connectionId || "unknown"}-${r.modelId || i}`}
           className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.03]"
         >
           <span
@@ -1181,6 +1182,11 @@ function ProviderTestResultsView({ results }) {
           <div className="flex-1 min-w-0">
             <span className="font-medium">{r.connectionName}</span>
             <span className="text-text-muted ml-1.5">({r.provider})</span>
+            {r.modelId && (
+              <div className="text-text-muted mt-0.5 truncate">
+                Model: {r.modelName || r.modelId}
+              </div>
+            )}
           </div>
           {r.latencyMs !== undefined && (
             <span className="text-text-muted font-mono tabular-nums">
