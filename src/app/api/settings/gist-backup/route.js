@@ -62,18 +62,19 @@ async function getGitHubCliToken() {
 }
 
 async function ensureCliAuth(current) {
-  if (current?.token) {
+  if (current?.tokenSource === "gh-cli" || !current?.token) {
+    const token = await getGitHubCliToken();
+    const user = await validateGitHubToken(token);
     return {
-      token: current.token,
-      githubLogin: current.githubLogin || "",
+      token,
+      githubLogin: user.login || current.githubLogin || "",
     };
   }
 
-  const token = await getGitHubCliToken();
-  const user = await validateGitHubToken(token);
+  const user = await validateGitHubToken(current.token);
   return {
-    token,
-    githubLogin: user.login || "",
+    token: current.token,
+    githubLogin: user.login || current.githubLogin || "",
   };
 }
 
