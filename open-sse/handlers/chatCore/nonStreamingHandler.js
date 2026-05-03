@@ -22,6 +22,11 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
     const textContent = contentParts
       .map((part) => part?.text || part?.output_text || "")
       .filter(Boolean)
+      .join("") || responseBody.output_text || output
+      .filter((item) => item?.type === "reasoning" && Array.isArray(item.summary))
+      .flatMap((item) => item.summary)
+      .map((part) => part?.text || "")
+      .filter(Boolean)
       .join("");
     const toolCalls = output
       .filter((item) => item?.type === "function_call")
