@@ -310,6 +310,8 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   if (!next.channels.telegram.network) next.channels.telegram.network = {};
   next.channels.telegram.network.autoSelectFamily = true;
   next.channels.telegram.network.dnsResultOrder = "ipv4first";
+  next.channels.telegram.timeoutSeconds = 10;
+  next.channels.telegram.pollingStallThresholdMs = 30000;
   if (currentTelegramToken && next.channels?.telegram) {
     next.channels.telegram.botToken = currentTelegramToken;
   }
@@ -320,6 +322,8 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   if (!next.plugins.entries) next.plugins.entries = {};
   if (!next.plugins.entries.bonjour) next.plugins.entries.bonjour = {};
   next.plugins.entries.bonjour.enabled = false;
+  if (!next.plugins.allow) next.plugins.allow = [];
+  next.plugins.allow = ["telegram"];
   next.skills = {
     ...(next.skills || {}),
     limits: {
@@ -442,6 +446,8 @@ export async function POST(request) {
     if (!settings.channels.telegram.network) settings.channels.telegram.network = {};
     settings.channels.telegram.network.autoSelectFamily = true;
     settings.channels.telegram.network.dnsResultOrder = "ipv4first";
+    settings.channels.telegram.timeoutSeconds = 10;
+    settings.channels.telegram.pollingStallThresholdMs = 30000;
     if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
     settings.channels.telegram.commands.native = false;
 
@@ -449,6 +455,8 @@ export async function POST(request) {
     if (!settings.plugins.entries) settings.plugins.entries = {};
     if (!settings.plugins.entries.bonjour) settings.plugins.entries.bonjour = {};
     settings.plugins.entries.bonjour.enabled = false;
+    if (!settings.plugins.allow) settings.plugins.allow = [];
+    settings.plugins.allow = ["telegram"];
 
     if (!settings.skills) settings.skills = {};
     if (!settings.skills.limits) settings.skills.limits = {};
