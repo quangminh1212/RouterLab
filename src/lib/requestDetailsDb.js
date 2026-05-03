@@ -54,7 +54,36 @@ async function getDb() {
         }
       },
       async write() {
-        if (this._main) await this._main.write();
+        if (!this._main) return;
+
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            await this._main.write();
+            return;
+          } catch (error) {
+            const isRenameTmpMissing =
+              error?.code === "ENOENT"
+              && typeof error?.path === "string"
+              && error.path.includes(".db.json.tmp");
+
+            if (!isRenameTmpMissing || attempt === maxAttempts) {
+              throw error;
+            }
+
+            try {
+              if (DATA_DIR && !fs.existsSync(DATA_DIR)) {
+                fs.mkdirSync(DATA_DIR, { recursive: true });
+              }
+            } catch {}
+
+            try {
+              await this._main.read();
+            } catch {}
+
+            await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+          }
+        }
       },
       get data() {
         return this._main?.data?.requestDetailsData;

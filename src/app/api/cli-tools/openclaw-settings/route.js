@@ -46,10 +46,23 @@ const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
 const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-sonnet-4.5";
+const OPENCLAW_LOCAL_BASE_URL = "http://localhost:1212/v1";
 
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
   return !normalized ? OPENCLAW_RECOMMENDED_MODEL : normalized;
+};
+
+const normalizeOpenClawBaseUrl = (baseUrl) => {
+  const url = String(baseUrl || "").trim();
+  if (!url) return OPENCLAW_LOCAL_BASE_URL;
+  try {
+    const parsed = new URL(url.endsWith("/v1") ? url : `${url}/v1`);
+    if (parsed.hostname === "api.xlabrnd.com") return OPENCLAW_LOCAL_BASE_URL;
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return url.endsWith("/v1") ? url : `${url}/v1`;
+  }
 };
 
 const fileExists = async (targetPath) => {
@@ -313,7 +326,7 @@ export async function POST(request) {
     if (!settings.models) settings.models = {};
     if (!settings.models.providers) settings.models.providers = {};
 
-    const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
+    const normalizedBaseUrl = normalizeOpenClawBaseUrl(baseUrl);
     const normalizedModel = normalizeOpenClawModel(model);
     const normalizedAgentModels = Object.fromEntries(
       Object.entries(agentModels).map(([agentId, agentModel]) => [agentId, normalizeOpenClawModel(agentModel)])

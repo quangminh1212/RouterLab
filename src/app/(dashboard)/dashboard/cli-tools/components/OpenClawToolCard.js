@@ -125,7 +125,7 @@ export default function OpenClawToolCard({
     return "http://127.0.0.1:1212";
   };
 
-  const getDefaultBaseUrl = () => baseUrl || getLocalBaseUrl();
+  const getDefaultBaseUrl = () => getLocalBaseUrl();
 
   const getEffectiveBaseUrl = () => {
     const url = customBaseUrl || getDefaultBaseUrl();
