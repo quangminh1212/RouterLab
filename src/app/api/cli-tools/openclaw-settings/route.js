@@ -45,8 +45,8 @@ async function requireAuth() {
 const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
-const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-sonnet-4.5";
-const OPENCLAW_LOCAL_BASE_URL = "http://localhost:1212/v1";
+const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
+const OPENCLAW_LOCAL_BASE_URL = "http://127.0.0.1:1212/v1";
 
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
@@ -310,8 +310,8 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   if (!next.channels.telegram.network) next.channels.telegram.network = {};
   next.channels.telegram.network.autoSelectFamily = true;
   next.channels.telegram.network.dnsResultOrder = "ipv4first";
-  next.channels.telegram.timeoutSeconds = 10;
-  next.channels.telegram.pollingStallThresholdMs = 30000;
+  next.channels.telegram.timeoutSeconds = 70;
+  next.channels.telegram.pollingStallThresholdMs = 240000;
   if (currentTelegramToken && next.channels?.telegram) {
     next.channels.telegram.botToken = currentTelegramToken;
   }
@@ -324,6 +324,10 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   next.plugins.entries.bonjour.enabled = false;
   if (!next.plugins.allow) next.plugins.allow = [];
   next.plugins.allow = ["telegram"];
+  next.tools = {
+    ...(next.tools || {}),
+    profile: "minimal",
+  };
   next.skills = {
     ...(next.skills || {}),
     limits: {
@@ -446,8 +450,8 @@ export async function POST(request) {
     if (!settings.channels.telegram.network) settings.channels.telegram.network = {};
     settings.channels.telegram.network.autoSelectFamily = true;
     settings.channels.telegram.network.dnsResultOrder = "ipv4first";
-    settings.channels.telegram.timeoutSeconds = 10;
-    settings.channels.telegram.pollingStallThresholdMs = 30000;
+    settings.channels.telegram.timeoutSeconds = 70;
+    settings.channels.telegram.pollingStallThresholdMs = 240000;
     if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
     settings.channels.telegram.commands.native = false;
 
@@ -457,6 +461,11 @@ export async function POST(request) {
     settings.plugins.entries.bonjour.enabled = false;
     if (!settings.plugins.allow) settings.plugins.allow = [];
     settings.plugins.allow = ["telegram"];
+
+    settings.tools = {
+      ...(settings.tools || {}),
+      profile: "minimal",
+    };
 
     if (!settings.skills) settings.skills = {};
     if (!settings.skills.limits) settings.skills.limits = {};
@@ -584,16 +593,23 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
   } catch {}
   const settings = normalizeRestoredOpenClawSettings(payload.settings || {}, currentSettings);
   await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(settings, null, 2));
+  const restoredProvider = settings?.models?.providers?.xlabrouter;
+  const restoredModelIds = Array.isArray(restoredProvider?.models)
+    ? restoredProvider.models.map((item) => normalizeOpenClawModel(item?.id || item)).filter(Boolean)
+    : [];
+  const modelIdsToWrite = restoredModelIds.length > 0 ? [...new Set(restoredModelIds)] : [OPENCLAW_RECOMMENDED_MODEL];
+  const restoredBaseUrl = normalizeOpenClawBaseUrl(restoredProvider?.baseUrl);
+  const restoredApiKey = restoredProvider?.apiKey || currentSettings?.models?.providers?.xlabrouter?.apiKey || "your_api_key";
 
   if (payload.agentModels && typeof payload.agentModels === "object") {
     await Promise.all(
       Object.values(payload.agentModels).map(async (entry) => {
         if (!entry?.agentDir || !entry?.models || typeof entry.models !== "object") return;
         await fs.mkdir(entry.agentDir, { recursive: true });
-        await writeAgentModels(entry.agentDir, [OPENCLAW_RECOMMENDED_MODEL], OPENCLAW_LOCAL_BASE_URL, settings.models.providers.xlabrouter.apiKey);
+        await writeAgentModels(entry.agentDir, modelIdsToWrite, restoredBaseUrl, restoredApiKey);
       })
     );
   }
 
-  await writeAgentModels(getDefaultAgentModelsDir(), [OPENCLAW_RECOMMENDED_MODEL], OPENCLAW_LOCAL_BASE_URL, settings.models.providers.xlabrouter.apiKey);
+  await writeAgentModels(getDefaultAgentModelsDir(), modelIdsToWrite, restoredBaseUrl, restoredApiKey);
 };
