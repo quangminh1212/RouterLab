@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+﻿import crypto from "node:crypto";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 
 const GITHUB_GISTS_URL = "https://api.github.com/gists";
@@ -17,6 +17,14 @@ function encryptPayload(payload, passphrase) {
     throw new Error("Encryption passphrase is required");
   }
 
+  const salt = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12);
+  const key = getEncryptionKey(passphrase, salt);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
   return {
     format: "xlabrouter-gist-backup",
     version: 1,
@@ -24,9 +32,10 @@ function encryptPayload(payload, passphrase) {
     kdf: "pbkdf2-sha256",
     iterations: PBKDF2_ITERATIONS,
     createdAt: new Date().toISOString(),
-    payloadStored: false,
-    omittedReason: "payload-disabled",
-    originalPayloadBytes: Buffer.byteLength(JSON.stringify(payload), "utf8"),
+    salt: salt.toString("base64"),
+    iv: iv.toString("base64"),
+    authTag: authTag.toString("base64"),
+    data: encrypted.toString("base64"),
   };
 }
 
@@ -152,7 +161,7 @@ async function verifyBackupGist(token, gist) {
 }
 
 export async function backupToGist({ token, gistId = "", passphrase, payload = null }) {
-  const backup = payload || await createBackupBundle({ includeUsage: false, includeRequestDetails: false });
+  const backup = payload || await createBackupBundle({ includeUsage: true, includeRequestDetails: false });
   const encrypted = encryptPayload(backup, passphrase);
   const content = JSON.stringify(encrypted, null, 2);
 
@@ -167,14 +176,15 @@ export async function backupToGist({ token, gistId = "", passphrase, payload = n
   const existingGist = gistId ? null : await findExistingBackupGist(token);
   const resolvedGistId = gistId || existingGist?.id || "";
 
-  if (!resolvedGistId) {
-    throw new Error("No existing XLab Router backup Gist found to update");
-  }
-
-  const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
+  const gist = resolvedGistId
+    ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      })
+    : await githubRequest(token, GITHUB_GISTS_URL, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
 
   await verifyBackupGist(token, gist);
 
@@ -216,3 +226,4 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
     updatedAt: gist.updated_at,
   };
 }
+

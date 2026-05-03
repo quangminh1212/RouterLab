@@ -1,13 +1,13 @@
-﻿import { importDb, getSettings } from "@/lib/localDb";
-import { importUsageDb } from "@/lib/usageDb";
+﻿import { exportDb, importDb, getSettings } from "@/lib/localDb";
+import { exportUsageDb, importUsageDb } from "@/lib/usageDb";
 import { importRequestDetailsDb } from "@/lib/requestDetailsDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
-import { restoreClaudeSettingsBackup } from "@/app/api/cli-tools/claude-settings/route";
-import { restoreCodexSettingsBackup } from "@/app/api/cli-tools/codex-settings/route";
-import { restoreOpenCodeSettingsBackup } from "@/app/api/cli-tools/opencode-settings/route";
-import { restoreOpenClawSettingsBackup } from "@/app/api/cli-tools/openclaw-settings/route";
-import { restoreDroidSettingsBackup } from "@/app/api/cli-tools/droid-settings/route";
-import { restoreCopilotSettingsBackup } from "@/app/api/cli-tools/copilot-settings/route";
+import { getClaudeSettingsBackup, restoreClaudeSettingsBackup } from "@/app/api/cli-tools/claude-settings/route";
+import { getCodexSettingsBackup, restoreCodexSettingsBackup } from "@/app/api/cli-tools/codex-settings/route";
+import { getOpenCodeSettingsBackup, restoreOpenCodeSettingsBackup } from "@/app/api/cli-tools/opencode-settings/route";
+import { getOpenClawSettingsBackup, restoreOpenClawSettingsBackup } from "@/app/api/cli-tools/openclaw-settings/route";
+import { getDroidSettingsBackup, restoreDroidSettingsBackup } from "@/app/api/cli-tools/droid-settings/route";
+import { getCopilotSettingsBackup, restoreCopilotSettingsBackup } from "@/app/api/cli-tools/copilot-settings/route";
 
 export function isBackupBundle(payload) {
   return !!(
@@ -28,6 +28,65 @@ export function isUsageBackupPayload(payload) {
       (typeof payload.dailySummary === "object" && payload.dailySummary !== null) ||
       typeof payload.totalRequestsLifetime === "number")
   );
+}
+
+function stripRequestDataFromDatabase(database) {
+  if (!database || typeof database !== "object" || Array.isArray(database)) return database;
+
+  if (database.requestDetailsData && typeof database.requestDetailsData === "object" && !Array.isArray(database.requestDetailsData)) {
+    database.requestDetailsData.records = [];
+  }
+
+  return database;
+}
+
+function stripRequestDataFromUsage(usage) {
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return usage;
+  return {
+    ...usage,
+    history: [],
+  };
+}
+
+function stripRequestDataFromBundle(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+
+  if (payload.database && typeof payload.database === "object" && !Array.isArray(payload.database)) {
+    stripRequestDataFromDatabase(payload.database);
+    if (payload.database.usageData && typeof payload.database.usageData === "object" && !Array.isArray(payload.database.usageData)) {
+      payload.database.usageData.history = [];
+    }
+  }
+  if (payload.usage && typeof payload.usage === "object" && !Array.isArray(payload.usage)) {
+    payload.usage = stripRequestDataFromUsage(payload.usage);
+  }
+  delete payload.requestDetails;
+
+  if (payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)) {
+    payload.metadata.includesRequestDetails = false;
+  }
+
+  return payload;
+}
+
+async function exportToolBackups() {
+  const [claudeCli, codexCli, openCodeCli, openClawCli, droidCli, copilotCli] = await Promise.all([
+    getClaudeSettingsBackup(),
+    getCodexSettingsBackup(),
+    getOpenCodeSettingsBackup(),
+    getOpenClawSettingsBackup(),
+    getDroidSettingsBackup(),
+    getCopilotSettingsBackup(),
+  ]);
+
+  return {
+    claudeCli,
+    codexCli,
+    openCodeCli,
+    openClawCli,
+    droidCli,
+    copilotCli,
+  };
 }
 
 async function restoreToolBackups(payload) {
@@ -66,32 +125,36 @@ async function reapplyImportedRuntimeSettings() {
 
 export async function createBackupBundle(options = {}) {
   const includeUsage = options.includeUsage !== false;
-  const includeRequestDetails = options.includeRequestDetails !== false;
 
-  return {
+  const [database, usage, toolBackups] = await Promise.all([
+    exportDb(),
+    includeUsage ? exportUsageDb() : Promise.resolve(undefined),
+    exportToolBackups(),
+  ]);
+
+  const payload = {
     version: 4,
     exportedAt: new Date().toISOString(),
-    backupDataStored: false,
+    database: stripRequestDataFromDatabase(database),
+    ...(includeUsage && usage ? { usage: stripRequestDataFromUsage(usage) } : {}),
+    ...toolBackups,
     metadata: {
-      includesUsage: false,
+      includesUsage: includeUsage,
       includesRequestDetails: false,
-      includesClaudeCli: false,
-      includesCodexCli: false,
-      includesOpenCodeCli: false,
-      includesOpenClawCli: false,
-      includesDroidCli: false,
-      includesCopilotCli: false,
-      requestedUsage: includeUsage,
-      requestedRequestDetails: includeRequestDetails,
-      omittedReason: "backup-data-disabled",
+      includesClaudeCli: true,
+      includesCodexCli: true,
+      includesOpenCodeCli: true,
+      includesOpenClawCli: true,
+      includesDroidCli: true,
+      includesCopilotCli: true,
     },
   };
+
+  return stripRequestDataFromBundle(payload);
 }
 
 export async function restoreBackupBundle(payload) {
-  if (payload?.backupDataStored === false) {
-    throw new Error("This backup does not contain any restorable data");
-  }
+  stripRequestDataFromBundle(payload);
 
   let importMode = "database";
   let importedDb = false;
@@ -105,16 +168,18 @@ export async function restoreBackupBundle(payload) {
       await importUsageDb(payload.usage);
     }
 
-    if (payload.requestDetails && typeof payload.requestDetails === "object") {
-      await importRequestDetailsDb(payload.requestDetails);
-    }
+    await importRequestDetailsDb(
+      payload.requestDetails && typeof payload.requestDetails === "object"
+        ? payload.requestDetails
+        : { records: [] }
+    );
 
     await restoreToolBackups(payload);
   } else if (isUsageBackupPayload(payload)) {
-    await importUsageDb(payload);
+    await importUsageDb(stripRequestDataFromUsage(payload));
     importMode = "usage";
   } else {
-    await importDb(payload);
+    await importDb(stripRequestDataFromDatabase(payload));
     importedDb = true;
     importMode = "database";
     await restoreToolBackups(payload);
@@ -126,4 +191,5 @@ export async function restoreBackupBundle(payload) {
 
   return { success: true, importMode };
 }
+
 

@@ -1,17 +1,9 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 
 export async function GET() {
   try {
     const payload = await createBackupBundle({ includeUsage: true, includeRequestDetails: false });
-
-    // Keep backup lightweight: remove usage.history, keep dailySummary + totals.
-    if (payload?.usage && typeof payload.usage === "object") {
-      payload.usage = {
-        ...payload.usage,
-        history: [],
-      };
-    }
 
     // Ensure request details are not exported.
     if (payload && typeof payload === "object") {
@@ -35,16 +27,9 @@ export async function POST(request) {
     // Enforce lightweight restore: never import heavy per-request logs.
     if (payload && typeof payload === "object") {
       if (payload.database && typeof payload.database === "object") {
-        if (payload.database.usageData && typeof payload.database.usageData === "object") {
-          payload.database.usageData.history = [];
-        }
         if (payload.database.requestDetailsData && typeof payload.database.requestDetailsData === "object") {
           payload.database.requestDetailsData.records = [];
         }
-      }
-
-      if (payload.usage && typeof payload.usage === "object") {
-        payload.usage.history = [];
       }
 
       delete payload.requestDetails;
@@ -60,3 +45,4 @@ export async function POST(request) {
     );
   }
 }
+
