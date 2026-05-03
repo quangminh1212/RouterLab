@@ -166,7 +166,83 @@ async function postHandler(request) {
   }
 
   await ensureInitialized();
-  return await handleChat(request);
+  const response = await handleChat(request);
+  return await normalizeChatCompletionsJson(response);
+}
+
+function extractResponseText(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  if (typeof payload.output_text === "string" && payload.output_text.trim()) return payload.output_text;
+  if (Array.isArray(payload.output)) {
+    const chunks = [];
+    for (const item of payload.output) {
+      if (!item || typeof item !== "object") continue;
+      const content = Array.isArray(item.content) ? item.content : [];
+      for (const part of content) {
+        if (typeof part?.text === "string" && part.text) chunks.push(part.text);
+      }
+    }
+    return chunks.join("");
+  }
+  return "";
+}
+
+function responsesToChatCompletion(payload) {
+  const content = extractResponseText(payload);
+  const created = typeof payload?.created_at === "number" ? payload.created_at : Math.floor(Date.now() / 1000);
+  const promptTokens = payload?.usage?.input_tokens ?? payload?.usage?.prompt_tokens ?? 0;
+  const completionTokens = payload?.usage?.output_tokens ?? payload?.usage?.completion_tokens ?? 0;
+  const totalTokens = payload?.usage?.total_tokens ?? (promptTokens + completionTokens);
+
+  return {
+    id: payload?.id || `chatcmpl_${Date.now()}`,
+    object: "chat.completion",
+    created,
+    model: payload?.model || "openclaw",
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: totalTokens,
+    },
+  };
+}
+
+async function normalizeChatCompletionsJson(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) return response;
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    return response;
+  }
+
+  if (payload?.object === "chat.completion" && Array.isArray(payload?.choices) && payload.choices.length > 0) {
+    return Response.json(payload, {
+      status: response.status,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  if (payload?.object === "response" || typeof payload?.output_text === "string" || Array.isArray(payload?.output)) {
+    return Response.json(responsesToChatCompletion(payload), {
+      status: response.status,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  return Response.json(payload, {
+    status: response.status,
+    headers: { "Access-Control-Allow-Origin": "*" },
+  });
 }
 
 export const POST = withRouteGuard(
