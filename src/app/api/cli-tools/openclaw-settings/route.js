@@ -305,19 +305,29 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   };
 
   const currentTelegramToken = currentSettings?.channels?.telegram?.botToken;
+  if (!next.channels) next.channels = {};
+  if (!next.channels.telegram) next.channels.telegram = {};
+  if (!next.channels.telegram.network) next.channels.telegram.network = {};
+  next.channels.telegram.network.autoSelectFamily = true;
+  next.channels.telegram.network.dnsResultOrder = "ipv4first";
   if (currentTelegramToken && next.channels?.telegram) {
     next.channels.telegram.botToken = currentTelegramToken;
   }
   if (next.channels?.telegram) {
     next.channels.telegram.commands = { ...(next.channels.telegram.commands || {}), native: false };
   }
+  if (!next.plugins) next.plugins = {};
+  if (!next.plugins.entries) next.plugins.entries = {};
+  if (!next.plugins.entries.bonjour) next.plugins.entries.bonjour = {};
+  next.plugins.entries.bonjour.enabled = false;
   next.skills = {
     ...(next.skills || {}),
     limits: {
       ...(next.skills?.limits || {}),
-      maxSkillsLoadedPerSource: 10,
-      maxSkillsPromptChars: 2000,
-      maxSkillsInPrompt: 10,
+      maxCandidatesPerRoot: 1,
+      maxSkillsLoadedPerSource: 1,
+      maxSkillsPromptChars: 0,
+      maxSkillsInPrompt: 0,
     },
   };
   return next;
@@ -426,6 +436,28 @@ export async function POST(request) {
         await writeAgentModels(agentDir, [...allModelIds, modelToWrite], normalizedBaseUrl, apiKey);
       })
     );
+
+    if (!settings.channels) settings.channels = {};
+    if (!settings.channels.telegram) settings.channels.telegram = {};
+    if (!settings.channels.telegram.network) settings.channels.telegram.network = {};
+    settings.channels.telegram.network.autoSelectFamily = true;
+    settings.channels.telegram.network.dnsResultOrder = "ipv4first";
+    if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
+    settings.channels.telegram.commands.native = false;
+
+    if (!settings.plugins) settings.plugins = {};
+    if (!settings.plugins.entries) settings.plugins.entries = {};
+    if (!settings.plugins.entries.bonjour) settings.plugins.entries.bonjour = {};
+    settings.plugins.entries.bonjour.enabled = false;
+
+    if (!settings.skills) settings.skills = {};
+    if (!settings.skills.limits) settings.skills.limits = {};
+    Object.assign(settings.skills.limits, {
+      maxCandidatesPerRoot: 1,
+      maxSkillsLoadedPerSource: 1,
+      maxSkillsPromptChars: 0,
+      maxSkillsInPrompt: 0,
+    });
 
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 
