@@ -285,6 +285,27 @@ const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
+const normalizeRestoredOpenClawSettings = (settings) => {
+  const next = settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {};
+  if (!next.agents) next.agents = {};
+  if (!next.agents.defaults) next.agents.defaults = {};
+  if (!next.agents.defaults.model) next.agents.defaults.model = {};
+  if (!next.agents.defaults.models) next.agents.defaults.models = {};
+  if (!next.models) next.models = {};
+  if (!next.models.providers) next.models.providers = {};
+
+  const model = OPENCLAW_RECOMMENDED_MODEL;
+  next.agents.defaults.model.primary = `xlabrouter/${model}`;
+  next.agents.defaults.models = { [`xlabrouter/${model}`]: {} };
+  next.models.providers.xlabrouter = {
+    baseUrl: OPENCLAW_LOCAL_BASE_URL,
+    apiKey: next.models.providers.xlabrouter?.apiKey || "your_api_key",
+    api: "openai-completions",
+    models: [{ id: model, name: model.split("/").pop() || model }],
+  };
+  return next;
+};
+
 const getConfiguredAgentModelDirs = (settings) => {
   const dirs = new Set();
   const agentList = Array.isArray(settings?.agents?.list) ? settings.agents.list : [];
@@ -500,15 +521,18 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
   }
 
   await fs.mkdir(getOpenClawDir(), { recursive: true });
-  await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(payload.settings || {}, null, 2));
+  const settings = normalizeRestoredOpenClawSettings(payload.settings || {});
+  await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(settings, null, 2));
 
   if (payload.agentModels && typeof payload.agentModels === "object") {
     await Promise.all(
       Object.values(payload.agentModels).map(async (entry) => {
         if (!entry?.agentDir || !entry?.models || typeof entry.models !== "object") return;
         await fs.mkdir(entry.agentDir, { recursive: true });
-        await fs.writeFile(path.join(entry.agentDir, "models.json"), JSON.stringify(entry.models, null, 2));
+        await writeAgentModels(entry.agentDir, [OPENCLAW_RECOMMENDED_MODEL], OPENCLAW_LOCAL_BASE_URL, settings.models.providers.xlabrouter.apiKey);
       })
     );
   }
+
+  await writeAgentModels(getDefaultAgentModelsDir(), [OPENCLAW_RECOMMENDED_MODEL], OPENCLAW_LOCAL_BASE_URL, settings.models.providers.xlabrouter.apiKey);
 };
