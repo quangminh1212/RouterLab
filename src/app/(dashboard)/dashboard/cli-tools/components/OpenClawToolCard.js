@@ -7,7 +7,7 @@ import Image from "next/image";
 const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-haiku-4.5";
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
-  return !normalized || normalized.toLowerCase() === "xlab" ? OPENCLAW_RECOMMENDED_MODEL : normalized;
+  return !normalized ? OPENCLAW_RECOMMENDED_MODEL : normalized;
 };
 
 export default function OpenClawToolCard({
@@ -231,29 +231,33 @@ export default function OpenClawToolCard({
       ? selectedApiKey 
       : (!cloudEnabled ? "sk_xlabrouter" : "<API_KEY_FROM_DASHBOARD>");
 
-    const settingsContent = {
-      agents: {
-        defaults: {
-          model: {
-            primary: `xlabrouter/${normalizeOpenClawModel(selectedModel)}`,
-          },
+    const settingsContent = structuredClone(openclawStatus?.settings || {});
+    if (!settingsContent.agents) settingsContent.agents = {};
+    if (!settingsContent.agents.defaults) settingsContent.agents.defaults = {};
+    if (!settingsContent.agents.defaults.model) settingsContent.agents.defaults.model = {};
+    if (!settingsContent.agents.defaults.models) settingsContent.agents.defaults.models = {};
+    if (!settingsContent.models) settingsContent.models = {};
+    if (!settingsContent.models.providers) settingsContent.models.providers = {};
+
+    const normalizedModel = normalizeOpenClawModel(selectedModel);
+    const fullModelId = `xlabrouter/${normalizedModel}`;
+
+    Object.keys(settingsContent.agents.defaults.models)
+      .filter((key) => key.startsWith("xlabrouter/"))
+      .forEach((key) => { delete settingsContent.agents.defaults.models[key]; });
+
+    settingsContent.agents.defaults.model.primary = fullModelId;
+    settingsContent.agents.defaults.models[fullModelId] = {};
+    settingsContent.models.providers["xlabrouter"] = {
+      baseUrl: getEffectiveBaseUrl(),
+      apiKey: keyToUse,
+      api: "openai-completions",
+      models: [
+        {
+          id: normalizedModel,
+          name: normalizedModel.split("/").pop(),
         },
-      },
-      models: {
-        providers: {
-          "xlabrouter": {
-            baseUrl: getEffectiveBaseUrl(),
-            apiKey: keyToUse,
-            api: "openai-completions",
-            models: [
-              {
-                id: normalizeOpenClawModel(selectedModel),
-                name: normalizeOpenClawModel(selectedModel).split("/").pop(),
-              },
-            ],
-          },
-        },
-      },
+      ],
     };
 
     return [

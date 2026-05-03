@@ -49,7 +49,7 @@ const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-haiku-4.5";
 
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
-  return !normalized || normalized.toLowerCase() === "xlab" ? OPENCLAW_RECOMMENDED_MODEL : normalized;
+  return !normalized ? OPENCLAW_RECOMMENDED_MODEL : normalized;
 };
 
 const fileExists = async (targetPath) => {
@@ -300,9 +300,10 @@ export async function POST(request) {
 
     let settings = {};
     try {
-      const existingSettings = await fs.readFile(settingsPath, "utf-8");
-      settings = JSON.parse(existingSettings);
-    } catch { /* No existing settings */ }
+      settings = await parseJsonFile(settingsPath);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
 
     if (!settings.agents) settings.agents = {};
     if (!settings.agents.defaults) settings.agents.defaults = {};
@@ -397,8 +398,7 @@ export async function DELETE() {
     // Read existing settings
     let settings = {};
     try {
-      const existingSettings = await fs.readFile(settingsPath, "utf-8");
-      settings = JSON.parse(existingSettings);
+      settings = await parseJsonFile(settingsPath);
     } catch (error) {
       if (error.code === "ENOENT") {
         return NextResponse.json({
