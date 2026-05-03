@@ -69,6 +69,41 @@ function mergeSystemIntoFirstUserMessage(body) {
   };
 }
 
+function getOpenClawAllowTokens() {
+  const envTokens = String(process.env.OPENCLAW_TUNNEL_ALLOW_TOKENS || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const defaults = ["sk-6520dcd38ef3521c-liwdr1-9137175c"];
+  return new Set([...defaults, ...envTokens]);
+}
+
+function isOpenClawTunnelRequest(request, apiKey) {
+  const host = request?.headers?.get("host") || "";
+  const userAgent = request?.headers?.get("user-agent") || "";
+  const keyAllowed = apiKey ? getOpenClawAllowTokens().has(apiKey) : false;
+  return host.includes("api.xlabrnd.com") && (keyAllowed || /openclaw|openai\/js/i.test(userAgent));
+}
+
+function buildOpenClawCompatBody(body) {
+  if (!body || typeof body !== "object") return body;
+  const next = { ...body };
+  if (typeof next.max_completion_tokens === "number" && typeof next.max_tokens !== "number") {
+    next.max_tokens = next.max_completion_tokens;
+  }
+  delete next.max_completion_tokens;
+  delete next.tools;
+  delete next.tool_choice;
+  delete next.parallel_tool_calls;
+  delete next.reasoning;
+  delete next.reasoning_effort;
+  delete next.response_format;
+  delete next.metadata;
+  delete next.store;
+  delete next.prediction;
+  return next;
+}
+
 /**
  * Handle chat completion request
  * Supports: OpenAI, Claude, Gemini, OpenAI Responses API formats
@@ -159,13 +194,20 @@ export async function handleChat(request, clientRawRequest = null) {
   }
 
   // Single model request
-  return handleSingleModelChat(body, modelStr, clientRawRequest, request, apiKey);
+  return handleSingleModelChat(
+    body,
+    modelStr,
+    clientRawRequest,
+    request,
+    apiKey,
+    { openClawTunnelCompat: isOpenClawTunnelRequest(request, apiKey) }
+  );
 }
 
 /**
  * Handle single model chat request
  */
-async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {
+async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null, options = {}) {
   const modelInfo = await getModelInfo(modelStr);
 
   // If provider is null, this might be a combo name - check and handle
@@ -283,6 +325,12 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         log.warn("CHAT", `[${provider}/${model}] retrying with merged system prompt after upstream ${result.status}`);
         result = await runChatCore(mergedBody);
       }
+    }
+
+    if (!result.success && result.status === HTTP_STATUS.FORBIDDEN && options.openClawTunnelCompat) {
+      const compactBody = buildOpenClawCompatBody(body);
+      log.warn("CHAT", `[${provider}/${model}] retrying with OpenClaw tunnel compatibility payload after upstream 403`);
+      result = await runChatCore(compactBody);
     }
 
     if (result.success) return result.response;

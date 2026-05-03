@@ -44,13 +44,40 @@ function chatCompletionToResponsesPayload(payload) {
 
 async function normalizeResponsesJson(response) {
   const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) return response;
+  const isJson = contentType.includes("application/json");
+  const isSse = /\btext\/event-stream\b/i.test(contentType);
+  if (!isJson && !isSse) return response;
+
+  const raw = await response.text();
 
   let payload;
   try {
-    payload = await response.json();
+    payload = JSON.parse(raw);
   } catch {
-    return response;
+    const trimmed = String(raw || "").trim();
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try {
+        payload = JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+      } catch {
+        return new Response(raw, {
+          status: response.status,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      }
+    } else {
+      return new Response(raw, {
+        status: response.status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
   }
 
   if (payload?.object === "chat.completion") {

@@ -8,6 +8,7 @@ const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
 const OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL || "https://api.xlabrnd.com/v1/chat/completions";
 const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS) || 30000;
+const OPENCLAW_COMPAT_TOKEN = "sk-6520dcd38ef3521c-liwdr1-9137175c";
 
 async function ensureInitialized() {
   if (!initialized) {
@@ -153,6 +154,27 @@ async function proxyOpenClawCapture(request) {
 }
 
 async function postHandler(request) {
+  const requestBody = await request.clone().json().catch(() => null);
+
+  if (process.env.OPENCLAW_DEBUG_CAPTURE === "true") {
+    try {
+      const [{ promises: fs }, path] = await Promise.all([import("fs"), import("path")]);
+      const cloned = request.clone();
+      const bodyText = await cloned.text();
+      const auth = request.headers.get("authorization") || "";
+      if (auth.includes("sk-6520dcd38ef3521c-liwdr1-9137175c")) {
+        const captureDir = "C:\\tmp\\openclaw-debug-capture";
+        await fs.mkdir(captureDir, { recursive: true });
+        await fs.writeFile(path.join(captureDir, "last-chat-request.json"), JSON.stringify({
+          url: request.url,
+          method: request.method,
+          headers: Object.fromEntries(request.headers.entries()),
+          bodyText,
+        }, null, 2), "utf8");
+      }
+    } catch {}
+  }
+
   if (OPENCLAW_CAPTURE_PROXY_ENABLED && !isCaptureSelfLoop(request)) {
     return proxyOpenClawCapture(request);
   }
@@ -167,7 +189,7 @@ async function postHandler(request) {
 
   await ensureInitialized();
   const response = await handleChat(request);
-  return await normalizeChatCompletionsJson(response);
+  return await normalizeChatCompletionsJson(response, request, requestBody);
 }
 
 function extractResponseText(payload) {
@@ -214,7 +236,113 @@ function responsesToChatCompletion(payload) {
   };
 }
 
-async function normalizeChatCompletionsJson(response) {
+function readChatContent(payload) {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part?.text === "string") return part.text;
+        if (typeof part?.content === "string") return part.content;
+        return "";
+      })
+      .join("");
+  }
+  return "";
+}
+
+function isOpenClawCompatRequest(request, requestBody) {
+  const auth = request?.headers?.get("authorization") || "";
+  const model = String(requestBody?.model || "");
+  const userAgent = request?.headers?.get("user-agent") || "";
+  return auth.includes(OPENCLAW_COMPAT_TOKEN) || /openclaw/i.test(model) || /openclaw/i.test(userAgent);
+}
+
+function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
+  const lines = String(raw || "").split(/\r?\n/);
+  let text = "";
+  let id = "";
+  let model = "";
+  let created = Math.floor(Date.now() / 1000);
+  let finishReason = "stop";
+  let usage = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payloadText = trimmed.slice(5).trim();
+    if (!payloadText || payloadText === "[DONE]") continue;
+    try {
+      const chunk = JSON.parse(payloadText);
+      if (!id && chunk?.id) id = chunk.id;
+      if (!model && chunk?.model) model = chunk.model;
+      if (typeof chunk?.created === "number") created = chunk.created;
+      const choice = chunk?.choices?.[0];
+      if (typeof choice?.delta?.content === "string") text += choice.delta.content;
+      if (typeof choice?.finish_reason === "string" && choice.finish_reason) finishReason = choice.finish_reason;
+      if (chunk?.usage && typeof chunk.usage === "object") usage = chunk.usage;
+    } catch {
+      // ignore malformed chunk
+    }
+  }
+
+  return {
+    id: id || `chatcmpl_${Date.now()}`,
+    object: "chat.completion",
+    created,
+    model: model || fallbackModel,
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content: text },
+        finish_reason: finishReason,
+      },
+    ],
+    usage: usage || { prompt_tokens: 0, completion_tokens: text ? 1 : 0, total_tokens: text ? 1 : 0 },
+  };
+}
+
+async function retryEmptyChatAsStream(request, requestBody, fallbackPayload) {
+  const streamBody = { ...(requestBody || {}), stream: true };
+  const headers = new Headers();
+  for (const [key, value] of request.headers.entries()) {
+    if (shouldSkipHeader(key)) continue;
+    headers.set(key, value);
+  }
+  if (!headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+
+  const retryRequest = new Request(request.url, {
+    method: request.method,
+    headers,
+    body: JSON.stringify(streamBody),
+  });
+
+  const retryResponse = await handleChat(retryRequest);
+  const retryContentType = retryResponse.headers.get("content-type") || "";
+  const retryRaw = await retryResponse.text();
+
+  if (/\btext\/event-stream\b/i.test(retryContentType)) {
+    return chatCompletionFromSse(retryRaw, fallbackPayload?.model || String(requestBody?.model || "openclaw"));
+  }
+
+  if (retryContentType.includes("application/json")) {
+    try {
+      const retryPayload = JSON.parse(retryRaw);
+      if (retryPayload?.object === "response" || typeof retryPayload?.output_text === "string" || Array.isArray(retryPayload?.output)) {
+        return responsesToChatCompletion(retryPayload);
+      }
+      return retryPayload;
+    } catch {
+      return fallbackPayload;
+    }
+  }
+
+  return fallbackPayload;
+}
+
+async function normalizeChatCompletionsJson(response, request = null, requestBody = null) {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) return response;
 
@@ -226,6 +354,25 @@ async function normalizeChatCompletionsJson(response) {
   }
 
   if (payload?.object === "chat.completion" && Array.isArray(payload?.choices) && payload.choices.length > 0) {
+    const hasText = Boolean(readChatContent(payload).trim());
+    const shouldRetryAsStream = Boolean(
+      request
+      && requestBody
+      && requestBody?.stream !== true
+      && isOpenClawCompatRequest(request, requestBody)
+      && !hasText
+    );
+
+    if (shouldRetryAsStream) {
+      const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, payload);
+      if (readChatContent(recoveredPayload).trim()) {
+        return Response.json(recoveredPayload, {
+          status: response.status,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        });
+      }
+    }
+
     return Response.json(payload, {
       status: response.status,
       headers: { "Access-Control-Allow-Origin": "*" },
