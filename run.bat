@@ -13,7 +13,11 @@ echo Starting XLab Router...
 echo.
 
 REM Always clear old dev server processes before starting
-call "%~dp0stop.bat" >nul 2>&1
+call "%~dp0stop.bat"
+if errorlevel 1 (
+    echo [ERROR] Could not free port 1212. Please run run.bat as Administrator and try again.
+    exit /b 1
+)
 
 REM Check Node.js
 where node >nul 2>&1
@@ -64,8 +68,8 @@ echo.
 
 if exist "%DEV_RUN_LOG%" del /f /q "%DEV_RUN_LOG%" >nul 2>&1
 
-REM Start dev server with realtime colored output
-wscript.exe //nologo "%~dp0run_hidden.vbs" "%~dp0colorlog.ps1"
+REM Start dev server in this console. Hidden wscript mode closes stdin and can make Next dev exit immediately.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0colorlog.ps1"
 set EXIT_CODE=!ERRORLEVEL!
 
 REM Always cleanup leftover processes after PowerShell exits (including Ctrl+C)
