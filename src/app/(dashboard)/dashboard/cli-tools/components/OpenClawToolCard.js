@@ -26,6 +26,11 @@ export default function OpenClawToolCard({
   const [applying, setApplying] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [message, setMessage] = useState(null);
+
+  const isTunnelUrl = (url) => {
+    const raw = String(url || "").trim().toLowerCase();
+    return raw.includes("api.xlabrnd.com") || raw.includes("ngrok") || raw.includes("trycloudflare.com") || raw.includes("tailscale");
+  };
   const [modelCheck, setModelCheck] = useState(null);
   const [checkingModel, setCheckingModel] = useState(false);
   const [selectedApiKey, setSelectedApiKey] = useState("");
@@ -125,7 +130,10 @@ export default function OpenClawToolCard({
     return "http://127.0.0.1:1212";
   };
 
-  const getDefaultBaseUrl = () => getLocalBaseUrl();
+  const getDefaultBaseUrl = () => {
+    if (baseUrl && isTunnelUrl(baseUrl)) return baseUrl;
+    return getLocalBaseUrl();
+  };
 
   const getEffectiveBaseUrl = () => {
     const url = customBaseUrl || getDefaultBaseUrl();

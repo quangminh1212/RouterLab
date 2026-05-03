@@ -48,6 +48,7 @@ const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json
 const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
 const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
 const OPENCLAW_LOCAL_BASE_URL = "http://127.0.0.1:1212/v1";
+const OPENCLAW_DEFAULT_TUNNEL_BASE_URL = "https://api.xlabrnd.com/v1";
 const OPENCLAW_TELEGRAM_API_ROOT = "https://api.telegram.org";
 
 const normalizeOpenClawModel = (model) => {
@@ -60,7 +61,6 @@ const normalizeOpenClawBaseUrl = (baseUrl) => {
   if (!url) return OPENCLAW_LOCAL_BASE_URL;
   try {
     const parsed = new URL(url.endsWith("/v1") ? url : `${url}/v1`);
-    if (parsed.hostname === "api.xlabrnd.com") return OPENCLAW_LOCAL_BASE_URL;
     return parsed.toString().replace(/\/$/, "");
   } catch {
     return url.endsWith("/v1") ? url : `${url}/v1`;
@@ -309,8 +309,13 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   const model = OPENCLAW_RECOMMENDED_MODEL;
   next.agents.defaults.model.primary = `xlabrouter/${model}`;
   next.agents.defaults.models = { [`xlabrouter/${model}`]: {} };
+  const restoredBaseUrl = normalizeOpenClawBaseUrl(
+    next.models.providers.xlabrouter?.baseUrl
+    || currentSettings?.models?.providers?.xlabrouter?.baseUrl
+    || OPENCLAW_DEFAULT_TUNNEL_BASE_URL
+  );
   next.models.providers.xlabrouter = {
-    baseUrl: OPENCLAW_LOCAL_BASE_URL,
+    baseUrl: restoredBaseUrl,
     apiKey: next.models.providers.xlabrouter?.apiKey || "your_api_key",
     api: "openai-completions",
     models: [{ id: model, name: model.split("/").pop() || model }],
