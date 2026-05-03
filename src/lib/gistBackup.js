@@ -176,15 +176,40 @@ export async function backupToGist({ token, gistId = "", passphrase, payload = n
   const existingGist = gistId ? null : await findExistingBackupGist(token);
   const resolvedGistId = gistId || existingGist?.id || "";
 
-  const gist = resolvedGistId
-    ? await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, {
+  let gist;
+  if (resolvedGistId) {
+    try {
+      gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, {
         method: "PATCH",
         body: JSON.stringify(body),
-      })
-    : await githubRequest(token, GITHUB_GISTS_URL, {
-        method: "POST",
-        body: JSON.stringify(body),
       });
+    } catch (error) {
+      const message = String(error?.message || "");
+      if (!/not found|validation failed/i.test(message)) {
+        throw error;
+      }
+
+      const fallbackExisting = await findExistingBackupGist(token);
+      const fallbackGistId = String(fallbackExisting?.id || "");
+
+      if (fallbackGistId && fallbackGistId !== resolvedGistId) {
+        gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${fallbackGistId}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+      } else {
+        gist = await githubRequest(token, GITHUB_GISTS_URL, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      }
+    }
+  } else {
+    gist = await githubRequest(token, GITHUB_GISTS_URL, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
 
   await verifyBackupGist(token, gist);
 
