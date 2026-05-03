@@ -185,14 +185,7 @@ export async function backupToGist({ token, gistId = "", payload = null }) {
     },
   };
 
-  const updateBody = {
-    ...createBody,
-    files: {
-      ...createBody.files,
-      [LEGACY_PLAIN_FILE_NAME]: null,
-      [LEGACY_ENCRYPTED_FILE_NAME]: null,
-    },
-  };
+  const updateBody = createBody;
 
   const existingGist = gistId ? null : await findExistingBackupGist(token);
   const resolvedGistId = gistId || existingGist?.id || "";
