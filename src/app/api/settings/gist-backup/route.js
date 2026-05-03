@@ -78,6 +78,22 @@ async function ensureCliAuth(current) {
   };
 }
 
+async function launchGitHubCliLoginWindow() {
+  try {
+    await execFileAsync("powershell.exe", [
+      "-Command",
+      "Start-Process -FilePath powershell.exe -ArgumentList '-NoExit','-Command','gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org'",
+    ], {
+      timeout: 10000,
+      windowsHide: true,
+      maxBuffer: 16 * 1024,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function buildStableGistPassphrase({ token, githubLogin }) {
   const login = String(githubLogin || "").trim().toLowerCase();
   if (!login) return token;
@@ -101,18 +117,32 @@ export async function POST(request) {
     const current = settings?.gistBackup || {};
 
     if (action === "use-gh-cli") {
-      const token = await getGitHubCliToken();
-      const gitHubUser = await validateGitHubToken(token);
-      const nextConfig = {
-        ...current,
-        enabled: true,
-        token,
-        tokenSource: "gh-cli",
-        githubLogin: gitHubUser.login || current.githubLogin || "",
-        fileName: current.fileName || "xlabrouter.backup.json",
-      };
-      await updateSettings({ gistBackup: nextConfig });
-      return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
+      try {
+        const token = await getGitHubCliToken();
+        const gitHubUser = await validateGitHubToken(token);
+        const nextConfig = {
+          ...current,
+          enabled: true,
+          token,
+          tokenSource: "gh-cli",
+          githubLogin: gitHubUser.login || current.githubLogin || "",
+          fileName: current.fileName || "xlabrouter.backup.json",
+        };
+        await updateSettings({ gistBackup: nextConfig });
+        return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
+      } catch (error) {
+        const launched = await launchGitHubCliLoginWindow();
+        return NextResponse.json({
+          success: false,
+          requiresLogin: true,
+          launched,
+          error: launched
+            ? "GitHub CLI token hiện tại không hợp lệ hoặc đã hết hạn. Đã mở cửa sổ đăng nhập GitHub CLI, hãy hoàn tất đăng nhập rồi bấm lại 'Dùng GitHub CLI'."
+            : "GitHub CLI token hiện tại không hợp lệ hoặc đã hết hạn. Hãy chạy `gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org` rồi thử lại.",
+          details: error?.message || "",
+          config: toPublicConfig({ gistBackup: current }),
+        });
+      }
     }
 
     if (action === "disconnect") {

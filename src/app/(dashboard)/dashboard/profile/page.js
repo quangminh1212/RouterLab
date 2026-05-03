@@ -385,7 +385,11 @@ export default function ProfilePage() {
     setDbStatus({ type: "", message: "" });
     try {
       const data = await postGistBackup({ action: "use-gh-cli" });
-      setDbStatus({ type: "success", message: data.config?.hasToken ? "Connected using GitHub CLI" : "GitHub CLI token was not found" });
+      if (data?.requiresLogin) {
+        setDbStatus({ type: data?.launched ? "success" : "error", message: data.error || "GitHub CLI login is required" });
+      } else {
+        setDbStatus({ type: "success", message: data.config?.hasToken ? "Connected using GitHub CLI" : "GitHub CLI token was not found" });
+      }
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to connect via GitHub CLI" });
     } finally {
