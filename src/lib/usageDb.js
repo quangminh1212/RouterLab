@@ -337,7 +337,7 @@ export async function getUsageDb() {
       async write() {
         if (!this._main) return;
 
-        const maxAttempts = 3;
+        const maxAttempts = 8;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             await this._main.write();
@@ -362,7 +362,7 @@ export async function getUsageDb() {
               await this._main.read();
             } catch {}
 
-            await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+            await new Promise((resolve) => setTimeout(resolve, 120 * attempt));
           }
         }
       },

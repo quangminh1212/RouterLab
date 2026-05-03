@@ -8,8 +8,8 @@ function toPositiveNumber(value, fallback) {
 
 const CONFIG = {
   sampleIntervalMs: toPositiveNumber(process.env.RUNTIME_MONITOR_SAMPLE_MS, 5000),
-  eventLoopLagDegradedMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_DEGRADED_MS, 250),
-  eventLoopLagHardRejectMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_HARD_REJECT_MS, 600),
+  eventLoopLagDegradedMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_DEGRADED_MS, 400),
+  eventLoopLagHardRejectMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_HARD_REJECT_MS, 2000),
   heapUsageDegradedRatio: Math.min(
     0.99,
     Math.max(0.5, Number(process.env.RUNTIME_HEAP_DEGRADED_RATIO) || 0.9),
