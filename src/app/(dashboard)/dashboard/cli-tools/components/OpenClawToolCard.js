@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
 
-const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
+const OPENCLAW_RECOMMENDED_MODEL = "kr/claude-sonnet-4.5";
 const normalizeOpenClawModel = (model) => {
   const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
   return !normalized ? OPENCLAW_RECOMMENDED_MODEL : normalized;
@@ -477,4 +477,3 @@ export default function OpenClawToolCard({
     </Card>
   );
 }
-
