@@ -37,6 +37,43 @@ function completionFromChat(payload) {
   };
 }
 
+function extractTextFromSse(raw) {
+  const lines = String(raw || "").split(/\r?\n/);
+  let text = "";
+  let finishReason = "stop";
+  let id = "";
+  let model = "";
+  let created = Math.floor(Date.now() / 1000);
+  let usage = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const chunk = JSON.parse(payload);
+      if (!id && chunk?.id) id = chunk.id;
+      if (!model && chunk?.model) model = chunk.model;
+      if (typeof chunk?.created === "number") created = chunk.created;
+      const choice = chunk?.choices?.[0];
+      const delta = choice?.delta;
+      if (typeof delta?.content === "string") text += delta.content;
+      if (typeof choice?.finish_reason === "string" && choice.finish_reason) finishReason = choice.finish_reason;
+      if (chunk?.usage && typeof chunk.usage === "object") usage = chunk.usage;
+    } catch {}
+  }
+
+  return {
+    id: id || `cmpl-${Date.now()}`,
+    object: "text_completion",
+    created,
+    model: model || "openclaw",
+    choices: [{ text, index: 0, logprobs: null, finish_reason: finishReason }],
+    usage: usage || { prompt_tokens: 0, completion_tokens: text ? 1 : 0, total_tokens: text ? 1 : 0 },
+  };
+}
+
 async function postHandler(request) {
   const body = await request.json().catch(() => ({}));
   const model = String(body?.model || "openclaw");
@@ -49,7 +86,7 @@ async function postHandler(request) {
     model,
     messages: [{ role: "user", content: prompt }],
     max_tokens: maxTokens,
-    stream: false,
+    stream: true,
     ...(temperature !== undefined ? { temperature } : {}),
     ...(topP !== undefined ? { top_p: topP } : {}),
   };
@@ -80,7 +117,12 @@ async function postHandler(request) {
     });
   }
 
-  return Response.json(completionFromChat(payload), {
+  let completionPayload = completionFromChat(payload);
+  if ((!completionPayload?.choices?.[0]?.text || completionPayload.choices[0].text.length === 0) && /\btext\/event-stream\b/i.test(response.headers.get("content-type") || "")) {
+    completionPayload = extractTextFromSse(text);
+  }
+
+  return Response.json(completionPayload, {
     status: 200,
     headers: { "Access-Control-Allow-Origin": "*" },
   });
