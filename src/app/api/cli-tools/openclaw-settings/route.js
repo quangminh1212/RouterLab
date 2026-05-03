@@ -8,6 +8,7 @@ import { headers, cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { getAuthSecret } from "@/lib/auth/sessionSecret";
+import { setModelAlias } from "@/lib/localDb";
 
 const execAsync = promisify(exec);
 export const dynamic = "force-dynamic";
@@ -63,6 +64,16 @@ const normalizeOpenClawBaseUrl = (baseUrl) => {
   } catch {
     return url.endsWith("/v1") ? url : `${url}/v1`;
   }
+};
+
+const isTelegramBotToken = (token) => /^\d+:[A-Za-z0-9_-]{30,}$/.test(String(token || "").trim());
+
+const getPreferredTelegramBotToken = (...tokens) => {
+  for (const token of tokens) {
+    const normalized = String(token || "").trim();
+    if (isTelegramBotToken(normalized)) return normalized;
+  }
+  return "";
 };
 
 const fileExists = async (targetPath) => {
@@ -304,6 +315,7 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
     models: [{ id: model, name: model.split("/").pop() || model }],
   };
 
+  const restoredTelegramToken = next.channels?.telegram?.botToken;
   const currentTelegramToken = currentSettings?.channels?.telegram?.botToken;
   if (!next.channels) next.channels = {};
   if (!next.channels.telegram) next.channels.telegram = {};
@@ -312,8 +324,13 @@ const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   next.channels.telegram.network.dnsResultOrder = "ipv4first";
   next.channels.telegram.timeoutSeconds = 70;
   next.channels.telegram.pollingStallThresholdMs = 240000;
-  if (currentTelegramToken && next.channels?.telegram) {
-    next.channels.telegram.botToken = currentTelegramToken;
+  const telegramToken = getPreferredTelegramBotToken(
+    process.env.OPENCLAW_TELEGRAM_BOT_TOKEN,
+    restoredTelegramToken,
+    currentTelegramToken
+  );
+  if (telegramToken && next.channels?.telegram) {
+    next.channels.telegram.botToken = telegramToken;
   }
   if (next.channels?.telegram) {
     next.channels.telegram.commands = { ...(next.channels.telegram.commands || {}), native: false };
@@ -351,13 +368,21 @@ const getConfiguredAgentModelDirs = (settings) => {
   return [...dirs];
 };
 
+const syncOpenClawModelAliases = async (normalizedModel) => {
+  const target = `xlabrouter/${normalizeOpenClawModel(normalizedModel)}`;
+  await Promise.allSettled([
+    setModelAlias("openclaw", target),
+    setModelAlias("XLab", target),
+  ]);
+};
+
 // POST - Update xlabrouter settings (merge with existing settings)
 export async function POST(request) {
   const unauthorized = await requireAuth();
   if (unauthorized) return unauthorized;
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
-    const { baseUrl, apiKey, model, agentModels = {} } = await request.json();
+    const { baseUrl, apiKey, model, agentModels = {}, telegramBotToken } = await request.json();
     
     if (!baseUrl || !model) {
       return NextResponse.json({ error: "baseUrl and model are required" }, { status: 400 });
@@ -454,6 +479,12 @@ export async function POST(request) {
     settings.channels.telegram.pollingStallThresholdMs = 240000;
     if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
     settings.channels.telegram.commands.native = false;
+    const nextTelegramToken = getPreferredTelegramBotToken(
+      telegramBotToken,
+      process.env.OPENCLAW_TELEGRAM_BOT_TOKEN,
+      settings.channels.telegram.botToken
+    );
+    if (nextTelegramToken) settings.channels.telegram.botToken = nextTelegramToken;
 
     if (!settings.plugins) settings.plugins = {};
     if (!settings.plugins.entries) settings.plugins.entries = {};
@@ -476,7 +507,11 @@ export async function POST(request) {
       maxSkillsInPrompt: 0,
     });
 
-    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    const serializedSettings = JSON.stringify(settings, null, 2);
+    await fs.writeFile(settingsPath, serializedSettings);
+    await fs.writeFile(`${settingsPath}.bak`, serializedSettings).catch(() => {});
+    await fs.writeFile(`${settingsPath}.last-good`, serializedSettings).catch(() => {});
+    await syncOpenClawModelAliases(normalizedModel);
 
     return NextResponse.json({
       success: true,
@@ -592,7 +627,11 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
     currentSettings = await parseJsonFile(getOpenClawSettingsPath());
   } catch {}
   const settings = normalizeRestoredOpenClawSettings(payload.settings || {}, currentSettings);
-  await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(settings, null, 2));
+  const settingsPath = getOpenClawSettingsPath();
+  const serializedSettings = JSON.stringify(settings, null, 2);
+  await fs.writeFile(settingsPath, serializedSettings);
+  await fs.writeFile(`${settingsPath}.bak`, serializedSettings).catch(() => {});
+  await fs.writeFile(`${settingsPath}.last-good`, serializedSettings).catch(() => {});
   const restoredProvider = settings?.models?.providers?.xlabrouter;
   const restoredModelIds = Array.isArray(restoredProvider?.models)
     ? restoredProvider.models.map((item) => normalizeOpenClawModel(item?.id || item)).filter(Boolean)
@@ -612,4 +651,5 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
   }
 
   await writeAgentModels(getDefaultAgentModelsDir(), modelIdsToWrite, restoredBaseUrl, restoredApiKey);
+  await syncOpenClawModelAliases(modelIdsToWrite[0] || OPENCLAW_RECOMMENDED_MODEL);
 };
