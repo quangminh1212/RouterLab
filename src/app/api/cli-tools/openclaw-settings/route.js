@@ -285,7 +285,7 @@ const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
-const normalizeRestoredOpenClawSettings = (settings) => {
+const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
   const next = settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {};
   if (!next.agents) next.agents = {};
   if (!next.agents.defaults) next.agents.defaults = {};
@@ -302,6 +302,23 @@ const normalizeRestoredOpenClawSettings = (settings) => {
     apiKey: next.models.providers.xlabrouter?.apiKey || "your_api_key",
     api: "openai-completions",
     models: [{ id: model, name: model.split("/").pop() || model }],
+  };
+
+  const currentTelegramToken = currentSettings?.channels?.telegram?.botToken;
+  if (currentTelegramToken && next.channels?.telegram) {
+    next.channels.telegram.botToken = currentTelegramToken;
+  }
+  if (next.channels?.telegram) {
+    next.channels.telegram.commands = { ...(next.channels.telegram.commands || {}), native: false };
+  }
+  next.skills = {
+    ...(next.skills || {}),
+    limits: {
+      ...(next.skills?.limits || {}),
+      maxSkillsLoadedPerSource: 10,
+      maxSkillsPromptChars: 2000,
+      maxSkillsInPrompt: 10,
+    },
   };
   return next;
 };
@@ -521,7 +538,11 @@ export const restoreOpenClawSettingsBackup = async (payload) => {
   }
 
   await fs.mkdir(getOpenClawDir(), { recursive: true });
-  const settings = normalizeRestoredOpenClawSettings(payload.settings || {});
+  let currentSettings = {};
+  try {
+    currentSettings = await parseJsonFile(getOpenClawSettingsPath());
+  } catch {}
+  const settings = normalizeRestoredOpenClawSettings(payload.settings || {}, currentSettings);
   await fs.writeFile(getOpenClawSettingsPath(), JSON.stringify(settings, null, 2));
 
   if (payload.agentModels && typeof payload.agentModels === "object") {
