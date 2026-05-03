@@ -78,6 +78,7 @@ export default function APIPageClient() {
   const [createdKey, setCreatedKey] = useState(null);
   const [editingKey, setEditingKey] = useState(null);
   const [editKeyError, setEditKeyError] = useState("");
+  const [editKeyName, setEditKeyName] = useState("");
   const [editAllowedModels, setEditAllowedModels] = useState("");
   const [editRpmLimit, setEditRpmLimit] = useState("");
   const [editHasCostLimit, setEditHasCostLimit] = useState(false);
@@ -1188,6 +1189,7 @@ export default function APIPageClient() {
   const openEditKeyModal = (key) => {
     const hasCostLimit = Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0;
     setEditingKey(key);
+    setEditKeyName(typeof key.name === "string" ? key.name : "");
     setEditAllowedModels(Array.isArray(key.allowedModels) ? key.allowedModels.join(", ") : "");
     setEditRpmLimit(Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0 ? String(Math.floor(Number(key.rpmLimit))) : "20");
     setEditHasCostLimit(hasCostLimit);
@@ -1197,6 +1199,7 @@ export default function APIPageClient() {
 
   const closeEditKeyModal = () => {
     setEditingKey(null);
+    setEditKeyName("");
     setEditAllowedModels("");
     setEditRpmLimit("");
     setEditHasCostLimit(false);
@@ -1208,6 +1211,12 @@ export default function APIPageClient() {
     if (!editingKey) return;
 
     setEditKeyError("");
+
+    const normalizedName = editKeyName.trim();
+    if (!normalizedName) {
+      setEditKeyError("Key name is required");
+      return;
+    }
 
     let normalizedRpmLimit = null;
     if (editRpmLimit.trim()) {
@@ -1239,6 +1248,7 @@ export default function APIPageClient() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: normalizedName,
           hasCostLimit: editHasCostLimit,
           costLimit: editHasCostLimit ? normalizedCostLimit : null,
           rpmLimit: normalizedRpmLimit,
@@ -1251,11 +1261,11 @@ export default function APIPageClient() {
         setKeys(prev => prev.map(k => (k.id === editingKey.id ? data.key : k)));
         closeEditKeyModal();
       } else {
-        setEditKeyError(data.error || "Failed to update key limits");
+        setEditKeyError(data.error || "Failed to update key");
       }
     } catch (error) {
       console.log("Error updating key limits:", error);
-      setEditKeyError("Failed to update key limits");
+      setEditKeyError("Failed to update key");
     }
   };
 
@@ -1916,13 +1926,26 @@ export default function APIPageClient() {
       </Modal>
 
 
-      {/* Edit Key Limits Modal */}
+      {/* Edit API Key Modal */}
       <Modal
         isOpen={!!editingKey}
-        title="Edit Key Limits"
+        title="Edit API Key"
         onClose={closeEditKeyModal}
       >
         <div className="flex flex-col gap-4">
+          <Input
+            label="Key Name"
+            value={editKeyName}
+            onChange={(e) => {
+              setEditKeyName(e.target.value);
+              if (editKeyError === "Key name is required") {
+                setEditKeyError("");
+              }
+            }}
+            placeholder="Production Key"
+            error={editKeyError === "Key name is required" ? editKeyError : undefined}
+          />
+
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
               <div>
