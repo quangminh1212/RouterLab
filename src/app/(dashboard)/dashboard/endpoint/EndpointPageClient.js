@@ -14,7 +14,8 @@ const TUNNEL_BENEFITS = [
 
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
-const DASHBOARD_FETCH_TIMEOUT_MS = 4000;
+const DASHBOARD_FETCH_TIMEOUT_MS = 3000;
+const DASHBOARD_BACKGROUND_RETRY_DELAY_MS = 1200;
 
 async function fetchWithTimeout(input, init = {}, timeoutMs = DASHBOARD_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -24,6 +25,12 @@ async function fetchWithTimeout(input, init = {}, timeoutMs = DASHBOARD_FETCH_TI
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function retryInBackground(task) {
+  setTimeout(() => {
+    task().catch(() => {});
+  }, DASHBOARD_BACKGROUND_RETRY_DELAY_MS);
 }
 
 function getCloudflareConnectorCleanupMessage(cleanup) {
@@ -227,6 +234,11 @@ export default function APIPageClient() {
     } catch (error) {
       if (error?.name === "AbortError") {
         setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel status check timed out. Showing last known state." });
+        retryInBackground(async () => {
+          const res = await fetch("/api/tunnel/status", { cache: "no-store" });
+          if (!res.ok) return;
+          applyTunnelStatus(await res.json());
+        });
       }
       logDashboardPerf("error", "fetchTunnelStatus:error", {
         traceId,
@@ -342,6 +354,20 @@ export default function APIPageClient() {
     } catch (error) {
       if (error?.name === "AbortError") {
         setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel check timed out. Please retry if needed." });
+        retryInBackground(async () => {
+          const [settingsRes, statusRes] = await Promise.all([
+            fetch("/api/settings", { cache: "no-store" }),
+            fetch("/api/tunnel/status", { cache: "no-store" }),
+          ]);
+          if (settingsRes.ok) {
+            const settings = await settingsRes.json();
+            applySettingsState(settings);
+            setRtkEnabledState(settings.rtkEnabled || false);
+          }
+          if (statusRes.ok) {
+            applyTunnelStatus(await statusRes.json());
+          }
+        });
       }
       logDashboardPerf("error", "loadSettings:error", {
         traceId,
