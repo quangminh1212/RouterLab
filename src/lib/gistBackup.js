@@ -97,7 +97,7 @@ async function findExistingBackupGist(token) {
   const gists = await githubRequest(token, `${GITHUB_GISTS_URL}?per_page=100`, { method: "GET" });
   if (!Array.isArray(gists)) return null;
 
-  return gists.find((gist) => {
+  const candidates = gists.filter((gist) => {
     const hasBackupFile = Boolean(
       gist?.files?.[BACKUP_FILE_NAME]
       || gist?.files?.[LEGACY_PLAIN_FILE_NAME]
@@ -105,7 +105,28 @@ async function findExistingBackupGist(token) {
     );
     const hasBackupDescription = gist?.description === BACKUP_GIST_DESCRIPTION || gist?.description === LEGACY_BACKUP_GIST_DESCRIPTION;
     return hasBackupFile || hasBackupDescription;
-  }) || null;
+  });
+
+  if (candidates.length === 0) return null;
+
+  const score = (gist) => {
+    const hasExactFile = Boolean(gist?.files?.[BACKUP_FILE_NAME]);
+    const hasExactDesc = gist?.description === BACKUP_GIST_DESCRIPTION;
+    const hasLegacyFile = Boolean(gist?.files?.[LEGACY_PLAIN_FILE_NAME] || gist?.files?.[LEGACY_ENCRYPTED_FILE_NAME]);
+    const updatedAt = Number(new Date(gist?.updated_at || 0).getTime()) || 0;
+    return [hasExactFile ? 4 : 0, hasExactDesc ? 2 : 0, hasLegacyFile ? 1 : 0, updatedAt];
+  };
+
+  candidates.sort((a, b) => {
+    const sa = score(a);
+    const sb = score(b);
+    for (let index = 0; index < sa.length; index += 1) {
+      if (sa[index] !== sb[index]) return sb[index] - sa[index];
+    }
+    return 0;
+  });
+
+  return candidates[0] || null;
 }
 
 async function readFullGistFileContent(token, file) {
@@ -235,26 +256,60 @@ export async function backupToGist({ token, gistId = "", payload = null }) {
 }
 
 export async function restoreFromGist({ token, gistId, passphrase, passphrases }) {
-  const existingGist = gistId ? null : await findExistingBackupGist(token);
-  const resolvedGistId = gistId || existingGist?.id || "";
-  if (!resolvedGistId) throw new Error("No XLab Router backup Gist found yet");
+  const candidates = [];
+  if (gistId) {
+    candidates.push({ id: gistId });
+  } else {
+    const preferred = await findExistingBackupGist(token);
+    if (preferred?.id) {
+      candidates.push(preferred);
+    }
 
-  const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${resolvedGistId}`, { method: "GET" });
-  const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_PLAIN_FILE_NAME] || gist.files?.[LEGACY_ENCRYPTED_FILE_NAME];
-  if (!file) throw new Error("XLab Router backup file not found in Gist");
-
-  const content = await readFullGistFileContent(token, file);
-  if (!content) {
-    throw new Error("XLab Router backup file content is empty");
+    const gists = await githubRequest(token, `${GITHUB_GISTS_URL}?per_page=100`, { method: "GET" });
+    if (Array.isArray(gists)) {
+      for (const gist of gists) {
+        if (!gist?.id || candidates.some((item) => item?.id === gist.id)) continue;
+        const hasCandidateFile = Boolean(
+          gist?.files?.[BACKUP_FILE_NAME]
+          || gist?.files?.[LEGACY_PLAIN_FILE_NAME]
+          || gist?.files?.[LEGACY_ENCRYPTED_FILE_NAME]
+        );
+        const hasCandidateDescription = gist?.description === BACKUP_GIST_DESCRIPTION || gist?.description === LEGACY_BACKUP_GIST_DESCRIPTION;
+        if (hasCandidateFile || hasCandidateDescription) {
+          candidates.push(gist);
+        }
+      }
+    }
   }
 
-  const payload = parseGistBackupPayload(content, passphrases || passphrase);
-  const result = await restoreBackupBundle(payload);
+  if (candidates.length === 0) throw new Error("No XLab Router backup Gist found yet");
 
-  return {
-    ...result,
-    gistId: gist.id,
-    htmlUrl: gist.html_url,
-    updatedAt: gist.updated_at,
-  };
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${candidate.id}`, { method: "GET" });
+      const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_PLAIN_FILE_NAME] || gist.files?.[LEGACY_ENCRYPTED_FILE_NAME];
+      if (!file) {
+        throw new Error("XLab Router backup file not found in Gist");
+      }
+
+      const content = await readFullGistFileContent(token, file);
+      if (!content) {
+        throw new Error("XLab Router backup file content is empty");
+      }
+
+      const payload = parseGistBackupPayload(content, passphrases || passphrase);
+      const result = await restoreBackupBundle(payload);
+      return {
+        ...result,
+        gistId: gist.id,
+        htmlUrl: gist.html_url,
+        updatedAt: gist.updated_at,
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("No restorable XLab Router backup Gist found");
 }
