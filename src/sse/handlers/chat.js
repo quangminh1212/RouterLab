@@ -236,9 +236,9 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
 
   const { provider, model } = modelInfo;
 
-  // Log model routing (alias → actual model)
+  // Log model routing (alias -> actual model)
   if (modelStr !== `${provider}/${model}`) {
-    log.info("ROUTING", `${modelStr} → ${provider}/${model}`);
+    log.info("ROUTING", `${modelStr} -> ${provider}/${model}`);
   } else {
     log.info("ROUTING", `Provider: ${provider}, Model: ${model}`);
   }
@@ -317,10 +317,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       }
     });
 
-    let result = await runChatCore(body);
+    const baseBody = options.openClawTunnelCompat ? buildOpenClawCompatBody(body) : body;
+    let result = await runChatCore(baseBody);
 
     if (!result.success && [HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.FORBIDDEN, HTTP_STATUS.BAD_GATEWAY].includes(result.status)) {
-      const mergedBody = mergeSystemIntoFirstUserMessage(body);
+      const mergedBody = mergeSystemIntoFirstUserMessage(baseBody);
       if (mergedBody) {
         log.warn("CHAT", `[${provider}/${model}] retrying with merged system prompt after upstream ${result.status}`);
         result = await runChatCore(mergedBody);
@@ -328,9 +329,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     }
 
     if (!result.success && result.status === HTTP_STATUS.FORBIDDEN && options.openClawTunnelCompat) {
-      const compactBody = buildOpenClawCompatBody(body);
-      log.warn("CHAT", `[${provider}/${model}] retrying with OpenClaw tunnel compatibility payload after upstream 403`);
-      result = await runChatCore(compactBody);
+      const compactMergedBody = mergeSystemIntoFirstUserMessage(buildOpenClawCompatBody(body));
+      if (compactMergedBody) {
+        log.warn("CHAT", `[${provider}/${model}] retrying with merged OpenClaw tunnel compatibility payload after upstream 403`);
+        result = await runChatCore(compactMergedBody);
+      }
     }
 
     if (result.success) return result.response;

@@ -19,6 +19,17 @@ export async function getModelInfo(modelStr) {
   const parsed = parseModel(modelStr);
 
   if (!parsed.isAlias) {
+    if (parsed.providerAlias === "xlabrouter") {
+      const openaiNodes = await getProviderNodes({ type: "openai-compatible" });
+      const preferredNode = openaiNodes.find((node) => node.prefix === "vietapi") || openaiNodes[0];
+      if (preferredNode) {
+        const requestedModel = parsed.model === "openclaw" || parsed.model.startsWith("kr/")
+          ? "XLab"
+          : parsed.model;
+        return { provider: preferredNode.id, model: requestedModel };
+      }
+    }
+
     if (parsed.provider === parsed.providerAlias) {
       // Check OpenAI Compatible nodes
       const openaiNodes = await getProviderNodes({ type: "openai-compatible" });
