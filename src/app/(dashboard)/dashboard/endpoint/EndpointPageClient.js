@@ -14,6 +14,17 @@ const TUNNEL_BENEFITS = [
 
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
+const DASHBOARD_FETCH_TIMEOUT_MS = 4000;
+
+async function fetchWithTimeout(input, init = {}, timeoutMs = DASHBOARD_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function getCloudflareConnectorCleanupMessage(cleanup) {
   if (!cleanup?.skipped) return "";
@@ -194,7 +205,7 @@ export default function APIPageClient() {
 
     try {
       const responseStart = performance.now();
-      const res = await fetch("/api/tunnel/status", {
+      const res = await fetchWithTimeout("/api/tunnel/status", {
         headers: { "x-debug-trace-id": traceId, "x-debug-op": "fetchTunnelStatus" },
       });
       const responseDurationMs = Math.round(performance.now() - responseStart);
@@ -214,6 +225,9 @@ export default function APIPageClient() {
         applyStateDurationMs,
       });
     } catch (error) {
+      if (error?.name === "AbortError") {
+        setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel status check timed out. Showing last known state." });
+      }
       logDashboardPerf("error", "fetchTunnelStatus:error", {
         traceId,
         durationMs: Math.round(performance.now() - start),
@@ -292,11 +306,11 @@ export default function APIPageClient() {
       const settingsStart = performance.now();
       const tunnelStart = performance.now();
       const [settingsRes, statusRes] = await Promise.all([
-        fetch("/api/settings", {
+        fetchWithTimeout("/api/settings", {
           cache: "no-store",
           headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:settings" },
         }),
-        fetch("/api/tunnel/status", {
+        fetchWithTimeout("/api/tunnel/status", {
           cache: "no-store",
           headers: { "x-debug-trace-id": traceId, "x-debug-op": "loadSettings:tunnelStatus" },
         })
@@ -326,6 +340,9 @@ export default function APIPageClient() {
         tunnelStatusOk: statusRes.ok,
       });
     } catch (error) {
+      if (error?.name === "AbortError") {
+        setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel check timed out. Please retry if needed." });
+      }
       logDashboardPerf("error", "loadSettings:error", {
         traceId,
         durationMs: Math.round(performance.now() - start),
