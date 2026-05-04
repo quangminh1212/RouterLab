@@ -212,21 +212,22 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
 
   // If provider is null, this might be a combo name - check and handle
   if (!modelInfo.provider) {
-    const comboModels = await getComboModels(modelStr);
+    const comboName = modelInfo.model || modelStr;
+    const comboModels = await getComboModels(comboName);
     if (comboModels) {
       const chatSettings = await getSettings();
       // Check for combo-specific strategy first, fallback to global
       const comboStrategies = chatSettings.comboStrategies || {};
-      const comboSpecificStrategy = comboStrategies[modelStr]?.fallbackStrategy;
+      const comboSpecificStrategy = comboStrategies[comboName]?.fallbackStrategy;
       const comboStrategy = comboSpecificStrategy || chatSettings.comboStrategy || "fallback";
       
-      log.info("CHAT", `Combo "${modelStr}" with ${comboModels.length} models (strategy: ${comboStrategy})`);
+      log.info("CHAT", `Combo "${comboName}" with ${comboModels.length} models (strategy: ${comboStrategy})`);
       return handleComboChat({
         body,
         models: comboModels,
         handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
         log,
-        comboName: modelStr,
+        comboName,
         comboStrategy
       });
     }
