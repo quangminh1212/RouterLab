@@ -230,7 +230,7 @@ if (command === "--help" || command === "-h") {
   console.log("  xlab_router --version Show version");
   console.log("");
   console.log("Install:");
-  console.log("  npm install -g xlabrouter   Install global command");
+  console.log("  npm i -g xlabrouter         Install global command");
   console.log("  npx xlabrouter              Run without global install");
   console.log("  npm install xlabrouter      Local install; run with npx xlabrouter");
   console.log("");
@@ -854,7 +854,7 @@ function runGlobalUpdate() {
   return new Promise((resolve) => {
     const isWin = process.platform === "win32";
     const npmCommand = "npm";
-    const npmArgs = ["install", "-g", pkg.name];
+    const npmArgs = ["i", "-g", pkg.name];
     let finished = false;
 
     const finish = (ok, message) => {
@@ -1004,7 +1004,7 @@ async function showMenu() {
           ]);
 
           if (answer.autoUpdate) {
-            console.log(`[INFO] Running auto update: npm install -g ${pkg.name}`);
+            console.log(`[INFO] Running auto update: npm i -g ${pkg.name}`);
             const success = await runGlobalUpdate();
             if (success) {
               console.log(`[OK] Update completed. Please restart XLab Router.`);
