@@ -68,7 +68,13 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`);
+    fetch("/api/auth/oauth-qr", { cache: "no-store" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.url) setOauthSetupUrl(data.url);
+        else setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`);
+      })
+      .catch(() => setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`));
   }, []);
 
   useEffect(() => {
@@ -416,6 +422,28 @@ export default function ProfilePage() {
     }
   };
 
+  const rotateOAuthQr = async () => {
+    setPassLoading(true);
+    setPassStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/auth/oauth-qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rotate" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to rotate OAuth QR");
+      }
+      if (data?.url) setOauthSetupUrl(data.url);
+      setPassStatus({ type: "success", message: "OAuth QR đã được đổi. Các backup mới sẽ giữ mã này cho tới lần đổi tiếp theo." });
+    } catch (err) {
+      setPassStatus({ type: "error", message: err.message || "Failed to rotate OAuth QR" });
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
   const disconnectGistBackup = async () => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -674,17 +702,27 @@ export default function ProfilePage() {
                   </p>
                 )}
                 <div className="pt-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    loading={passLoading}
-                    onClick={() => {
-                      if (!oauthSetupUrl) return;
-                      window.location.href = oauthSetupUrl;
-                    }}
-                  >
-                    Login with OAuth
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      loading={passLoading}
+                      onClick={() => {
+                        if (!oauthSetupUrl) return;
+                        window.location.href = oauthSetupUrl;
+                      }}
+                    >
+                      Login with OAuth
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={rotateOAuthQr}
+                      disabled={passLoading}
+                    >
+                      Đổi OAuth
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

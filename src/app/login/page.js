@@ -21,6 +21,10 @@ export default function LoginPage() {
       setError("Google Drive OAuth chưa cấu hình trong XLab_Router và cũng không tìm thấy trong C:\\Dev\\XLab_Web (.env.local/.env).");
       return;
     }
+    if (googleError === "invalid-qr") {
+      setError("Mã QR OAuth này đã hết hiệu lực. Hãy tải lại trang để nhận mã mới nhất.");
+      return;
+    }
     setError(`Google login failed: ${googleError}`);
   }, []);
 
@@ -43,7 +47,9 @@ export default function LoginPage() {
             router.refresh();
             return;
           }
-          setOauthUrl(`${window.location.origin}/api/auth/google/start`);
+          const qrRes = await fetch(`${window.location.origin}/api/auth/oauth-qr`, { cache: "no-store" });
+          const qrData = await qrRes.json().catch(() => ({}));
+          setOauthUrl(qrData?.url || `${window.location.origin}/api/auth/google/start`);
           setAuthReady(true);
         } else {
           setAuthReady(true);

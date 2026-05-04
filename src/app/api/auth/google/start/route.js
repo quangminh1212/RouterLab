@@ -6,11 +6,23 @@ import {
   createPkceVerifier,
   isGoogleAuthConfigured,
 } from "@/lib/googleDriveSync";
+import { getSettings } from "@/lib/localDb";
 
 export async function GET(request) {
   if (!isGoogleAuthConfigured()) {
     const fallback = new URL("/login?google=not-configured", request.url);
     return NextResponse.redirect(fallback);
+  }
+
+  const reqUrl = new URL(request.url);
+  const qrToken = reqUrl.searchParams.get("qr") || "";
+  if (qrToken) {
+    const settings = await getSettings();
+    const currentToken = typeof settings?.oauthQrToken === "string" ? settings.oauthQrToken.trim() : "";
+    if (!currentToken || qrToken !== currentToken) {
+      const fallback = new URL("/login?google=invalid-qr", request.url);
+      return NextResponse.redirect(fallback);
+    }
   }
 
   const state = crypto.randomUUID();
