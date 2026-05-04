@@ -42,7 +42,7 @@ export async function GET(request) {
       settings: {
         requireApiKey: settings.requireApiKey || false,
         requireLogin: settings.requireLogin !== false,
-        hasPassword: !!settings.password,
+        hasPassword: false,
         tunnelDashboardAccess: settings.tunnelDashboardAccess || false,
       },
     }, {

@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, Button, Input } from "@/shared/components";
+import QRCode from "qrcode";
+import { Card, Button } from "@/shared/components";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [hasPassword, setHasPassword] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [oauthUrl, setOauthUrl] = useState("");
-  const [showPasswordFallback, setShowPasswordFallback] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const router = useRouter();
-
-  const qrUrl = oauthUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(oauthUrl)}`
-    : "";
 
   useEffect(() => {
     const googleError = typeof window !== "undefined"
@@ -48,53 +43,27 @@ export default function LoginPage() {
             router.refresh();
             return;
           }
-          setHasPassword(data.hasPassword !== false);
           setOauthUrl(`${window.location.origin}/api/auth/google/start`);
+          setAuthReady(true);
         } else {
-          // Safe fallback on non-OK response to avoid infinite loading state.
-          setHasPassword(true);
+          setAuthReady(true);
         }
       } catch (err) {
         clearTimeout(timeoutId);
-        setHasPassword(true);
+        setAuthReady(true);
       }
     }
     checkAuth();
   }, [router]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  useEffect(() => {
+    if (!oauthUrl) return;
+    QRCode.toDataURL(oauthUrl, { width: 240, margin: 1, errorCorrectionLevel: "M" })
+      .then(setQrDataUrl)
+      .catch(() => setError("Failed to render OAuth QR"));
+  }, [oauthUrl]);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-
-      if (res.ok) {
-        router.push("/dashboard");
-        router.refresh();
-      } else {
-        let data = null;
-        try {
-          data = await res.json();
-        } catch {
-          // ignore parse error and use fallback message
-        }
-        setError(data?.error || "Invalid password");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Show loading state while checking password
-  if (hasPassword === null) {
+  if (!authReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg p-4">
         <div className="text-center">
@@ -120,8 +89,8 @@ export default function LoginPage() {
           <div className="flex flex-col gap-4">
             <div className="text-center">
               <p className="text-sm text-text-muted mb-3">Quét mã QR bằng điện thoại để mở Google OAuth</p>
-              {qrUrl ? (
-                <img src={qrUrl} alt="Google OAuth QR" className="mx-auto rounded-lg border border-border" width={240} height={240} />
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt="Google OAuth QR" className="mx-auto rounded-lg border border-border" width={240} height={240} />
               ) : (
                 <div className="h-[240px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">Preparing OAuth QR...</div>
               )}
@@ -130,23 +99,8 @@ export default function LoginPage() {
                   <Button variant="secondary" onClick={() => window.open(oauthUrl, "_self")}>Open OAuth</Button>
                 </div>
               )}
+              {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
             </div>
-
-            <button type="button" className="text-xs underline text-text-muted" onClick={() => setShowPasswordFallback((v) => !v)}>
-              {showPasswordFallback ? "Hide password fallback" : "Use password fallback"}
-            </button>
-
-            {showPasswordFallback && (
-              <form onSubmit={handleLogin} className="flex flex-col gap-4 pt-2 border-t border-border/50">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
-                  {error && <p className="text-xs text-red-500">{error}</p>}
-                </div>
-                <Button type="submit" variant="primary" className="w-full" loading={loading}>Login</Button>
-                {!hasPassword && <p className="text-xs text-center text-text-muted mt-2">Default password: <code className="bg-sidebar px-1 rounded">123456</code></p>}
-              </form>
-            )}
           </div>
         </Card>
       </div>

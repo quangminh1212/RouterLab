@@ -13,7 +13,7 @@ export async function GET(request) {
     const tunnelDashboardAccess = settings.tunnelDashboardAccess !== false;
     const tunnelUrl = settings.tunnelUrl || "";
     const tailscaleUrl = settings.tailscaleUrl || "";
-    const hasPassword = !!settings.password;
+    const hasPassword = false;
     return NextResponse.json({ requireLogin, tunnelDashboardAccess, tunnelUrl, tailscaleUrl, hasPassword });
   } catch (error) {
     return NextResponse.json({ requireLogin: true }, { status: 200 });

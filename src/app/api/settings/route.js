@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
-import bcrypt from "bcryptjs";
 
 function sanitizeSettings(settings) {
   const { password, ...safeSettings } = settings || {};
@@ -28,7 +27,7 @@ export async function GET() {
       ...safeSettings, 
       enableRequestLogs,
       enableTranslator,
-      hasPassword: !!settings?.password
+      hasPassword: false
     }, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -51,32 +50,8 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
 
-    // If updating password, hash it
-    if (body.newPassword) {
-      const settings = await getSettings();
-      const currentHash = settings.password;
-
-      // Verify current password if it exists
-      if (currentHash) {
-        if (!body.currentPassword) {
-          return NextResponse.json({ error: "Current password required" }, { status: 400 });
-        }
-        const isValid = await bcrypt.compare(body.currentPassword, currentHash);
-        if (!isValid) {
-          return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
-        }
-      } else {
-        // First time setting password, no current password needed
-        // Allow empty currentPassword or default "123456"
-        if (body.currentPassword && body.currentPassword !== "123456") {
-           return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
-        }
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      body.password = await bcrypt.hash(body.newPassword, salt);
-      delete body.newPassword;
-      delete body.currentPassword;
+    if (Object.prototype.hasOwnProperty.call(body, "newPassword") || Object.prototype.hasOwnProperty.call(body, "currentPassword") || Object.prototype.hasOwnProperty.call(body, "password")) {
+      return NextResponse.json({ error: "Password auth has been removed. Use OAuth QR login." }, { status: 410 });
     }
 
     const settings = await updateSettings(body);

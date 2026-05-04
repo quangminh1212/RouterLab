@@ -1650,17 +1650,10 @@ export default function APIPageClient() {
                 action={{ label: "Enable", href: "#require-api-key" }}
               />
             )}
-            {(!requireLogin || !hasPassword) && (
+            {!requireLogin && (
               <SecurityWarning
-                message={
-                  !requireLogin
-                    ? "Require login is disabled - anyone can access your dashboard via tunnel."
-                    : "Dashboard uses the default password - change it in Profile settings."
-                }
-                action={{
-                  label: !requireLogin ? "Enable" : "Change password",
-                  href: "/dashboard/profile",
-                }}
+                message="Require login is disabled - anyone can access your dashboard via tunnel. OAuth QR login is recommended."
+                action={{ label: "Enable", href: "/dashboard/profile" }}
               />
             )}
           </div>

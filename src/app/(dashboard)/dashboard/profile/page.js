@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { Card, Button, Toggle, Input } from "@/shared/components";
 import { Skeleton } from "@/shared/components/Loading";
 import { useTheme } from "@/shared/hooks/useTheme";
@@ -37,6 +38,7 @@ export default function ProfilePage() {
   });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [oauthSetupUrl, setOauthSetupUrl] = useState("");
+  const [oauthSetupQrUrl, setOauthSetupQrUrl] = useState("");
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -68,6 +70,13 @@ export default function ProfilePage() {
     if (typeof window === "undefined") return;
     setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`);
   }, []);
+
+  useEffect(() => {
+    if (!oauthSetupUrl) return;
+    QRCode.toDataURL(oauthSetupUrl, { width: 220, margin: 1, errorCorrectionLevel: "M" })
+      .then(setOauthSetupQrUrl)
+      .catch(() => setPassStatus({ type: "error", message: "Failed to render OAuth QR" }));
+  }, [oauthSetupUrl]);
 
   useEffect(() => {
     fetch(`/api/auth/google/status?t=${Date.now()}`, { cache: "no-store" })
@@ -210,10 +219,6 @@ export default function ProfilePage() {
       setProxyLoading(false);
     }
   };
-
-  const oauthSetupQrUrl = oauthSetupUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(oauthSetupUrl)}`
-    : "";
 
   const updateFallbackStrategy = async (strategy) => {
     try {
