@@ -114,7 +114,8 @@ export default function APIPageClient() {
   const [cavemanLevel, setCavemanLevelState] = useState("full");
 
   // Cloudflare Tunnel state
-  const [tunnelChecking, setTunnelChecking] = useState(true);
+  const [tunnelCheckingPrimary, setTunnelCheckingPrimary] = useState(true);
+  const [tunnelCheckingBackground, setTunnelCheckingBackground] = useState(true);
   const [cloudflareEnabled, setCloudflareEnabled] = useState(false);
   const [cloudflareUrl, setCloudflareUrl] = useState("");
   const [ngrokEnabled, setNgrokEnabled] = useState(false);
@@ -149,6 +150,7 @@ export default function APIPageClient() {
   const [ngrokInstalling, setNgrokInstalling] = useState(false);
   const [ngrokInstallProgress, setNgrokInstallProgress] = useState(0);
   const tsLogRef = useRef(null);
+  const tunnelCheckingPrimaryTimeoutRef = useRef(null);
 
   // API key visibility toggle state
   const [visibleKeys, setVisibleKeys] = useState(new Set());
@@ -159,6 +161,14 @@ export default function APIPageClient() {
   useEffect(() => {
     if (tsLogRef.current) tsLogRef.current.scrollTop = tsLogRef.current.scrollHeight;
   }, [tsInstallLog]);
+
+  useEffect(() => {
+    return () => {
+      if (tunnelCheckingPrimaryTimeoutRef.current) {
+        clearTimeout(tunnelCheckingPrimaryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function applyTunnelStatus(data = {}) {
     const providers = data.providers || {};
@@ -203,10 +213,30 @@ export default function APIPageClient() {
     setCavemanLevelState(settings.cavemanLevel || "full");
   }
 
+  function startTunnelCheckingUi() {
+    if (tunnelCheckingPrimaryTimeoutRef.current) {
+      clearTimeout(tunnelCheckingPrimaryTimeoutRef.current);
+    }
+    setTunnelCheckingPrimary(true);
+    setTunnelCheckingBackground(true);
+    tunnelCheckingPrimaryTimeoutRef.current = setTimeout(() => {
+      setTunnelCheckingPrimary(false);
+    }, 1800);
+  }
+
+  function stopTunnelCheckingUi() {
+    if (tunnelCheckingPrimaryTimeoutRef.current) {
+      clearTimeout(tunnelCheckingPrimaryTimeoutRef.current);
+      tunnelCheckingPrimaryTimeoutRef.current = null;
+    }
+    setTunnelCheckingPrimary(false);
+    setTunnelCheckingBackground(false);
+  }
+
   const fetchTunnelStatus = useCallback(async () => {
     const traceId = createDashboardTraceId("endpoint-tunnel-status");
     const start = performance.now();
-    setTunnelChecking(true);
+    startTunnelCheckingUi();
 
     logDashboardPerf("debug", "fetchTunnelStatus:start", { traceId }, { verbose: true });
 
@@ -235,9 +265,14 @@ export default function APIPageClient() {
       if (error?.name === "AbortError") {
         setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel status check timed out. Showing last known state." });
         retryInBackground(async () => {
-          const res = await fetch("/api/tunnel/status", { cache: "no-store" });
-          if (!res.ok) return;
-          applyTunnelStatus(await res.json());
+          setTunnelCheckingBackground(true);
+          try {
+            const res = await fetch("/api/tunnel/status", { cache: "no-store" });
+            if (!res.ok) return;
+            applyTunnelStatus(await res.json());
+          } finally {
+            setTunnelCheckingBackground(false);
+          }
         });
       }
       logDashboardPerf("error", "fetchTunnelStatus:error", {
@@ -247,7 +282,7 @@ export default function APIPageClient() {
       }, { force: true });
       console.log("Error fetching tunnel status:", error);
     } finally {
-      setTunnelChecking(false);
+      stopTunnelCheckingUi();
     }
   }, []);
 
@@ -310,7 +345,7 @@ export default function APIPageClient() {
   async function loadSettings() {
     const traceId = createDashboardTraceId("endpoint-settings");
     const start = performance.now();
-    setTunnelChecking(true);
+    startTunnelCheckingUi();
 
     logDashboardPerf("debug", "loadSettings:start", { traceId }, { verbose: true });
 
@@ -355,17 +390,22 @@ export default function APIPageClient() {
       if (error?.name === "AbortError") {
         setTunnelStatus((prev) => prev || { type: "warning", message: "Tunnel check timed out. Please retry if needed." });
         retryInBackground(async () => {
-          const [settingsRes, statusRes] = await Promise.all([
-            fetch("/api/settings", { cache: "no-store" }),
-            fetch("/api/tunnel/status", { cache: "no-store" }),
-          ]);
-          if (settingsRes.ok) {
-            const settings = await settingsRes.json();
-            applySettingsState(settings);
-            setRtkEnabledState(settings.rtkEnabled || false);
-          }
-          if (statusRes.ok) {
-            applyTunnelStatus(await statusRes.json());
+          setTunnelCheckingBackground(true);
+          try {
+            const [settingsRes, statusRes] = await Promise.all([
+              fetch("/api/settings", { cache: "no-store" }),
+              fetch("/api/tunnel/status", { cache: "no-store" }),
+            ]);
+            if (settingsRes.ok) {
+              const settings = await settingsRes.json();
+              applySettingsState(settings);
+              setRtkEnabledState(settings.rtkEnabled || false);
+            }
+            if (statusRes.ok) {
+              applyTunnelStatus(await statusRes.json());
+            }
+          } finally {
+            setTunnelCheckingBackground(false);
           }
         });
       }
@@ -376,7 +416,7 @@ export default function APIPageClient() {
       }, { force: true });
       console.log("Error loading settings:", error);
     } finally {
-      setTunnelChecking(false);
+      stopTunnelCheckingUi();
     }
   }
 
@@ -1481,14 +1521,14 @@ export default function APIPageClient() {
                   {tunnelStatus.message}
                 </div>
               </>
-            ) : (tunnelChecking && selectedTunnelProvider === "cloudflare") ? (
+            ) : (tunnelCheckingPrimary && selectedTunnelProvider === "cloudflare") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
                   <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                   Checking...
                 </div>
                 <button
-                  onClick={() => setTunnelChecking(false)}
+                  onClick={stopTunnelCheckingUi}
                   className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
                   title="Stop"
                 >
@@ -1533,6 +1573,11 @@ export default function APIPageClient() {
                 >
                   Enable
                 </Button>
+                {tunnelCheckingBackground && selectedTunnelProvider === "cloudflare" && (
+                  <span className="material-symbols-outlined animate-spin text-[14px] text-text-muted" title="Checking tunnel status in background">
+                    progress_activity
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -1591,14 +1636,14 @@ export default function APIPageClient() {
                 </div>
                 <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("ngrok"); handleEnableTunnel("ngrok"); }}>Enable</Button>
               </>
-            ) : (tunnelChecking && selectedTunnelProvider === "ngrok") ? (
+            ) : (tunnelCheckingPrimary && selectedTunnelProvider === "ngrok") ? (
               <>
                 <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
                   <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                   Checking...
                 </div>
                 <button
-                  onClick={() => setTunnelChecking(false)}
+                  onClick={stopTunnelCheckingUi}
                   className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
                   title="Stop"
                 >
@@ -1606,14 +1651,21 @@ export default function APIPageClient() {
                 </button>
               </>
             ) : (
-              <Button
-                size="sm"
-                icon="cloud_upload"
-                onClick={() => handleEnableSecuredTunnel("ngrok")}
-                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
-              >
-                Enable
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  icon="cloud_upload"
+                  onClick={() => handleEnableSecuredTunnel("ngrok")}
+                  className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
+                >
+                  Enable
+                </Button>
+                {tunnelCheckingBackground && selectedTunnelProvider === "ngrok" && (
+                  <span className="material-symbols-outlined animate-spin text-[14px] text-text-muted" title="Checking tunnel status in background">
+                    progress_activity
+                  </span>
+                )}
+              </>
             )}
           </div>
 
