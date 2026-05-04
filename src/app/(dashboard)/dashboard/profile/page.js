@@ -684,7 +684,7 @@ export default function ProfilePage() {
                   Password setup has been replaced by OAuth QR login. Scan this QR to authenticate.
                 </p>
                 <p className="text-xs text-text-muted">
-                  QR sẽ mở trực tiếp Google OAuth. Nếu đang cấu hình localhost-only hoặc redirect URI chưa khớp domain public, hãy dùng nút Login on this machine.
+                  QR sẽ mở trực tiếp Google OAuth và giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi OAuth.
                 </p>
                 {oauthSetupQrUrl ? (
                   <img
@@ -716,14 +716,6 @@ export default function ProfilePage() {
                       }}
                     >
                       Login with OAuth
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => window.location.href = "/api/auth/google/start"}
-                      disabled={passLoading}
-                    >
-                      Login on this machine
                     </Button>
                     <Button
                       type="button"
