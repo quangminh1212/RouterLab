@@ -104,6 +104,15 @@ function buildOpenClawCompatBody(body) {
   return next;
 }
 
+function normalizeOpenClawTunnelModel(body) {
+  if (!body || typeof body !== "object") return body;
+  if (body.model === "xlabrouter/openclaw" || body.model === "openclaw") return body;
+  if (body.model === "kr/claude-haiku-4.5" || body.model === "xlabrouter/kr/claude-haiku-4.5") {
+    return { ...body, model: "xlabrouter/openclaw" };
+  }
+  return body;
+}
+
 /**
  * Handle chat completion request
  * Supports: OpenAI, Claude, Gemini, OpenAI Responses API formats
@@ -129,6 +138,24 @@ export async function handleChat(request, clientRawRequest = null) {
   }
   cacheClaudeHeaders(clientRawRequest.headers);
 
+  // Log API key (masked)
+  const authHeader = request.headers.get("Authorization");
+  const apiKey = extractApiKey(request);
+  const isInternalDashboardRequest = request.headers.get(INTERNAL_REQUEST_HEADER.name) === INTERNAL_REQUEST_HEADER.value;
+  const openClawTunnelCompat = isOpenClawTunnelRequest(request, apiKey);
+  if (openClawTunnelCompat) {
+    body = normalizeOpenClawTunnelModel(body);
+    if (clientRawRequest?.body && typeof clientRawRequest.body === "object") {
+      clientRawRequest.body = { ...clientRawRequest.body, model: body.model };
+    }
+  }
+  if (authHeader && apiKey) {
+    const masked = log.maskKey(apiKey);
+    log.debug("AUTH", `API Key: ${masked}`);
+  } else {
+    log.debug("AUTH", "No API key provided (local mode)");
+  }
+
   // Log request endpoint and model
   const url = new URL(request.url);
   const modelStr = body.model;
@@ -138,17 +165,6 @@ export async function handleChat(request, clientRawRequest = null) {
   const toolCount = body.tools?.length || 0;
   const effort = body.reasoning_effort || body.reasoning?.effort || null;
   log.request("POST", `${url.pathname} | ${modelStr} | ${msgCount} msgs${toolCount ? ` | ${toolCount} tools` : ""}${effort ? ` | effort=${effort}` : ""}`);
-
-  // Log API key (masked)
-  const authHeader = request.headers.get("Authorization");
-  const apiKey = extractApiKey(request);
-  const isInternalDashboardRequest = request.headers.get(INTERNAL_REQUEST_HEADER.name) === INTERNAL_REQUEST_HEADER.value;
-  if (authHeader && apiKey) {
-    const masked = log.maskKey(apiKey);
-    log.debug("AUTH", `API Key: ${masked}`);
-  } else {
-    log.debug("AUTH", "No API key provided (local mode)");
-  }
 
   // Enforce API key if enabled in settings
   const settings = await getSettings();
@@ -200,7 +216,7 @@ export async function handleChat(request, clientRawRequest = null) {
     clientRawRequest,
     request,
     apiKey,
-    { openClawTunnelCompat: isOpenClawTunnelRequest(request, apiKey) }
+    { openClawTunnelCompat }
   );
 }
 
