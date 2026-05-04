@@ -1597,7 +1597,7 @@ export async function updateSettings(updates) {
 
 export async function exportDb() {
   const db = await getDb();
-  return db.data || cloneDefaultData();
+  return JSON.parse(JSON.stringify(db.data || cloneDefaultData()));
 }
 
 export async function importDb(payload) {

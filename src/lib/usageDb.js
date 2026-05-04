@@ -1088,16 +1088,28 @@ export async function exportUsageDb() {
  */
 export async function importUsageDb(payload) {
   const db = await getUsageDb();
-  db.data = {
-    history: Array.isArray(payload?.history) ? payload.history : [],
-    dailySummary:
-      typeof payload?.dailySummary === "object" && payload.dailySummary !== null
-        ? payload.dailySummary
-        : {},
-    totalRequestsLifetime:
-      typeof payload?.totalRequestsLifetime === "number"
-        ? payload.totalRequestsLifetime
-        : 0,
-  };
+  if (typeof db.read === "function") await db.read();
+
+  const current = ensureUsageDataShape(db.data);
+  const incomingHistory = Array.isArray(payload?.history) ? payload.history : null;
+  const incomingDailySummary =
+    typeof payload?.dailySummary === "object" && payload.dailySummary !== null && !Array.isArray(payload.dailySummary)
+      ? payload.dailySummary
+      : null;
+  const incomingTotalRequestsLifetime =
+    typeof payload?.totalRequestsLifetime === "number"
+      ? payload.totalRequestsLifetime
+      : null;
+
+  db.data = ensureUsageDataShape({
+    history: incomingHistory && incomingHistory.length > 0 ? incomingHistory : current.history,
+    dailySummary: incomingDailySummary || current.dailySummary,
+    totalRequestsLifetime: Math.max(
+      incomingTotalRequestsLifetime ?? 0,
+      current.totalRequestsLifetime || 0,
+      current.history?.length || 0,
+      incomingHistory?.length || 0
+    ),
+  });
   await db.write();
 }
