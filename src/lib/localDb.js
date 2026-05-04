@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS = {
   tunnelEnabled: false,
   tunnelUrl: "",
   tunnelProvider: "cloudflare",
+  tunnelLease: null,
   cloudflareServiceInstalled: false,
   tailscaleEnabled: false,
   tailscaleUrl: "",

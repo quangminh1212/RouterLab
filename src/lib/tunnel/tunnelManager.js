@@ -24,6 +24,9 @@ const IS_WINDOWS = os.platform() === "win32";
 const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
   ? Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS)
   : 30000;
+const TUNNEL_LEASE_TTL_MS = Number(process.env.TUNNEL_LEASE_TTL_MS) > 0
+  ? Number(process.env.TUNNEL_LEASE_TTL_MS)
+  : 45000;
 const CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS = [
   "Cloudflare One Connectors Write",
   "Cloudflare One Connector: cloudflared Write",
@@ -44,6 +47,7 @@ let cachedTailscaleStatus = null;
 let cachedTailscaleStatusAt = 0;
 let lastConnectorCleanupResult = null;
 let isTunnelEnableInProgress = false;
+let tunnelLeaseRenewTimer = null;
 
 
 export function isTunnelManuallyDisabled() {
@@ -61,6 +65,108 @@ function getMachineId() {
     return crypto.createHash("sha256").update(raw + MACHINE_ID_SALT).digest("hex").substring(0, 16);
   } catch (e) {
     return crypto.randomUUID().replace(/-/g, "").substring(0, 16);
+  }
+}
+
+function createTunnelLease(provider) {
+  const now = Date.now();
+  return {
+    ownerMachineId: getMachineId(),
+    ownerHostname: os.hostname(),
+    provider,
+    acquiredAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + TUNNEL_LEASE_TTL_MS).toISOString(),
+  };
+}
+
+function isTunnelLeaseActive(lease, now = Date.now()) {
+  return !!lease?.ownerMachineId && Date.parse(lease.expiresAt || "") > now;
+}
+
+function isTunnelLeaseOwnedByThisMachine(lease) {
+  return !!lease?.ownerMachineId && lease.ownerMachineId === getMachineId();
+}
+
+function getTunnelLeaseConflict(settings) {
+  const lease = settings?.tunnelLease;
+  if (!isTunnelLeaseActive(lease) || isTunnelLeaseOwnedByThisMachine(lease)) return null;
+  return lease;
+}
+
+function formatTunnelLeaseConflict(lease) {
+  const host = lease.ownerHostname || lease.ownerMachineId || "another machine";
+  return `Tunnel API is already active on ${host}`;
+}
+
+async function acquireTunnelLease(provider, settings = null) {
+  const latestSettings = settings || await getSettings();
+  const conflict = getTunnelLeaseConflict(latestSettings);
+  if (conflict) {
+    const error = new Error(formatTunnelLeaseConflict(conflict));
+    error.code = "TUNNEL_LEASE_CONFLICT";
+    error.lease = conflict;
+    throw error;
+  }
+  const lease = createTunnelLease(provider);
+  await updateSettings({ tunnelLease: lease });
+  return lease;
+}
+
+async function releaseTunnelLease() {
+  stopTunnelLeaseRenewal();
+  const settings = await getSettings();
+  if (!settings?.tunnelLease || isTunnelLeaseOwnedByThisMachine(settings.tunnelLease)) {
+    await updateSettings({ tunnelLease: null });
+  }
+}
+
+async function renewTunnelLease(provider) {
+  const settings = await getSettings();
+  const conflict = getTunnelLeaseConflict(settings);
+  if (conflict) return false;
+  await updateSettings({ tunnelLease: createTunnelLease(provider) });
+  return true;
+}
+
+function stopTunnelLeaseRenewal() {
+  if (tunnelLeaseRenewTimer) {
+    clearInterval(tunnelLeaseRenewTimer);
+    tunnelLeaseRenewTimer = null;
+  }
+}
+
+function startTunnelLeaseRenewal(provider) {
+  stopTunnelLeaseRenewal();
+  tunnelLeaseRenewTimer = setInterval(() => {
+    renewTunnelLease(provider).catch((error) => {
+      console.warn(`[Tunnel] Could not renew tunnel lease: ${error.message}`);
+    });
+  }, Math.max(10000, Math.floor(TUNNEL_LEASE_TTL_MS / 3)));
+}
+
+async function ensureOriginReady(localPort, timeoutMs = 20000) {
+  const startedAt = Date.now();
+  const endpoint = `http://127.0.0.1:${localPort}/api/health`;
+  let lastError = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(endpoint, { cache: "no-store" });
+      if (response.ok) return true;
+      lastError = new Error(`Origin health returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
+  throw new Error(`Local origin is not ready on port ${localPort}${lastError?.message ? `: ${lastError.message}` : ""}`);
+}
+
+async function isOriginReady(localPort) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${localPort}/api/health`, { cache: "no-store" });
+    return response.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -395,6 +501,8 @@ async function registerTunnelUrl(shortId, tunnelUrl) {
 export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   isTunnelEnableInProgress = true;
   const settings = await getSettings();
+  await acquireTunnelLease(provider, settings);
+  let tunnelStarted = false;
   const cloudflareConfig = getCloudflareRuntimeConfig(settings);
   createRuntimeBackup(`before-enable-${provider}`);
   manualDisabled = false;
@@ -404,11 +512,15 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const useNamedTunnel = !!cloudflareConfig.tunnelToken;
 
   try {
+  await ensureOriginReady(localPort);
 
   if (provider === "ngrok") {
     if (isNgrokRunning()) {
       const existingNgrok = loadState();
       if (isNgrokUrl(existingNgrok?.tunnelUrl)) {
+        await updateSettings({ tunnelLease: createTunnelLease("ngrok") });
+        startTunnelLeaseRenewal("ngrok");
+        tunnelStarted = true;
         return {
           success: true,
           tunnelUrl: existingNgrok.tunnelUrl,
@@ -430,7 +542,9 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     const { tunnelUrl } = await spawnNgrok(localPort, NGROK_AUTHTOKEN || "", NGROK_DOMAIN || null);
 
     saveState({ shortId, machineId, tunnelUrl });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "ngrok" });
+    await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "ngrok", tunnelLease: createTunnelLease("ngrok") });
+    startTunnelLeaseRenewal("ngrok");
+    tunnelStarted = true;
     return { success: true, tunnelUrl, shortId, publicUrl: tunnelUrl, provider: "ngrok" };
   }
 
@@ -438,6 +552,9 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     const existing = loadState();
     if (settings.tunnelEnabled === true && existing?.tunnelUrl) {
       const publicUrl = getComputedPublicUrl(existing.shortId, settings);
+      await updateSettings({ tunnelLease: createTunnelLease("cloudflare") });
+      startTunnelLeaseRenewal("cloudflare");
+      tunnelStarted = true;
       return { success: true, tunnelUrl: existing.tunnelUrl, shortId: existing.shortId, publicUrl, alreadyRunning: true };
     }
   }
@@ -515,8 +632,11 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
       tunnelEnabled: true,
       tunnelUrl,
       tunnelProvider: "cloudflare",
+      tunnelLease: createTunnelLease("cloudflare"),
       cloudflareServiceInstalled: !!cloudflared?.serviceInstalled,
     });
+    startTunnelLeaseRenewal("cloudflare");
+    tunnelStarted = true;
 
     if (!exitHandlerRegistered) {
       setUnexpectedExitHandler(() => {
@@ -542,14 +662,18 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     if (manualDisabled) return;
     await registerTunnelUrl(shortId, url);
     saveState({ shortId, machineId, tunnelUrl: url });
-    await updateSettings({ tunnelEnabled: true, tunnelUrl: url, tunnelProvider: "cloudflare" });
+    await updateSettings({ tunnelEnabled: true, tunnelUrl: url, tunnelProvider: "cloudflare", tunnelLease: createTunnelLease("cloudflare") });
+    startTunnelLeaseRenewal("cloudflare");
+    tunnelStarted = true;
   };
 
   const { tunnelUrl } = await spawnQuickTunnel(localPort, onUrlUpdate);
 
   await registerTunnelUrl(shortId, tunnelUrl);
   saveState({ shortId, machineId, tunnelUrl });
-  await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare" });
+  await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare", tunnelLease: createTunnelLease("cloudflare") });
+  startTunnelLeaseRenewal("cloudflare");
+  tunnelStarted = true;
 
   if (!exitHandlerRegistered) {
     setUnexpectedExitHandler(() => {
@@ -561,6 +685,9 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const publicUrl = getComputedPublicUrl(shortId, settings);
   return { success: true, tunnelUrl, shortId, publicUrl, provider: "cloudflare" };
   } finally {
+    if (!tunnelStarted) {
+      await releaseTunnelLease().catch(() => {});
+    }
     isTunnelEnableInProgress = false;
   }
 }
@@ -596,6 +723,12 @@ async function scheduleReconnect(attempt) {
 
 export async function disableTunnel() {
   createRuntimeBackup("before-disable-tunnel");
+  const currentSettings = await getSettings();
+  const currentLease = currentSettings?.tunnelLease;
+  if (currentLease && !isTunnelLeaseOwnedByThisMachine(currentLease)) {
+    return { success: false, reason: "lease_conflict", message: formatTunnelLeaseConflict(currentLease), lease: currentLease };
+  }
+
   manualDisabled = true;
   isReconnecting = true;
   isTunnelEnableInProgress = false;
@@ -617,6 +750,7 @@ export async function disableTunnel() {
   }
 
   await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
+  await releaseTunnelLease();
   isReconnecting = false;
   return { success: true };
 }
@@ -712,6 +846,8 @@ export async function switchCloudflareToThisMachine(localPort = 1212) {
 export async function getTunnelStatus(settingsOverride) {
   const state = loadState();
   const settings = settingsOverride || await getSettings();
+  const leaseConflict = getTunnelLeaseConflict(settings);
+  const leaseOwnedByThisMachine = settings?.tunnelLease ? isTunnelLeaseOwnedByThisMachine(settings.tunnelLease) : false;
   const shortId = state?.shortId || "";
   const publicUrl = getComputedPublicUrl(shortId, settings);
 
@@ -754,6 +890,9 @@ export async function getTunnelStatus(settingsOverride) {
       running: false,
       provider: settings.tunnelProvider || "cloudflare",
       serviceInstalled: settings.cloudflareServiceInstalled === true,
+      lease: settings.tunnelLease || null,
+      leaseLocked: !!leaseConflict,
+      leaseOwnedByThisMachine,
     };
   }
 
@@ -772,6 +911,29 @@ export async function getTunnelStatus(settingsOverride) {
   const provider = settings.tunnelProvider || "cloudflare";
   const running = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
   const serviceInstalled = provider === "cloudflare" ? isCloudflaredServiceInstalled() : false;
+  const originReady = !leaseConflict && running ? await isOriginReady(1212) : false;
+
+  if (!leaseConflict && running && !originReady) {
+    console.warn("[Tunnel] Local origin is not healthy; disabling tunnel to avoid Cloudflare 502");
+    if (provider === "ngrok") killNgrok();
+    else killCloudflared();
+    await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
+    await releaseTunnelLease();
+    return {
+      enabled: false,
+      tunnelUrl: "",
+      shortId,
+      publicUrl,
+      running: false,
+      provider,
+      serviceInstalled,
+      originReady: false,
+      error: "Local origin is not healthy; tunnel disabled to avoid Cloudflare 502",
+      lease: null,
+      leaseLocked: false,
+      leaseOwnedByThisMachine: false,
+    };
+  }
 
   let tunnelUrl = state?.tunnelUrl || "";
   if (provider === "ngrok") {
@@ -800,13 +962,17 @@ export async function getTunnelStatus(settingsOverride) {
   }
 
   return {
-    enabled: settings.tunnelEnabled === true && running,
+    enabled: settings.tunnelEnabled === true && running && !leaseConflict,
     tunnelUrl: settings.tunnelUrl || tunnelUrl,
     shortId,
     publicUrl: settings.tunnelUrl || publicUrl,
     running,
     provider,
     serviceInstalled,
+    originReady,
+    lease: settings.tunnelLease || null,
+    leaseLocked: !!leaseConflict,
+    leaseOwnedByThisMachine,
     connectorCleanup: provider === "cloudflare" ? lastConnectorCleanupResult : null,
   };
 }
@@ -867,6 +1033,10 @@ export async function getTunnelProviderStatuses(settingsOverride) {
 // â”€â”€â”€ Tailscale Funnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function enableTailscale(localPort = 1212) {
+  const settings = await getSettings();
+  await acquireTunnelLease("tailscale", settings);
+  let tailscaleStarted = false;
+  try {
   if (IS_WINDOWS && !isTailscaleLoggedIn()) {
     const immediateAuthUrl = getTailscaleAuthUrl() || "https://login.tailscale.com/start";
     triggerTailscaleSystemLogin();
@@ -874,6 +1044,7 @@ export async function enableTailscale(localPort = 1212) {
   }
 
   createRuntimeBackup("before-enable-tailscale");
+  await ensureOriginReady(localPort);
   // Ensure daemon is running (needs sudo for TUN mode)
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
   await startDaemonWithPassword(sudoPass);
@@ -909,15 +1080,29 @@ export async function enableTailscale(localPort = 1212) {
   }
 
   await updateSettings({ tailscaleEnabled: true, tailscaleUrl: result.tunnelUrl });
+  await updateSettings({ tunnelLease: createTunnelLease("tailscale") });
+  startTunnelLeaseRenewal("tailscale");
+  tailscaleStarted = true;
   return { success: true, tunnelUrl: result.tunnelUrl };
+  } finally {
+    if (!tailscaleStarted) {
+      await releaseTunnelLease().catch(() => {});
+    }
+  }
 }
 
 export async function disableTailscale() {
+  const settings = await getSettings();
+  const currentLease = settings?.tunnelLease;
+  if (currentLease && !isTunnelLeaseOwnedByThisMachine(currentLease)) {
+    return { success: false, reason: "lease_conflict", message: formatTunnelLeaseConflict(currentLease), lease: currentLease };
+  }
   createRuntimeBackup("before-disable-tailscale");
   stopFunnel();
   const sudoPass = getCachedPassword() || await loadEncryptedPassword() || "";
   await stopDaemon(sudoPass);
   await updateSettings({ tailscaleEnabled: false, tailscaleUrl: "" });
+  await releaseTunnelLease();
   return { success: true };
 }
 

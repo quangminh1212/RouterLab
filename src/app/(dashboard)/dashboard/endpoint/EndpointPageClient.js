@@ -144,6 +144,7 @@ export default function APIPageClient() {
   function applyTunnelStatus(data = {}) {
     const providers = data.providers || {};
     const tailscaleData = data.tailscale || {};
+    const tunnel = data.tunnel || {};
 
     setCloudflareEnabled(providers.cloudflare?.enabled || false);
     setCloudflareUrl(providers.cloudflare?.tunnelUrl || "");
@@ -152,6 +153,12 @@ export default function APIPageClient() {
     setNgrokEnabled(providers.ngrok?.enabled || false);
     setNgrokUrl(providers.ngrok?.tunnelUrl || "");
     
+    if (tunnel.leaseLocked && tunnel.lease?.ownerHostname) {
+      const owner = tunnel.lease.ownerHostname || tunnel.lease.ownerMachineId || "another machine";
+      setTunnelStatus({ type: "warning", message: `Tunnel API is currently active on ${owner}. Only one machine can expose the public API at a time.` });
+      return;
+    }
+
     if (providers.cloudflare?.enabled) {
       const cleanup = providers.cloudflare?.connectorCleanup;
       const cleanupMessage = getCloudflareConnectorCleanupMessage(cleanup);
@@ -624,6 +631,15 @@ export default function APIPageClient() {
       polling = false;
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409 && data.code === "TUNNEL_LEASE_CONFLICT") {
+          const owner = data.lease?.ownerHostname || data.lease?.ownerMachineId || "another machine";
+          setTunnelStatus({ type: "error", message: `Cannot enable: Tunnel API is already active on ${owner}` });
+          return;
+        }
+        if (res.status === 503 && /Local origin is not ready/i.test(data.error || "")) {
+          setTunnelStatus({ type: "error", message: "Cannot enable: Local origin (port 1212) is not ready. Start the router first." });
+          return;
+        }
         if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(data.error || "")) {
           setNgrokInstalled(false);
         }
@@ -717,13 +733,16 @@ export default function APIPageClient() {
     try {
       const res = await fetch("/api/tunnel/disable", { method: "POST" });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.success !== false) {
         setCloudflareEnabled(false);
         setCloudflareUrl("");
         setNgrokEnabled(false);
         setNgrokUrl("");
         setShowDisableTunnelModal(false);
         setTunnelStatus({ type: "success", message: "Tunnel disabled" });
+      } else if (data.reason === "lease_conflict") {
+        const owner = data.lease?.ownerHostname || data.lease?.ownerMachineId || "another machine";
+        setTunnelStatus({ type: "error", message: `Cannot disable: Tunnel is owned by ${owner}` });
       } else {
         setTunnelStatus({ type: "error", message: data.error || "Failed to disable tunnel" });
       }
@@ -906,6 +925,17 @@ export default function APIPageClient() {
       const res = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
       const data = await res.json();
 
+      if (!res.ok && res.status === 409 && data.code === "TUNNEL_LEASE_CONFLICT") {
+        const owner = data.lease?.ownerHostname || data.lease?.ownerMachineId || "another machine";
+        setTsStatus({ type: "error", message: `Cannot enable: Tunnel API is already active on ${owner}` });
+        return;
+      }
+
+      if (!res.ok && res.status === 503 && /Local origin is not ready/i.test(data.error || "")) {
+        setTsStatus({ type: "error", message: "Cannot enable: Local origin (port 1212) is not ready. Start the router first." });
+        return;
+      }
+
       if (res.ok && data.success) {
         if (tab) tab.close();
         setTsUrl(data.tunnelUrl || "");
@@ -966,6 +996,11 @@ export default function APIPageClient() {
             setTsProgress("Login detected. Starting funnel...");
             const res2 = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
             const data2 = await res2.json();
+            if (!res2.ok && res2.status === 409 && data2.code === "TUNNEL_LEASE_CONFLICT") {
+              const owner = data2.lease?.ownerHostname || data2.lease?.ownerMachineId || "another machine";
+              setTsStatus({ type: "error", message: `Cannot enable: Tunnel API is already active on ${owner}` });
+              return;
+            }
             if (res2.ok && data2.success) {
               if (tab) tab.close();
               setTsUrl(data2.tunnelUrl || "");
@@ -1022,6 +1057,11 @@ export default function APIPageClient() {
       try {
         const res = await fetch("/api/tunnel/tailscale-enable", { method: "POST" });
         const data = await res.json();
+        if (!res.ok && res.status === 409 && data.code === "TUNNEL_LEASE_CONFLICT") {
+          const owner = data.lease?.ownerHostname || data.lease?.ownerMachineId || "another machine";
+          setTsStatus({ type: "error", message: `Cannot enable: Tunnel API is already active on ${owner}` });
+          return;
+        }
         if (res.ok && data.success) {
           if (tab) tab.close();
           setTsUrl(data.tunnelUrl || "");
@@ -1051,11 +1091,14 @@ export default function APIPageClient() {
     try {
       const res = await fetch("/api/tunnel/tailscale-disable", { method: "POST" });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.success !== false) {
         setTsEnabled(false);
         setTsUrl("");
         setShowDisableTsModal(false);
         setTsStatus({ type: "success", message: "Tailscale disabled" });
+      } else if (data.reason === "lease_conflict") {
+        const owner = data.lease?.ownerHostname || data.lease?.ownerMachineId || "another machine";
+        setTsStatus({ type: "error", message: `Cannot disable: Tunnel is owned by ${owner}` });
       } else {
         setTsStatus({ type: "error", message: data.error || "Failed to disable Tailscale" });
       }

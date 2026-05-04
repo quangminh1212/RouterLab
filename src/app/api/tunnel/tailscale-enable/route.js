@@ -7,6 +7,7 @@ export async function POST() {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Tailscale enable error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.code === "TUNNEL_LEASE_CONFLICT" ? 409 : /Local origin is not ready/i.test(error.message || "") ? 503 : 500;
+    return NextResponse.json({ error: error.message, code: error.code, lease: error.lease }, { status });
   }
 }

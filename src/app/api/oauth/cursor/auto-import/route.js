@@ -4,8 +4,10 @@ import { homedir } from "os";
 import { join } from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { createRequire } from "module";
 
 const execFileAsync = promisify(execFile);
+const localRequire = createRequire(import.meta.url);
 
 const ACCESS_TOKEN_KEYS = ["cursorAuth/accessToken", "cursorAuth/token"];
 const MACHINE_ID_KEYS = [
@@ -77,9 +79,8 @@ const normalize = (value) => {
  * This is the preferred strategy — no external CLI required.
  */
 function extractTokensViaBetterSqlite(dbPath) {
-  // Dynamic require so the route stays importable even if native bindings fail
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Database = require("better-sqlite3");
+  const moduleName = ["better", "sqlite3"].join("-");
+  const Database = localRequire(moduleName);
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
 
   const query = (key) => {

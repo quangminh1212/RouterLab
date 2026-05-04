@@ -16,6 +16,7 @@ export async function POST(request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Tunnel enable error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.code === "TUNNEL_LEASE_CONFLICT" ? 409 : /Local origin is not ready/i.test(error.message || "") ? 503 : 500;
+    return NextResponse.json({ error: error.message, code: error.code, lease: error.lease }, { status });
   }
 }
