@@ -853,10 +853,9 @@ function compareVersions(versionA, versionB) {
 function runGlobalUpdate() {
   return new Promise((resolve) => {
     const isWin = process.platform === "win32";
-    const npmCommand = isWin ? "npm.cmd" : "npm";
+    const npmCommand = "npm";
     const npmArgs = ["install", "-g", pkg.name];
     let finished = false;
-    let fallbackActive = false;
 
     const finish = (ok, message) => {
       if (finished) {
@@ -876,15 +875,11 @@ function runGlobalUpdate() {
       stream.on("data", (chunk) => writer(chunk.toString()));
     };
 
-    const attachExitHandlers = (childProcess, options = {}) => {
-      const { ignoreWhileFallback = false } = options;
+    const attachExitHandlers = (childProcess) => {
       pipeOutput(childProcess.stdout, (text) => process.stdout?.write?.(text));
       pipeOutput(childProcess.stderr, (text) => process.stderr?.write?.(text));
 
       childProcess.on("exit", (code) => {
-        if (ignoreWhileFallback && fallbackActive) {
-          return;
-        }
         if (code === 0) {
           finish(true);
           return;
@@ -893,55 +888,23 @@ function runGlobalUpdate() {
       });
     };
 
-    const startFallback = () => {
-      const command = process.env.ComSpec || "cmd.exe";
-      let fallback;
-      try {
-        fallback = spawn(command, ["/d", "/s", "/c", `npm install -g ${pkg.name}`], {
-          stdio: ["ignore", "pipe", "pipe"],
-          shell: false,
-          windowsHide: true,
-        });
-      } catch (fallbackError) {
-        finish(false, `[ERROR] Auto update failed to start: ${fallbackError.message}`);
-        return;
-      }
-
-      fallback.on("error", (fallbackError) => {
-        finish(false, `[ERROR] Auto update failed to start: ${fallbackError.message}`);
-      });
-
-      attachExitHandlers(fallback);
-    };
-
     let primary;
     try {
       primary = spawn(npmCommand, npmArgs, {
         stdio: ["ignore", "pipe", "pipe"],
-        shell: false,
+        shell: isWin,
         windowsHide: true,
       });
     } catch (error) {
-      if (isWin && error?.code === "EINVAL") {
-        fallbackActive = true;
-        startFallback();
-        return;
-      }
       finish(false, `[ERROR] Auto update failed to start: ${error.message}`);
       return;
     }
 
     primary.on("error", (error) => {
-      if (isWin && error?.code === "EINVAL") {
-        fallbackActive = true;
-        startFallback();
-        return;
-      }
-
       finish(false, `[ERROR] Auto update failed to start: ${error.message}`);
     });
 
-    attachExitHandlers(primary, { ignoreWhileFallback: true });
+    attachExitHandlers(primary);
   });
 }
 
