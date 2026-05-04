@@ -167,8 +167,8 @@ while ($attempt -lt $maxRetries -and -not $success) {
 
     Write-Host "[INFO] Starting dev server on port $currentPort using $devEngine" -ForegroundColor Cyan
     try {
-        $engineFlag = if ($devEngine -eq "turbo" -or $devEngine -eq "turbopack") { "--turbo" } else { "--webpack" }
-        $output = npx next dev --port $currentPort $engineFlag 2>&1 | Tee-Object -FilePath $resolvedLogPath
+       $engineFlag = if ($devEngine -eq "turbo" -or $devEngine -eq "turbopack") { "--turbo" } else { "--webpack" }
+        $output = npx next dev --port $currentPort $engineFlag --no-server-fast-refresh 2>&1 | Tee-Object -FilePath $resolvedLogPath
         $output | ForEach-Object { Write-ColoredLine $_.ToString() }
         $exitCode = $LASTEXITCODE
     } finally {
