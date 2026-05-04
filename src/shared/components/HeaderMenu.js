@@ -266,6 +266,27 @@ export default function HeaderMenu({ onLogout }) {
     }
   };
 
+  const handleDownloadLogs = async () => {
+    try {
+      const res = await fetch("/api/debug/logs-download", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to download logs");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const disposition = res.headers.get("content-disposition") || "";
+      const filenameMatch = disposition.match(/filename=([^;]+)/i);
+      anchor.href = url;
+      anchor.download = filenameMatch?.[1]?.replace(/"/g, "") || `logs-bundle-${Date.now()}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      close();
+    } catch {
+      alert("Failed to download logs.");
+    }
+  };
+
   return (
     <>
       <div className="relative" ref={menuRef}>
@@ -314,6 +335,11 @@ export default function HeaderMenu({ onLogout }) {
               icon="download"
               label="Download Setup"
               onClick={() => setDownloadOpen((v) => !v)}
+            />
+            <MenuItem
+              icon="bug_report"
+              label="Download Logs"
+              onClick={handleDownloadLogs}
             />
             {downloadOpen && (
               <div className="px-2 pb-2">

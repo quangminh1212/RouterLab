@@ -41,6 +41,7 @@ const PROTECTED_API_PATHS = [
   "/api/dashboard/bootstrap",
   "/api/providers/client",
   "/api/provider-nodes/validate",
+  "/api/debug",
 ];
 
 async function hasValidToken(request) {
@@ -201,6 +202,7 @@ export const config = {
     "/api/combos/:path*",
     "/api/usage/:path*",
     "/api/dashboard/bootstrap",
+    "/api/debug/:path*",
     "/api/shutdown",
   ],
 };
