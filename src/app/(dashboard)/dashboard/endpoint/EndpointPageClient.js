@@ -596,6 +596,12 @@ export default function APIPageClient() {
   };
 
   const handleEnableTunnel = async (provider = selectedTunnelProvider) => {
+    const oauthCode = window.prompt("Nhập mã OAuth để bật tunnel (hiện tại dùng email Google OAuth đang đăng nhập):", "") || "";
+    if (!oauthCode.trim()) {
+      setTunnelStatus({ type: "error", message: "OAuth code is required to enable tunnel" });
+      return;
+    }
+
     setSelectedTunnelProvider(provider);
     setShowEnableTunnelModal(false);
     setTunnelLoading(true);
@@ -626,7 +632,7 @@ export default function APIPageClient() {
       const res = await fetch("/api/tunnel/enable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify({ provider, oauthCode }),
       });
       polling = false;
       const data = await res.json();
@@ -638,6 +644,14 @@ export default function APIPageClient() {
         }
         if (res.status === 503 && /Local origin is not ready/i.test(data.error || "")) {
           setTunnelStatus({ type: "error", message: "Cannot enable: Local origin (port 1212) is not ready. Start the router first." });
+          return;
+        }
+        if (data.code === "OAUTH_REQUIRED") {
+          setTunnelStatus({ type: "error", message: "Cannot enable: Google OAuth login is required first." });
+          return;
+        }
+        if (data.code === "OAUTH_CODE_REQUIRED" || data.code === "OAUTH_CODE_INVALID") {
+          setTunnelStatus({ type: "error", message: "Cannot enable: OAuth code is missing or invalid." });
           return;
         }
         if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(data.error || "")) {

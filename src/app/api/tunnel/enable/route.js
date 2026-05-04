@@ -1,11 +1,32 @@
 import { NextResponse } from "next/server";
+import { getGoogleSession } from "@/lib/googleDriveSync";
 
 const DNS_WARMUP_DELAY_MS = 8000;
 
+async function hasOAuthSession() {
+  const session = await getGoogleSession();
+  return Boolean(session.accessToken || session.refreshToken);
+}
+
 export async function POST(request) {
   try {
-    const { enableTunnel } = await import("@/lib/tunnel/tunnelManager");
     const body = await request.json().catch(() => ({}));
+    const oauthCode = typeof body.oauthCode === "string" ? body.oauthCode.trim() : "";
+    const session = await getGoogleSession();
+
+    if (!await hasOAuthSession()) {
+      return NextResponse.json({ error: "OAuth verification required before enabling tunnel", code: "OAUTH_REQUIRED" }, { status: 401 });
+    }
+
+    if (!oauthCode) {
+      return NextResponse.json({ error: "OAuth code is required", code: "OAUTH_CODE_REQUIRED" }, { status: 400 });
+    }
+
+    if (!session.email || oauthCode.toLowerCase() !== session.email.toLowerCase()) {
+      return NextResponse.json({ error: "Invalid OAuth code", code: "OAUTH_CODE_INVALID" }, { status: 401 });
+    }
+
+    const { enableTunnel } = await import("@/lib/tunnel/tunnelManager");
     const provider = body.provider || "cloudflare";
     const result = await enableTunnel(1212, provider);
     

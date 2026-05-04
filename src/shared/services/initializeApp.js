@@ -64,24 +64,13 @@ export async function initializeApp() {
 
     const fastStartup = process.env.XLABROUTER_FAST_STARTUP === "1";
 
-    // Auto-reconnect tunnel if it was enabled before restart
-    // Run in background to avoid delaying first-response path.
     const settings = await getSettings();
-    const provider = settings.tunnelProvider || "cloudflare";
-    const tunnelRunning = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
-    if (!fastStartup && settings.tunnelEnabled && !tunnelRunning) {
-      console.log("[InitApp] Tunnel was enabled, auto-reconnecting...");
-      Promise.resolve()
-        .then(() => enableTunnel(1212, provider))
-        .then(() => {
-          console.log("[InitApp] Tunnel reconnected");
-        })
-        .catch((error) => {
-          console.log("[InitApp] Tunnel reconnect failed:", error.message);
-        });
-    } else if (fastStartup) {
-      console.log("[InitApp] Fast startup enabled, skipping tunnel auto-reconnect");
+    if (settings.tunnelEnabled) {
+      console.log("[InitApp] Forcing tunnel off on startup until OAuth-verified manual enable");
+      await updateSettings({ tunnelEnabled: false, tunnelUrl: "", tunnelLease: null });
     }
+    killCloudflared();
+    killNgrok();
 
     // Kill cloudflared on process exit (register once only)
     if (!g.signalHandlersRegistered) {
