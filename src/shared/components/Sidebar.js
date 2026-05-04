@@ -44,7 +44,7 @@ const POWER_UP_ITEMS = [
   { href: "/dashboard/token-saver", label: "Token Saver", icon: "token" },
 ];
 
-export default function Sidebar({ onClose }) {
+export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
   const [mediaOpen, setMediaOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(() =>
@@ -53,29 +53,63 @@ export default function Sidebar({ onClose }) {
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState(null);
+  const [updateInfo, setUpdateInfo] = useState(initialUpdateInfo);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
-  const [enableTranslator, setEnableTranslator] = useState(false);
+  const [enableTranslator, setEnableTranslator] = useState(initialEnableTranslator);
   const { copied, copy } = useCopyToClipboard(2000);
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmd;
   const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(res => res.json())
-      .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
-      .catch(() => {});
+    const timer = setTimeout(() => {
+      fetch("/api/settings")
+        .then(res => res.json())
+        .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
+        .catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Lazy check for new npm version on mount
+  // Defer slow network update checks so first dashboard paint is not delayed.
   useEffect(() => {
-    fetch("/api/version")
-      .then(res => res.json())
-      .then(data => { if (data.hasUpdate) setUpdateInfo(data); })
-      .catch(() => {});
+    const timer = setTimeout(() => {
+      const cacheKey = "__xlabrouterVersionCheck";
+      const cached = globalThis[cacheKey];
+
+      if (cached?.data) {
+        if (cached.data.hasUpdate) setUpdateInfo(cached.data);
+        return;
+      }
+
+      if (cached?.promise) {
+        cached.promise
+          .then((data) => {
+            if (data?.hasUpdate) setUpdateInfo(data);
+          })
+          .catch(() => {});
+        return;
+      }
+
+      const promise = fetch("/api/version")
+        .then(res => res.json())
+        .then((data) => {
+          globalThis[cacheKey] = { data };
+          return data;
+        });
+
+      globalThis[cacheKey] = { promise };
+      promise
+        .then((data) => {
+          if (data?.hasUpdate) setUpdateInfo(data);
+        })
+        .catch(() => {
+          if (globalThis[cacheKey]?.promise === promise) delete globalThis[cacheKey];
+        });
+    }, 5000);
+    return () => clearTimeout(timer);
   }, []);
 
   const isActive = (href) => {
@@ -451,6 +485,8 @@ export default function Sidebar({ onClose }) {
 
 Sidebar.propTypes = {
   onClose: PropTypes.func,
+  initialEnableTranslator: PropTypes.bool,
+  initialUpdateInfo: PropTypes.object,
 };
 
 function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {

@@ -159,13 +159,6 @@ export default function HeaderMenu({ onLogout }) {
   }, [langOpen]);
 
   useEffect(() => {
-    fetch("/api/version")
-      .then(res => res.json())
-      .then(data => { if (data.hasUpdate) setUpdateInfo(data); })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
     if (!isUpdating || !isDisconnected) return;
     let stopped = false;
 
