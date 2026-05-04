@@ -107,6 +107,7 @@ export default function APIPageClient() {
   const [tunnelStatus, setTunnelStatus] = useState(null);
   const [tunnelServiceInstalled, setTunnelServiceInstalled] = useState(false);
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
+  const [oauthCodeInput, setOauthCodeInput] = useState("");
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
   const [cloudflareResetLoading, setCloudflareResetLoading] = useState(false);
   const [cloudflareSwitchLoading, setCloudflareSwitchLoading] = useState(false);
@@ -596,14 +597,15 @@ export default function APIPageClient() {
   };
 
   const handleEnableTunnel = async (provider = selectedTunnelProvider) => {
-    const oauthCode = window.prompt("Nhập mã OAuth để bật tunnel (hiện tại dùng email Google OAuth đang đăng nhập):", "") || "";
-    if (!oauthCode.trim()) {
+    const oauthCode = oauthCodeInput.trim();
+    if (!oauthCode) {
       setTunnelStatus({ type: "error", message: "OAuth code is required to enable tunnel" });
       return;
     }
 
     setSelectedTunnelProvider(provider);
     setShowEnableTunnelModal(false);
+    setOauthCodeInput("");
     setTunnelLoading(true);
     setTunnelStatus(null);
     setTunnelProgress("Creating tunnel...");
@@ -2144,15 +2146,31 @@ export default function APIPageClient() {
       <Modal
         isOpen={showEnableTunnelModal}
         title="Chọn Tunnel"
-        onClose={() => setShowEnableTunnelModal(false)}
+        onClose={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Chọn nhà cung cấp tunnel trước khi bật.</p>
+          <p className="text-sm text-text-muted">Nhập mã OAuth (email Google OAuth đang đăng nhập), sau đó chọn tunnel.</p>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">OAuth Code</label>
+            <Input
+              placeholder="you@gmail.com"
+              value={oauthCodeInput}
+              onChange={(e) => setOauthCodeInput(e.target.value)}
+            />
+            <Button
+              variant="ghost"
+              onClick={() => window.open("/api/auth/google/start", "_self")}
+            >
+              Đăng nhập OAuth
+            </Button>
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}
               fullWidth
+              disabled={!oauthCodeInput.trim()}
               className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
             >
               Cloudflare
@@ -2160,13 +2178,14 @@ export default function APIPageClient() {
             <Button
               onClick={() => { setSelectedTunnelProvider("ngrok"); handleEnableTunnel("ngrok"); }}
               fullWidth
+              disabled={!oauthCodeInput.trim()}
               className="bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white!"
             >
               Ngrok
             </Button>
           </div>
 
-          <Button onClick={() => setShowEnableTunnelModal(false)} variant="ghost" fullWidth>Hủy</Button>
+          <Button onClick={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }} variant="ghost" fullWidth>Hủy</Button>
         </div>
       </Modal>
 
