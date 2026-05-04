@@ -19,7 +19,6 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState({ fallbackStrategy: "fill-first" });
   const [sectionLoading, setSectionLoading] = useState(INITIAL_SECTION_LOADING);
   const [settingsLoadError, setSettingsLoadError] = useState(false);
-  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [passStatus, setPassStatus] = useState({ type: "", message: "" });
   const [passLoading, setPassLoading] = useState(false);
   const [dbLoading, setDbLoading] = useState(false);
@@ -37,6 +36,7 @@ export default function ProfilePage() {
     expectedRedirectUri: "",
   });
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [oauthSetupUrl, setOauthSetupUrl] = useState("");
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -62,6 +62,11 @@ export default function ProfilePage() {
         });
         setSettingsLoadError(true);
       });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`);
   }, []);
 
   useEffect(() => {
@@ -206,29 +211,9 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (passwords.new !== passwords.confirm) {
-      setPassStatus({ type: "error", message: "Passwords do not match" });
-      return;
-    }
-
-    setPassLoading(true);
-    setPassStatus({ type: "", message: "" });
-
-    try {
-      await patchSettings({
-        currentPassword: passwords.current,
-        newPassword: passwords.new,
-      });
-      setPassStatus({ type: "success", message: "Password updated successfully" });
-      setPasswords({ current: "", new: "", confirm: "" });
-    } catch (err) {
-      setPassStatus({ type: "error", message: err.message || "An error occurred" });
-    } finally {
-      setPassLoading(false);
-    }
-  };
+  const oauthSetupQrUrl = oauthSetupUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(oauthSetupUrl)}`
+    : "";
 
   const updateFallbackStrategy = async (strategy) => {
     try {
@@ -644,7 +629,7 @@ export default function ProfilePage() {
               <div>
                 <p className="font-medium">Require login</p>
                 <p className="text-sm text-text-muted">
-                  When ON, dashboard requires password. When OFF, access without login.
+                  When ON, dashboard requires Google OAuth login (QR). Localhost access bypasses login.
                 </p>
               </div>
               <Toggle
@@ -661,61 +646,42 @@ export default function ProfilePage() {
             ) : null}
             {renderFallbackNotice()}
             {showSecurityForm && (
-              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4 pt-4 border-t border-border/50">
-                {settings.hasPassword && (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Current Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Enter current password"
-                      value={passwords.current}
-                      onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                      required
-                    />
+              <div className="flex flex-col gap-4 pt-4 border-t border-border/50">
+                <p className="text-sm text-text-muted">
+                  Password setup has been replaced by OAuth QR login. Scan this QR to authenticate.
+                </p>
+                {oauthSetupQrUrl ? (
+                  <img
+                    src={oauthSetupQrUrl}
+                    alt="OAuth setup QR"
+                    width={220}
+                    height={220}
+                    className="rounded-lg border border-border"
+                  />
+                ) : (
+                  <div className="h-[220px] w-[220px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">
+                    Preparing OAuth QR...
                   </div>
                 )}
-                {/* {!settings.hasPassword && (
-                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-sm text-blue-600 dark:text-blue-400">
-                      Setting password for the first time. Leave current password empty or use default: <code className="bg-blue-500/20 px-1 rounded">123456</code>
-                    </p>
-                  </div>
-                )} */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">New Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Enter new password"
-                      value={passwords.new}
-                      onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Confirm New Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwords.confirm}
-                      onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
                 {passStatus.message && (
                   <p className={`text-sm ${passStatus.type === "error" ? "text-red-500" : "text-green-500"}`}>
                     {passStatus.message}
                   </p>
                 )}
-
                 <div className="pt-2">
-                  <Button type="submit" variant="primary" loading={passLoading}>
-                    {settings.hasPassword ? "Update Password" : "Set Password"}
+                  <Button
+                    type="button"
+                    variant="primary"
+                    loading={passLoading}
+                    onClick={() => {
+                      if (!oauthSetupUrl) return;
+                      window.location.href = oauthSetupUrl;
+                    }}
+                  >
+                    Login with OAuth
                   </Button>
                 </div>
-              </form>
+              </div>
             )}
           </div>
         </Card>

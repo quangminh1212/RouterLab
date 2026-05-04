@@ -54,6 +54,11 @@ async function hasValidToken(request) {
   }
 }
 
+function isLocalhostRequest(request) {
+  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
 // Read settings directly from DB to avoid self-fetch deadlock in proxy
 let cachedSettings = null;
 let cachedSettingsAt = 0;
@@ -88,6 +93,7 @@ async function loadSettings() {
 }
 
 async function isAuthenticated(request) {
+  if (isLocalhostRequest(request)) return true;
   if (await hasValidToken(request)) return true;
   const settings = await loadSettings();
   if (settings && settings.requireLogin === false) return true;
@@ -100,7 +106,7 @@ export async function proxy(request) {
 
   // Always protected - require valid JWT or local CLI token (machineId-based)
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    const decision = await hasValidCliToken(request) || await hasValidToken(request) ? "allow" : "deny";
+    const decision = isLocalhostRequest(request) || await hasValidCliToken(request) || await hasValidToken(request) ? "allow" : "deny";
     if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
       console.log("[DASHBOARD_GUARD] proxy:alwaysProtected", { pathname, decision, durationMs: Date.now() - start });
     }
@@ -142,6 +148,10 @@ export async function proxy(request) {
       }
     } catch {
       // On error, keep defaults (require login, block tunnel)
+    }
+
+    if (isLocalhostRequest(request)) {
+      return NextResponse.next();
     }
 
     // If login not required, allow through

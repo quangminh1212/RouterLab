@@ -76,7 +76,7 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.redirect(new URL(`/dashboard/profile?google=${syncStatus}`, request.url));
+    return NextResponse.redirect(new URL(`/dashboard?google=${syncStatus}`, request.url));
   } catch (err) {
     return NextResponse.redirect(new URL(`/login?google=${encodeURIComponent(err.message || "google-login-failed")}`, request.url));
   }
