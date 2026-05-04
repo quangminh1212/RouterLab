@@ -12,6 +12,7 @@ import {
 } from "@/lib/googleDriveSync";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 import { getAuthSecret } from "@/lib/auth/sessionSecret";
+import { getSettings } from "@/lib/localDb";
 
 const SECRET = getAuthSecret();
 const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
@@ -37,13 +38,19 @@ export async function GET(request) {
   const state = url.searchParams.get("state") || "";
   const error = url.searchParams.get("error") || "";
   const cookieStore = await cookies();
+  const settings = await getSettings();
+  const qrState = typeof settings?.oauthQrToken === "string" ? settings.oauthQrToken.trim() : "";
+  const qrVerifier = typeof settings?.oauthQrCodeVerifier === "string" ? settings.oauthQrCodeVerifier.trim() : "";
   const expectedState = cookieStore.get("google_oauth_state")?.value || "";
-  const codeVerifier = cookieStore.get("google_oauth_code_verifier")?.value || "";
+  const cookieCodeVerifier = cookieStore.get("google_oauth_code_verifier")?.value || "";
+  const codeVerifier = qrVerifier || cookieCodeVerifier;
   cookieStore.delete("google_oauth_state");
   cookieStore.delete("google_oauth_code_verifier");
 
   if (error) return NextResponse.redirect(new URL(`/login?google=${encodeURIComponent(error)}`, request.url));
-  if (!code || !state || !expectedState || state !== expectedState) {
+  const stateMatchesQr = !!qrState && state === qrState;
+  const stateMatchesCookie = !!expectedState && state === expectedState;
+  if (!code || !state || (!stateMatchesQr && !stateMatchesCookie)) {
     return NextResponse.redirect(new URL("/login?google=invalid-state", request.url));
   }
 
