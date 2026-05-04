@@ -36,8 +36,19 @@ const nextConfig = {
         path: false,
       };
     }
-    // Stop watching logs directory to prevent HMR during streaming
-    config.watchOptions = { ...config.watchOptions, ignored: /[\\/](logs|\.next)[\\/]/ };
+    // Ignore generated runtime artifacts so Next dev does not rebuild / full-reload
+    // when local logs or temp files are updated continuously.
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        "**/.next/**",
+        "**/logs/**",
+        "**/*.log",
+        "**/*.tmp",
+        "**/tmp/**",
+        "**/temp/**",
+      ],
+    };
     return config;
   },
   async rewrites() {

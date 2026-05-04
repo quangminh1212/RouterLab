@@ -3,8 +3,8 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-set LOG_FILE=log.txt
-set DEV_RUN_LOG=next-dev.log
+set LOG_FILE=logs\log.txt
+set DEV_RUN_LOG=logs\next-dev.log
 if not defined XLABROUTER_NEXT_DEV_ENGINE set XLABROUTER_NEXT_DEV_ENGINE=webpack
 set CLOUDFLARED_PROCESS_MODE=true
 set CLOUDFLARED_WINDOWS_SERVICE_MODE=false
@@ -52,6 +52,10 @@ if not exist "node_modules" (
         pause
         exit /b 1
     )
+)
+
+if not exist "logs" (
+    mkdir "logs" >nul 2>&1
 )
 
 REM Create .env if needed

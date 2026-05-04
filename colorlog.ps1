@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Continue"
 
-$logPath = "next-dev.log"
+$logDir = "logs"
+$logPath = Join-Path $logDir "next-dev.log"
 $targetPort = 1212
 $maxRetries = 3
 $devEngine = if ($env:XLABROUTER_NEXT_DEV_ENGINE) { $env:XLABROUTER_NEXT_DEV_ENGINE } else { "webpack" }
@@ -131,6 +132,10 @@ function Has-NextCacheCorruption {
     param($Output)
     $text = ($Output | ForEach-Object { $_.ToString() }) -join "`n"
     return $text -match "Turbopack error|Failed to restore task data|Failed to open SST file|app-paths-manifest\.json|ChunkLoadError|ENOENT: no such file or directory"
+}
+
+if (-not (Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 }
 
 $resolvedLogPath = Resolve-LogPath -PreferredPath $logPath
