@@ -682,7 +682,7 @@ export default function APIPageClient() {
   const handleEnableTunnel = async (provider = selectedTunnelProvider) => {
     const oauthCode = oauthCodeInput.trim();
     if (!oauthCode) {
-      setTunnelStatus({ type: "error", message: "OAuth code is required to enable tunnel" });
+      setTunnelStatus({ type: "error", message: "Authenticator code is required to enable tunnel" });
       return;
     }
 
@@ -731,12 +731,8 @@ export default function APIPageClient() {
           setTunnelStatus({ type: "error", message: "Cannot enable: Local origin (port 1212) is not ready. Start the router first." });
           return;
         }
-        if (data.code === "OAUTH_REQUIRED") {
-          setTunnelStatus({ type: "error", message: "Cannot enable: Google OAuth login is required first." });
-          return;
-        }
         if (data.code === "OAUTH_CODE_REQUIRED" || data.code === "OAUTH_CODE_INVALID") {
-          setTunnelStatus({ type: "error", message: "Cannot enable: OAuth code is missing or invalid." });
+          setTunnelStatus({ type: "error", message: "Cannot enable: Authenticator code is missing or invalid." });
           return;
         }
         if (provider === "ngrok" && /binary not found|not found in path|enoent/i.test(data.error || "")) {
@@ -1749,7 +1745,7 @@ export default function APIPageClient() {
             )}
             {!requireLogin && (
               <SecurityWarning
-                message="Require login is disabled - anyone can access your dashboard via tunnel. OAuth QR login is recommended."
+                message="Require login is disabled - anyone can access your dashboard via tunnel. Google Authenticator login is recommended."
                 action={{ label: "Enable", href: "/dashboard/profile" }}
               />
             )}
@@ -2244,21 +2240,15 @@ export default function APIPageClient() {
         onClose={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Nhập mã OAuth (email Google OAuth đang đăng nhập), sau đó chọn tunnel.</p>
+          <p className="text-sm text-text-muted">Nhập mã 6 số từ Google Authenticator, sau đó chọn tunnel.</p>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">OAuth Code</label>
+            <label className="text-sm font-medium">Authenticator Code</label>
             <Input
-              placeholder="you@gmail.com"
+              placeholder="123456"
               value={oauthCodeInput}
-              onChange={(e) => setOauthCodeInput(e.target.value)}
+              onChange={(e) => setOauthCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
             />
-            <Button
-              variant="ghost"
-              onClick={() => window.open("/api/auth/google/start", "_self")}
-            >
-              Đăng nhập OAuth
-            </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

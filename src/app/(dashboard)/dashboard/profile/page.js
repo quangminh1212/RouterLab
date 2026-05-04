@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [oauthSetupUrl, setOauthSetupUrl] = useState("");
   const [oauthSetupQrUrl, setOauthSetupQrUrl] = useState("");
+  const [oauthSetupSecret, setOauthSetupSecret] = useState("");
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -72,16 +73,17 @@ export default function ProfilePage() {
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.url) setOauthSetupUrl(data.url);
-        else setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`);
+        if (data?.secret) setOauthSetupSecret(data.secret);
+        else setOauthSetupUrl("");
       })
-      .catch(() => setOauthSetupUrl(`${window.location.origin}/api/auth/google/start`));
+      .catch(() => setOauthSetupUrl(""));
   }, []);
 
   useEffect(() => {
     if (!oauthSetupUrl) return;
     QRCode.toDataURL(oauthSetupUrl, { width: 220, margin: 1, errorCorrectionLevel: "M" })
       .then(setOauthSetupQrUrl)
-      .catch(() => setPassStatus({ type: "error", message: "Failed to render OAuth QR" }));
+      .catch(() => setPassStatus({ type: "error", message: "Failed to render Authenticator QR" }));
   }, [oauthSetupUrl]);
 
   useEffect(() => {
@@ -433,12 +435,13 @@ export default function ProfilePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || "Failed to rotate OAuth QR");
+        throw new Error(data.error || "Failed to rotate Authenticator QR");
       }
       if (data?.url) setOauthSetupUrl(data.url);
-      setPassStatus({ type: "success", message: "OAuth QR đã được đổi. Các backup mới sẽ giữ mã này cho tới lần đổi tiếp theo." });
+      if (data?.secret) setOauthSetupSecret(data.secret);
+      setPassStatus({ type: "success", message: "Authenticator secret đã được đổi. Backup mới sẽ giữ mã này cho tới lần đổi tiếp theo." });
     } catch (err) {
-      setPassStatus({ type: "error", message: err.message || "Failed to rotate OAuth QR" });
+      setPassStatus({ type: "error", message: err.message || "Failed to rotate Authenticator QR" });
     } finally {
       setPassLoading(false);
     }
@@ -662,7 +665,7 @@ export default function ProfilePage() {
               <div>
                 <p className="font-medium">Require login</p>
                 <p className="text-sm text-text-muted">
-                  When ON, dashboard requires Google OAuth login (QR). Localhost access bypasses login.
+                  When ON, dashboard requires Google Authenticator login (QR). Localhost access bypasses login.
                 </p>
               </div>
               <Toggle
@@ -681,24 +684,29 @@ export default function ProfilePage() {
             {showSecurityForm && (
               <div className="flex flex-col gap-4 pt-4 border-t border-border/50">
                 <p className="text-sm text-text-muted">
-                  Password setup has been replaced by OAuth QR login. Scan this QR to authenticate.
+                  Password setup has been replaced by Google Authenticator login. Scan this QR to authenticate.
                 </p>
                 <p className="text-xs text-text-muted">
-                  QR sẽ mở trực tiếp Google OAuth và giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi OAuth.
+                  QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
                 </p>
                 {oauthSetupQrUrl ? (
                   <img
                     src={oauthSetupQrUrl}
-                    alt="OAuth setup QR"
+                    alt="Authenticator setup QR"
                     width={220}
                     height={220}
                     className="rounded-lg border border-border"
                   />
                 ) : (
                   <div className="h-[220px] w-[220px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">
-                    Preparing OAuth QR...
+                    Preparing Authenticator QR...
                   </div>
                 )}
+                {oauthSetupSecret ? (
+                  <div className="text-xs text-text-muted break-all">
+                    Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span>
+                  </div>
+                ) : null}
                 {passStatus.message && (
                   <p className={`text-sm ${passStatus.type === "error" ? "text-red-500" : "text-green-500"}`}>
                     {passStatus.message}
@@ -708,22 +716,11 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
-                      variant="primary"
-                      loading={passLoading}
-                      onClick={() => {
-                        if (!oauthSetupUrl) return;
-                        window.location.href = oauthSetupUrl;
-                      }}
-                    >
-                      Login with OAuth
-                    </Button>
-                    <Button
-                      type="button"
                       variant="secondary"
                       onClick={rotateOAuthQr}
                       disabled={passLoading}
                     >
-                      Đổi OAuth
+                      Đổi Authenticator
                     </Button>
                   </div>
                 </div>

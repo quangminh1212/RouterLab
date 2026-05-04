@@ -1,16 +1,11 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
-import { getSettings, updateSettings } from "@/lib/localDb";
+import { jwtVerify, SignJWT } from "jose";
 import { getAuthSecret } from "@/lib/auth/sessionSecret";
-import { buildGoogleAuthUrl, createPkceChallenge, createPkceVerifier } from "@/lib/googleDriveSync";
+import { getOrCreateTotpSecret, buildTotpUri, verifyTotpCode } from "@/lib/auth/totp";
 
 const SECRET = getAuthSecret();
-
-function createOAuthQrToken() {
-  return randomBytes(18).toString("base64url");
-}
+const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 
 function isLocalhostRequest(request) {
   const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
@@ -29,28 +24,29 @@ async function hasValidToken() {
   }
 }
 
-async function getOrCreateOAuthQrToken({ rotate = false } = {}) {
-  const settings = await getSettings();
-  const existing = typeof settings.oauthQrToken === "string" ? settings.oauthQrToken.trim() : "";
-  const existingVerifier = typeof settings.oauthQrCodeVerifier === "string" ? settings.oauthQrCodeVerifier.trim() : "";
-  const shouldRotate = rotate || !existing || !existingVerifier;
-  const token = shouldRotate ? createOAuthQrToken() : existing;
-  const codeVerifier = shouldRotate ? createPkceVerifier() : existingVerifier;
-  if (token !== existing) {
-    await updateSettings({ oauthQrToken: token, oauthQrCodeVerifier: codeVerifier, oauthQrRotatedAt: new Date().toISOString() });
-  }
-  return { token, codeVerifier };
+async function setAuthCookie() {
+  const token = await new SignJWT({ authenticated: true, provider: "totp" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(`${AUTH_SESSION_MAX_AGE_SECONDS}s`)
+    .sign(SECRET);
+  const cookieStore = await cookies();
+  cookieStore.set("auth_token", token, {
+    httpOnly: true,
+    secure: process.env.AUTH_COOKIE_SECURE === "true",
+    sameSite: "lax",
+    path: "/",
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
+  });
 }
 
-function buildOAuthQrUrl(request, token, codeVerifier) {
-  const codeChallenge = createPkceChallenge(codeVerifier);
-  return buildGoogleAuthUrl(request, token, codeChallenge);
-}
-
-export async function GET(request) {
+export async function GET() {
   try {
-    const { token, codeVerifier } = await getOrCreateOAuthQrToken();
-    return NextResponse.json({ token, url: buildOAuthQrUrl(request, token, codeVerifier) });
+    const secret = await getOrCreateTotpSecret();
+    return NextResponse.json({
+      mode: "totp",
+      secret,
+      url: buildTotpUri(secret),
+    });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Failed to load OAuth QR" }, { status: 500 });
   }
@@ -58,17 +54,30 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    if (!isLocalhostRequest(request) && !(await hasValidToken())) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    const action = String(body?.action || "").trim();
+
+    if (action === "rotate") {
+      if (!isLocalhostRequest(request) && !(await hasValidToken())) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const secret = await getOrCreateTotpSecret({ rotate: true });
+      return NextResponse.json({ success: true, mode: "totp", secret, url: buildTotpUri(secret) });
     }
 
-    const body = await request.json().catch(() => ({}));
-    if (body?.action !== "rotate") {
-      return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+    if (action === "verify") {
+      const code = typeof body?.code === "string" ? body.code : "";
+      const secret = await getOrCreateTotpSecret();
+      if (!verifyTotpCode(secret, code)) {
+        return NextResponse.json({ error: "Invalid authenticator code" }, { status: 401 });
+      }
+      await setAuthCookie();
+      return NextResponse.json({ success: true });
     }
-    const { token, codeVerifier } = await getOrCreateOAuthQrToken({ rotate: true });
-    return NextResponse.json({ success: true, token, url: buildOAuthQrUrl(request, token, codeVerifier) });
+
+    return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: error.message || "Failed to rotate OAuth QR" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Authenticator request failed" }, { status: 500 });
   }
 }
+
