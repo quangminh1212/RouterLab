@@ -32,7 +32,9 @@ async function validateGitHubToken(token) {
   });
 
   if (!res.ok) {
-    throw new Error("GitHub token is invalid or missing required access");
+    const err = new Error("GitHub token is invalid or missing required access");
+    err.status = res.status;
+    throw err;
   }
 
   const data = await res.json().catch(() => ({}));
@@ -70,8 +72,18 @@ async function ensureCliAuth(current) {
         token: storedToken,
         githubLogin: user.login || current.githubLogin || "",
       };
-    } catch {
-      // Fallback to GitHub CLI token when stored token becomes invalid.
+    } catch (error) {
+      const status = Number(error?.status || 0);
+      const isAuthError = status === 401 || status === 403;
+
+      // Chỉ fallback khi token thực sự invalid/forbidden.
+      // Lỗi mạng/tạm thời thì giữ token đã lưu để tránh bắt đăng nhập lại mỗi lần backup.
+      if (!isAuthError) {
+        return {
+          token: storedToken,
+          githubLogin: String(current?.githubLogin || ""),
+        };
+      }
     }
   }
 
