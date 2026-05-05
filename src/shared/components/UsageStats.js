@@ -189,6 +189,13 @@ const PERIODS = [
   { value: "all", label: "All Time" },
 ];
 
+const SOURCE_LABELS = {
+  history: "History",
+  dailySummary: "Summary",
+  "history-fallback": "History fallback",
+  empty: "Empty",
+};
+
 export default function UsageStats() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -203,6 +210,7 @@ export default function UsageStats() {
   const [viewMode, setViewMode] = useState("costs");
   const [providers, setProviders] = useState([]);
   const [period, setPeriod] = useState("7d");
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
@@ -236,14 +244,17 @@ export default function UsageStats() {
     else setFetching(true);
 
     const start = Date.now();
-    fetch(`/api/usage/stats?period=${period}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
+    Promise.all([
+      fetch(`/api/usage/stats?period=${period}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/usage/debug?period=${period}`).then((r) => r.ok ? r.json() : null),
+    ])
+      .then(([data, debug]) => {
         const durationMs = Date.now() - start;
         if (durationMs > 1000 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
-          console.log("[DASHBOARD_CLIENT] usageStats:fetchStats", { period, durationMs });
+          console.log("[DASHBOARD_CLIENT] usageStats:fetchStats", { period, durationMs, source: debug?.source });
         }
         if (data) setStats((prev) => ({ ...prev, ...data }));
+        if (debug) setDebugInfo(debug);
       })
       .catch(() => {})
       .finally(() => {
@@ -438,6 +449,14 @@ export default function UsageStats() {
     <div className="flex flex-col gap-6">
       {/* Period selector */}
       <div className="flex items-center gap-2 self-end">
+        {debugInfo && (
+          <span
+            className={`px-2 py-1 rounded-md border text-xs font-medium ${debugInfo.source === "history-fallback" ? "border-warning/40 text-warning bg-warning/10" : "border-border text-text-muted bg-bg-subtle"}`}
+            title={`history=${debugInfo.relevantHistoryCount}/${debugInfo.historyCount}, summaryDays=${debugInfo.relevantSummaryDays}/${debugInfo.dailySummaryDays}`}
+          >
+            Source: {SOURCE_LABELS[debugInfo.source] || debugInfo.source}
+          </span>
+        )}
         <div className="flex items-center gap-1 bg-bg-subtle rounded-lg p-1 border border-border">
           {PERIODS.map((p) => (
             <button

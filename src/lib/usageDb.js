@@ -1136,6 +1136,50 @@ export async function getChartData(period = "7d") {
   return buckets;
 }
 
+export async function getUsageDebugInfo(period = "7d") {
+  const db = await getUsageDb();
+  if (typeof db.read === "function") {
+    await db.read();
+  }
+
+  const history = Array.isArray(db.data.history) ? db.data.history : [];
+  const dailySummary = db.data.dailySummary && typeof db.data.dailySummary === "object" ? db.data.dailySummary : {};
+  const summaryDays = Object.keys(dailySummary).length;
+  const useDailySummary = period !== "24h";
+  const fallbackCutoff = period === "all" ? 0 : (Date.now() - (PERIOD_MS[period] || 0));
+  const relevantHistoryCount = history.filter((entry) => {
+    if (!fallbackCutoff) return true;
+    const ts = new Date(entry?.timestamp).getTime();
+    return Number.isFinite(ts) && ts >= fallbackCutoff;
+  }).length;
+
+  let relevantSummaryDays = summaryDays;
+  if (useDailySummary && period !== "all") {
+    const periodDays = { "7d": 7, "30d": 30, "60d": 60 };
+    const maxDays = periodDays[period] || null;
+    const today = new Date();
+    relevantSummaryDays = Object.keys(dailySummary).filter((dateKey) => {
+      if (!maxDays) return true;
+      const parts = dateKey.split("-");
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
+      return diffDays < maxDays;
+    }).length;
+  }
+
+  return {
+    period,
+    useDailySummary,
+    source: useDailySummary ? (relevantSummaryDays > 0 ? "dailySummary" : (relevantHistoryCount > 0 ? "history-fallback" : "empty")) : "history",
+    hasHistory: history.length > 0,
+    historyCount: history.length,
+    relevantHistoryCount,
+    dailySummaryDays: summaryDays,
+    relevantSummaryDays,
+    totalRequestsLifetime: typeof db.data.totalRequestsLifetime === "number" ? db.data.totalRequestsLifetime : history.length,
+  };
+}
+
 // Re-export request details functions from new SQLite-based module
 export { saveRequestDetail, getRequestDetails, getRequestDetailById } from "./requestDetailsDb.js";
 
