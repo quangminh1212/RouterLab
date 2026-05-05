@@ -335,11 +335,33 @@ export default function APIPageClient() {
   }, [fetchTunnelStatus]);
 
   useEffect(() => {
+    let isDisposed = false;
+    let idleId = null;
+    let fallbackTimeoutId = null;
+
     const timer = setTimeout(() => {
       void fetchBootstrap();
-      void checkNgrokInstalled();
+
+      const scheduleNgrokCheck = () => {
+        if (isDisposed) return;
+        void checkNgrokInstalled();
+      };
+
+      if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(scheduleNgrokCheck, { timeout: 3000 });
+      } else {
+        fallbackTimeoutId = setTimeout(scheduleNgrokCheck, 1200);
+      }
     }, 0);
-    return () => clearTimeout(timer);
+
+    return () => {
+      isDisposed = true;
+      clearTimeout(timer);
+      if (fallbackTimeoutId !== null) clearTimeout(fallbackTimeoutId);
+      if (typeof window !== "undefined" && typeof window.cancelIdleCallback === "function" && idleId !== null) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
   }, [fetchBootstrap]);
 
   async function loadSettings() {
