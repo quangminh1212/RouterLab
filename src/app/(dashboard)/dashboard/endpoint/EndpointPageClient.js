@@ -28,6 +28,10 @@ const DeferredModelSelectModal = dynamic(() => import("@/shared/components/Model
   ssr: false,
 });
 
+const DeferredTailscaleModals = dynamic(() => import("./components/EndpointTailscaleModals"), {
+  ssr: false,
+});
+
 const TUNNEL_BENEFITS = [
   { icon: "public", title: "Access Anywhere", desc: "Use your API from any network" },
   { icon: "group", title: "Share Endpoint", desc: "Share URL with team members" },
@@ -2234,105 +2238,25 @@ export default function APIPageClient() {
         </div>
       </Modal>
 
-      {/* Tailscale Modal */}
-      <Modal
-        isOpen={showTsModal}
-        title="Tailscale Funnel"
-        onClose={() => { if (!tsInstalling) { setShowTsModal(false); setTsSudoPassword(""); setTsStatus(null); } }}
-      >
-        <div className="flex flex-col gap-4">
-          {/* Checking state */}
-          {tsInstalled === null && (
-            <p className="text-sm text-text-muted flex items-center gap-2">
-              <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-              Checking...
-            </p>
-          )}
-
-          {/* Not installed */}
-          {tsInstalled === false && !tsInstalling && (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-muted">Tailscale chưa được cài. Cài đặt để có link tunnel cố định (miễn phí, truy cập public).</p>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleInstallTailscale}
-                  fullWidth
-                  className="bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white!"
-                >
-                  Install Tailscale
-                </Button>
-                <Button onClick={() => setShowTsModal(false)} variant="ghost" fullWidth>Cancel</Button>
-              </div>
-            </div>
-          )}
-
-          {/* Installing with progress log */}
-          {tsInstalling && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm text-text-muted">
-                <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                Installing Tailscale...
-              </div>
-              {tsInstallLog.length > 0 && (
-                <div ref={tsLogRef} className="bg-black/5 dark:bg-white/5 rounded p-2 max-h-40 overflow-y-auto font-mono text-xs text-text-muted">
-                  {tsInstallLog.map((line, i) => (
-                    <div key={i}>{line}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Installed: show Connect button */}
-          {tsInstalled === true && !tsInstalling && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                Tailscale installed
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    const tab = window.open("", "tailscale_auth", "width=600,height=700");
-                    if (tab) {
-                      try {
-                        tab.document.write("<p style='font-family:sans-serif;text-align:center;margin-top:40px'>Connecting to Tailscale...</p>");
-                      } catch {
-                        // Ignore cross-origin access errors.
-                      }
-                    }
-                    handleConnectTailscale(tab);
-                  }}
-                  fullWidth
-                  className="bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white!"
-                >
-                  Connect
-                </Button>
-                <Button onClick={() => setShowTsModal(false)} variant="ghost" fullWidth>Cancel</Button>
-              </div>
-            </div>
-          )}
-
-          {tsStatus && <StatusAlert status={tsStatus} />}
-        </div>
-      </Modal>
-
-      {/* Disable Tailscale Modal */}
-      <Modal
-        isOpen={showDisableTsModal}
-        title="Disable Tailscale"
-        onClose={() => !tsLoading && setShowDisableTsModal(false)}
-      >
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Tailscale Funnel will be stopped. Remote access via Tailscale URL will stop working.</p>
-          <div className="flex gap-2">
-            <Button onClick={handleDisableTailscale} fullWidth disabled={tsLoading} className="bg-red-500! hover:bg-red-600! text-white!">
-              {tsLoading ? "Disabling..." : "Disable"}
-            </Button>
-            <Button onClick={() => setShowDisableTsModal(false)} variant="ghost" fullWidth disabled={tsLoading}>Cancel</Button>
-          </div>
-        </div>
-      </Modal>
+      {(showTsModal || showDisableTsModal) ? (
+        <DeferredTailscaleModals
+          showTsModal={showTsModal}
+          tsInstalling={tsInstalling}
+          setShowTsModal={setShowTsModal}
+          setTsSudoPassword={setTsSudoPassword}
+          setTsStatus={setTsStatus}
+          tsInstalled={tsInstalled}
+          handleInstallTailscale={handleInstallTailscale}
+          tsInstallLog={tsInstallLog}
+          tsLogRef={tsLogRef}
+          handleConnectTailscale={handleConnectTailscale}
+          tsStatus={tsStatus}
+          showDisableTsModal={showDisableTsModal}
+          tsLoading={tsLoading}
+          setShowDisableTsModal={setShowDisableTsModal}
+          handleDisableTailscale={handleDisableTailscale}
+        />
+      ) : null}
     </div>
   );
 }
