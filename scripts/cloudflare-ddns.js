@@ -1,6 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 
+function appendLog(message) {
+  const logDir = path.join(process.cwd(), "logs");
+  const logPath = path.join(logDir, "cloudflare-ddns.log");
+  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+  fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${message}\n`, "utf8");
+}
+
 function loadEnv() {
   const envPath = path.join(process.cwd(), ".env");
   if (!fs.existsSync(envPath)) return;
@@ -85,6 +92,14 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error.message);
+  const message = String(error?.message || error);
+  appendLog(`ERROR: ${message}`);
+
+  if (/authentication error|unauthorized|invalid request headers/i.test(message)) {
+    appendLog("HINT: Refresh CLOUDFLARE_API_TOKEN in .env and re-run.");
+    process.exit(0);
+  }
+
+  console.error(message);
   process.exit(1);
 });
