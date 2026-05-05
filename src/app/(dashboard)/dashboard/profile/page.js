@@ -769,7 +769,7 @@ export default function ProfilePage() {
                       </form>
                     ) : null}
 
-                    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+                    <div className="flex flex-col gap-2">
                       <Button
                         type="button"
                         variant="secondary"
