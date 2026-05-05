@@ -693,9 +693,9 @@ export default function ProfilePage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                icon="more_horiz"
+                icon="help"
                 onClick={() => setShowSecurityHelp((value) => !value)}
-                aria-label="Security help"
+                aria-label="Security information"
                 className="h-9 w-9 justify-center p-0"
               />
               {showSecurityHelp ? (
