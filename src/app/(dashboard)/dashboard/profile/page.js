@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [oauthSetupSecret, setOauthSetupSecret] = useState("");
   const [authenticatorCode, setAuthenticatorCode] = useState("");
   const [showAuthenticatorCheck, setShowAuthenticatorCheck] = useState(false);
+  const [showSecurityHelp, setShowSecurityHelp] = useState(false);
   const [authenticatorCheckLoading, setAuthenticatorCheckLoading] = useState(false);
   const [backupCodeCount, setBackupCodeCount] = useState(0);
   const [backupCodes, setBackupCodes] = useState([]);
@@ -680,19 +681,50 @@ export default function ProfilePage() {
         </Card>
         {/* Security */}
         <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-[20px]">shield</span>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <span className="material-symbols-outlined text-[20px]">shield</span>
+              </div>
+              <h3 className="text-lg font-semibold">Security</h3>
             </div>
-            <h3 className="text-lg font-semibold">Security</h3>
+            <div className="relative shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon="more_horiz"
+                onClick={() => setShowSecurityHelp((value) => !value)}
+                aria-label="Security help"
+                className="h-9 w-9 justify-center p-0"
+              />
+              {showSecurityHelp ? (
+                <div className="absolute right-0 top-11 z-10 w-[320px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="flex flex-col gap-3 text-sm text-text-muted">
+                    <p>
+                      When ON, dashboard requires Google Authenticator login (QR). Localhost access bypasses login.
+                    </p>
+                    <p>
+                      Password setup has been replaced by Google Authenticator login. Scan this QR to authenticate.
+                    </p>
+                    <p className="text-xs">
+                      QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
+                    </p>
+                    <p className="text-xs">
+                      Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động.
+                    </p>
+                    <p className="text-xs">
+                      Backup codes chỉ hiển thị một lần sau khi tạo, cần lưu lại ngay.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Require login</p>
-                <p className="text-sm text-text-muted">
-                  When ON, dashboard requires Google Authenticator login (QR). Localhost access bypasses login.
-                </p>
               </div>
               <Toggle
                 checked={requireLoginEnabled}
@@ -709,12 +741,6 @@ export default function ProfilePage() {
             {renderFallbackNotice()}
             {showSecurityForm && (
               <div className="flex flex-col gap-4 pt-4 border-t border-border/50">
-                <p className="text-sm text-text-muted">
-                  Password setup has been replaced by Google Authenticator login. Scan this QR to authenticate.
-                </p>
-                <p className="text-xs text-text-muted">
-                  QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
-                </p>
                 <div className="flex items-start gap-6 overflow-x-auto pb-2">
                   <div className="shrink-0">
                     {oauthSetupQrUrl ? (
@@ -753,7 +779,6 @@ export default function ProfilePage() {
                             onChange={(event) => setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                             disabled={passLoading || authenticatorCheckLoading}
                             className="flex-1"
-                            hint="Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động."
                           />
                           <Button
                             type="submit"
@@ -805,7 +830,7 @@ export default function ProfilePage() {
                 </div>
                 {backupCodes.length > 0 ? (
                   <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-orange-500 mb-2">Shown only once. Save immediately.</p>
+                    <p className="text-xs text-orange-500 mb-2">Backup codes ready.</p>
                     <pre className="text-xs font-mono whitespace-pre-wrap break-all">{backupCodes.join("\n")}</pre>
                     <div className="mt-2">
                       <Button
