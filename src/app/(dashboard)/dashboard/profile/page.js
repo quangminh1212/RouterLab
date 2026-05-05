@@ -748,9 +748,9 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex min-w-[340px] flex-1 flex-col justify-center gap-4 py-1">
+                  <div className="flex min-w-[340px] flex-1 flex-col items-center justify-center gap-4 py-1">
                     {oauthSetupSecret ? (
-                      <div className="flex min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap text-xs text-text-muted">
+                      <div className="flex min-w-0 items-center justify-center gap-3 overflow-x-auto whitespace-nowrap text-xs text-text-muted">
                         <span className="shrink-0">Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
                         <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading} className="shrink-0">Copy Secret</Button>
                       </div>
@@ -784,7 +784,7 @@ export default function ProfilePage() {
                       </form>
                     ) : null}
 
-                    <div className="flex flex-col items-start gap-3 pt-1">
+                    <div className="flex w-full flex-col items-center gap-3 pt-1">
                       <Button
                         type="button"
                         variant="secondary"
