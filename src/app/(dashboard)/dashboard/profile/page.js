@@ -40,6 +40,9 @@ export default function ProfilePage() {
   const [authenticatorCode, setAuthenticatorCode] = useState("");
   const [showAuthenticatorCheck, setShowAuthenticatorCheck] = useState(false);
   const [showSecurityHelp, setShowSecurityHelp] = useState(false);
+  const [showRoutingHelp, setShowRoutingHelp] = useState(false);
+  const [showNetworkHelp, setShowNetworkHelp] = useState(false);
+  const [showObservabilityHelp, setShowObservabilityHelp] = useState(false);
   const [authenticatorCheckLoading, setAuthenticatorCheckLoading] = useState(false);
   const [backupCodeCount, setBackupCodeCount] = useState(0);
   const [backupCodes, setBackupCodes] = useState([]);
@@ -847,11 +850,34 @@ export default function ProfilePage() {
 
         {/* Routing Preferences */}
         <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-              <span className="material-symbols-outlined text-[20px]">route</span>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                <span className="material-symbols-outlined text-[20px]">route</span>
+              </div>
+              <h3 className="text-lg font-semibold">Routing Strategy</h3>
             </div>
-            <h3 className="text-lg font-semibold">Routing Strategy</h3>
+            <div className="relative shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon="help"
+                onClick={() => setShowRoutingHelp((value) => !value)}
+                aria-label="Routing information"
+                className="h-9 w-9 justify-center p-0"
+              />
+              {showRoutingHelp ? (
+                <div className="absolute right-0 top-11 z-10 w-[260px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="flex flex-col gap-2 text-xs text-text-muted">
+                    <p>Round Robin: chia tải đều qua nhiều tài khoản.</p>
+                    <p>Sticky Limit: số lượt gọi trước khi đổi tài khoản.</p>
+                    <p>Combo Round Robin: luân phiên ngay trong combo.</p>
+                    <p>Fill First: ưu tiên dùng tài khoản theo thứ tự.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -921,11 +947,34 @@ export default function ProfilePage() {
         </Card>
         {/* Network */}
         <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
-              <span className="material-symbols-outlined text-[20px]">wifi</span>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                <span className="material-symbols-outlined text-[20px]">wifi</span>
+              </div>
+              <h3 className="text-lg font-semibold">Network</h3>
             </div>
-            <h3 className="text-lg font-semibold">Network</h3>
+            <div className="relative shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon="help"
+                onClick={() => setShowNetworkHelp((value) => !value)}
+                aria-label="Network information"
+                className="h-9 w-9 justify-center p-0"
+              />
+              {showNetworkHelp ? (
+                <div className="absolute right-0 top-11 z-10 w-[260px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="flex flex-col gap-2 text-xs text-text-muted">
+                    <p>Bật Outbound Proxy để route traffic đi ra.</p>
+                    <p>Proxy URL: địa chỉ proxy chính.</p>
+                    <p>No Proxy: danh sách host bỏ qua proxy.</p>
+                    <p>Test Proxy để kiểm tra kết nối trước khi Apply.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -993,11 +1042,33 @@ export default function ProfilePage() {
         </Card>
         {/* Observability Settings */}
         <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
-              <span className="material-symbols-outlined text-[20px]">monitoring</span>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
+                <span className="material-symbols-outlined text-[20px]">monitoring</span>
+              </div>
+              <h3 className="text-lg font-semibold">Observability</h3>
             </div>
-            <h3 className="text-lg font-semibold">Observability</h3>
+            <div className="relative shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon="help"
+                onClick={() => setShowObservabilityHelp((value) => !value)}
+                aria-label="Observability information"
+                className="h-9 w-9 justify-center p-0"
+              />
+              {showObservabilityHelp ? (
+                <div className="absolute right-0 top-11 z-10 w-[260px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="flex flex-col gap-2 text-xs text-text-muted">
+                    <p>Bật Observability để lưu chi tiết request.</p>
+                    <p>Dữ liệu dùng cho log view và debug sự cố.</p>
+                    <p>Nên bật khi cần kiểm tra hành vi hệ thống.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
