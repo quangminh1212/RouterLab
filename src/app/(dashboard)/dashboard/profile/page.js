@@ -715,8 +715,8 @@ export default function ProfilePage() {
                 <p className="text-xs text-text-muted">
                   QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
                 </p>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[188px_minmax(0,1fr)] lg:items-start">
-                  <div>
+                <div className="flex items-start gap-4 overflow-x-auto pb-1">
+                  <div className="shrink-0">
                     {oauthSetupQrUrl ? (
                       <img
                         src={oauthSetupQrUrl}
@@ -732,11 +732,11 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-3 min-w-0">
+                  <div className="flex min-w-[320px] flex-1 flex-col gap-3">
                     {oauthSetupSecret ? (
-                      <div className="text-xs text-text-muted flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                        <span className="min-w-0 truncate">Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
-                        <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading}>Copy Secret</Button>
+                      <div className="flex min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-text-muted">
+                        <span className="shrink-0">Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
+                        <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading} className="shrink-0">Copy Secret</Button>
                       </div>
                     ) : null}
 
