@@ -2,7 +2,7 @@ $ErrorActionPreference = "Continue"
 
 $logDir = "logs"
 $logPath = Join-Path $logDir "next-dev.log"
-$targetPort = 1212
+$targetPort = if ($env:XLABROUTER_PORT) { [int]$env:XLABROUTER_PORT } elseif ($env:PORT) { [int]$env:PORT } else { 2000 }
 $maxRetries = 3
 $devEngine = if ($env:XLABROUTER_NEXT_DEV_ENGINE) { $env:XLABROUTER_NEXT_DEV_ENGINE } else { "webpack" }
 

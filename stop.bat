@@ -6,7 +6,8 @@ if /I "%~1"=="--elevated" shift
 
 cd /d "%~dp0"
 
-set "PORT=1212"
+if not defined XLABROUTER_PORT set XLABROUTER_PORT=2000
+set "PORT=%XLABROUTER_PORT%"
 set "FOUND=0"
 set "PIDS= "
 
