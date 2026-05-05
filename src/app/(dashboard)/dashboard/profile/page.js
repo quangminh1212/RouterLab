@@ -714,49 +714,61 @@ export default function ProfilePage() {
                 <p className="text-xs text-text-muted">
                   QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
                 </p>
-                {oauthSetupQrUrl ? (
-                  <img
-                    src={oauthSetupQrUrl}
-                    alt="Authenticator setup QR"
-                    width={220}
-                    height={220}
-                    className="rounded-lg border border-border"
-                  />
-                ) : (
-                  <div className="h-[220px] w-[220px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">
-                    Preparing Authenticator QR...
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
+                  <div>
+                    {oauthSetupQrUrl ? (
+                      <img
+                        src={oauthSetupQrUrl}
+                        alt="Authenticator setup QR"
+                        width={220}
+                        height={220}
+                        className="rounded-lg border border-border"
+                      />
+                    ) : (
+                      <div className="h-[220px] w-[220px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">
+                        Preparing Authenticator QR...
+                      </div>
+                    )}
                   </div>
-                )}
-                {oauthSetupSecret ? (
-                  <div className="text-xs text-text-muted break-all flex flex-wrap items-center gap-2">
-                    <span>Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
-                    <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading}>Copy Secret</Button>
+
+                  <div className="flex flex-col gap-3">
+                    {oauthSetupSecret ? (
+                      <div className="text-xs text-text-muted break-all flex flex-wrap items-center gap-2">
+                        <span>Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
+                        <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading}>Copy Secret</Button>
+                      </div>
+                    ) : null}
+
+                    <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
+
+                    <form onSubmit={verifyAuthenticatorCode} className="flex flex-col gap-2 rounded-lg border border-border/40 p-3">
+                      <p className="text-sm font-medium">Kiểm tra mã 2FA</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          placeholder="123456"
+                          value={authenticatorCode}
+                          onChange={(event) => setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                          disabled={passLoading || authenticatorCheckLoading}
+                          className="flex-1"
+                          hint="Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động."
+                        />
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          size="sm"
+                          loading={authenticatorCheckLoading}
+                          disabled={passLoading || authenticatorCheckLoading || authenticatorCode.length !== 6}
+                          className="sm:mb-[22px]"
+                        >
+                          Check 2FA
+                        </Button>
+                      </div>
+                    </form>
                   </div>
-                ) : null}
-                <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
-                <form onSubmit={verifyAuthenticatorCode} className="flex flex-col gap-2 rounded-lg border border-border/60 bg-black/5 p-3 dark:bg-white/5 sm:max-w-md">
-                  <Input
-                    label="Nhập mã 2FA để kiểm tra"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="123456"
-                    value={authenticatorCode}
-                    onChange={(event) => setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                    disabled={passLoading || authenticatorCheckLoading}
-                    hint="Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động."
-                  />
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    size="sm"
-                    loading={authenticatorCheckLoading}
-                    disabled={passLoading || authenticatorCheckLoading || authenticatorCode.length !== 6}
-                    className="self-start"
-                  >
-                    Check 2FA
-                  </Button>
-                </form>
+                </div>
                 {backupCodes.length > 0 ? (
                   <div className="rounded-lg border border-border p-3">
                     <p className="text-xs text-orange-500 mb-2">Shown only once. Save immediately.</p>
