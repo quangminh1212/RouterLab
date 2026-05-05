@@ -66,9 +66,9 @@ function RecentRequests({ requests = [] }) {
                     </td>
                     <td className="py-1.5 font-mono truncate max-w-[120px]" title={r.model}>{r.model}</td>
                     <td className="py-1.5 text-right whitespace-nowrap">
-                      <span className="text-primary">{fmt(r.promptTokens)}↑</span>
+                      <span className="text-primary">{fmt(r.promptTokens)}â†‘</span>
                       {" "}
-                      <span className="text-success">{fmt(r.completionTokens)}↓</span>
+                      <span className="text-success">{fmt(r.completionTokens)}â†“</span>
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
@@ -186,7 +186,6 @@ const PERIODS = [
   { value: "24h", label: "24h" },
   { value: "7d", label: "7D" },
   { value: "30d", label: "30D" },
-  { value: "60d", label: "60D" },
   { value: "all", label: "All Time" },
 ];
 
@@ -323,7 +322,7 @@ export default function UsageStats() {
           emptyMessage: "No usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -356,8 +355,8 @@ export default function UsageStats() {
           emptyMessage: "No account-specific usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -381,8 +380,8 @@ export default function UsageStats() {
           emptyMessage: "No API key usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -407,8 +406,8 @@ export default function UsageStats() {
           emptyMessage: "No endpoint usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">â€”</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>

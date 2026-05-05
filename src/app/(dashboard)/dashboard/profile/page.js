@@ -1,5 +1,4 @@
 ﻿"use client";
-
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { Card, Button, Toggle, Input } from "@/shared/components";
@@ -7,14 +6,12 @@ import { Skeleton } from "@/shared/components/Loading";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
-
 const INITIAL_SECTION_LOADING = {
   security: true,
   routing: true,
   network: true,
   observability: true,
 };
-
 export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [settings, setSettings] = useState({ fallbackStrategy: "fill-first" });
@@ -40,6 +37,8 @@ export default function ProfilePage() {
   const [oauthSetupUrl, setOauthSetupUrl] = useState("");
   const [oauthSetupQrUrl, setOauthSetupQrUrl] = useState("");
   const [oauthSetupSecret, setOauthSetupSecret] = useState("");
+  const [backupCodeCount, setBackupCodeCount] = useState(0);
+  const [backupCodes, setBackupCodes] = useState([]);
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -48,7 +47,6 @@ export default function ProfilePage() {
   const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
-
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
@@ -74,6 +72,7 @@ export default function ProfilePage() {
       .then((data) => {
         if (data?.url) setOauthSetupUrl(data.url);
         if (data?.secret) setOauthSetupSecret(data.secret);
+        if (typeof data?.backupCodeCount === "number") setBackupCodeCount(data.backupCodeCount);
         else setOauthSetupUrl("");
       })
       .catch(() => setOauthSetupUrl(""));
@@ -100,7 +99,6 @@ export default function ProfilePage() {
       }))
       .catch(() => setGoogleStatus((prev) => ({ ...prev, loading: false })));
   }, []);
-
   useEffect(() => {
     fetch("/api/settings/gist-backup", { cache: "no-store" })
       .then((res) => res.ok ? res.json() : null)
@@ -110,7 +108,6 @@ export default function ProfilePage() {
       })
       .catch(() => {});
   }, []);
-
   const InlineSettingSkeleton = ({ wide = false }) => (
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1 space-y-2">
@@ -120,7 +117,6 @@ export default function ProfilePage() {
       <Skeleton className="h-6 w-11 rounded-full" />
     </div>
   );
-
   const applySettings = (data) => {
     setSettings(data);
     setProxyForm({
@@ -136,29 +132,24 @@ export default function ProfilePage() {
     });
     setSettingsLoadError(false);
   };
-
   const patchSettings = async (body) => {
     const res = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(data.error || "Failed to update settings");
     }
-
     setSettings((prev) => ({ ...prev, ...data }));
     return data;
   };
-
   const updateOutboundProxy = async (e) => {
     e.preventDefault();
     if (settings.outboundProxyEnabled !== true) return;
     setProxyLoading(true);
     setProxyStatus({ type: "", message: "" });
-
     try {
       await patchSettings({
         outboundProxyUrl: proxyForm.outboundProxyUrl,
@@ -171,26 +162,21 @@ export default function ProfilePage() {
       setProxyLoading(false);
     }
   };
-
   const testOutboundProxy = async () => {
     if (settings.outboundProxyEnabled !== true) return;
-
     const proxyUrl = (proxyForm.outboundProxyUrl || "").trim();
     if (!proxyUrl) {
       setProxyStatus({ type: "error", message: "Please enter a Proxy URL to test" });
       return;
     }
-
     setProxyTestLoading(true);
     setProxyStatus({ type: "", message: "" });
-
     try {
       const res = await fetch("/api/settings/proxy-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proxyUrl }),
       });
-
       const data = await res.json();
       if (res.ok && data?.ok) {
         setProxyStatus({
@@ -209,11 +195,9 @@ export default function ProfilePage() {
       setProxyTestLoading(false);
     }
   };
-
   const updateOutboundProxyEnabled = async (outboundProxyEnabled) => {
     setProxyLoading(true);
     setProxyStatus({ type: "", message: "" });
-
     try {
       const data = await patchSettings({ outboundProxyEnabled });
       setProxyForm((prev) => ({ ...prev, outboundProxyEnabled: data?.outboundProxyEnabled === true }));
@@ -227,7 +211,6 @@ export default function ProfilePage() {
       setProxyLoading(false);
     }
   };
-
   const updateFallbackStrategy = async (strategy) => {
     try {
       await patchSettings({ fallbackStrategy: strategy });
@@ -235,7 +218,6 @@ export default function ProfilePage() {
       console.error("Failed to update settings:", err);
     }
   };
-
   const updateComboStrategy = async (strategy) => {
     try {
       await patchSettings({ comboStrategy: strategy });
@@ -243,18 +225,15 @@ export default function ProfilePage() {
       console.error("Failed to update combo strategy:", err);
     }
   };
-
   const updateStickyLimit = async (limit) => {
     const numLimit = parseInt(limit);
     if (isNaN(numLimit) || numLimit < 1) return;
-
     try {
       await patchSettings({ stickyRoundRobinLimit: numLimit });
     } catch (err) {
       console.error("Failed to update sticky limit:", err);
     }
   };
-
   const updateRequireLogin = async (requireLogin) => {
     try {
       await patchSettings({ requireLogin });
@@ -262,7 +241,6 @@ export default function ProfilePage() {
       console.error("Failed to update require login:", err);
     }
   };
-
   const updateObservabilityEnabled = async (enabled) => {
     try {
       await patchSettings({ enableObservability: enabled });
@@ -270,7 +248,6 @@ export default function ProfilePage() {
       console.error("Failed to update enableObservability:", err);
     }
   };
-
   const reloadSettings = async () => {
     try {
       const res = await fetch("/api/settings");
@@ -281,7 +258,6 @@ export default function ProfilePage() {
       console.error("Failed to reload settings:", err);
     }
   };
-
   const handleExportDatabase = async () => {
     setDbLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -291,7 +267,6 @@ export default function ProfilePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to export database");
       }
-
       const payload = await res.json();
       const content = JSON.stringify(payload, null, 2);
       const blob = new Blob([content], { type: "application/json" });
@@ -304,7 +279,6 @@ export default function ProfilePage() {
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-
       setDbStatus({ type: "success", message: "Backup downloaded (database + usage)" });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to export database" });
@@ -312,29 +286,23 @@ export default function ProfilePage() {
       setDbLoading(false);
     }
   };
-
   const handleImportDatabase = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setDbLoading(true);
     setDbStatus({ type: "", message: "" });
-
     try {
       const raw = await file.text();
       const payload = JSON.parse(raw);
-
       const res = await fetch("/api/settings/database", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "Failed to import database");
       }
-
       const importMode = data?.importMode;
       if (importMode === "usage") {
         setDbStatus({ type: "success", message: "Usage backup imported successfully" });
@@ -343,7 +311,6 @@ export default function ProfilePage() {
       } else {
         setDbStatus({ type: "success", message: "Database backup imported successfully" });
       }
-
       reloadSettings();
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Invalid backup file" });
@@ -354,7 +321,6 @@ export default function ProfilePage() {
       setDbLoading(false);
     }
   };
-
   const postGistBackup = async (body) => {
     const res = await fetch("/api/settings/gist-backup", {
       method: "POST",
@@ -376,8 +342,6 @@ export default function ProfilePage() {
     }
     return data;
   };
-
-
   const connectGitHubCli = async () => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -394,7 +358,6 @@ export default function ProfilePage() {
       setGistLoading(false);
     }
   };
-
   const runGistBackup = async (action) => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -447,6 +410,47 @@ export default function ProfilePage() {
     }
   };
 
+  const copyOauthSecret = async () => {
+    if (!oauthSetupSecret) return;
+    try {
+      await navigator.clipboard.writeText(oauthSetupSecret);
+      setPassStatus({ type: "success", message: "Copied authenticator secret" });
+    } catch {
+      setPassStatus({ type: "error", message: "Cannot copy authenticator secret" });
+    }
+  };
+
+  const copyBackupCodes = async () => {
+    if (!backupCodes.length) return;
+    try {
+      await navigator.clipboard.writeText(backupCodes.join("\n"));
+      setPassStatus({ type: "success", message: "Copied backup codes" });
+    } catch {
+      setPassStatus({ type: "error", message: "Cannot copy backup codes" });
+    }
+  };
+
+  const generateBackupCodesNow = async () => {
+    setPassLoading(true);
+    setPassStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/auth/oauth-qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate-backup-codes" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to generate backup codes");
+      setBackupCodes(Array.isArray(data.codes) ? data.codes : []);
+      if (typeof data?.backupCodeCount === "number") setBackupCodeCount(data.backupCodeCount);
+      setPassStatus({ type: "success", message: "Generated new backup codes. Save them now (shown once)." });
+    } catch (err) {
+      setPassStatus({ type: "error", message: err.message || "Failed to generate backup codes" });
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
   const disconnectGistBackup = async () => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -460,7 +464,6 @@ export default function ProfilePage() {
       setGistLoading(false);
     }
   };
-
   const runGoogleSync = async (action) => {
     setGoogleLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -492,7 +495,6 @@ export default function ProfilePage() {
       setGoogleLoading(false);
     }
   };
-
   const disconnectGoogle = async () => {
     setGoogleLoading(true);
     try {
@@ -505,7 +507,6 @@ export default function ProfilePage() {
       setGoogleLoading(false);
     }
   };
-
   const securityLoading = sectionLoading.security;
   const routingLoading = sectionLoading.routing;
   const networkLoading = sectionLoading.network;
@@ -517,7 +518,6 @@ export default function ProfilePage() {
   const showSettingsFallbackNotice = settingsLoadError;
   const stickyRoundRobinLimit = settings.stickyRoundRobinLimit || 3;
   const comboRoundRobinEnabled = settings.comboStrategy === "round-robin";
-
   const renderFallbackNotice = () => (
     showSettingsFallbackNotice ? (
       <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -525,20 +525,15 @@ export default function ProfilePage() {
       </p>
     ) : null
   );
-
   const renderInlineSkeleton = (wide = false) => <InlineSettingSkeleton wide={wide} />;
-
   const disableSecurityControls = securityLoading || passLoading;
   const disableRoutingControls = routingLoading;
   const disableNetworkControls = networkLoading || proxyLoading;
   const disableObservabilityControls = observabilityLoading;
-
   const showSecurityForm = !securityLoading && requireLoginEnabled;
   const showStickyLimit = !routingLoading && roundRobinEnabled;
   const showProxyForm = !networkLoading && outboundProxyEnabled;
-
   void isDark;
-
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex flex-col gap-6">
@@ -582,7 +577,6 @@ export default function ProfilePage() {
                 <p className="text-sm text-text-muted font-mono">~/.xlabrouter/db.json</p>
               </div>
             </div>
-            
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="secondary"
@@ -651,7 +645,6 @@ export default function ProfilePage() {
             )}
           </div>
         </Card>
-
         {/* Security */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
@@ -703,8 +696,16 @@ export default function ProfilePage() {
                   </div>
                 )}
                 {oauthSetupSecret ? (
-                  <div className="text-xs text-text-muted break-all">
-                    Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span>
+                  <div className="text-xs text-text-muted break-all flex flex-wrap items-center gap-2">
+                    <span>Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
+                    <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading}>Copy Secret</Button>
+                  </div>
+                ) : null}
+                <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
+                {backupCodes.length > 0 ? (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs text-orange-500 mb-2">Shown only once. Save immediately.</p>
+                    <pre className="text-xs font-mono whitespace-pre-wrap break-all">{backupCodes.join("\n")}</pre>
                   </div>
                 ) : null}
                 {passStatus.message && (
@@ -722,6 +723,24 @@ export default function ProfilePage() {
                     >
                       Đổi Authenticator
                     </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={generateBackupCodesNow}
+                      disabled={passLoading}
+                    >
+                      Generate Backup Codes
+                    </Button>
+                    {backupCodes.length > 0 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={copyBackupCodes}
+                        disabled={passLoading}
+                      >
+                        Copy Backup Codes
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -758,7 +777,6 @@ export default function ProfilePage() {
               </div>
             ) : null}
             {renderFallbackNotice()}
-
             {/* Sticky Round Robin Limit */}
             {showStickyLimit && (
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -779,7 +797,6 @@ export default function ProfilePage() {
                 />
               </div>
             )}
-
             {/* Combo Round Robin */}
             {!routingLoading && (
               <div className="flex items-center justify-between pt-4 border-t border-border/50">
@@ -796,7 +813,6 @@ export default function ProfilePage() {
                 />
               </div>
             )}
-
             {!routingLoading && (
               <p className="text-xs text-text-muted italic pt-2 border-t border-border/50">
                 {roundRobinEnabled
@@ -806,7 +822,6 @@ export default function ProfilePage() {
             )}
           </div>
         </Card>
-
         {/* Network */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
@@ -815,7 +830,6 @@ export default function ProfilePage() {
             </div>
             <h3 className="text-lg font-semibold">Network</h3>
           </div>
-
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
@@ -835,7 +849,6 @@ export default function ProfilePage() {
               </div>
             ) : null}
             {renderFallbackNotice()}
-
             {showProxyForm && (
               <form onSubmit={updateOutboundProxy} className="flex flex-col gap-4 pt-2 border-t border-border/50">
                 <div className="flex flex-col gap-2">
@@ -848,7 +861,6 @@ export default function ProfilePage() {
                   />
                   <p className="text-sm text-text-muted">Leave empty to inherit existing env proxy (if any).</p>
                 </div>
-
                 <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
                   <label className="font-medium">No Proxy</label>
                   <Input
@@ -859,7 +871,6 @@ export default function ProfilePage() {
                   />
                   <p className="text-sm text-text-muted">Comma-separated hostnames/domains to bypass the proxy.</p>
                 </div>
-
                 <div className="pt-2 border-t border-border/50 flex items-center gap-2">
                   <Button
                     type="button"
@@ -876,7 +887,6 @@ export default function ProfilePage() {
                 </div>
               </form>
             )}
-
             {proxyStatus.message && (
               <p className={`text-sm ${proxyStatus.type === "error" ? "text-red-500" : "text-green-500"} pt-2 border-t border-border/50`}>
                 {proxyStatus.message}
@@ -884,7 +894,6 @@ export default function ProfilePage() {
             )}
           </div>
         </Card>
-
         {/* Observability Settings */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
@@ -911,7 +920,6 @@ export default function ProfilePage() {
             {renderFallbackNotice()}
           </div>
         </Card>
-
         {/* App Info */}
         <div className="text-center text-sm text-text-muted py-4">
           <p>{APP_CONFIG.name} v{APP_CONFIG.version}</p>
@@ -921,4 +929,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { jwtVerify, SignJWT } from "jose";
 import { getAuthSecret } from "@/lib/auth/sessionSecret";
-import { getOrCreateTotpSecret, buildTotpUri, verifyTotpCode } from "@/lib/auth/totp";
+import { getOrCreateTotpSecret, buildTotpUri, verifyTotpCode, generateBackupCodes, getBackupCodeCount, verifyAndConsumeBackupCode } from "@/lib/auth/totp";
 
 const SECRET = getAuthSecret();
 const AUTH_SESSION_MAX_AGE_SECONDS = Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
@@ -42,10 +42,12 @@ async function setAuthCookie() {
 export async function GET() {
   try {
     const secret = await getOrCreateTotpSecret();
+    const backupCodeCount = await getBackupCodeCount();
     return NextResponse.json({
       mode: "totp",
       secret,
       url: buildTotpUri(secret),
+      backupCodeCount,
     });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Failed to load OAuth QR" }, { status: 500 });
@@ -68,11 +70,22 @@ export async function POST(request) {
     if (action === "verify") {
       const code = typeof body?.code === "string" ? body.code : "";
       const secret = await getOrCreateTotpSecret();
-      if (!verifyTotpCode(secret, code)) {
+      const isTotpValid = verifyTotpCode(secret, code);
+      const isBackupValid = !isTotpValid && (await verifyAndConsumeBackupCode(code));
+      if (!isTotpValid && !isBackupValid) {
         return NextResponse.json({ error: "Invalid authenticator code" }, { status: 401 });
       }
       await setAuthCookie();
       return NextResponse.json({ success: true });
+    }
+
+    if (action === "generate-backup-codes") {
+      if (!isLocalhostRequest(request) && !(await hasValidToken())) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const codes = await generateBackupCodes(10);
+      const backupCodeCount = await getBackupCodeCount();
+      return NextResponse.json({ success: true, codes, backupCodeCount });
     }
 
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
@@ -80,4 +93,3 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message || "Authenticator request failed" }, { status: 500 });
   }
 }
-

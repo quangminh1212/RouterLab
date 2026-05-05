@@ -70,7 +70,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/oauth-qr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", code: authCode }),
+        body: JSON.stringify({ action: "verify", code: normalizedAuthCode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -104,13 +104,13 @@ export default function LoginPage() {
             <img src="/topup.png" alt="XLab Router logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-primary mb-2">XLab Router</h1>
-          <p className="text-text-muted">Scan with Google Authenticator to access dashboard</p>
+          <p className="text-text-muted">Scan with Google Authenticator or use a backup code</p>
         </div>
 
         <Card>
           <div className="flex flex-col gap-4">
             <div className="text-center">
-              <p className="text-sm text-text-muted mb-3">Quét mã QR bằng Google Authenticator, sau đó nhập mã 6 số để đăng nhập</p>
+              <p className="text-sm text-text-muted mb-3">Scan the QR with Google Authenticator, then enter a 6-digit code or a backup code</p>
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="Authenticator QR" className="mx-auto rounded-lg border border-border" width={240} height={240} />
               ) : (
@@ -118,11 +118,11 @@ export default function LoginPage() {
               )}
               <div className="mt-4 flex flex-col gap-3">
                 <Input
-                  placeholder="Enter 6-digit code"
+                  placeholder="Enter 6-digit code or backup code"
                   value={authCode}
-                  onChange={(e) => setAuthCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onChange={(e) => setAuthCode(e.target.value.replace(/[^A-Za-z0-9-]/g, "").slice(0, 32))}
                 />
-                <Button onClick={handleSubmit} loading={submitting} disabled={authCode.length !== 6}>
+                <Button onClick={handleSubmit} loading={submitting} disabled={!canSubmit}>
                   Login
                 </Button>
               </div>

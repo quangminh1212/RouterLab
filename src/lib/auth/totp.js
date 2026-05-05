@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getSettings, updateSettings } from "@/lib/localDb";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -37,6 +37,18 @@ function createTotpSecret() {
   return base32Encode(randomBytes(20));
 }
 
+function createBackupCode() {
+  return randomBytes(5).toString("hex").toUpperCase().replace(/^(.{5})(.{5})$/, "$1-$2");
+}
+
+function normalizeBackupCode(code) {
+  return String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function hashBackupCode(code) {
+  return createHash("sha256").update(normalizeBackupCode(code)).digest("hex");
+}
+
 function hotp(secret, counter) {
   const key = base32Decode(secret);
   const counterBuffer = Buffer.alloc(8);
@@ -67,6 +79,36 @@ export async function getOrCreateTotpSecret({ rotate = false } = {}) {
   return secret;
 }
 
+export async function generateBackupCodes(count = 10) {
+  const codes = Array.from({ length: count }, () => createBackupCode());
+  await updateSettings({
+    totpBackupCodeHashes: codes.map(hashBackupCode),
+    totpBackupCodesGeneratedAt: new Date().toISOString(),
+  });
+  return codes;
+}
+
+export async function getBackupCodeCount() {
+  const settings = await getSettings();
+  return Array.isArray(settings.totpBackupCodeHashes) ? settings.totpBackupCodeHashes.length : 0;
+}
+
+export async function verifyAndConsumeBackupCode(code) {
+  const normalized = normalizeBackupCode(code);
+  if (!normalized) return false;
+  const settings = await getSettings();
+  const hashes = Array.isArray(settings.totpBackupCodeHashes) ? settings.totpBackupCodeHashes : [];
+  const targetHash = hashBackupCode(normalized);
+  const matchedIndex = hashes.findIndex((hash) => safeEqualToken(hash, targetHash));
+  if (matchedIndex < 0) return false;
+  const nextHashes = hashes.filter((_, index) => index !== matchedIndex);
+  await updateSettings({
+    totpBackupCodeHashes: nextHashes,
+    totpBackupCodeLastUsedAt: new Date().toISOString(),
+  });
+  return true;
+}
+
 export function buildTotpUri(secret) {
   const label = encodeURIComponent(`${TOTP_ISSUER}:${TOTP_ACCOUNT}`);
   const issuer = encodeURIComponent(TOTP_ISSUER);
@@ -82,4 +124,3 @@ export function verifyTotpCode(secret, code, { window = 1 } = {}) {
   }
   return false;
 }
-
