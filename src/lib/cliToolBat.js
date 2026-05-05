@@ -49,7 +49,7 @@ export function downloadCliApplyBat({ appUrl, endpoint, payload, toolName, filen
  * @param {string} options.endpoint - Full endpoint URL (e.g. https://tunnel.example.com/v1)
  * @param {string} options.apiKey - API key for authentication
  * @param {string} options.os - Target OS: "windows" or "unix"
- * @param {string} options.installCmd - Install command (e.g. "npm i -g 9router")
+ * @param {string} options.installCmd - Install command (e.g. "npm i -g xlabrouter")
  * @returns {string} Script content
  */
 export function buildCliSetupScript({ endpoint, apiKey, os, installCmd }) {
@@ -61,14 +61,14 @@ export function buildCliSetupScript({ endpoint, apiKey, os, installCmd }) {
 setlocal
 chcp 65001 >nul
 echo ========================================
-echo 9Router CLI Setup
+echo XLab Router CLI Setup
 echo ========================================
 echo.
-echo [1/3] Installing 9Router CLI globally...
+echo [1/3] Installing XLab Router CLI globally...
 call ${installCmd}
 if errorlevel 1 (
   echo.
-  echo [ERROR] Failed to install 9Router CLI.
+  echo [ERROR] Failed to install XLab Router CLI.
   echo Please run manually: ${installCmd}
   pause
   exit /b 1
@@ -98,10 +98,10 @@ pause
 set -e
 
 echo "========================================"
-echo "9Router CLI Setup"
+echo "XLab Router CLI Setup"
 echo "========================================"
 echo ""
-echo "[1/3] Installing 9Router CLI globally..."
+echo "[1/3] Installing XLab Router CLI globally..."
 ${installCmd}
 echo "[OK] CLI installed successfully."
 echo ""

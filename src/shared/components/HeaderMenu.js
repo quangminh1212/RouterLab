@@ -110,7 +110,7 @@ function UpdateProgress({ status, latestVersion, installCmd }) {
         </span>
       </div>
       <h2 className="text-xl font-semibold text-white mb-2">
-        {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating 9Router"}
+        {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating XLab Router"}
       </h2>
       <p className="text-text-muted mb-4">{statusText}</p>
       {done && !success && (
@@ -245,7 +245,7 @@ export default function HeaderMenu({ onLogout }) {
       }
 
       const endpoint = `${endpointBase.replace(/\/+$/, "")}/v1`;
-      const filename = os === "windows" ? "setup-9router-cli.bat" : "setup-9router-cli.sh";
+      const filename = os === "windows" ? "setup-xlabrouter-cli.bat" : "setup-xlabrouter-cli.sh";
 
       downloadCliSetupScript({
         endpoint,
@@ -367,8 +367,8 @@ export default function HeaderMenu({ onLogout }) {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update 9Router"
-        message={`This will close 9Router and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
+        title="Update XLab Router"
+        message={`This will close XLab Router and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
         confirmText="Update"
         cancelText="Cancel"
         variant="primary"
