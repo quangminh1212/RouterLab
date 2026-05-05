@@ -37,6 +37,8 @@ export default function ProfilePage() {
   const [oauthSetupUrl, setOauthSetupUrl] = useState("");
   const [oauthSetupQrUrl, setOauthSetupQrUrl] = useState("");
   const [oauthSetupSecret, setOauthSetupSecret] = useState("");
+  const [authenticatorCode, setAuthenticatorCode] = useState("");
+  const [authenticatorCheckLoading, setAuthenticatorCheckLoading] = useState(false);
   const [backupCodeCount, setBackupCodeCount] = useState(0);
   const [backupCodes, setBackupCodes] = useState([]);
   const [proxyForm, setProxyForm] = useState({
@@ -430,6 +432,36 @@ export default function ProfilePage() {
     }
   };
 
+  const verifyAuthenticatorCode = async (event) => {
+    event?.preventDefault();
+    const code = authenticatorCode.trim();
+    if (!code) {
+      setPassStatus({ type: "error", message: "Nhập mã 2FA trước khi kiểm tra" });
+      return;
+    }
+
+    setAuthenticatorCheckLoading(true);
+    setPassStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/auth/oauth-qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) throw new Error(data.error || "Invalid authenticator code");
+      setAuthenticatorCode("");
+      setPassStatus({ type: "success", message: "Mã 2FA hợp lệ. Authenticator đã hoạt động thành công." });
+      const qrRes = await fetch("/api/auth/oauth-qr", { cache: "no-store" });
+      const qrData = await qrRes.json().catch(() => ({}));
+      if (typeof qrData?.backupCodeCount === "number") setBackupCodeCount(qrData.backupCodeCount);
+    } catch (err) {
+      setPassStatus({ type: "error", message: err.message || "Mã 2FA không hợp lệ" });
+    } finally {
+      setAuthenticatorCheckLoading(false);
+    }
+  };
+
   const generateBackupCodesNow = async () => {
     setPassLoading(true);
     setPassStatus({ type: "", message: "" });
@@ -702,6 +734,29 @@ export default function ProfilePage() {
                   </div>
                 ) : null}
                 <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
+                <form onSubmit={verifyAuthenticatorCode} className="flex flex-col gap-2 rounded-lg border border-border/60 bg-black/5 p-3 dark:bg-white/5 sm:max-w-md">
+                  <Input
+                    label="Nhập mã 2FA để kiểm tra"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="123456"
+                    value={authenticatorCode}
+                    onChange={(event) => setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    disabled={passLoading || authenticatorCheckLoading}
+                    hint="Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động."
+                  />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="sm"
+                    loading={authenticatorCheckLoading}
+                    disabled={passLoading || authenticatorCheckLoading || authenticatorCode.length !== 6}
+                    className="self-start"
+                  >
+                    Check 2FA
+                  </Button>
+                </form>
                 {backupCodes.length > 0 ? (
                   <div className="rounded-lg border border-border p-3">
                     <p className="text-xs text-orange-500 mb-2">Shown only once. Save immediately.</p>
