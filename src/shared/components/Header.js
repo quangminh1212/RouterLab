@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import ProviderIcon from "@/shared/components/ProviderIcon";
@@ -153,13 +153,40 @@ const getPageInfo = (pathname) => {
   return { title: "", description: "", breadcrumbs: [] };
 };
 
+function formatMemoryGb(bytes) {
+  return `${(bytes / (1024 ** 3)).toFixed(1)} GB`;
+}
+
 export default function Header({ onMenuClick, showMenuButton = true }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [systemMetrics, setSystemMetrics] = useState(null);
 
   // Memoize page info to prevent unnecessary recalculations
   const pageInfo = useMemo(() => getPageInfo(pathname), [pathname]);
   const { title, description, icon, breadcrumbs } = pageInfo;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch("/api/system/metrics", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (mounted) setSystemMetrics(data);
+      } catch {
+        // ignore metrics errors in header
+      }
+    };
+
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -249,7 +276,17 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       </div>
 
       {/* Right actions - consolidated into dropdown menu */}
-      <div className="flex items-center ml-auto">
+      <div className="flex items-center gap-2 ml-auto">
+        {systemMetrics && (
+          <div className="hidden md:flex items-center gap-2 text-xs">
+            <span className="px-2 py-1 rounded-md border border-border bg-bg-subtle text-text-muted whitespace-nowrap">
+              CPU {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
+            </span>
+            <span className="px-2 py-1 rounded-md border border-border bg-bg-subtle text-text-muted whitespace-nowrap" title={`${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
+              RAM {typeof systemMetrics.memoryPercent === "number" ? `${systemMetrics.memoryPercent.toFixed(0)}%` : "--"}
+            </span>
+          </div>
+        )}
         <HeaderMenu onLogout={handleLogout} />
       </div>
     </header>
