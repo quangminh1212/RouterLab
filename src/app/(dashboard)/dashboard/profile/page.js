@@ -740,7 +740,6 @@ export default function ProfilePage() {
                       </div>
                     ) : null}
 
-                    <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
 
                     {showAuthenticatorCheck ? (
                       <form onSubmit={verifyAuthenticatorCode} className="flex flex-col gap-2 rounded-lg border border-border/40 p-3">
