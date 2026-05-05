@@ -769,14 +769,14 @@ export default function ProfilePage() {
                       </form>
                     ) : null}
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col items-start gap-2">
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
                         icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
                         onClick={() => setShowAuthenticatorCheck((value) => !value)}
-                        className="shrink-0"
+                        className="w-full max-w-[320px] justify-center"
                       >
                         {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
                       </Button>
@@ -786,7 +786,7 @@ export default function ProfilePage() {
                         size="sm"
                         onClick={rotateOAuthQr}
                         disabled={passLoading}
-                        className="shrink-0"
+                        className="w-full max-w-[320px] justify-center"
                       >
                         Đổi Authenticator
                       </Button>
@@ -796,7 +796,7 @@ export default function ProfilePage() {
                         size="sm"
                         onClick={generateBackupCodesNow}
                         disabled={passLoading}
-                        className="shrink-0"
+                        className="w-full max-w-[320px] justify-center"
                       >
                         Generate Backup Codes
                       </Button>
