@@ -699,23 +699,13 @@ export default function ProfilePage() {
                 className="h-9 w-9 justify-center p-0"
               />
               {showSecurityHelp ? (
-                <div className="absolute right-0 top-11 z-10 w-[320px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
-                  <div className="flex flex-col gap-3 text-sm text-text-muted">
-                    <p>
-                      When ON, dashboard requires Google Authenticator login (QR). Localhost access bypasses login.
-                    </p>
-                    <p>
-                      Password setup has been replaced by Google Authenticator login. Scan this QR to authenticate.
-                    </p>
-                    <p className="text-xs">
-                      QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
-                    </p>
-                    <p className="text-xs">
-                      Nhập mã 6 số từ Google Authenticator để xác nhận QR/secret đã hoạt động.
-                    </p>
-                    <p className="text-xs">
-                      Backup codes chỉ hiển thị một lần sau khi tạo, cần lưu lại ngay.
-                    </p>
+                <div className="absolute right-0 top-11 z-10 w-[260px] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="flex flex-col gap-2 text-xs text-text-muted">
+                    <p>ON: đăng nhập bằng Google Authenticator.</p>
+                    <p>Localhost được bỏ qua đăng nhập.</p>
+                    <p>QR/secret giữ nguyên qua backup/restore.</p>
+                    <p>Mã 2FA dùng để kiểm tra QR hoạt động.</p>
+                    <p>Backup codes chỉ hiện một lần.</p>
                   </div>
                 </div>
               ) : null}
