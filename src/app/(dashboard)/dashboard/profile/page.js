@@ -768,6 +768,39 @@ export default function ProfilePage() {
                         </div>
                       </form>
                     ) : null}
+
+                    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
+                        onClick={() => setShowAuthenticatorCheck((value) => !value)}
+                        className="shrink-0"
+                      >
+                        {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={rotateOAuthQr}
+                        disabled={passLoading}
+                        className="shrink-0"
+                      >
+                        Đổi Authenticator
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={generateBackupCodesNow}
+                        disabled={passLoading}
+                        className="shrink-0"
+                      >
+                        Generate Backup Codes
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 {backupCodes.length > 0 ? (
@@ -792,40 +825,6 @@ export default function ProfilePage() {
                     {passStatus.message}
                   </p>
                 )}
-                <div className="pt-1">
-                  <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
-                      onClick={() => setShowAuthenticatorCheck((value) => !value)}
-                      className="shrink-0"
-                    >
-                      {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={rotateOAuthQr}
-                      disabled={passLoading}
-                      className="shrink-0"
-                    >
-                      Đổi Authenticator
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={generateBackupCodesNow}
-                      disabled={passLoading}
-                      className="shrink-0"
-                    >
-                      Generate Backup Codes
-                    </Button>
-                  </div>
-                </div>
               </div>
             )}
           </div>
