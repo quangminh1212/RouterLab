@@ -27,6 +27,12 @@ const STATUS_CACHE_TTL_MS = Number(process.env.TUNNEL_STATUS_CACHE_TTL_MS) > 0
 const TUNNEL_LEASE_TTL_MS = Number(process.env.TUNNEL_LEASE_TTL_MS) > 0
   ? Number(process.env.TUNNEL_LEASE_TTL_MS)
   : 45000;
+const TUNNEL_ORIGIN_FAIL_THRESHOLD = Number(process.env.TUNNEL_ORIGIN_FAIL_THRESHOLD) > 0
+  ? Number(process.env.TUNNEL_ORIGIN_FAIL_THRESHOLD)
+  : 3;
+const TUNNEL_ORIGIN_AUTO_REENABLE_MS = Number(process.env.TUNNEL_ORIGIN_AUTO_REENABLE_MS) > 0
+  ? Number(process.env.TUNNEL_ORIGIN_AUTO_REENABLE_MS)
+  : 15000;
 const CLOUDFLARE_CONNECTOR_WRITE_PERMISSIONS = [
   "Cloudflare One Connectors Write",
   "Cloudflare One Connector: cloudflared Write",
@@ -48,6 +54,18 @@ let cachedTailscaleStatusAt = 0;
 let lastConnectorCleanupResult = null;
 let isTunnelEnableInProgress = false;
 let tunnelLeaseRenewTimer = null;
+let originHealthFailCount = 0;
+let originAutoReenableTimer = null;
+
+function logTunnelTransition(event, details = {}) {
+  const payload = {
+    event,
+    at: new Date().toISOString(),
+    machine: os.hostname(),
+    ...details,
+  };
+  console.log(`[TunnelTransition] ${JSON.stringify(payload)}`);
+}
 
 
 export function isTunnelManuallyDisabled() {
@@ -142,6 +160,37 @@ function startTunnelLeaseRenewal(provider) {
       console.warn(`[Tunnel] Could not renew tunnel lease: ${error.message}`);
     });
   }, Math.max(10000, Math.floor(TUNNEL_LEASE_TTL_MS / 3)));
+}
+
+function clearOriginAutoReenable() {
+  if (originAutoReenableTimer) {
+    clearTimeout(originAutoReenableTimer);
+    originAutoReenableTimer = null;
+  }
+}
+
+function scheduleOriginAutoReenable(provider, localPort = 1212) {
+  if (originAutoReenableTimer || manualDisabled) return;
+  originAutoReenableTimer = setTimeout(async () => {
+    originAutoReenableTimer = null;
+    if (manualDisabled || isTunnelEnableInProgress) return;
+
+    try {
+      const settings = await getSettings();
+      if (settings.tunnelEnabled === true) return;
+      if (!(await isOriginReady(localPort))) {
+        logTunnelTransition("origin_auto_reenable_skipped", { provider, localPort, reason: "origin_not_ready" });
+        scheduleOriginAutoReenable(provider, localPort);
+        return;
+      }
+      logTunnelTransition("origin_auto_reenable_start", { provider, localPort });
+      await enableTunnel(localPort, provider);
+      logTunnelTransition("origin_auto_reenable_success", { provider, localPort });
+    } catch (error) {
+      logTunnelTransition("origin_auto_reenable_failed", { provider, localPort, error: error.message });
+      scheduleOriginAutoReenable(provider, localPort);
+    }
+  }, TUNNEL_ORIGIN_AUTO_REENABLE_MS);
 }
 
 async function ensureOriginReady(localPort, timeoutMs = 20000) {
@@ -506,6 +555,7 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   const cloudflareConfig = getCloudflareRuntimeConfig(settings);
   createRuntimeBackup(`before-enable-${provider}`);
   manualDisabled = false;
+  clearOriginAutoReenable();
   cachedTunnelStatusAt = 0;
   cachedTunnelStatus = null;
   const namedTunnelPublicUrl = getNamedTunnelPublicUrl(settings);
@@ -637,6 +687,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
     });
     startTunnelLeaseRenewal("cloudflare");
     tunnelStarted = true;
+    originHealthFailCount = 0;
+    logTunnelTransition("tunnel_enabled", { provider: "cloudflare", mode: "named", localPort, tunnelUrl });
 
     if (!exitHandlerRegistered) {
       setUnexpectedExitHandler(() => {
@@ -674,6 +726,8 @@ export async function enableTunnel(localPort = 1212, provider = "cloudflare") {
   await updateSettings({ tunnelEnabled: true, tunnelUrl, tunnelProvider: "cloudflare", tunnelLease: createTunnelLease("cloudflare") });
   startTunnelLeaseRenewal("cloudflare");
   tunnelStarted = true;
+  originHealthFailCount = 0;
+  logTunnelTransition("tunnel_enabled", { provider: "cloudflare", mode: "quick", localPort, tunnelUrl });
 
   if (!exitHandlerRegistered) {
     setUnexpectedExitHandler(() => {
@@ -732,6 +786,8 @@ export async function disableTunnel() {
   manualDisabled = true;
   isReconnecting = true;
   isTunnelEnableInProgress = false;
+  clearOriginAutoReenable();
+  originHealthFailCount = 0;
   cachedTunnelStatusAt = 0;
   cachedTunnelStatus = null;
   if (reconnectTimeoutId) {
@@ -751,6 +807,7 @@ export async function disableTunnel() {
 
   await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
   await releaseTunnelLease();
+  logTunnelTransition("tunnel_disabled_manual", { provider: currentSettings?.tunnelProvider || "cloudflare" });
   isReconnecting = false;
   return { success: true };
 }
@@ -913,12 +970,53 @@ export async function getTunnelStatus(settingsOverride) {
   const serviceInstalled = provider === "cloudflare" ? isCloudflaredServiceInstalled() : false;
   const originReady = !leaseConflict && running ? await isOriginReady(1212) : false;
 
+  if (!leaseConflict && running && originReady) {
+    if (originHealthFailCount > 0) {
+      logTunnelTransition("origin_health_recovered", { provider, failCount: originHealthFailCount });
+    }
+    originHealthFailCount = 0;
+    clearOriginAutoReenable();
+  }
+
   if (!leaseConflict && running && !originReady) {
+    originHealthFailCount += 1;
+    logTunnelTransition("origin_health_failed", {
+      provider,
+      failCount: originHealthFailCount,
+      threshold: TUNNEL_ORIGIN_FAIL_THRESHOLD,
+    });
+
+    if (originHealthFailCount < TUNNEL_ORIGIN_FAIL_THRESHOLD) {
+      return {
+        enabled: settings.tunnelEnabled === true && running && !leaseConflict,
+        tunnelUrl: settings.tunnelUrl || state?.tunnelUrl || "",
+        shortId,
+        publicUrl: settings.tunnelUrl || publicUrl,
+        running,
+        provider,
+        serviceInstalled,
+        originReady: false,
+        degraded: true,
+        error: `Local origin health failed (${originHealthFailCount}/${TUNNEL_ORIGIN_FAIL_THRESHOLD})`,
+        lease: settings.tunnelLease || null,
+        leaseLocked: !!leaseConflict,
+        leaseOwnedByThisMachine,
+        connectorCleanup: provider === "cloudflare" ? lastConnectorCleanupResult : null,
+      };
+    }
+
     console.warn("[Tunnel] Local origin is not healthy; disabling tunnel to avoid Cloudflare 502");
+    logTunnelTransition("tunnel_disabled_origin_unhealthy", {
+      provider,
+      failCount: originHealthFailCount,
+      threshold: TUNNEL_ORIGIN_FAIL_THRESHOLD,
+      autoReenableInMs: TUNNEL_ORIGIN_AUTO_REENABLE_MS,
+    });
     if (provider === "ngrok") killNgrok();
     else killCloudflared();
     await updateSettings({ tunnelEnabled: false, tunnelUrl: "" });
     await releaseTunnelLease();
+    scheduleOriginAutoReenable(provider, 1212);
     return {
       enabled: false,
       tunnelUrl: "",
@@ -932,6 +1030,8 @@ export async function getTunnelStatus(settingsOverride) {
       lease: null,
       leaseLocked: false,
       leaseOwnedByThisMachine: false,
+      autoReenableScheduled: true,
+      autoReenableInMs: TUNNEL_ORIGIN_AUTO_REENABLE_MS,
     };
   }
 
