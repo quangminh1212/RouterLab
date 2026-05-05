@@ -740,19 +740,7 @@ export default function ProfilePage() {
                       </div>
                     ) : null}
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-muted">
-                      <p>Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
-                        onClick={() => setShowAuthenticatorCheck((value) => !value)}
-                        className="shrink-0"
-                      >
-                        {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
-                      </Button>
-                    </div>
+                    <p className="text-xs text-text-muted">Backup codes remaining: <span className="font-semibold text-text-main">{backupCodeCount}</span></p>
 
                     {showAuthenticatorCheck ? (
                       <form onSubmit={verifyAuthenticatorCode} className="flex flex-col gap-2 rounded-lg border border-border/40 p-3">
@@ -787,6 +775,17 @@ export default function ProfilePage() {
                   <div className="rounded-lg border border-border p-3">
                     <p className="text-xs text-orange-500 mb-2">Shown only once. Save immediately.</p>
                     <pre className="text-xs font-mono whitespace-pre-wrap break-all">{backupCodes.join("\n")}</pre>
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={copyBackupCodes}
+                        disabled={passLoading}
+                      >
+                        Copy Backup Codes
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
                 {passStatus.message && (
@@ -796,6 +795,16 @@ export default function ProfilePage() {
                 )}
                 <div className="pt-1">
                   <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
+                      onClick={() => setShowAuthenticatorCheck((value) => !value)}
+                      className="shrink-0"
+                    >
+                      {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
+                    </Button>
                     <Button
                       type="button"
                       variant="secondary"
@@ -816,18 +825,6 @@ export default function ProfilePage() {
                     >
                       Generate Backup Codes
                     </Button>
-                    {backupCodes.length > 0 ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={copyBackupCodes}
-                        disabled={passLoading}
-                        className="shrink-0"
-                      >
-                        Copy Backup Codes
-                      </Button>
-                    ) : null}
                   </div>
                 </div>
               </div>
