@@ -715,7 +715,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-text-muted">
                   QR này là mã TOTP chuẩn cho Google Authenticator và sẽ giữ nguyên qua backup/restore cho tới khi bạn bấm Đổi Authenticator.
                 </p>
-                <div className="flex items-start gap-4 overflow-x-auto pb-1">
+                <div className="flex items-start gap-6 overflow-x-auto pb-2">
                   <div className="shrink-0">
                     {oauthSetupQrUrl ? (
                       <img
@@ -732,9 +732,9 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex min-w-[320px] flex-1 flex-col gap-3">
+                  <div className="flex min-w-[340px] flex-1 flex-col justify-center gap-4 py-1">
                     {oauthSetupSecret ? (
-                      <div className="flex min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-text-muted">
+                      <div className="flex min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap text-xs text-text-muted">
                         <span className="shrink-0">Secret: <span className="font-mono text-text-main">{oauthSetupSecret}</span></span>
                         <Button type="button" variant="ghost" size="sm" onClick={copyOauthSecret} disabled={passLoading} className="shrink-0">Copy Secret</Button>
                       </div>
@@ -769,14 +769,14 @@ export default function ProfilePage() {
                       </form>
                     ) : null}
 
-                    <div className="flex flex-col items-start gap-2">
+                    <div className="flex flex-col items-start gap-3 pt-1">
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
                         icon={showAuthenticatorCheck ? "expand_less" : "verified_user"}
                         onClick={() => setShowAuthenticatorCheck((value) => !value)}
-                        className="w-full max-w-[320px] justify-center"
+                        className="w-full max-w-[340px] justify-center"
                       >
                         {showAuthenticatorCheck ? "Ẩn kiểm tra 2FA" : "Kiểm tra mã 2FA"}
                       </Button>
@@ -786,7 +786,7 @@ export default function ProfilePage() {
                         size="sm"
                         onClick={rotateOAuthQr}
                         disabled={passLoading}
-                        className="w-full max-w-[320px] justify-center"
+                        className="w-full max-w-[340px] justify-center"
                       >
                         Đổi Authenticator
                       </Button>
@@ -796,7 +796,7 @@ export default function ProfilePage() {
                         size="sm"
                         onClick={generateBackupCodesNow}
                         disabled={passLoading}
-                        className="w-full max-w-[320px] justify-center"
+                        className="w-full max-w-[340px] justify-center"
                       >
                         Generate Backup Codes
                       </Button>
