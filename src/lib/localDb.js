@@ -383,6 +383,48 @@ function cloneDefaultData() {
     requestDetailsData: {
       records: [],
     },
+    basicChatData: {
+      sessions: [],
+      activeSessionId: "",
+      activeProviderId: "",
+      draft: "",
+      updatedAt: "",
+    },
+  };
+}
+
+function normalizeBasicChatData(data) {
+  const fallback = cloneDefaultData().basicChatData;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return fallback;
+
+  const sessions = Array.isArray(data.sessions)
+    ? data.sessions
+      .filter((session) => session && typeof session === "object" && !Array.isArray(session))
+      .map((session) => ({
+        ...session,
+        id: typeof session.id === "string" ? session.id : "",
+        title: typeof session.title === "string" ? session.title : "New chat",
+        providerId: typeof session.providerId === "string" ? session.providerId : "",
+        providerName: typeof session.providerName === "string" ? session.providerName : "",
+        modelId: typeof session.modelId === "string" ? session.modelId : "",
+        modelName: typeof session.modelName === "string" ? session.modelName : "",
+        createdAt: typeof session.createdAt === "string" ? session.createdAt : "",
+        updatedAt: typeof session.updatedAt === "string" ? session.updatedAt : "",
+        messages: Array.isArray(session.messages)
+          ? session.messages
+            .filter((message) => message && typeof message === "object" && !Array.isArray(message))
+            .map((message) => ({ ...message }))
+          : [],
+      }))
+      .filter((session) => session.id)
+    : fallback.sessions;
+
+  return {
+    sessions,
+    activeSessionId: typeof data.activeSessionId === "string" ? data.activeSessionId : fallback.activeSessionId,
+    activeProviderId: typeof data.activeProviderId === "string" ? data.activeProviderId : fallback.activeProviderId,
+    draft: typeof data.draft === "string" ? data.draft : fallback.draft,
+    updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : fallback.updatedAt,
   };
 }
 
@@ -541,6 +583,14 @@ function ensureDbShape(data) {
       const normalizedCombos = normalizeCombos(next.combos);
       if (JSON.stringify(normalizedCombos) !== JSON.stringify(next.combos)) {
         next.combos = normalizedCombos;
+        changed = true;
+      }
+    }
+
+    if (key === "basicChatData") {
+      const normalizedBasicChatData = normalizeBasicChatData(next.basicChatData);
+      if (JSON.stringify(normalizedBasicChatData) !== JSON.stringify(next.basicChatData)) {
+        next.basicChatData = normalizedBasicChatData;
         changed = true;
       }
     }
@@ -1704,6 +1754,18 @@ export async function updateSettings(updates) {
 export async function exportDb() {
   const db = await getDb();
   return JSON.parse(JSON.stringify(db.data || cloneDefaultData()));
+}
+
+export async function getBasicChatData() {
+  const db = await getDb();
+  return normalizeBasicChatData(db.data?.basicChatData);
+}
+
+export async function updateBasicChatData(payload) {
+  const db = await getDb();
+  db.data.basicChatData = normalizeBasicChatData(payload);
+  await safeWrite(db);
+  return JSON.parse(JSON.stringify(db.data.basicChatData));
 }
 
 export async function importDb(payload) {

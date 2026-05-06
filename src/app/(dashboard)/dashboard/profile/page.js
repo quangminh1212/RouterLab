@@ -12,6 +12,22 @@ const INITIAL_SECTION_LOADING = {
   network: true,
   observability: true,
 };
+
+const BASIC_CHAT_STORAGE_KEYS = {
+  sessions: "basic-chat.sessions",
+  activeSessionId: "basic-chat.activeSessionId",
+  activeProviderId: "basic-chat.activeProviderId",
+  draft: "basic-chat.draft",
+};
+
+function safeParseStorageJson(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [settings, setSettings] = useState({ fallbackStrategy: "fill-first" });
@@ -265,10 +281,36 @@ export default function ProfilePage() {
       console.error("Failed to reload settings:", err);
     }
   };
+  const syncBasicChatBackup = async () => {
+    if (typeof window === "undefined") return;
+    const state = {
+      sessions: safeParseStorageJson(window.localStorage.getItem(BASIC_CHAT_STORAGE_KEYS.sessions), []),
+      activeSessionId: window.localStorage.getItem(BASIC_CHAT_STORAGE_KEYS.activeSessionId) || "",
+      activeProviderId: window.localStorage.getItem(BASIC_CHAT_STORAGE_KEYS.activeProviderId) || "",
+      draft: window.localStorage.getItem(BASIC_CHAT_STORAGE_KEYS.draft) || "",
+      updatedAt: new Date().toISOString(),
+    };
+    await fetch("/api/basic-chat/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    });
+  };
+  const restoreBasicChatStorage = async () => {
+    if (typeof window === "undefined") return;
+    const res = await fetch("/api/basic-chat/state", { cache: "no-store" });
+    if (!res.ok) return;
+    const state = await res.json().catch(() => ({}));
+    window.localStorage.setItem(BASIC_CHAT_STORAGE_KEYS.sessions, JSON.stringify(Array.isArray(state.sessions) ? state.sessions : []));
+    window.localStorage.setItem(BASIC_CHAT_STORAGE_KEYS.activeSessionId, state.activeSessionId || "");
+    window.localStorage.setItem(BASIC_CHAT_STORAGE_KEYS.activeProviderId, state.activeProviderId || "");
+    window.localStorage.setItem(BASIC_CHAT_STORAGE_KEYS.draft, state.draft || "");
+  };
   const handleExportDatabase = async () => {
     setDbLoading(true);
     setDbStatus({ type: "", message: "" });
     try {
+      await syncBasicChatBackup();
       const res = await fetch("/api/settings/database");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -286,7 +328,7 @@ export default function ProfilePage() {
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-      setDbStatus({ type: "success", message: "Backup downloaded (database + usage)" });
+      setDbStatus({ type: "success", message: "Backup downloaded (database + usage + chat)" });
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Failed to export database" });
     } finally {
@@ -314,10 +356,11 @@ export default function ProfilePage() {
       if (importMode === "usage") {
         setDbStatus({ type: "success", message: "Usage backup imported successfully" });
       } else if (importMode === "bundle") {
-        setDbStatus({ type: "success", message: "Backup imported successfully (database + usage)" });
+        setDbStatus({ type: "success", message: "Backup imported successfully (database + usage + chat)" });
       } else {
         setDbStatus({ type: "success", message: "Database backup imported successfully" });
       }
+      await restoreBasicChatStorage();
       reloadSettings();
     } catch (err) {
       setDbStatus({ type: "error", message: err.message || "Invalid backup file" });
@@ -369,8 +412,12 @@ export default function ProfilePage() {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
     try {
+      if (action !== "restore") {
+        await syncBasicChatBackup();
+      }
       const data = await postGistBackup({ action });
       if (action === "restore") {
+          await restoreBasicChatStorage();
           setDbStatus({ type: "success", message: "Restored backup from GitHub Gist" });
         reloadSettings();
       } else if (action === "sync") {
@@ -383,7 +430,10 @@ export default function ProfilePage() {
         if (data.warning) {
           setDbStatus({ type: "success", message: `${data.direction === "pull" ? "Synced from shared GitHub Gist to this machine" : "Synced this machine to shared GitHub Gist"} (remote backup had issues, local backup replaced it)` });
         }
-        if (data.direction === "pull") reloadSettings();
+        if (data.direction === "pull") {
+          await restoreBasicChatStorage();
+          reloadSettings();
+        }
       } else {
           setDbStatus({ type: "success", message: `Backup saved to GitHub Gist ${data.config?.gistId || ""}` });
       }
@@ -505,6 +555,9 @@ export default function ProfilePage() {
     setGoogleLoading(true);
     setDbStatus({ type: "", message: "" });
     try {
+      if (action !== "restore") {
+        await syncBasicChatBackup();
+      }
       const res = await fetch("/api/auth/google/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -513,6 +566,7 @@ export default function ProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Google sync failed");
       if (action === "restore") {
+        await restoreBasicChatStorage();
         setDbStatus({ type: "success", message: "Restored data from Google Drive backup" });
         reloadSettings();
       } else {

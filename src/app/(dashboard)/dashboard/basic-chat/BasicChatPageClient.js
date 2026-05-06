@@ -109,6 +109,39 @@ function cloneSession(session) {
   };
 }
 
+function normalizeStoredChatState(state) {
+  return {
+    sessions: Array.isArray(state?.sessions)
+      ? state.sessions.map((session) => ({
+        ...session,
+        messages: Array.isArray(session?.messages) ? session.messages : [],
+      }))
+      : [],
+    activeSessionId: typeof state?.activeSessionId === "string" ? state.activeSessionId : "",
+    activeProviderId: typeof state?.activeProviderId === "string" ? state.activeProviderId : "",
+    draft: typeof state?.draft === "string" ? state.draft : "",
+    updatedAt: typeof state?.updatedAt === "string" ? state.updatedAt : "",
+  };
+}
+
+function readLocalChatState() {
+  return normalizeStoredChatState({
+    sessions: safeParse(globalThis.localStorage.getItem(STORAGE_KEYS.sessions), []),
+    activeSessionId: globalThis.localStorage.getItem(STORAGE_KEYS.activeSessionId) || "",
+    activeProviderId: globalThis.localStorage.getItem(STORAGE_KEYS.activeProviderId) || "",
+    draft: globalThis.localStorage.getItem(STORAGE_KEYS.draft) || "",
+    updatedAt: globalThis.localStorage.getItem("basic-chat.updatedAt") || "",
+  });
+}
+
+function writeLocalChatState(state) {
+  globalThis.localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(state.sessions));
+  globalThis.localStorage.setItem(STORAGE_KEYS.activeSessionId, state.activeSessionId);
+  globalThis.localStorage.setItem(STORAGE_KEYS.activeProviderId, state.activeProviderId);
+  globalThis.localStorage.setItem(STORAGE_KEYS.draft, state.draft);
+  globalThis.localStorage.setItem("basic-chat.updatedAt", state.updatedAt || "");
+}
+
 function getProviderLabel(connection) {
   return connection?.name || humanize(connection?.provider || connection?.id || "provider");
 }
@@ -188,22 +221,43 @@ export default function BasicChatPageClient() {
   const initializedRef = useRef(false);
   const modelMenuRef = useRef(null);
   const historyMenuRef = useRef(null);
+  const syncTimeoutRef = useRef(null);
 
   useEffect(() => {
-    try {
-      const savedSessions = safeParse(globalThis.localStorage.getItem(STORAGE_KEYS.sessions), []);
-      setSessions(Array.isArray(savedSessions) ? savedSessions.map((session) => ({
-        ...session,
-        messages: Array.isArray(session.messages) ? session.messages : [],
-      })) : []);
-      setActiveSessionId(globalThis.localStorage.getItem(STORAGE_KEYS.activeSessionId) || "");
-      setActiveProviderId(globalThis.localStorage.getItem(STORAGE_KEYS.activeProviderId) || "");
-      setDraft(globalThis.localStorage.getItem(STORAGE_KEYS.draft) || "");
-    } catch {
-      // Ignore storage errors.
-    } finally {
-      setIsHydrated(true);
+    let cancelled = false;
+
+    async function hydrateChatState() {
+      try {
+        const localState = readLocalChatState();
+        let nextState = localState;
+
+        const res = await fetch("/api/basic-chat/state", { cache: "no-store" });
+        if (res.ok) {
+          const remoteState = normalizeStoredChatState(await res.json().catch(() => ({})));
+          const localTime = Date.parse(localState.updatedAt || "") || 0;
+          const remoteTime = Date.parse(remoteState.updatedAt || "") || 0;
+          if (remoteTime > localTime) {
+            nextState = remoteState;
+            writeLocalChatState(remoteState);
+          }
+        }
+
+        if (cancelled) return;
+        setSessions(nextState.sessions);
+        setActiveSessionId(nextState.activeSessionId);
+        setActiveProviderId(nextState.activeProviderId);
+        setDraft(nextState.draft);
+      } catch {
+        // Ignore storage errors.
+      } finally {
+        if (!cancelled) setIsHydrated(true);
+      }
     }
+
+    hydrateChatState();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -409,14 +463,30 @@ export default function BasicChatPageClient() {
   useEffect(() => {
     if (!isHydrated) return;
     try {
-      globalThis.localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(sessions));
-      globalThis.localStorage.setItem(STORAGE_KEYS.activeSessionId, activeSessionId);
-      globalThis.localStorage.setItem(STORAGE_KEYS.activeProviderId, activeProviderId);
-      globalThis.localStorage.setItem(STORAGE_KEYS.draft, draft);
+      const updatedAt = new Date().toISOString();
+      writeLocalChatState({ sessions, activeSessionId, activeProviderId, draft, updatedAt });
+
+      if (syncTimeoutRef.current) {
+        globalThis.clearTimeout(syncTimeoutRef.current);
+      }
+
+      syncTimeoutRef.current = globalThis.setTimeout(() => {
+        fetch("/api/basic-chat/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessions, activeSessionId, activeProviderId, draft, updatedAt }),
+        }).catch(() => {});
+      }, 400);
     } catch {
       // Ignore storage errors.
     }
   }, [isHydrated, sessions, activeSessionId, activeProviderId, draft]);
+
+  useEffect(() => () => {
+    if (syncTimeoutRef.current) {
+      globalThis.clearTimeout(syncTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isHydrated || loadingData || initializedRef.current) return;
