@@ -69,6 +69,47 @@ function mergeSystemIntoFirstUserMessage(body) {
   };
 }
 
+const MODEL_SOFT_FALLBACK_ERRORS = [
+  "selected model is at capacity",
+  "try a different model",
+  "model is at capacity",
+  "model is overloaded",
+  "currently overloaded",
+  "servers are currently overloaded",
+];
+
+function shouldFallbackToAlternateModel(status, errorText) {
+  if (![HTTP_STATUS.TOO_MANY_REQUESTS, HTTP_STATUS.SERVICE_UNAVAILABLE, HTTP_STATUS.BAD_GATEWAY, 529].includes(status)) {
+    return false;
+  }
+  const message = String(errorText || "").toLowerCase();
+  return MODEL_SOFT_FALLBACK_ERRORS.some((pattern) => message.includes(pattern));
+}
+
+function getAlternateModelCandidates(provider, model) {
+  const current = provider ? `${provider}/${model}` : model;
+  return ["openclaw", "xlabrouter/openclaw"].filter((candidate) => candidate && candidate !== current);
+}
+
+async function tryAlternateModels({ body, provider, model, clientRawRequest, request, apiKey, status, errorText }) {
+  if (body?.__modelSoftFallbackTried) return null;
+  if (!shouldFallbackToAlternateModel(status, errorText)) return null;
+
+  const candidates = getAlternateModelCandidates(provider, model);
+  for (const candidate of candidates) {
+    log.warn("CHAT", `[${provider}/${model}] upstream capacity error, trying alternate model ${candidate}`);
+    const fallbackBody = {
+      ...body,
+      model: candidate,
+      __modelSoftFallbackFrom: `${provider}/${model}`,
+      __modelSoftFallbackTried: true,
+    };
+    const response = await handleSingleModelChat(fallbackBody, candidate, clientRawRequest, request, apiKey);
+    if (response?.ok) return response;
+  }
+  return null;
+}
+
 function getOpenClawAllowTokens() {
   const envTokens = String(process.env.OPENCLAW_TUNNEL_ALLOW_TOKENS || "")
     .split(",")
@@ -354,6 +395,18 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     }
 
     if (result.success) return result.response;
+
+    const alternateModelResponse = await tryAlternateModels({
+      body,
+      provider,
+      model,
+      clientRawRequest,
+      request,
+      apiKey,
+      status: result.status,
+      errorText: result.error,
+    });
+    if (alternateModelResponse) return alternateModelResponse;
 
     // Mark account unavailable (auto-calculates cooldown with exponential backoff, or precise resetsAtMs)
     const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);
