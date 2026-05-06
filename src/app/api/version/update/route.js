@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { killAppProcesses, spawnUpdaterAndExit } from "@/lib/appUpdater";
 
 export async function POST() {
-  if (process.env.NODE_ENV !== "production") {
+  const isHostedRuntime = process.env.VERCEL === "1" || process.env.VERCEL === "true";
+  if (isHostedRuntime) {
     return NextResponse.json(
-      { success: false, message: "Update is only available in production build (xlabrouter CLI)" },
+      { success: false, message: "Update is not available on hosted runtime" },
       { status: 403 }
     );
   }
