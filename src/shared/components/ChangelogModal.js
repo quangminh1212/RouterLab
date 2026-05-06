@@ -3,30 +3,43 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
-import { marked } from "marked";
 import { GITHUB_CONFIG } from "@/shared/constants/config";
 
-marked.setOptions({ gfm: true, breaks: true });
-
 export default function ChangelogModal({ isOpen, onClose }) {
-  const [html, setHtml] = useState("");
+  const [changelog, setChangelog] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const modalRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen || html) return;
-    setLoading(true);
-    setError("");
+    if (!isOpen || changelog) return;
+    let cancelled = false;
+
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError("");
+    });
+
     fetch(GITHUB_CONFIG.changelogUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       })
-      .then((md) => setHtml(marked.parse(md)))
-      .catch((err) => setError(err.message || "Failed to load"))
-      .finally(() => setLoading(false));
-  }, [isOpen, html]);
+      .then((md) => {
+        if (!cancelled) setChangelog(md);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Failed to load");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, changelog]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -78,11 +91,10 @@ export default function ChangelogModal({ isOpen, onClose }) {
           {error && (
             <div className="text-red-500 py-4">Failed to load changelog: {error}</div>
           )}
-          {!loading && !error && html && (
-            <div
-              className="changelog-body text-text-main"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+          {!loading && !error && changelog && (
+            <pre className="changelog-body text-text-main whitespace-pre-wrap break-words font-sans">
+              {changelog}
+            </pre>
           )}
         </div>
       </div>

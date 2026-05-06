@@ -60,6 +60,24 @@ function isLocalhostRequest(request) {
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
+function isCrossSiteUnsafeRequest(request) {
+  const method = (request.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return false;
+
+  const secFetchSite = (request.headers.get("sec-fetch-site") || "").toLowerCase();
+  if (secFetchSite === "cross-site") return true;
+
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host") || "";
+  if (!origin || !host) return false;
+
+  try {
+    return new URL(origin).host.toLowerCase() !== host.toLowerCase();
+  } catch {
+    return true;
+  }
+}
+
 function parseHostnameFromUrl(value) {
   if (!value || typeof value !== "string") return "";
   try {
@@ -129,9 +147,13 @@ export async function proxy(request) {
   const { pathname } = request.nextUrl;
   const start = Date.now();
 
+  if (isCrossSiteUnsafeRequest(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // Always protected - require valid JWT or local CLI token (machineId-based)
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    const decision = isLocalhostRequest(request) || await hasValidCliToken(request) || await hasValidToken(request) ? "allow" : "deny";
+    const decision = await hasValidCliToken(request) || await hasValidToken(request) ? "allow" : "deny";
     if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
       console.log("[DASHBOARD_GUARD] proxy:alwaysProtected", { pathname, decision, durationMs: Date.now() - start });
     }

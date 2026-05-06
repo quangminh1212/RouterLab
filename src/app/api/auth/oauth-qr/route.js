@@ -12,6 +12,24 @@ function isLocalhostRequest(request) {
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
+function isCrossSiteUnsafeRequest(request) {
+  const method = (request.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return false;
+
+  const secFetchSite = (request.headers.get("sec-fetch-site") || "").toLowerCase();
+  if (secFetchSite === "cross-site") return true;
+
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host") || "";
+  if (!origin || !host) return false;
+
+  try {
+    return new URL(origin).host.toLowerCase() !== host.toLowerCase();
+  } catch {
+    return true;
+  }
+}
+
 async function hasValidToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
@@ -60,6 +78,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    if (isCrossSiteUnsafeRequest(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || "").trim();
 
