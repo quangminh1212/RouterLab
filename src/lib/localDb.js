@@ -6,10 +6,12 @@ import fs from "node:fs";
 import lockfile from "proper-lockfile";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { logger } from "@/lib/logger.js";
+import { AI_PROVIDERS } from "@/shared/constants/providers.js";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
 const LEGACY_CLOUD_HOST_REGEX = /(^|\.)9router\.com$/i;
 const REPLACEMENT_CLOUD_HOST = "xlabrouter.com";
+const COMBO_SERVICE_KINDS = new Set(["webSearch", "webFetch"]);
 
 function normalizeCloudUrl(url) {
   if (typeof url !== "string") return "";
@@ -313,6 +315,55 @@ function cloneDefaultSettings() {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
 
+function inferComboKind(combo) {
+  if (!combo || typeof combo !== "object" || Array.isArray(combo)) return null;
+  if (COMBO_SERVICE_KINDS.has(combo.kind)) return combo.kind;
+
+  const name = typeof combo.name === "string" ? combo.name.trim().toLowerCase() : "";
+  if (/^search-combo(?:-|$)/.test(name)) return "webSearch";
+  if (/^fetch-combo(?:-|$)/.test(name)) return "webFetch";
+
+  const models = Array.isArray(combo.models) ? combo.models : [];
+  if (models.length === 0) return null;
+
+  for (const kind of COMBO_SERVICE_KINDS) {
+    const everyModelSupportsKind = models.every((model) => {
+      if (typeof model !== "string" || model.includes("/")) return false;
+      const provider = AI_PROVIDERS[model];
+      const kinds = provider?.serviceKinds ?? ["llm"];
+      return kinds.includes(kind) && !kinds.includes("llm");
+    });
+    if (everyModelSupportsKind) return kind;
+  }
+
+  return null;
+}
+
+function normalizeCombo(combo) {
+  if (!combo || typeof combo !== "object" || Array.isArray(combo)) return null;
+  const name = typeof combo.name === "string" ? combo.name.trim() : "";
+  if (!name) return null;
+
+  const normalized = {
+    ...combo,
+    name,
+    models: Array.isArray(combo.models)
+      ? combo.models.filter((model) => typeof model === "string" && model.trim()).map((model) => model.trim())
+      : [],
+  };
+
+  const kind = inferComboKind(normalized);
+  if (kind) normalized.kind = kind;
+  else delete normalized.kind;
+
+  return normalized;
+}
+
+function normalizeCombos(combos) {
+  if (!Array.isArray(combos)) return [];
+  return combos.map(normalizeCombo).filter(Boolean);
+}
+
 function cloneDefaultData() {
   return {
     providerConnections: [],
@@ -486,6 +537,14 @@ function ensureDbShape(data) {
     }
 
     // Migrate existing API keys to have isActive and limits
+    if (key === "combos") {
+      const normalizedCombos = normalizeCombos(next.combos);
+      if (JSON.stringify(normalizedCombos) !== JSON.stringify(next.combos)) {
+        next.combos = normalizedCombos;
+        changed = true;
+      }
+    }
+
     if (key === "apiKeys" && Array.isArray(next.apiKeys)) {
       for (const apiKey of next.apiKeys) {
         if (apiKey.isActive === undefined || apiKey.isActive === null) {
@@ -1232,13 +1291,17 @@ export async function createCombo(data) {
   if (!db.data.combos) db.data.combos = [];
 
   const now = new Date().toISOString();
-  const combo = {
+  const combo = normalizeCombo({
     id: uuidv4(),
     name: data.name,
     models: data.models || [],
+    kind: data.kind || null,
     createdAt: now,
     updatedAt: now,
-  };
+  });
+  if (!combo) {
+    throw new Error("Invalid combo payload");
+  }
 
   db.data.combos.push(combo);
   await safeWrite(db);
@@ -1252,11 +1315,14 @@ export async function updateCombo(id, data) {
   const index = db.data.combos.findIndex(c => c.id === id);
   if (index === -1) return null;
 
-  db.data.combos[index] = {
+  const nextCombo = normalizeCombo({
     ...db.data.combos[index],
     ...data,
     updatedAt: new Date().toISOString(),
-  };
+  });
+  if (!nextCombo) return null;
+
+  db.data.combos[index] = nextCombo;
 
   await safeWrite(db);
   return db.data.combos[index];

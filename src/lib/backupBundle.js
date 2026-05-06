@@ -41,6 +41,8 @@ function isLikelyDatabasePayload(payload) {
     "usageData",
     "modelAliases",
     "activeModels",
+    "combos",
+    "pricing",
   ];
 
   return knownKeys.some((key) => Object.prototype.hasOwnProperty.call(payload, key));
