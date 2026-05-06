@@ -110,6 +110,35 @@ function migrateHistoryToDailySummary(db) {
   return true;
 }
 
+function ensureDailySummaryFromHistory(db) {
+  const data = ensureUsageDataShape(db.data);
+  const history = Array.isArray(data.history) ? data.history : [];
+  const dailySummary = data.dailySummary && typeof data.dailySummary === "object" && !Array.isArray(data.dailySummary)
+    ? data.dailySummary
+    : {};
+
+  if (!history.length) {
+    data.dailySummary = dailySummary;
+    db.data = data;
+    return false;
+  }
+
+  const summaryKeys = new Set(Object.keys(dailySummary));
+  const hasMissingHistoryDay = history.some((entry) => {
+    const timestamp = new Date(entry?.timestamp).getTime();
+    return Number.isFinite(timestamp) && !summaryKeys.has(getLocalDateKey(entry.timestamp));
+  });
+
+  if (summaryKeys.size > 0 && !hasMissingHistoryDay) {
+    data.dailySummary = dailySummary;
+    db.data = data;
+    return false;
+  }
+
+  db.data = data;
+  return migrateHistoryToDailySummary(db);
+}
+
 // Singleton instance
 let dbInstance = null;
 
@@ -334,12 +363,8 @@ export async function getUsageDb() {
           }
         }
 
-        if (!this._main.data.usageData.dailySummary) {
-          if (migrateHistoryToDailySummary({ data: this._main.data.usageData })) {
-            await this._main.write();
-          } else {
-            this._main.data.usageData.dailySummary = {};
-          }
+        if (ensureDailySummaryFromHistory({ data: this._main.data.usageData })) {
+          await this._main.write();
         }
       },
       async write() {
@@ -1176,6 +1201,7 @@ export async function getUsageDebugInfo(period = "7d") {
     relevantHistoryCount,
     dailySummaryDays: summaryDays,
     relevantSummaryDays,
+    hasDataInPeriod: relevantSummaryDays > 0 || relevantHistoryCount > 0,
     totalRequestsLifetime: typeof db.data.totalRequestsLifetime === "number" ? db.data.totalRequestsLifetime : history.length,
   };
 }

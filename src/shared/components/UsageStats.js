@@ -449,7 +449,7 @@ export default function UsageStats() {
     <div className="flex flex-col gap-6">
       {/* Period selector */}
       <div className="flex items-center gap-2 self-end">
-        {debugInfo && (
+        {debugInfo && debugInfo.source !== "empty" && (
           <span
             className={`px-2 py-1 rounded-md border text-xs font-medium ${debugInfo.source === "history-fallback" ? "border-warning/40 text-warning bg-warning/10" : "border-border text-text-muted bg-bg-subtle"}`}
             title={`history=${debugInfo.relevantHistoryCount}/${debugInfo.historyCount}, summaryDays=${debugInfo.relevantSummaryDays}/${debugInfo.dailySummaryDays}`}
