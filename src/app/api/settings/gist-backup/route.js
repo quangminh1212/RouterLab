@@ -63,35 +63,72 @@ async function getGitHubCliToken() {
   }
 }
 
+function isGitHubAuthError(error) {
+  const status = Number(error?.status || 0);
+  if (status === 401 || status === 403) return true;
+
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("bad credentials")
+    || message.includes("requires authentication")
+    || message.includes("invalid or missing")
+    || message.includes("forbidden")
+    || message.includes("insufficient")
+  );
+}
+
+async function resolveGitHubLogin(token, fallback = "") {
+  try {
+    const user = await validateGitHubToken(token);
+    return user.login || fallback || "";
+  } catch {
+    return fallback || "";
+  }
+}
+
 async function ensureCliAuth(current) {
   const storedToken = String(current?.token || "").trim();
+  const storedLogin = String(current?.githubLogin || "").trim();
+  const tokenSource = String(current?.tokenSource || "").trim().toLowerCase();
+
+  // V?i gh-cli: lu?n ?u ti?n l?y token m?i nh?t t? GitHub CLI
+  // ?? CLI t? refresh access token b?ng refresh token n?i b?.
+  const preferGhCli = tokenSource === "gh-cli" || !storedToken;
+  if (preferGhCli) {
+    try {
+      const token = await getGitHubCliToken();
+      return {
+        token,
+        githubLogin: await resolveGitHubLogin(token, storedLogin),
+      };
+    } catch (error) {
+      if (!storedToken) throw error;
+    }
+  }
+
+  // Fallback token ?? l?u (v? d? PAT) khi gh CLI kh?ng s?n s?ng.
   if (storedToken) {
     try {
       const user = await validateGitHubToken(storedToken);
       return {
         token: storedToken,
-        githubLogin: user.login || current.githubLogin || "",
+        githubLogin: user.login || storedLogin,
       };
     } catch (error) {
-      const status = Number(error?.status || 0);
-      const isAuthError = status === 401 || status === 403;
-
-      // Chỉ fallback khi token thực sự invalid/forbidden.
-      // Lỗi mạng/tạm thời thì giữ token đã lưu để tránh bắt đăng nhập lại mỗi lần backup.
-      if (!isAuthError) {
+      if (!isGitHubAuthError(error)) {
         return {
           token: storedToken,
-          githubLogin: String(current?.githubLogin || ""),
+          githubLogin: storedLogin,
         };
       }
     }
   }
 
+  // Cu?i c?ng th? l?i gh CLI l?n n?a tr??c khi b?o l?i login.
   const token = await getGitHubCliToken();
-  const user = await validateGitHubToken(token);
   return {
     token,
-    githubLogin: user.login || current.githubLogin || "",
+    githubLogin: await resolveGitHubLogin(token, storedLogin),
   };
 }
 
@@ -136,13 +173,13 @@ export async function POST(request) {
     if (action === "use-gh-cli") {
       try {
         const token = await getGitHubCliToken();
-        const gitHubUser = await validateGitHubToken(token);
+        const githubLogin = await resolveGitHubLogin(token, current.githubLogin || "");
         const nextConfig = {
           ...current,
           enabled: true,
           token,
           tokenSource: "gh-cli",
-          githubLogin: gitHubUser.login || current.githubLogin || "",
+          githubLogin,
           fileName: current.fileName || "xlabrouter.backup.json",
         };
         await updateSettings({ gistBackup: nextConfig });
@@ -154,8 +191,8 @@ export async function POST(request) {
           requiresLogin: true,
           launched,
           error: launched
-            ? "GitHub CLI token hiện tại không hợp lệ hoặc đã hết hạn. Đã mở cửa sổ đăng nhập GitHub CLI, hãy hoàn tất đăng nhập rồi bấm lại 'Dùng GitHub CLI'."
-            : "GitHub CLI token hiện tại không hợp lệ hoặc đã hết hạn. Hãy chạy `gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org` rồi thử lại.",
+            ? "Kh?ng ??c ???c token t? GitHub CLI. ?? m? c?a s? ??ng nh?p, h?y ho?n t?t r?i b?m l?i 'D?ng GitHub CLI'."
+            : "Kh?ng ??c ???c token t? GitHub CLI. H?y ch?y `gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org` r?i th? l?i.",
           details: error?.message || "",
           config: toPublicConfig({ gistBackup: current }),
         });
