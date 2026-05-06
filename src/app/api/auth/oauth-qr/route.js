@@ -39,8 +39,12 @@ async function setAuthCookie() {
   });
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
+    if (!isLocalhostRequest(request) && !(await hasValidToken())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const secret = await getOrCreateTotpSecret();
     const backupCodeCount = await getBackupCodeCount();
     return NextResponse.json({

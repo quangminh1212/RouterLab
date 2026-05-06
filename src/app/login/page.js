@@ -10,9 +10,12 @@ export default function LoginPage() {
   const [authReady, setAuthReady] = useState(false);
   const [oauthUrl, setOauthUrl] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrUnavailable, setQrUnavailable] = useState(false);
   const [authCode, setAuthCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
+  const normalizedAuthCode = authCode.trim();
+  const canSubmit = normalizedAuthCode.length >= 6 && !submitting;
 
   useEffect(() => {
     const googleError = typeof window !== "undefined"
@@ -43,6 +46,7 @@ export default function LoginPage() {
           }
           const qrRes = await fetch(`${window.location.origin}/api/auth/oauth-qr`, { cache: "no-store" });
           const qrData = await qrRes.json().catch(() => ({}));
+          setQrUnavailable(!qrRes.ok || !qrData?.url);
           setOauthUrl(qrData?.url || "");
           setAuthReady(true);
         } else {
@@ -110,9 +114,17 @@ export default function LoginPage() {
         <Card>
           <div className="flex flex-col gap-4">
             <div className="text-center">
-              <p className="text-sm text-text-muted mb-3">Scan the QR with Google Authenticator, then enter a 6-digit code or a backup code</p>
+              <p className="text-sm text-text-muted mb-3">
+                {qrUnavailable
+                  ? "Enter the 6-digit code from your existing Authenticator app or a backup code"
+                  : "Scan the QR with Google Authenticator, then enter a 6-digit code or a backup code"}
+              </p>
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="Authenticator QR" className="mx-auto rounded-lg border border-border" width={240} height={240} />
+              ) : qrUnavailable ? (
+                <div className="h-[160px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted px-6">
+                  QR setup is only available from localhost or after login.
+                </div>
               ) : (
                 <div className="h-[240px] rounded-lg border border-border flex items-center justify-center text-sm text-text-muted">Preparing authenticator QR...</div>
               )}

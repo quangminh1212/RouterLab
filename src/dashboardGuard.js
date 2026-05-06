@@ -60,6 +60,29 @@ function isLocalhostRequest(request) {
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
+function parseHostnameFromUrl(value) {
+  if (!value || typeof value !== "string") return "";
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isTunnelLikeRequest(request, settings) {
+  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+  if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+
+  const tunnelHost = parseHostnameFromUrl(settings?.tunnelUrl || "");
+  const tailscaleHost = parseHostnameFromUrl(settings?.tailscaleUrl || "");
+  if ((tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost)) return true;
+
+  const cfDomain = String(settings?.cloudflare?.domain || "").trim().toLowerCase();
+  if (cfDomain && (host === cfDomain || host.endsWith(`.${cfDomain}`))) return true;
+
+  return false;
+}
+
 // Read settings directly from DB to avoid self-fetch deadlock in proxy
 let cachedSettings = null;
 let cachedSettingsAt = 0;
@@ -97,6 +120,7 @@ async function isAuthenticated(request) {
   if (isLocalhostRequest(request)) return true;
   if (await hasValidToken(request)) return true;
   const settings = await loadSettings();
+  if (isTunnelLikeRequest(request, settings)) return false;
   if (settings && settings.requireLogin === false) return true;
   return false;
 }
@@ -118,6 +142,11 @@ export async function proxy(request) {
   // Protect sensitive API endpoints (allow CLI token, JWT, or requireLogin=false)
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return NextResponse.next();
+    const settings = await loadSettings();
+    const tunnelLike = isTunnelLikeRequest(request, settings);
+    if (tunnelLike && !(await hasValidCliToken(request)) && !(await hasValidToken(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const decision = await hasValidCliToken(request) || await isAuthenticated(request) ? "allow" : "deny";
     if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
       console.log("[DASHBOARD_GUARD] proxy:protectedApi", { pathname, decision, durationMs: Date.now() - start });
@@ -130,12 +159,14 @@ export async function proxy(request) {
   if (pathname.startsWith("/dashboard")) {
     let requireLogin = true;
     let tunnelDashboardAccess = true;
+    let tunnelLike = false;
 
     try {
       const settings = await loadSettings();
       if (settings) {
         requireLogin = settings.requireLogin !== false;
         tunnelDashboardAccess = settings.tunnelDashboardAccess === true;
+        tunnelLike = isTunnelLikeRequest(request, settings);
 
         // Block tunnel/tailscale access if disabled (redirect to login)
         if (!tunnelDashboardAccess) {
@@ -156,7 +187,7 @@ export async function proxy(request) {
     }
 
     // If login not required, allow through
-    if (!requireLogin) {
+    if (!requireLogin && !tunnelLike) {
       if (process.env.DEBUG_DASHBOARD_PERF_VERBOSE === "true") {
         console.log("[DASHBOARD_GUARD] proxy:dashboard:noLoginRequired", { pathname, durationMs: Date.now() - start });
       }
