@@ -283,7 +283,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
               CPU {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
             </span>
             <span className="px-2 py-1 rounded-md border border-border bg-bg-subtle text-text-muted whitespace-nowrap" title={`${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
-              RAM {typeof systemMetrics.memoryPercent === "number" ? `${systemMetrics.memoryPercent.toFixed(0)}%` : "--"}
+              RAM {typeof systemMetrics.memoryPercent === "number" ? `${systemMetrics.memoryPercent.toFixed(0)}%` : "--"} {systemMetrics.usedMemoryBytes ? `(${formatMemoryGb(systemMetrics.usedMemoryBytes)})` : ""}
             </span>
           </div>
         )}
