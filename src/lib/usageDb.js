@@ -597,10 +597,13 @@ async function calculateCost(provider, model, tokens) {
 
     let cost = 0;
 
-    // Input tokens (non-cached)
-    const inputTokens = tokens.prompt_tokens || tokens.input_tokens || 0;
-    const cachedTokens = tokens.cached_tokens || tokens.cache_read_input_tokens || 0;
-    const nonCachedInput = Math.max(0, inputTokens - cachedTokens);
+    const hasOpenAiShape = tokens.prompt_tokens !== undefined || tokens.prompt_tokens_details !== undefined;
+    const inputTokens = tokens.prompt_tokens ?? tokens.input_tokens ?? 0;
+    const cachedTokens = tokens.cached_tokens
+      ?? tokens.prompt_tokens_details?.cached_tokens
+      ?? tokens.cache_read_input_tokens
+      ?? 0;
+    const nonCachedInput = hasOpenAiShape ? Math.max(0, inputTokens - cachedTokens) : inputTokens;
 
     cost += (nonCachedInput * (pricing.input / 1000000));
 
@@ -615,7 +618,10 @@ async function calculateCost(provider, model, tokens) {
     cost += (outputTokens * (pricing.output / 1000000));
 
     // Reasoning tokens
-    const reasoningTokens = tokens.reasoning_tokens || 0;
+    const reasoningTokens = tokens.reasoning_tokens
+      ?? tokens.completion_tokens_details?.reasoning_tokens
+      ?? tokens.output_tokens_details?.reasoning_tokens
+      ?? 0;
     if (reasoningTokens > 0) {
       const reasoningRate = pricing.reasoning || pricing.output; // Fallback to output rate
       cost += (reasoningTokens * (reasoningRate / 1000000));

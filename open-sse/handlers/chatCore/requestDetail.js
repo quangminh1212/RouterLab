@@ -48,6 +48,7 @@ export function extractUsageFromResponse(responseBody) {
     return {
       prompt_tokens: responseBody.usageMetadata.promptTokenCount || 0,
       completion_tokens: responseBody.usageMetadata.candidatesTokenCount || 0,
+      cached_tokens: responseBody.usageMetadata.cachedContentTokenCount,
       reasoning_tokens: responseBody.usageMetadata.thoughtsTokenCount
     };
   }
@@ -77,8 +78,19 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
 
   const inTokens = tokens.input_tokens ?? tokens.prompt_tokens ?? 0;
   const outTokens = tokens.output_tokens ?? tokens.completion_tokens ?? 0;
+  const cachedTokens = tokens.cached_tokens
+    ?? tokens.prompt_tokens_details?.cached_tokens
+    ?? tokens.cache_read_input_tokens
+    ?? tokens.cachedContentTokenCount
+    ?? 0;
+  const cacheCreationTokens = tokens.cache_creation_input_tokens ?? 0;
+  const reasoningTokens = tokens.reasoning_tokens
+    ?? tokens.completion_tokens_details?.reasoning_tokens
+    ?? tokens.output_tokens_details?.reasoning_tokens
+    ?? tokens.thoughtsTokenCount
+    ?? 0;
 
-  if (inTokens === 0 && outTokens === 0) return;
+  if (inTokens === 0 && outTokens === 0 && cachedTokens === 0 && cacheCreationTokens === 0 && reasoningTokens === 0) return;
 
   const time = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const accountSuffix = connectionId ? ` | account=${connectionId.slice(0, 8)}...` : "";
@@ -87,7 +99,11 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
   // Normalize to OpenAI token shape for storage
   const normalized = {
     prompt_tokens: tokens.prompt_tokens ?? tokens.input_tokens ?? 0,
-    completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0
+    completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0,
+    cached_tokens: cachedTokens,
+    cache_read_input_tokens: tokens.cache_read_input_tokens ?? 0,
+    cache_creation_input_tokens: cacheCreationTokens,
+    reasoning_tokens: reasoningTokens,
   };
 
   saveRequestUsage({
