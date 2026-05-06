@@ -226,6 +226,9 @@ if (command === "--help" || command === "-h") {
   console.log("  xlab_router           Start Web UI directly (port 1212)");
   console.log("  xlab_router --tray    Start in system tray/background mode");
   console.log("  xlab_router --web     Start Web UI directly (port 1212)");
+  console.log("  xlab_router --autostart-on      Enable Windows autostart in tray mode");
+  console.log("  xlab_router --autostart-off     Disable Windows autostart");
+  console.log("  xlab_router --autostart-status  Show Windows autostart status");
   console.log("  xlab_router --menu    Show interactive menu");
   console.log("  xlab_router --version Show version");
   console.log("");
@@ -456,6 +459,78 @@ function getLogFilePath() {
   return path.join(getRuntimeDataDir(), LOG_FILE_NAME);
 }
 
+function isWindows() {
+  return process.platform === "win32";
+}
+
+function getWindowsStartupDir() {
+  const appDataDir = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+  return path.join(appDataDir, "Microsoft", "Windows", "Start Menu", "Programs", "Startup");
+}
+
+function getAutostartScriptPath() {
+  return path.join(getWindowsStartupDir(), "XLab Router Autostart.vbs");
+}
+
+function getTrayHostScriptPath() {
+  return path.resolve(__filename);
+}
+
+function getAutostartScriptContent() {
+  const hiddenNode = getHiddenNodeExecutable().replace(/"/g, '""');
+  const trayHostScript = getTrayHostScriptPath().replace(/"/g, '""');
+  return [
+    'Set WshShell = CreateObject("WScript.Shell")',
+    `WshShell.Run Chr(34) & "${hiddenNode}" & Chr(34) & " " & Chr(34) & "${trayHostScript}" & Chr(34) & " --tray-host", 0, False`,
+  ].join("\r\n");
+}
+
+function isAutostartEnabled() {
+  if (!isWindows()) {
+    return false;
+  }
+  return fs.existsSync(getAutostartScriptPath());
+}
+
+function ensureAutostartEnabled() {
+  if (!isWindows()) {
+    throw new Error("Autostart hiện chỉ hỗ trợ trên Windows.");
+  }
+
+  const startupDir = getWindowsStartupDir();
+  const autostartScriptPath = getAutostartScriptPath();
+  fs.mkdirSync(startupDir, { recursive: true });
+  fs.writeFileSync(autostartScriptPath, getAutostartScriptContent(), "utf8");
+  return autostartScriptPath;
+}
+
+function disableAutostart() {
+  if (!isWindows()) {
+    throw new Error("Autostart hiện chỉ hỗ trợ trên Windows.");
+  }
+
+  const autostartScriptPath = getAutostartScriptPath();
+  if (fs.existsSync(autostartScriptPath)) {
+    fs.unlinkSync(autostartScriptPath);
+  }
+  return autostartScriptPath;
+}
+
+function printAutostartStatus() {
+  if (!isWindows()) {
+    console.log("[INFO] Autostart hiện chỉ hỗ trợ trên Windows.");
+    return;
+  }
+
+  const autostartScriptPath = getAutostartScriptPath();
+  if (isAutostartEnabled()) {
+    console.log(`[OK] Autostart đang bật: ${autostartScriptPath}`);
+    return;
+  }
+
+  console.log(`[INFO] Autostart đang tắt: ${autostartScriptPath}`);
+}
+
 async function launchWebUIProcess(options = {}) {
   const {
     exitOnChildExit = true,
@@ -636,6 +711,9 @@ function printTrayLaunchMessage() {
   console.log(`[INFO] Dashboard: ${getDashboardUrl()}`);
   console.log(`[INFO] Use the tray menu to open the dashboard, open logs, or quit.`);
   console.log(`[INFO] Run xlabrouter --web if you want to keep it in the current terminal.`);
+  if (isWindows()) {
+    console.log(`[INFO] Run xlabrouter --autostart-on to launch XLab Router automatically when Windows starts.`);
+  }
 }
 
 
@@ -755,6 +833,7 @@ async function startTrayHost() {
   serverChild = launch.child;
 
   const icon = getTrayIconBase64(launch.appRoot);
+  const autostartEnabled = isWindows() && isAutostartEnabled();
   tray = new SysTray({
     menu: {
       icon,
@@ -772,6 +851,24 @@ async function startTrayHost() {
           tooltip: "Open log file",
           checked: false,
           enabled: true,
+        },
+        {
+          title: autostartEnabled ? "Autostart: ON" : "Autostart: OFF",
+          tooltip: isWindows() ? "Bật / tắt chạy cùng Windows" : "Autostart chỉ hỗ trợ trên Windows",
+          checked: false,
+          enabled: false,
+        },
+        {
+          title: "Enable Autostart",
+          tooltip: "Launch XLab Router automatically when you sign in",
+          checked: false,
+          enabled: isWindows() && !autostartEnabled,
+        },
+        {
+          title: "Disable Autostart",
+          tooltip: "Stop launching XLab Router automatically on sign in",
+          checked: false,
+          enabled: isWindows() && autostartEnabled,
         },
         {
           title: "Quit XLab Router",
@@ -809,6 +906,20 @@ async function startTrayHost() {
         return;
       }
       if (event.seq_id === 2) {
+        return;
+      }
+      if (event.seq_id === 3) {
+        const scriptPath = ensureAutostartEnabled();
+        console.log(`[OK] Enabled autostart: ${scriptPath}`);
+        await openPathOrUrl(getWindowsStartupDir());
+        return;
+      }
+      if (event.seq_id === 4) {
+        const scriptPath = disableAutostart();
+        console.log(`[OK] Disabled autostart: ${scriptPath}`);
+        return;
+      }
+      if (event.seq_id === 5) {
         cleanup(0);
       }
     } catch (error) {
@@ -974,6 +1085,7 @@ async function showMenu() {
       choices: [
         { name: "Web UI (Browser Interface)", value: "web" },
         { name: "Hide to Tray (System Tray)", value: "tray" },
+        ...(isWindows() ? [{ name: `Autostart: ${isAutostartEnabled() ? "ON" : "OFF"}`, value: "autostart" }] : []),
         new inquirer.Separator(),
         { name: "Check for Updates", value: "update" },
         new inquirer.Separator(),
@@ -988,6 +1100,38 @@ async function showMenu() {
       break;
     case "tray":
       startTrayMode();
+      break;
+    case "autostart":
+      {
+        const enabled = isAutostartEnabled();
+        const answer = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "confirmToggle",
+            message: enabled
+              ? "Autostart đang bật. Bạn muốn tắt không?"
+              : "Bật autostart để XLab Router tự chạy cùng Windows?",
+            default: true,
+          },
+        ]);
+
+        if (enabled) {
+          if (answer.confirmToggle) {
+            disableAutostart();
+            console.log("[OK] Đã tắt autostart cho XLab Router.");
+          } else {
+            console.log("[INFO] Giữ nguyên autostart đang bật.");
+          }
+        } else if (answer.confirmToggle) {
+          const scriptPath = ensureAutostartEnabled();
+          console.log(`[OK] Đã bật autostart: ${scriptPath}`);
+        } else {
+          console.log("[INFO] Chưa bật autostart.");
+        }
+      }
+      console.log("");
+      await inquirer.prompt([{ type: "input", name: "continue", message: "Press Enter to continue..." }]);
+      await showMenu();
       break;
     case "update":
       {
@@ -1046,6 +1190,24 @@ if (command === "--web") {
   });
 } else if (command === "--tray") {
   startTrayMode();
+} else if (command === "--autostart-on") {
+  try {
+    const scriptPath = ensureAutostartEnabled();
+    console.log(`[OK] Enabled autostart: ${scriptPath}`);
+  } catch (error) {
+    console.error(`[ERROR] ${error.message}`);
+    process.exit(1);
+  }
+} else if (command === "--autostart-off") {
+  try {
+    const scriptPath = disableAutostart();
+    console.log(`[OK] Disabled autostart: ${scriptPath}`);
+  } catch (error) {
+    console.error(`[ERROR] ${error.message}`);
+    process.exit(1);
+  }
+} else if (command === "--autostart-status") {
+  printAutostartStatus();
 } else if (!command || command === "--menu") {
   showMenu().catch((err) => {
     console.error("[ERROR] Menu failed:", err);
