@@ -5,10 +5,19 @@ import { initConsoleLogCapture } from "@/lib/consoleLogBuffer";
 import { RuntimeI18nProvider } from "@/i18n/RuntimeI18nProvider";
 import { logger } from "@/lib/logger";
 
-// Hook console immediately at module load time (server-side only, runs once)
-initConsoleLogCapture();
-logger.info("APP", "Console log capture initialized");
-logger.info("APP", "XLab Router application starting up");
+function bootstrapAppModule() {
+  if (typeof window !== "undefined") return;
+
+  const globalKey = "__xlabrouterAppModuleBootstrapped";
+  if (globalThis[globalKey]) return;
+  globalThis[globalKey] = true;
+
+  initConsoleLogCapture();
+  logger.info("APP", "Console log capture initialized");
+  logger.info("APP", "XLab Router application starting up");
+}
+
+bootstrapAppModule();
 
 function bootstrapServerInits() {
   if (typeof window !== "undefined") return;

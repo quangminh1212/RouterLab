@@ -42,9 +42,13 @@ const nextConfig = {
       ...config.watchOptions,
       ignored: [
         "**/.next/**",
+        "**/.openclaw/**",
+        "**/.playwright-mcp/**",
         "**/logs/**",
         "**/*.log",
+        "**/*.ndjson",
         "**/*.tmp",
+        "**/.tmp-*/**",
         "**/tmp/**",
         "**/temp/**",
       ],
