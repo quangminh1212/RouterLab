@@ -1345,6 +1345,43 @@ export async function getApiKeys() {
   return db.data.apiKeys || [];
 }
 
+const API_KEY_SNAPSHOT_TTL_MS = 30000;
+let apiKeySnapshotCache = null;
+let apiKeySnapshotCacheAt = 0;
+let apiKeySnapshotPromise = null;
+
+function cloneApiKeysSnapshot(apiKeys) {
+  return JSON.parse(JSON.stringify(Array.isArray(apiKeys) ? apiKeys : []));
+}
+
+function invalidateApiKeySnapshotCache() {
+  apiKeySnapshotCache = null;
+  apiKeySnapshotCacheAt = 0;
+  apiKeySnapshotPromise = null;
+}
+
+async function getApiKeysSnapshot() {
+  const now = Date.now();
+  if (apiKeySnapshotCache && now - apiKeySnapshotCacheAt < API_KEY_SNAPSHOT_TTL_MS) {
+    return apiKeySnapshotCache;
+  }
+
+  if (apiKeySnapshotPromise) return apiKeySnapshotPromise;
+
+  apiKeySnapshotPromise = (async () => {
+    const db = await getDb();
+    apiKeySnapshotCache = cloneApiKeysSnapshot(db.data.apiKeys || []);
+    apiKeySnapshotCacheAt = Date.now();
+    return apiKeySnapshotCache;
+  })();
+
+  try {
+    return await apiKeySnapshotPromise;
+  } finally {
+    apiKeySnapshotPromise = null;
+  }
+}
+
 function generateShortKey() {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
@@ -1377,6 +1414,7 @@ export async function createApiKey(name, machineId, costLimit = null, allowedMod
 
   db.data.apiKeys.push(apiKey);
   await safeWrite(db);
+  invalidateApiKeySnapshotCache();
   return apiKey;
 }
 
@@ -1387,6 +1425,7 @@ export async function deleteApiKey(id) {
 
   db.data.apiKeys.splice(index, 1);
   await safeWrite(db);
+  invalidateApiKeySnapshotCache();
   return true;
 }
 
@@ -1401,6 +1440,7 @@ export async function updateApiKey(id, data) {
   if (index === -1) return null;
   db.data.apiKeys[index] = { ...db.data.apiKeys[index], ...data };
   await safeWrite(db);
+  invalidateApiKeySnapshotCache();
   return db.data.apiKeys[index];
 }
 
@@ -1450,8 +1490,8 @@ async function getApiKeySpentCost(apiKey) {
 }
 
 export async function validateApiKey(key, requestContext = {}) {
-  const db = await getDb();
-  const found = db.data.apiKeys.find(k => k.key === key);
+  const apiKeys = await getApiKeysSnapshot();
+  const found = apiKeys.find(k => k.key === key);
   if (!found || found.isActive === false) return false;
 
   // Check model whitelist

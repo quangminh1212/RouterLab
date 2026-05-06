@@ -16,6 +16,7 @@ const CONFIG = {
   ),
   maxInFlight: toPositiveNumber(process.env.RUNTIME_MAX_INFLIGHT, 80),
   maxInFlightDegraded: toPositiveNumber(process.env.RUNTIME_MAX_INFLIGHT_DEGRADED, 16),
+  overloadQueueWaitMs: toPositiveNumber(process.env.RUNTIME_OVERLOAD_QUEUE_WAIT_MS, 3000),
   timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 2))),
   circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 15000),
   slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 1000),
@@ -191,6 +192,23 @@ function shouldRejectRoute(routeName) {
   return { reject: false };
 }
 
+async function waitForRuntimeSlot(routeName) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < CONFIG.overloadQueueWaitMs) {
+    const decision = shouldRejectRoute(routeName);
+    if (!decision.reject) return { reject: false };
+
+    if (decision.response && getRouteState(routeName).circuitOpenUntil > Date.now()) {
+      return decision;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  return shouldRejectRoute(routeName);
+}
+
 class RouteTimeoutError extends Error {
   constructor(timeoutMs) {
     super(`Route timed out after ${timeoutMs}ms`);
@@ -250,7 +268,7 @@ export function withRouteGuard(routeName, handler, options = {}) {
   return async function guardedRoute(...args) {
     ensureRuntimeMonitor();
 
-    const decision = shouldRejectRoute(routeName);
+    const decision = await waitForRuntimeSlot(routeName);
     if (decision.reject) return decision.response;
 
     runtimeState.inFlight += 1;
