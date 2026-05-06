@@ -66,9 +66,9 @@ function RecentRequests({ requests = [] }) {
                     </td>
                     <td className="py-1.5 font-mono truncate max-w-[120px]" title={r.model}>{r.model}</td>
                     <td className="py-1.5 text-right whitespace-nowrap">
-                      <span className="text-primary">{fmt(r.promptTokens)}â†‘</span>
+                      <span className="text-primary">{fmt(r.promptTokens)}{"\u2191"}</span>
                       {" "}
-                      <span className="text-success">{fmt(r.completionTokens)}â†“</span>
+                      <span className="text-success">{fmt(r.completionTokens)}{"\u2193"}</span>
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
