@@ -41,6 +41,7 @@ images/*
 !README.md
 *.tgz
 .tmp-*/
+.tmp-*.log*
 log.txt
 
 # Generated local test artifacts
