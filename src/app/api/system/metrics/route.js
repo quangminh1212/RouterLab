@@ -31,16 +31,19 @@ function getCpuUsagePercent() {
 export async function GET() {
   try {
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const usedMem = Math.max(0, totalMem - freeMem);
-    const memoryPercent = totalMem > 0 ? (usedMem / totalMem) * 100 : 0;
+    const processMemory = process.memoryUsage();
+    const appUsedMem = processMemory.rss || processMemory.heapTotal || processMemory.heapUsed || 0;
+    const memoryPercent = totalMem > 0 ? (appUsedMem / totalMem) * 100 : 0;
     const cpuPercent = getCpuUsagePercent();
 
     return NextResponse.json({
       cpuPercent,
       memoryPercent,
-      usedMemoryBytes: usedMem,
+      usedMemoryBytes: appUsedMem,
       totalMemoryBytes: totalMem,
+      processMemoryBytes: appUsedMem,
+      heapUsedBytes: processMemory.heapUsed || 0,
+      heapTotalBytes: processMemory.heapTotal || 0,
     });
   } catch (error) {
     console.error("[API] Failed to get system metrics:", error);

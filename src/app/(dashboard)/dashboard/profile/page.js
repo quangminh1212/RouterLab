@@ -572,7 +572,7 @@ export default function ProfilePage() {
   const showProxyForm = !networkLoading && outboundProxyEnabled;
   void isDark;
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto" data-i18n-skip>
       <div className="flex flex-col gap-6">
         {/* Local Mode Info */}
         <Card>

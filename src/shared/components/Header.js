@@ -154,7 +154,9 @@ const getPageInfo = (pathname) => {
 };
 
 function formatMemoryGb(bytes) {
-  return `${(bytes / (1024 ** 3)).toFixed(1)} GB`;
+  const gb = bytes / (1024 ** 3);
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  return `${Math.max(0, bytes / (1024 ** 2)).toFixed(0)} MB`;
 }
 
 export default function Header({ onMenuClick, showMenuButton = true }) {
@@ -278,12 +280,20 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       {/* Right actions - consolidated into dropdown menu */}
       <div className="flex items-center gap-2 ml-auto">
         {systemMetrics && (
-          <div className="hidden md:flex items-center gap-2 text-xs">
-            <span className="px-2 py-1 rounded-md border border-border bg-bg-subtle text-text-muted whitespace-nowrap">
-              CPU {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
+          <div className="hidden md:flex items-center gap-2 text-xs font-medium">
+            <span className="group inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-600 shadow-sm shadow-emerald-500/5 transition-colors dark:text-emerald-300 dark:border-emerald-400/20 dark:bg-emerald-400/10">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.75)]" />
+              <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-700/70 dark:text-emerald-200/70">CPU</span>
+              <span className="tabular-nums text-text-main dark:text-white">
+                {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
+              </span>
             </span>
-            <span className="px-2 py-1 rounded-md border border-border bg-bg-subtle text-text-muted whitespace-nowrap" title={`${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
-              RAM {typeof systemMetrics.memoryPercent === "number" ? `${systemMetrics.memoryPercent.toFixed(0)}%` : "--"} {systemMetrics.usedMemoryBytes ? `(${formatMemoryGb(systemMetrics.usedMemoryBytes)})` : ""}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/20 dark:bg-sky-400/10" title={`XLab Router: ${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
+              <span className="material-symbols-outlined text-[15px] leading-none">memory</span>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-sky-700/70 dark:text-sky-200/70">RAM</span>
+              <span className="tabular-nums text-text-main dark:text-white">
+                {formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / {formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}
+              </span>
             </span>
           </div>
         )}
