@@ -270,7 +270,6 @@ export async function getActiveRequests() {
   const db = await getUsageDb();
   await db.read();
   const history = db.data.history || [];
-  const seen = new Set();
   const recentRequestsRaw = await Promise.all(
     [...history]
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -295,14 +294,7 @@ export async function getActiveRequests() {
   );
 
   const recentRequests = recentRequestsRaw
-    .filter((e) => {
-      if (e.promptTokens === 0 && e.completionTokens === 0) return false;
-      const minute = e.timestamp ? e.timestamp.slice(0, 16) : "";
-      const key = `${e.model}|${e.provider}|${e.promptTokens}|${e.completionTokens}|${minute}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
+    .filter((e) => e.promptTokens > 0 || e.completionTokens > 0)
     .slice(0, 20);
 
   // Error provider (auto-clear after 10s)
@@ -693,7 +685,6 @@ export async function getUsageStats(period = "all") {
   }
 
   // Recent requests (always from live history)
-  const seen = new Set();
   const recentRequestsRaw = await Promise.all(
     [...history]
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -716,14 +707,7 @@ export async function getUsageStats(period = "all") {
   );
 
   const recentRequests = recentRequestsRaw
-    .filter((e) => {
-      if (e.promptTokens === 0 && e.completionTokens === 0) return false;
-      const minute = e.timestamp ? e.timestamp.slice(0, 16) : "";
-      const key = `${e.model}|${e.provider}|${e.promptTokens}|${e.completionTokens}|${minute}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
+    .filter((e) => e.promptTokens > 0 || e.completionTokens > 0)
     .slice(0, 20);
 
   const lifetimeTotalRequests = typeof db.data.totalRequestsLifetime === "number"
