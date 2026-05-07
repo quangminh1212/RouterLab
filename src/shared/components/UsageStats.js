@@ -9,6 +9,7 @@ import OverviewCards from "@/app/(dashboard)/dashboard/usage/components/Overview
 import UsageTable, { fmt, fmtTime } from "@/app/(dashboard)/dashboard/usage/components/UsageTable";
 import ProviderTopology from "@/app/(dashboard)/dashboard/usage/components/ProviderTopology";
 import UsageChart from "@/app/(dashboard)/dashboard/usage/components/UsageChart";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 function fmtCost(value) {
   return `$${Number(value || 0).toFixed(4)}`;
@@ -196,6 +197,8 @@ const SOURCE_LABELS = {
   empty: "Empty",
 };
 
+const USAGE_FAST_FETCH_TIMEOUT_MS = 4500;
+
 export default function UsageStats() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -216,8 +219,8 @@ export default function UsageStats() {
   // Always include noAuth free providers (e.g. opencode) regardless of connections
   useEffect(() => {
     const start = Date.now();
-    fetch("/api/providers")
-      .then((r) => r.ok ? r.json() : null)
+    fetchWithTimeout("/api/providers", { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading providers timed out")
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         const durationMs = Date.now() - start;
         if (durationMs > 500 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
@@ -244,11 +247,15 @@ export default function UsageStats() {
     else setFetching(true);
 
     const start = Date.now();
-    Promise.all([
-      fetch(`/api/usage/stats?period=${period}`).then((r) => r.ok ? r.json() : null),
-      fetch(`/api/usage/debug?period=${period}`).then((r) => r.ok ? r.json() : null),
+    Promise.allSettled([
+      fetchWithTimeout(`/api/usage/stats?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage stats timed out")
+        .then((r) => (r.ok ? r.json() : null)),
+      fetchWithTimeout(`/api/usage/debug?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage debug timed out")
+        .then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([data, debug]) => {
+      .then(([statsResult, debugResult]) => {
+        const data = statsResult.status === "fulfilled" ? statsResult.value : null;
+        const debug = debugResult.status === "fulfilled" ? debugResult.value : null;
         const durationMs = Date.now() - start;
         if (durationMs > 1000 || (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF)) {
           console.log("[DASHBOARD_CLIENT] usageStats:fetchStats", { period, durationMs, source: debug?.source });

@@ -63,6 +63,11 @@ function stripRequestDataFromUsage(usage) {
   return {
     ...usage,
     history: [],
+    metadata: {
+      ...(usage.metadata && typeof usage.metadata === "object" && !Array.isArray(usage.metadata) ? usage.metadata : {}),
+      storageMode: "summary-only",
+      historyCount: 0,
+    },
   };
 }
 
@@ -73,6 +78,13 @@ function stripRequestDataFromBundle(payload) {
     stripRequestDataFromDatabase(payload.database);
     if (payload.database.usageData && typeof payload.database.usageData === "object" && !Array.isArray(payload.database.usageData)) {
       payload.database.usageData.history = [];
+      payload.database.usageData.metadata = {
+        ...(payload.database.usageData.metadata && typeof payload.database.usageData.metadata === "object" && !Array.isArray(payload.database.usageData.metadata)
+          ? payload.database.usageData.metadata
+          : {}),
+        storageMode: "summary-only",
+        historyCount: 0,
+      };
     }
   }
   if (payload.usage && typeof payload.usage === "object" && !Array.isArray(payload.usage)) {

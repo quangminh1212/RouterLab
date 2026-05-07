@@ -22,6 +22,9 @@ if (!isCloud && fs && typeof fs.existsSync === "function") {
   }
 }
 
+const MAX_HISTORY = 200;
+const USAGE_EXPORT_VERSION = 2;
+
 const defaultData = {
   history: [],
   totalRequestsLifetime: 0,
@@ -42,6 +45,9 @@ function ensureUsageDataShape(value) {
     : createUsageData();
 
   if (!Array.isArray(data.history)) data.history = [];
+  if (data.history.length > MAX_HISTORY) {
+    data.history = data.history.slice(-MAX_HISTORY);
+  }
   if (typeof data.totalRequestsLifetime !== "number") data.totalRequestsLifetime = data.history.length;
   if (!data.dailySummary || typeof data.dailySummary !== "object" || Array.isArray(data.dailySummary)) data.dailySummary = {};
 
@@ -97,6 +103,11 @@ function aggregateEntryToDailySummary(dailySummary, entry) {
   const endpoint = entry.endpoint || "Unknown";
   const epKey = `${endpoint}|${entry.model}|${entry.provider || "unknown"}`;
   addToCounter(day.byEndpoint, epKey, { ...vals, meta: { endpoint, rawModel: entry.model, provider: entry.provider } });
+}
+
+function getDailySummaryRequestCount(dailySummary) {
+  if (!dailySummary || typeof dailySummary !== "object" || Array.isArray(dailySummary)) return 0;
+  return Object.values(dailySummary).reduce((sum, day) => sum + Number(day?.requests || 0), 0);
 }
 
 function migrateHistoryToDailySummary(db) {
@@ -166,7 +177,6 @@ if (!global._pendingTimers) global._pendingTimers = {};
 const pendingTimers = global._pendingTimers;
 
 const PENDING_TIMEOUT_MS = 60 * 1000; // 1 minute
-const MAX_HISTORY = 10000;
 const PENDING_TIMERS_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 // Periodic cleanup for orphaned timers
@@ -1207,18 +1217,20 @@ export async function exportUsageDb() {
   if (typeof db.read === "function") {
     await db.read();
   }
-  const history = db.data.history || [];
+  const history = Array.isArray(db.data.history) ? db.data.history : [];
   const dailySummary = db.data.dailySummary || {};
-  const totalRequestsLifetime = db.data.totalRequestsLifetime || 0;
+  const totalRequestsLifetime = db.data.totalRequestsLifetime || getDailySummaryRequestCount(dailySummary) || history.length;
 
   return {
-    version: 1,
+    version: USAGE_EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
-    history,
+    history: [],
     dailySummary,
     totalRequestsLifetime,
     metadata: {
-      historyCount: history.length,
+      storageMode: "summary-only",
+      historyCount: 0,
+      runtimeHistoryCount: history.length,
       dailySummaryDays: Object.keys(dailySummary).length,
       totalRequests: totalRequestsLifetime,
     },
@@ -1233,7 +1245,7 @@ export async function importUsageDb(payload) {
   if (typeof db.read === "function") await db.read();
 
   const current = ensureUsageDataShape(db.data);
-  const incomingHistory = Array.isArray(payload?.history) ? payload.history : null;
+  const incomingHistory = Array.isArray(payload?.history) ? payload.history.slice(-MAX_HISTORY) : null;
   const incomingDailySummary =
     typeof payload?.dailySummary === "object" && payload.dailySummary !== null && !Array.isArray(payload.dailySummary)
       ? payload.dailySummary
@@ -1243,14 +1255,21 @@ export async function importUsageDb(payload) {
       ? payload.totalRequestsLifetime
       : null;
 
+  const nextHistory = incomingHistory
+    ? incomingHistory
+    : (incomingDailySummary ? [] : current.history.slice(-MAX_HISTORY));
+
+  const nextDailySummary = incomingDailySummary || current.dailySummary;
+  const nextSummaryRequestCount = getDailySummaryRequestCount(nextDailySummary);
+
   db.data = ensureUsageDataShape({
-    history: incomingHistory && incomingHistory.length > 0 ? incomingHistory : current.history,
-    dailySummary: incomingDailySummary || current.dailySummary,
+    history: nextHistory,
+    dailySummary: nextDailySummary,
     totalRequestsLifetime: Math.max(
       incomingTotalRequestsLifetime ?? 0,
       current.totalRequestsLifetime || 0,
-      current.history?.length || 0,
-      incomingHistory?.length || 0
+      nextSummaryRequestCount,
+      nextHistory.length
     ),
   });
 
