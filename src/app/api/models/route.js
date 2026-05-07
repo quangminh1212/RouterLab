@@ -1,6 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getModelAliases, setModelAlias } from "@/models";
-import { getDisabledModels } from "@/lib/disabledModelsDb";`nimport { getSettings } from "@/lib/localDb";
+import { getDisabledModels } from "@/lib/disabledModelsDb";
+import { getSettings } from "@/lib/localDb";
 import { AI_MODELS } from "@/shared/constants/config";
 import { getProviderAlias } from "@/shared/constants/providers";
 
@@ -8,14 +9,17 @@ import { getProviderAlias } from "@/shared/constants/providers";
 export async function GET() {
   try {
     const modelAliases = await getModelAliases();
-    const disabled = await getDisabledModels();`n    const settings = await getSettings();`n    const hiddenModels = settings.hiddenModels || [];
+    const disabled = await getDisabledModels();
+    const settings = await getSettings();
+    const hiddenModels = settings.hiddenModels || [];
 
     const models = AI_MODELS
       .filter((m) => {
         const alias = getProviderAlias(m.provider) || m.provider;
         const list = disabled[alias] || disabled[m.provider] || [];
         return !list.includes(m.model);
-      })`n      .filter((m) => !hiddenModels.includes(`${m.provider}/${m.model}`))
+      })
+      .filter((m) => !hiddenModels.includes(`${m.provider}/${m.model}`))
       .map((m) => {
         const fullModel = `${m.provider}/${m.model}`;
         return {
@@ -44,7 +48,6 @@ export async function PUT(request) {
 
     const modelAliases = await getModelAliases();
 
-    // Check if alias already exists for different model
     const existingModel = Object.entries(modelAliases).find(
       ([key, val]) => val === alias && key !== model
     );
@@ -53,7 +56,6 @@ export async function PUT(request) {
       return NextResponse.json({ error: "Alias already in use" }, { status: 400 });
     }
 
-    // Update alias
     await setModelAlias(model, alias);
 
     return NextResponse.json({ success: true, model, alias });
@@ -62,4 +64,3 @@ export async function PUT(request) {
     return NextResponse.json({ error: "Failed to update alias" }, { status: 500 });
   }
 }
-
