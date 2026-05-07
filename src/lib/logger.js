@@ -10,9 +10,13 @@ const LOG_LEVELS = {
   ERROR: 3,
 };
 
-const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL
-  ? LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO
+const DEFAULT_LOG_LEVEL = process.env.NODE_ENV === "production"
+  ? LOG_LEVELS.WARN
   : LOG_LEVELS.INFO;
+
+const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL
+  ? LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? DEFAULT_LOG_LEVEL
+  : DEFAULT_LOG_LEVEL;
 
 const DEFAULT_SLOW_MS = Number(process.env.DEBUG_DASHBOARD_SLOW_MS) > 0
   ? Number(process.env.DEBUG_DASHBOARD_SLOW_MS)

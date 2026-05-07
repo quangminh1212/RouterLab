@@ -3,7 +3,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/shared/components/ThemeProvider";
 import { initConsoleLogCapture } from "@/lib/consoleLogBuffer";
 import { RuntimeI18nProvider } from "@/i18n/RuntimeI18nProvider";
-import { logger } from "@/lib/logger";
 
 function bootstrapAppModule() {
   if (typeof window !== "undefined") return;
@@ -13,8 +12,6 @@ function bootstrapAppModule() {
   globalThis[globalKey] = true;
 
   initConsoleLogCapture();
-  logger.info("APP", "Console log capture initialized");
-  logger.info("APP", "XLab Router application starting up");
 }
 
 bootstrapAppModule();
@@ -26,24 +23,8 @@ function bootstrapServerInits() {
   if (globalThis[globalKey]) return;
   globalThis[globalKey] = true;
 
-  Promise.allSettled([
-    import("@/lib/initCloudSync"),
-    import("@/lib/network/initOutboundProxy"),
-  ]).then((results) => {
-    if (results[0]?.status === "fulfilled") {
-      logger.info("APP", "Local services module loaded");
-    } else {
-      logger.warn("APP", "Local services module failed to load");
-    }
-
-    if (results[1]?.status === "fulfilled") {
-      logger.info("APP", "Outbound proxy module loaded");
-    } else {
-      logger.warn("APP", "Outbound proxy module failed to load");
-    }
-  }).catch(() => {
-    logger.warn("APP", "Server bootstrap initialization failed");
-  });
+  void import("@/lib/initCloudSync").catch(() => {});
+  void import("@/lib/network/initOutboundProxy").catch(() => {});
 }
 
 bootstrapServerInits();

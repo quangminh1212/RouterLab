@@ -165,14 +165,30 @@ function setupFileLogging() {
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-  function enforceLogLimit(extraBytes = 0) {
-    try {
-      const currentSize = fs.existsSync(logFilePath) ? fs.statSync(logFilePath).size : 0;
-      if (currentSize + extraBytes < MAX_LOG_SIZE_BYTES) {
-        return true;
-      }
+  let logStream = null;
+  let bufferedBytes = fs.existsSync(logFilePath) ? fs.statSync(logFilePath).size : 0;
 
-      fs.unlinkSync(logFilePath);
+  function ensureStream() {
+    if (logStream) return;
+    logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+    logStream.on("error", (error) => {
+      originalStderrWrite(`[WARN] Failed to write log file: ${error.message}\n`);
+      try { logStream?.destroy(); } catch {}
+      logStream = null;
+    });
+  }
+
+  function rotateLogFile() {
+    try {
+      if (logStream) {
+        try { logStream.end(); } catch {}
+        logStream = null;
+      }
+      if (fs.existsSync(logFilePath)) {
+        fs.unlinkSync(logFilePath);
+      }
+      bufferedBytes = 0;
+      ensureStream();
       return true;
     } catch (error) {
       originalStderrWrite(`[WARN] Failed to reset log file: ${error.message}\n`);
@@ -183,14 +199,17 @@ function setupFileLogging() {
   function writeToLog(chunk, encoding) {
     const resolvedEncoding = typeof encoding === "string" ? encoding : "utf8";
     const content = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), resolvedEncoding);
-    if (!enforceLogLimit(content.length)) {
-      return;
+
+    if (bufferedBytes + content.length >= MAX_LOG_SIZE_BYTES) {
+      if (!rotateLogFile()) return;
     }
 
-    try {
-      fs.appendFileSync(logFilePath, content);
-    } catch (error) {
-      originalStderrWrite(`[WARN] Failed to write log file: ${error.message}\n`);
+    ensureStream();
+    if (!logStream) return;
+
+    bufferedBytes += content.length;
+    if (!logStream.write(content)) {
+      // Let Node backpressure internally; stdout/stderr still continue without sync disk blocking.
     }
   }
 
@@ -206,6 +225,9 @@ function setupFileLogging() {
 
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
+  process.on("exit", () => {
+    try { logStream?.end(); } catch {}
+  });
 }
 
 setupFileLogging();
