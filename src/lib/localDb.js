@@ -1521,7 +1521,7 @@ export function invalidateApiKeyCostCache(apiKey, costDelta) {
   apiKeyCostCache.costByApiKey.set(apiKey, prev + normalizedDelta);
 }
 
-async function getApiKeySpentCost(apiKey) {
+export async function getApiKeySpentCost(apiKey) {
   const now = Date.now();
   if (isApiKeyCostCacheFresh(now)) {
     return apiKeyCostCache.costByApiKey.get(apiKey) || 0;

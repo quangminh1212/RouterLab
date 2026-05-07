@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiKeys, createApiKey } from "@/lib/localDb";
+import { getApiKeys, createApiKey, getApiKeySpentCost } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,13 @@ function sanitizeRpmLimit(value) {
 export async function GET() {
   try {
     const keys = await getApiKeys();
-    return NextResponse.json({ keys });
+    const keysWithUsage = await Promise.all(
+      keys.map(async (key) => ({
+        ...key,
+        usedCost: Number((await getApiKeySpentCost(key.key)) || 0),
+      }))
+    );
+    return NextResponse.json({ keys: keysWithUsage });
   } catch (error) {
     console.log("Error fetching keys:", error);
     return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });
