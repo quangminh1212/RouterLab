@@ -17,15 +17,14 @@ import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import {
   FREE_PROVIDERS,
   FREE_TIER_PROVIDERS,
+  WEB_COOKIE_PROVIDERS,
   OPENAI_COMPATIBLE_PREFIX,
   ANTHROPIC_COMPATIBLE_PREFIX,
-  getProviderIconPath,
 } from "@/shared/constants/providers";
 import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
 
 function getStatusDisplay(connected, error, errorCode) {
@@ -95,8 +94,6 @@ function getConnectionErrorTag(connection) {
   return "ERR";
 }
 
-const PROVIDERS_PAGE_FETCH_TIMEOUT_MS = 4500;
-
 export default function ProvidersPage() {
   const [connections, setConnections] = useState([]);
   const [providerNodes, setProviderNodes] = useState([]);
@@ -107,36 +104,31 @@ export default function ProvidersPage() {
   const [testingMode, setTestingMode] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const notify = useNotificationStore();
-  const searchQuery = useHeaderSearchStore((state) => state.query);
-  const registerSearch = useHeaderSearchStore((state) => state.register);
-  const unregisterSearch = useHeaderSearchStore((state) => state.unregister);
+  const searchQuery = useHeaderSearchStore((s) => s.query);
+  const registerSearch = useHeaderSearchStore((s) => s.register);
+  const unregisterSearch = useHeaderSearchStore((s) => s.unregister);
 
   useEffect(() => {
     registerSearch("Search providers...");
     return () => unregisterSearch();
   }, [registerSearch, unregisterSearch]);
 
+  const matchSearch = (name) =>
+    !searchQuery.trim() ||
+    name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [connectionsRes, nodesRes] = await Promise.allSettled([
-          fetchWithTimeout("/api/providers", { cache: "no-store" }, PROVIDERS_PAGE_FETCH_TIMEOUT_MS, "Loading providers timed out"),
-          fetchWithTimeout("/api/provider-nodes", { cache: "no-store" }, PROVIDERS_PAGE_FETCH_TIMEOUT_MS, "Loading provider nodes timed out"),
+        const [connectionsRes, nodesRes] = await Promise.all([
+          fetch("/api/providers"),
+          fetch("/api/provider-nodes"),
         ]);
-
-        if (connectionsRes.status === "fulfilled") {
-          const connectionsData = await connectionsRes.value.json();
-          if (connectionsRes.value.ok) {
-            setConnections(connectionsData.connections || []);
-          }
-        }
-
-        if (nodesRes.status === "fulfilled") {
-          const nodesData = await nodesRes.value.json();
-          if (nodesRes.value.ok) {
-            setProviderNodes(nodesData.nodes || []);
-          }
-        }
+        const connectionsData = await connectionsRes.json();
+        const nodesData = await nodesRes.json();
+        if (connectionsRes.ok)
+          setConnections(connectionsData.connections || []);
+        if (nodesRes.ok) setProviderNodes(nodesData.nodes || []);
       } catch (error) {
         console.log("Error fetching data:", error);
       } finally {
@@ -237,12 +229,6 @@ export default function ProvidersPage() {
     }
   };
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const matchesSearch = (value) => {
-    if (!normalizedSearchQuery) return true;
-    return String(value || "").toLowerCase().includes(normalizedSearchQuery);
-  };
-
   const compatibleProviders = providerNodes
     .filter((node) => node.type === "openai-compatible")
     .map((node) => ({
@@ -252,30 +238,31 @@ export default function ProvidersPage() {
       textIcon: "OC",
       apiType: node.apiType,
     }))
-    .filter((provider) => matchesSearch(provider.name));
+    .filter((p) => matchSearch(p.name));
 
   const anthropicCompatibleProviders = providerNodes
     .filter((node) => node.type === "anthropic-compatible")
     .map((node) => ({
       id: node.id,
       name: node.name || "Anthropic Compatible",
-      color: "#187878",
+      color: "#D97757",
       textIcon: "AC",
     }))
-    .filter((provider) => matchesSearch(provider.name));
+    .filter((p) => matchSearch(p.name));
 
-  const oauthProviders = Object.entries(OAUTH_PROVIDERS).filter(([, info]) =>
-    matchesSearch(info.name),
+  const oauthEntries = Object.entries(OAUTH_PROVIDERS).filter(([, info]) =>
+    matchSearch(info.name),
   );
-  const freeProviders = Object.entries(FREE_PROVIDERS).filter(([, info]) =>
-    matchesSearch(info.name),
+  const freeEntries = Object.entries(FREE_PROVIDERS).filter(([, info]) =>
+    matchSearch(info.name),
   );
-  const freeTierProviders = Object.entries(FREE_TIER_PROVIDERS).filter(
-    ([, info]) => matchesSearch(info.name),
+  const freeTierEntries = Object.entries(FREE_TIER_PROVIDERS).filter(
+    ([, info]) => matchSearch(info.name),
   );
-  const apiKeyProviders = Object.entries(APIKEY_PROVIDERS)
-    .filter(([, info]) => (info.serviceKinds ?? ["llm"]).includes("llm"))
-    .filter(([, info]) => matchesSearch(info.name));
+  const apikeyEntries = Object.entries(APIKEY_PROVIDERS).filter(
+    ([, info]) =>
+      (info.serviceKinds ?? ["llm"]).includes("llm") && matchSearch(info.name),
+  );
 
   if (loading) {
     return (
@@ -286,20 +273,38 @@ export default function ProvidersPage() {
     );
   }
 
+  const hasAnyResult =
+    oauthEntries.length > 0 ||
+    freeEntries.length > 0 ||
+    freeTierEntries.length > 0 ||
+    apikeyEntries.length > 0 ||
+    compatibleProviders.length > 0 ||
+    anthropicCompatibleProviders.length > 0;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
+      {!hasAnyResult && (
+        <div className="text-center py-8 border border-dashed border-border rounded-xl">
+          <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
+            search_off
+          </span>
+          <p className="text-text-muted text-sm">No providers match your search</p>
+        </div>
+      )}
+
       {/* OAuth Providers */}
+      {oauthEntries.length > 0 && (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
             OAuth Providers
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ModelAvailabilityBadge />
             <button
               onClick={() => handleBatchTest("oauth")}
               disabled={!!testingMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
                 testingMode === "oauth"
                   ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                   : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
@@ -310,14 +315,14 @@ export default function ProvidersPage() {
               <span
                 className={`material-symbols-outlined text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`}
               >
-                {testingMode === "oauth" ? "sync" : "play_arrow"}
+                play_arrow
               </span>
               {testingMode === "oauth" ? "Testing..." : "Test All"}
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {oauthProviders.map(([key, info]) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {oauthEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -329,17 +334,19 @@ export default function ProvidersPage() {
           ))}
         </div>
       </div>
+      )}
 
-      {/* Free & Free Tier Providers */}
+      {/* Free Tier Providers */}
+      {(freeEntries.length > 0 || freeTierEntries.length > 0) && (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            Free &amp; Free Tier Providers
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
+            Free Tier Providers
           </h2>
           <button
             onClick={() => handleBatchTest("free")}
             disabled={!!testingMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
               testingMode === "free"
                 ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                 : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
@@ -350,13 +357,13 @@ export default function ProvidersPage() {
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
             >
-              {testingMode === "free" ? "sync" : "play_arrow"}
+              play_arrow
             </span>
             {testingMode === "free" ? "Testing..." : "Test All"}
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {freeProviders.map(([key, info]) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {freeEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -366,7 +373,7 @@ export default function ProvidersPage() {
               onToggle={(active) => handleToggleProvider(key, "oauth", active)}
             />
           ))}
-          {freeTierProviders.map(([key, info]) => (
+          {freeTierEntries.map(([key, info]) => (
             <ApiKeyProviderCard
               key={key}
               providerId={key}
@@ -378,17 +385,19 @@ export default function ProvidersPage() {
           ))}
         </div>
       </div>
+      )}
 
       {/* API Key Providers — fixed list */}
+      {apikeyEntries.length > 0 && (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
             API Key Providers{" "}
           </h2>
           <button
             onClick={() => handleBatchTest("apikey")}
             disabled={!!testingMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
               testingMode === "apikey"
                 ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                 : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
@@ -399,54 +408,75 @@ export default function ProvidersPage() {
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`}
             >
-              {testingMode === "apikey" ? "sync" : "play_arrow"}
+              play_arrow
             </span>
             {testingMode === "apikey" ? "Testing..." : "Test All"}
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {apiKeyProviders.map(([key, info]) => (
-              <ApiKeyProviderCard
-                key={key}
-                providerId={key}
-                provider={info}
-                stats={getProviderStats(key, "apikey")}
-                authType="apikey"
-                onToggle={(active) => handleToggleProvider(key, "apikey", active)}
-              />
-            ))}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {apikeyEntries.map(([key, info]) => (
+            <ApiKeyProviderCard
+              key={key}
+              providerId={key}
+              provider={info}
+              stats={getProviderStats(key, "apikey")}
+              authType="apikey"
+              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
+            />
+          ))}
         </div>
       </div>
+      )}
+
+      {/* Web Cookie Providers — use browser subscription cookie instead of API key */}
+      {/* <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            Web Cookie Providers{" "}
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.entries(WEB_COOKIE_PROVIDERS).map(([key, info]) => (
+            <ApiKeyProviderCard
+              key={key}
+              providerId={key}
+              provider={info}
+              stats={getProviderStats(key, "apikey")}
+              authType="apikey"
+              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
+            />
+          ))}
+        </div>
+      </div> */}
 
       {/* API Key Compatible Providers — dynamic (OpenAI/Anthropic compatible) */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
             API Key Compatible Providers{" "}
           </h2>
-          <div className="flex gap-2">
-            {(compatibleProviders.length > 0 || anthropicCompatibleProviders.length > 0) && (
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:w-auto">
+            {/* {(compatibleProviders.length > 0 || anthropicCompatibleProviders.length > 0) && (
               <button
                 onClick={() => handleBatchTest("compatible")}
                 disabled={!!testingMode}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  testingMode === "compatible"
-                    ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                    : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${testingMode === "compatible"
+                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
+                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+                  }`}
                 title="Test all Compatible connections"
-                aria-label="Test all Compatible connections"
               >
                 <span className={`material-symbols-outlined text-[14px]${testingMode === "compatible" ? " animate-spin" : ""}`}>
-                  {testingMode === "compatible" ? "sync" : "play_arrow"}
+                  play_arrow
                 </span>
                 {testingMode === "compatible" ? "Testing..." : "Test All"}
               </button>
-            )}
+            )} */}
             <Button
               size="sm"
               icon="add"
               onClick={() => setShowAddAnthropicCompatibleModal(true)}
+              className="w-full sm:w-auto"
             >
               Add Anthropic Compatible
             </Button>
@@ -455,7 +485,7 @@ export default function ProvidersPage() {
               variant="secondary"
               icon="add"
               onClick={() => setShowAddCompatibleModal(true)}
-              className="!bg-white !text-black hover:!bg-gray-100"
+              className="w-full !bg-white !text-black hover:!bg-gray-100 sm:w-auto"
             >
               Add OpenAI Compatible
             </Button>
@@ -476,7 +506,7 @@ export default function ProvidersPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {[...compatibleProviders, ...anthropicCompatibleProviders].map(
               (info) => (
                 <ApiKeyProviderCard
@@ -515,12 +545,12 @@ export default function ProvidersPage() {
       {/* Test Results Modal */}
       {testResults && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center px-3 pt-[6vh] sm:pt-[10vh]"
           onClick={() => setTestResults(null)}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="relative bg-surface border border-border rounded-xl w-full max-w-[600px] max-h-[80vh] overflow-y-auto shadow-2xl"
+            className="relative bg-surface border border-border rounded-xl w-full max-w-[600px] max-h-[86vh] sm:max-h-[80vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-border bg-surface/95 backdrop-blur-sm rounded-t-xl">
@@ -561,21 +591,21 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
   };
 
   return (
-    <Link href={`/dashboard/providers/${providerId}`} prefetch={false} className="group">
+    <Link href={`/dashboard/providers/${providerId}`} className="group min-w-0">
       <Card
         padding="xs"
         className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className="size-8 rounded-lg flex items-center justify-center"
+              className="size-8 shrink-0 rounded-lg flex items-center justify-center"
               style={{
                 backgroundColor: `${provider.color?.length > 7 ? provider.color : provider.color + "15"}`,
               }}
             >
               <ProviderIcon
-                src={getProviderIconPath(provider.id)}
+                src={`/providers/${provider.id}.png`}
                 alt={provider.name}
                 size={30}
                 className="object-contain rounded-lg max-w-[32px] max-h-[32px]"
@@ -585,9 +615,9 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
                 fallbackColor={provider.color}
               />
             </div>
-            <div>
-              <h3 className="font-semibold">{provider.name}</h3>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
+            <div className="min-w-0">
+              <h3 className="truncate font-semibold">{provider.name}</h3>
+              <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
@@ -610,10 +640,10 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {stats.total > 0 && (
               <div
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -685,19 +715,19 @@ function ApiKeyProviderCard({
         ? "/providers/oai-r.png"
         : "/providers/oai-cc.png";
     if (isAnthropicCompatible) return "/providers/anthropic-m.png";
-    return getProviderIconPath(provider.id);
+    return `/providers/${provider.id}.png`;
   };
 
   return (
-    <Link href={`/dashboard/providers/${providerId}`} prefetch={false} className="group">
+    <Link href={`/dashboard/providers/${providerId}`} className="group min-w-0">
       <Card
         padding="xs"
         className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className="size-8 rounded-lg flex items-center justify-center"
+              className="size-8 shrink-0 rounded-lg flex items-center justify-center"
               style={{
                 backgroundColor: `${provider.color?.length > 7 ? provider.color : provider.color + "15"}`,
               }}
@@ -713,9 +743,9 @@ function ApiKeyProviderCard({
                 fallbackColor={provider.color}
               />
             </div>
-            <div>
-              <h3 className="font-semibold">{provider.name}</h3>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
+            <div className="min-w-0">
+              <h3 className="truncate font-semibold">{provider.name}</h3>
+              <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
@@ -748,10 +778,10 @@ function ApiKeyProviderCard({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {stats.total > 0 && (
               <div
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -948,17 +978,18 @@ function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
           placeholder="e.g. gpt-4, claude-3-opus"
           hint="If provider lacks /models endpoint, enter a model ID to validate via chat/completions instead."
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button
             onClick={handleValidate}
             disabled={!checkKey || validating || !formData.baseUrl.trim()}
             variant="secondary"
+            className="w-full sm:w-auto"
           >
             {validating ? "Checking..." : "Check"}
           </Button>
           {renderValidationResult()}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleSubmit}
             fullWidth
@@ -1129,17 +1160,18 @@ function AddAnthropicCompatibleModal({ isOpen, onClose, onCreated }) {
           placeholder="e.g. claude-3-opus"
           hint="If provider lacks /models endpoint, enter a model ID to validate via chat/completions instead."
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button
             onClick={handleValidate}
             disabled={!checkKey || validating || !formData.baseUrl.trim()}
             variant="secondary"
+            className="w-full sm:w-auto"
           >
             {validating ? "Checking..." : "Check"}
           </Button>
           {renderValidationResult()}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleSubmit}
             fullWidth
@@ -1186,15 +1218,14 @@ function ProviderTestResultsView({ results }) {
       oauth: "OAuth",
       free: "Free",
       apikey: "API Key",
-      compatible: "Compatible",
       provider: "Provider",
       all: "All",
     }[mode] || mode;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       {summary && (
-        <div className="flex items-center gap-3 text-xs mb-1">
+        <div className="flex flex-wrap items-center gap-2 text-xs mb-1 sm:gap-3">
           <span className="text-text-muted">{modeLabel} Test</span>
           <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
             {summary.passed} passed
@@ -1204,37 +1235,36 @@ function ProviderTestResultsView({ results }) {
               {summary.failed} failed
             </span>
           )}
-          <span className="text-text-muted ml-auto">
+          <span className="text-text-muted sm:ml-auto">
             {summary.total} tested
           </span>
         </div>
       )}
       {items.map((r, i) => (
         <div
-          key={`${r.connectionId || "unknown"}-${r.modelId || i}`}
-          className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.03]"
+          key={r.connectionId || i}
+          className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg bg-black/[0.03] px-3 py-2 text-xs dark:bg-white/[0.03] sm:flex-nowrap"
         >
           <span
             className={`material-symbols-outlined text-[16px] ${r.valid ? "text-emerald-500" : "text-red-500"}`}
           >
             {r.valid ? "check_circle" : "error"}
           </span>
-          <div className="flex-1 min-w-0">
-            <span className="font-medium">{r.connectionName}</span>
-            <span className="text-text-muted ml-1.5">({r.provider})</span>
-            {r.modelId && (
-              <div className="text-text-muted mt-0.5 truncate">
-                Model: {r.modelName || r.modelId}
-              </div>
-            )}
+          <div className="min-w-0 flex-[1_1_160px]">
+            <span className="block truncate font-medium sm:inline">
+              {r.connectionName}
+            </span>
+            <span className="block truncate text-text-muted sm:ml-1.5 sm:inline">
+              ({r.provider})
+            </span>
           </div>
           {r.latencyMs !== undefined && (
-            <span className="text-text-muted font-mono tabular-nums">
+            <span className="shrink-0 text-text-muted font-mono tabular-nums">
               {r.latencyMs}ms
             </span>
           )}
           <span
-            className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+            className={`shrink-0 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
               r.valid
                 ? "bg-emerald-500/15 text-emerald-400"
                 : "bg-red-500/15 text-red-400"
