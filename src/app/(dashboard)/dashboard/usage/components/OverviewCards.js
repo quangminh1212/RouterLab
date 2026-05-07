@@ -7,10 +7,11 @@ import Card from "@/shared/components/Card";
 const fmt = (n) => new Intl.NumberFormat().format(n || 0);
 const fmtCost = (n) => `$${(n || 0).toFixed(2)}`;
 const fmtRpm = (n) => (n || 0).toFixed(2);
+const fmtSavedTokens = (bytes) => fmt(Math.ceil((bytes || 0) / 4));
 
 function OverviewCards({ stats }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
       <Card className="px-4 py-3 flex flex-col items-center text-center gap-1">
         <span className="text-text-muted text-sm uppercase font-semibold">Total Requests</span>
         <span className="text-2xl font-bold">{fmt(stats.totalRequests)}</span>
@@ -32,6 +33,11 @@ function OverviewCards({ stats }) {
         <span className="text-2xl font-bold text-warning">~{fmtCost(stats.totalCost)}</span>
         <span className="text-[10px] text-text-muted">Estimated, not actual billing</span>
       </Card>
+      <Card className="px-4 py-3 flex flex-col items-center text-center gap-1">
+        <span className="text-text-muted text-sm uppercase font-semibold">Compression Saved</span>
+        <span className="text-2xl font-bold text-primary">{fmtSavedTokens(stats.compressionSavedBytes)}</span>
+        <span className="text-[10px] text-text-muted">Est. input tokens, {fmt(stats.compressionHits)} hits</span>
+      </Card>
     </div>
   );
 }
@@ -44,7 +50,9 @@ function areEqualOverviewCardsProps(prevProps, nextProps) {
     && prevStats.rpm === nextStats.rpm
     && prevStats.totalPromptTokens === nextStats.totalPromptTokens
     && prevStats.totalCompletionTokens === nextStats.totalCompletionTokens
-    && prevStats.totalCost === nextStats.totalCost;
+    && prevStats.totalCost === nextStats.totalCost
+    && prevStats.compressionSavedBytes === nextStats.compressionSavedBytes
+    && prevStats.compressionHits === nextStats.compressionHits;
 }
 
 export default memo(OverviewCards, areEqualOverviewCardsProps);

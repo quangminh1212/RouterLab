@@ -69,6 +69,11 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
                       <span className="text-primary">{fmt(r.promptTokens)}{"\u2191"}</span>
                       {" "}
                       <span className="text-success">{fmt(r.completionTokens)}{"\u2193"}</span>
+                      {r.compression?.savedBytes > 0 && (
+                        <span className="ml-1 text-[10px] text-primary" title={`Compression saved ~${Math.ceil(r.compression.savedBytes / 4)} input tokens`}>
+                          -{Math.ceil(r.compression.savedBytes / 4)}
+                        </span>
+                      )}
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
