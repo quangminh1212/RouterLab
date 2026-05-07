@@ -1,0 +1,73 @@
+﻿import { NextResponse } from "next/server";
+import { getSettings, updateSettings } from "@/lib/localDb";
+
+/**
+ * PATCH /api/models/visibility
+ * Toggle model visibility in catalog
+ */
+export async function PATCH(request) {
+  try {
+    const body = await request.json();
+    const { modelId, visible } = body;
+
+    if (!modelId || typeof visible !== "boolean") {
+      return NextResponse.json(
+        { error: "Missing modelId or visible flag" },
+        { status: 400 }
+      );
+    }
+
+    const settings = await getSettings();
+    const hiddenModels = settings.hiddenModels || [];
+
+    let updated;
+    if (visible) {
+      // Remove from hidden list
+      updated = hiddenModels.filter((id) => id !== modelId);
+    } else {
+      // Add to hidden list
+      if (!hiddenModels.includes(modelId)) {
+        updated = [...hiddenModels, modelId];
+      } else {
+        updated = hiddenModels;
+      }
+    }
+
+    await updateSettings({ hiddenModels: updated });
+
+    return NextResponse.json({
+      success: true,
+      modelId,
+      visible,
+      hiddenCount: updated.length,
+    });
+  } catch (error) {
+    console.error("[API] Error toggling model visibility:", error);
+    return NextResponse.json(
+      { error: "Failed to toggle model visibility" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/models/visibility
+ * Get list of hidden models
+ */
+export async function GET() {
+  try {
+    const settings = await getSettings();
+    const hiddenModels = settings.hiddenModels || [];
+
+    return NextResponse.json({
+      hiddenModels,
+      count: hiddenModels.length,
+    });
+  } catch (error) {
+    console.error("[API] Error getting hidden models:", error);
+    return NextResponse.json(
+      { error: "Failed to get hidden models" },
+      { status: 500 }
+    );
+  }
+}

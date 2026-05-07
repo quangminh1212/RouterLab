@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getModelAliases, setModelAlias } from "@/models";
-import { getDisabledModels } from "@/lib/disabledModelsDb";
+import { getDisabledModels } from "@/lib/disabledModelsDb";`nimport { getSettings } from "@/lib/localDb";
 import { AI_MODELS } from "@/shared/constants/config";
 import { getProviderAlias } from "@/shared/constants/providers";
 
@@ -8,14 +8,14 @@ import { getProviderAlias } from "@/shared/constants/providers";
 export async function GET() {
   try {
     const modelAliases = await getModelAliases();
-    const disabled = await getDisabledModels();
+    const disabled = await getDisabledModels();`n    const settings = await getSettings();`n    const hiddenModels = settings.hiddenModels || [];
 
     const models = AI_MODELS
       .filter((m) => {
         const alias = getProviderAlias(m.provider) || m.provider;
         const list = disabled[alias] || disabled[m.provider] || [];
         return !list.includes(m.model);
-      })
+      })`n      .filter((m) => !hiddenModels.includes(`${m.provider}/${m.model}`))
       .map((m) => {
         const fullModel = `${m.provider}/${m.model}`;
         return {
@@ -62,3 +62,4 @@ export async function PUT(request) {
     return NextResponse.json({ error: "Failed to update alias" }, { status: 500 });
   }
 }
+
