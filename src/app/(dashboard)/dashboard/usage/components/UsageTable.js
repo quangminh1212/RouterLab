@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { memo, useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import PropTypes from "prop-types";
 import Card from "@/shared/components/Card";
 import Badge from "@/shared/components/Badge";
@@ -68,6 +68,55 @@ ValueCells.propTypes = {
   isSummary: PropTypes.bool,
 };
 
+const UsageGroupRows = memo(function UsageGroupRows({
+  group,
+  expanded,
+  onToggleGroup,
+  renderDetailCells,
+  renderSummaryCells,
+  viewMode,
+}) {
+  return (
+    <Fragment>
+      <tr
+        className="group-summary cursor-pointer hover:bg-bg-subtle/50 transition-colors"
+        onClick={() => onToggleGroup(group.groupKey)}
+      >
+        <td className="px-6 py-3">
+          <div className="flex items-center gap-2">
+            <span className={`material-symbols-outlined text-[18px] text-text-muted transition-transform ${expanded ? "rotate-90" : ""}`}>
+              chevron_right
+            </span>
+            <span className={`font-medium transition-colors ${group.summary.pending > 0 ? "text-primary" : ""}`}>
+              {group.groupKey}
+            </span>
+          </div>
+        </td>
+        {renderSummaryCells(group)}
+        <ValueCells item={group.summary} viewMode={viewMode} isSummary />
+      </tr>
+      {expanded && group.items.map((item) => (
+        <tr
+          key={`detail-${item.key}`}
+          className="group-detail hover:bg-bg-subtle/20 transition-colors"
+        >
+          {renderDetailCells(item)}
+          <ValueCells item={item} viewMode={viewMode} />
+        </tr>
+      ))}
+    </Fragment>
+  );
+});
+
+UsageGroupRows.propTypes = {
+  group: PropTypes.object.isRequired,
+  expanded: PropTypes.bool.isRequired,
+  onToggleGroup: PropTypes.func.isRequired,
+  renderDetailCells: PropTypes.func.isRequired,
+  renderSummaryCells: PropTypes.func.isRequired,
+  viewMode: PropTypes.string.isRequired,
+};
+
 /**
  * Reusable sortable usage table with expandable group rows.
  *
@@ -86,7 +135,7 @@ ValueCells.propTypes = {
  * @param {function} props.renderSummaryCells - Render summary row cells after group label (placeholder cols)
  * @param {string} props.emptyMessage - Empty state message
  */
-export default function UsageTable({
+function UsageTable({
   title,
   columns,
   groupedData,
@@ -100,17 +149,16 @@ export default function UsageTable({
   renderSummaryCells,
   emptyMessage,
 }) {
-  const [expanded, setExpanded] = useState(new Set());
-
-  // Load expanded state from localStorage
-  useEffect(() => {
+  const [expanded, setExpanded] = useState(() => {
     try {
+      if (typeof window === "undefined") return new Set();
       const saved = localStorage.getItem(storageKey);
-      if (saved) setExpanded(new Set(JSON.parse(saved)));
+      return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch (e) {
       console.error(`Failed to load ${storageKey}:`, e);
+      return new Set();
     }
-  }, [storageKey]);
+  });
 
   // Save expanded state to localStorage
   useEffect(() => {
@@ -179,36 +227,15 @@ export default function UsageTable({
           </thead>
           <tbody className="divide-y divide-border">
             {groupedData.map((group) => (
-              <Fragment key={group.groupKey}>
-                {/* Group summary row */}
-                <tr
-                  className="group-summary cursor-pointer hover:bg-bg-subtle/50 transition-colors"
-                  onClick={() => toggleGroup(group.groupKey)}
-                >
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`material-symbols-outlined text-[18px] text-text-muted transition-transform ${expanded.has(group.groupKey) ? "rotate-90" : ""}`}>
-                        chevron_right
-                      </span>
-                      <span className={`font-medium transition-colors ${group.summary.pending > 0 ? "text-primary" : ""}`}>
-                        {group.groupKey}
-                      </span>
-                    </div>
-                  </td>
-                  {renderSummaryCells(group)}
-                  <ValueCells item={group.summary} viewMode={viewMode} isSummary />
-                </tr>
-                {/* Detail rows */}
-                {expanded.has(group.groupKey) && group.items.map((item) => (
-                  <tr
-                    key={`detail-${item.key}`}
-                    className="group-detail hover:bg-bg-subtle/20 transition-colors"
-                  >
-                    {renderDetailCells(item)}
-                    <ValueCells item={item} viewMode={viewMode} />
-                  </tr>
-                ))}
-              </Fragment>
+              <UsageGroupRows
+                key={group.groupKey}
+                group={group}
+                expanded={expanded.has(group.groupKey)}
+                onToggleGroup={toggleGroup}
+                renderDetailCells={renderDetailCells}
+                renderSummaryCells={renderSummaryCells}
+                viewMode={viewMode}
+              />
             ))}
             {groupedData.length === 0 && (
               <tr>
@@ -223,6 +250,23 @@ export default function UsageTable({
     </Card>
   );
 }
+
+function areEqualUsageTableProps(prevProps, nextProps) {
+  return prevProps.title === nextProps.title
+    && prevProps.columns === nextProps.columns
+    && prevProps.groupedData === nextProps.groupedData
+    && prevProps.tableType === nextProps.tableType
+    && prevProps.sortBy === nextProps.sortBy
+    && prevProps.sortOrder === nextProps.sortOrder
+    && prevProps.onToggleSort === nextProps.onToggleSort
+    && prevProps.viewMode === nextProps.viewMode
+    && prevProps.storageKey === nextProps.storageKey
+    && prevProps.renderDetailCells === nextProps.renderDetailCells
+    && prevProps.renderSummaryCells === nextProps.renderSummaryCells
+    && prevProps.emptyMessage === nextProps.emptyMessage;
+}
+
+export default memo(UsageTable, areEqualUsageTableProps);
 
 UsageTable.propTypes = {
   title: PropTypes.string.isRequired,

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import PropTypes from "prop-types";
 import Card from "@/shared/components/Card";
 
@@ -7,7 +8,7 @@ const fmt = (n) => new Intl.NumberFormat().format(n || 0);
 const fmtCost = (n) => `$${(n || 0).toFixed(2)}`;
 const fmtRpm = (n) => (n || 0).toFixed(2);
 
-export default function OverviewCards({ stats }) {
+function OverviewCards({ stats }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       <Card className="px-4 py-3 flex flex-col items-center text-center gap-1">
@@ -34,6 +35,19 @@ export default function OverviewCards({ stats }) {
     </div>
   );
 }
+
+function areEqualOverviewCardsProps(prevProps, nextProps) {
+  const prevStats = prevProps.stats || {};
+  const nextStats = nextProps.stats || {};
+
+  return prevStats.totalRequests === nextStats.totalRequests
+    && prevStats.rpm === nextStats.rpm
+    && prevStats.totalPromptTokens === nextStats.totalPromptTokens
+    && prevStats.totalCompletionTokens === nextStats.totalCompletionTokens
+    && prevStats.totalCost === nextStats.totalCost;
+}
+
+export default memo(OverviewCards, areEqualOverviewCardsProps);
 
 OverviewCards.propTypes = {
   stats: PropTypes.object.isRequired,

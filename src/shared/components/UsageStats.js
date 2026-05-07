@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useEffect, useMemo, useCallback } from "react";
+import { memo, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FREE_PROVIDERS } from "@/shared/constants/providers";
 import Badge from "./Badge";
@@ -92,11 +92,71 @@ const EMPTY_REALTIME_STATS = {
   pending: {},
 };
 
+function isSamePrimitiveArray(prev = [], next = []) {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i += 1) {
+    if (prev[i] !== next[i]) return false;
+  }
+  return true;
+}
+
+function isSameRecord(prev = {}, next = {}) {
+  if (prev === next) return true;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of prevKeys) {
+    if (!(key in next) || prev[key] !== next[key]) return false;
+  }
+  return true;
+}
+
+function isSameNestedRecord(prev = {}, next = {}) {
+  if (prev === next) return true;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of prevKeys) {
+    if (!(key in next) || !isSameRecord(prev[key], next[key])) return false;
+  }
+  return true;
+}
+
+function serializeActiveRequest(request = {}) {
+  return [
+    request.provider || "",
+    request.model || "",
+    request.account || "",
+    request.connectionId || "",
+    request.status || "",
+    request.startedAt || request.timestamp || "",
+  ].join("|");
+}
+
+function serializeRecentRequest(request = {}) {
+  return [
+    request.timestamp || "",
+    request.provider || "",
+    request.model || "",
+    request.status || "",
+    request.promptTokens || 0,
+    request.completionTokens || 0,
+    request.cost || request.totalCost || 0,
+  ].join("|");
+}
+
 function isSameRealtimeStats(prev, next) {
-  return prev.activeRequests === next.activeRequests
-    && prev.recentRequests === next.recentRequests
+  return isSamePrimitiveArray(
+    prev.activeRequests.map(serializeActiveRequest),
+    next.activeRequests.map(serializeActiveRequest),
+  )
+    && isSamePrimitiveArray(
+      prev.recentRequests.map(serializeRecentRequest),
+      next.recentRequests.map(serializeRecentRequest),
+    )
     && prev.errorProvider === next.errorProvider
-    && prev.pending === next.pending;
+    && isSameNestedRecord(prev.pending, next.pending);
 }
 
 function sortData(dataMap, pendingMap = {}, sortBy, sortOrder) {
@@ -215,6 +275,8 @@ const USAGE_FAST_FETCH_TIMEOUT_MS = 4500;
 export default function UsageStats() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const sseFrameRef = useRef(null);
+  const latestRealtimeStatsRef = useRef(null);
 
   const sortBy = searchParams.get("sortBy") || "rawModel";
   const sortOrder = searchParams.get("sortOrder") || "asc";
@@ -320,12 +382,50 @@ export default function UsageStats() {
         messageCount++;
         const data = JSON.parse(e.data);
         const nextRealtimeStats = {
-          activeRequests: data.activeRequests,
-          recentRequests: data.recentRequests,
-          errorProvider: data.errorProvider,
-          pending: data.pending,
+          activeRequests: data.activeRequests || [],
+          recentRequests: data.recentRequests || [],
+          errorProvider: data.errorProvider || "",
+          pending: data.pending || {},
         };
-        setRealtimeStats((prev) => (isSameRealtimeStats(prev, nextRealtimeStats) ? prev : nextRealtimeStats));
+        latestRealtimeStatsRef.current = nextRealtimeStats;
+        if (sseFrameRef.current !== null) return;
+
+        sseFrameRef.current = window.requestAnimationFrame(() => {
+          sseFrameRef.current = null;
+          const bufferedRealtimeStats = latestRealtimeStatsRef.current;
+          if (!bufferedRealtimeStats) return;
+
+          setRealtimeStats((prev) => {
+            if (isSameRealtimeStats(prev, bufferedRealtimeStats)) return prev;
+
+            const nextActiveRequests = isSamePrimitiveArray(
+              prev.activeRequests.map(serializeActiveRequest),
+              bufferedRealtimeStats.activeRequests.map(serializeActiveRequest),
+            )
+              ? prev.activeRequests
+              : bufferedRealtimeStats.activeRequests;
+
+            const nextRecentRequests = isSamePrimitiveArray(
+              prev.recentRequests.map(serializeRecentRequest),
+              bufferedRealtimeStats.recentRequests.map(serializeRecentRequest),
+            )
+              ? prev.recentRequests
+              : bufferedRealtimeStats.recentRequests;
+
+            const nextPending = isSameNestedRecord(prev.pending, bufferedRealtimeStats.pending)
+              ? prev.pending
+              : bufferedRealtimeStats.pending;
+
+            return {
+              activeRequests: nextActiveRequests,
+              recentRequests: nextRecentRequests,
+              errorProvider: prev.errorProvider === bufferedRealtimeStats.errorProvider
+                ? prev.errorProvider
+                : bufferedRealtimeStats.errorProvider,
+              pending: nextPending,
+            };
+          });
+        });
         setLoading(false);
       } catch (err) {
         console.error("[SSE CLIENT] parse error:", err);
@@ -343,6 +443,11 @@ export default function UsageStats() {
       if (typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF) {
         console.log("[DASHBOARD_CLIENT] usageStats:sse:close", { messageCount, durationMs: Date.now() - connectStart });
       }
+      if (sseFrameRef.current !== null) {
+        window.cancelAnimationFrame(sseFrameRef.current);
+        sseFrameRef.current = null;
+      }
+      latestRealtimeStatsRef.current = null;
       es.close();
     };
   }, []);
@@ -564,6 +669,7 @@ export default function UsageStats() {
         </div>
         {loading ? spinner : activeTableConfig && (
           <UsageTable
+            key={activeTableConfig.storageKey}
             title=""
             columns={activeTableConfig.columns}
             groupedData={activeTableConfig.groupedData}

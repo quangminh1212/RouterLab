@@ -414,16 +414,6 @@ export default function APIPageClient() {
       applySettingsState(data.settings);
       const applyStateDurationMs = Math.round(performance.now() - applyStart);
 
-      const scheduleModelPickerFetch = () => {
-        void fetchModelPickerData();
-      };
-
-      if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
-        window.requestIdleCallback(scheduleModelPickerFetch, { timeout: 1500 });
-      } else {
-        setTimeout(scheduleModelPickerFetch, 250);
-      }
-
       logDashboardPerf("info", "fetchBootstrap:done", {
         traceId,
         durationMs: Math.round(performance.now() - start),
@@ -444,7 +434,7 @@ export default function APIPageClient() {
       setKeysLoading(false);
       setLoading(false);
     }
-  }, [fetchModelPickerData, fetchTunnelStatus]);
+  }, [fetchTunnelStatus]);
 
   const checkNgrokInstalled = async () => {
     setNgrokInstalled(null);
@@ -508,6 +498,11 @@ export default function APIPageClient() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!showAllowedModelsModal) return;
+    void fetchModelPickerData();
+  }, [fetchModelPickerData, showAllowedModelsModal]);
 
   async function loadSettings() {
     const traceId = createDashboardTraceId("endpoint-settings");
