@@ -2,15 +2,19 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import HeaderMenu from "@/shared/components/HeaderMenu";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
 import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+
+const HeaderMenu = dynamic(() => import("@/shared/components/HeaderMenu"), {
+  ssr: false,
+});
 
 const getPageInfo = (pathname) => {
   if (!pathname) return { title: "", description: "", breadcrumbs: [] };
@@ -179,6 +183,8 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
   useEffect(() => {
     let mounted = true;
     let interval = null;
+    let idleId = null;
+    let timeoutId = null;
 
     const fetchMetrics = async () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") {
@@ -214,13 +220,26 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       }
     };
 
-    fetchMetrics();
-    startPolling();
+    const startMetricsWork = () => {
+      fetchMetrics();
+      startPolling();
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(startMetricsWork, { timeout: 4000 });
+    } else {
+      timeoutId = setTimeout(startMetricsWork, 2500);
+    }
+
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       mounted = false;
       stopPolling();
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      if (typeof window !== "undefined" && typeof window.cancelIdleCallback === "function" && idleId !== null) {
+        window.cancelIdleCallback(idleId);
+      }
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
