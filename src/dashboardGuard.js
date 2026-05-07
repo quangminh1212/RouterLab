@@ -173,6 +173,7 @@ export async function proxy(request) {
   // Protect sensitive API endpoints (allow CLI token, JWT, or requireLogin=false)
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return addSecurityHeaders(NextResponse.next());
+    if (isLocalhostRequest(request)) return addSecurityHeaders(NextResponse.next());
     const settings = await loadSettings();
     const tunnelLike = isTunnelLikeRequest(request, settings);
     if (tunnelLike && !(await hasValidCliToken(request)) && !(await hasValidToken(request))) {
@@ -188,6 +189,10 @@ export async function proxy(request) {
 
   // Protect all dashboard routes
   if (pathname.startsWith("/dashboard")) {
+    if (isLocalhostRequest(request)) {
+      return addSecurityHeaders(NextResponse.next());
+    }
+
     let requireLogin = true;
     let tunnelDashboardAccess = true;
     let tunnelLike = false;
@@ -211,10 +216,6 @@ export async function proxy(request) {
       }
     } catch {
       // On error, keep defaults (require login, block tunnel)
-    }
-
-    if (isLocalhostRequest(request)) {
-      return addSecurityHeaders(NextResponse.next());
     }
 
     // If login not required, allow through

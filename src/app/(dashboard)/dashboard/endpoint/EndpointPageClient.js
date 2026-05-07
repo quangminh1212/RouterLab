@@ -13,7 +13,7 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { logger } from "@/lib/logger";
 
 const EndpointApiKeysCard = dynamic(() => import("./components/EndpointApiKeysCard"), {
-  ssr: false,
+  ssr: true,
   loading: () => (
     <Card id="require-api-key">
       <div className="flex items-center justify-between mb-4">
@@ -184,7 +184,7 @@ export default function APIPageClient() {
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
   const [oauthCodeInput, setOauthCodeInput] = useState("");
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
-  const [showDeferredApiKeysCard, setShowDeferredApiKeysCard] = useState(false);
+  const [showDeferredApiKeysCard, setShowDeferredApiKeysCard] = useState(true);
   const [cloudflareResetLoading, setCloudflareResetLoading] = useState(false);
   const [cloudflareSwitchLoading, setCloudflareSwitchLoading] = useState(false);
 
@@ -506,25 +506,6 @@ export default function APIPageClient() {
       }
     };
   }, [fetchBootstrap]);
-
-  useEffect(() => {
-    let idleId = null;
-    let timeoutId = null;
-
-    const reveal = () => setShowDeferredApiKeysCard(true);
-    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
-      idleId = window.requestIdleCallback(reveal, { timeout: 1800 });
-    } else {
-      timeoutId = setTimeout(reveal, 800);
-    }
-
-    return () => {
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      if (typeof window !== "undefined" && typeof window.cancelIdleCallback === "function" && idleId !== null) {
-        window.cancelIdleCallback(idleId);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (!showAllowedModelsModal) return;
