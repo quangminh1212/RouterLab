@@ -23,8 +23,10 @@ function bootstrapServerInits() {
   if (globalThis[globalKey]) return;
   globalThis[globalKey] = true;
 
-  void import("@/lib/initCloudSync").catch(() => {});
-  void import("@/lib/network/initOutboundProxy").catch(() => {});
+  setTimeout(() => {
+    void import("@/lib/initCloudSync").catch(() => {});
+    void import("@/lib/network/initOutboundProxy").catch(() => {});
+  }, 1500);
 }
 
 bootstrapServerInits();
