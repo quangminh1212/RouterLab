@@ -1,269 +1,194 @@
-import { createErrorResult, parseUpstreamError, formatProviderError } from "../utils/error.js";
+import { Buffer } from "node:buffer";
+import { createErrorResult } from "../utils/error.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
-import { refreshWithRetry } from "../services/tokenRefresh.js";
-import { getExecutor } from "../executors/index.js";
+import { AI_PROVIDERS } from "../../src/shared/constants/providers.js";
 
-// STT provider configurations
-const STT_PROVIDERS = {
-  deepgram: {
-    baseUrl: "https://api.deepgram.com/v1/listen",
-    format: "deepgram",
-  },
-  assemblyai: {
-    baseUrl: "https://api.assemblyai.com/v2/transcript",
-    format: "assemblyai",
-  },
-};
-
-/**
- * Build STT URL
- */
-function buildSttUrl(provider, model, credentials) {
-  const config = STT_PROVIDERS[provider];
-  if (!config) return null;
-
-  switch (provider) {
-    case "deepgram":
-      return `${config.baseUrl}?model=${model || "nova-2"}`;
-    default:
-      return config.baseUrl;
+// Build auth headers from sttConfig + token
+function buildAuthHeaders(cfg, token) {
+  if (!token) return {};
+  switch (cfg.authHeader) {
+    case "bearer":     return { "Authorization": `Bearer ${token}` };
+    case "token":      return { "Authorization": `Token ${token}` };
+    case "x-api-key":  return { "x-api-key": token };
+    case "key":        return { "Authorization": `Key ${token}` };
+    default:           return { "Authorization": `Bearer ${token}` };
   }
 }
 
-/**
- * Build request headers
- */
-function buildSttHeaders(provider, credentials) {
-  const apiToken = credentials?.apiKey || credentials?.accessToken;
-  if (!apiToken) return {};
-
-  if (provider === "assemblyai") {
-    return {
-      Authorization: apiToken,
-    };
-  }
-
-  return {
-    Authorization: `Token ${apiToken}`,
-  };
+// Map browser file MIME / ext → audio MIME for binary formats (deepgram/HF)
+function resolveAudioContentType(file) {
+  const t = (file.type || "").toLowerCase();
+  if (t.startsWith("audio/")) return t;
+  const name = typeof file.name === "string" ? file.name.toLowerCase() : "";
+  const ext = name.includes(".") ? name.split(".").pop() : "";
+  const map = { mp3: "audio/mpeg", mp4: "audio/mp4", m4a: "audio/mp4", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac", webm: "audio/webm", aac: "audio/aac", opus: "audio/opus" };
+  return map[ext] || "application/octet-stream";
 }
 
-/**
- * Build request body based on provider format
- */
-function buildSttBody(provider, body) {
-  const { file, url, language } = body;
-
-  switch (provider) {
-    case "assemblyai":
-      return {
-        audio_url: url,
-        language_code: language || "en",
-      };
-
-    case "deepgram":
-      // Deepgram uses audio file in body or URL param
-      if (url) {
-        return { url };
-      }
-      return file; // Binary audio data
-
-    default:
-      return { file, url, language };
-  }
+async function upstreamError(res) {
+  let txt = "";
+  try { txt = await res.text(); } catch {}
+  let msg = txt || `Upstream error (${res.status})`;
+  try { const j = JSON.parse(txt); msg = j?.error?.message || j?.error || j?.message || msg; } catch {}
+  return createErrorResult(res.status, typeof msg === "string" ? msg : JSON.stringify(msg));
 }
 
-/**
- * Normalize response to standard format
- */
-function normalizeSttResponse(responseBody, provider) {
-  // Already in standard format
-  if (responseBody.text) {
-    return responseBody;
-  }
+// Deepgram: raw binary POST + model query param
+async function transcribeDeepgram(cfg, file, model, token, formData) {
+  const url = new URL(cfg.baseUrl);
+  url.searchParams.set("model", model);
+  url.searchParams.set("smart_format", "true");
+  url.searchParams.set("punctuate", "true");
+  const lang = formData.get("language");
+  if (typeof lang === "string" && lang.trim()) url.searchParams.set("language", lang.trim());
+  else url.searchParams.set("detect_language", "true");
 
-  switch (provider) {
-    case "deepgram": {
-      const transcript = responseBody.results?.channels?.[0]?.alternatives?.[0]?.transcript || "";
-      return {
-        text: transcript,
-        language: responseBody.results?.channels?.[0]?.detected_language,
-      };
-    }
-
-    case "assemblyai": {
-      // AssemblyAI returns a job ID first, then needs polling
-      if (responseBody.id && !responseBody.text) {
-        return {
-          text: "",
-          status: responseBody.status,
-          id: responseBody.id,
-        };
-      }
-      return {
-        text: responseBody.text || "",
-        language: responseBody.language_code,
-      };
-    }
-
-    default:
-      return responseBody;
-  }
+  const buf = await file.arrayBuffer();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { ...buildAuthHeaders(cfg, token), "Content-Type": resolveAudioContentType(file) },
+    body: buf,
+  });
+  if (!res.ok) return upstreamError(res);
+  const data = await res.json();
+  const text = data.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+  return jsonResponse({ text });
 }
 
-/**
- * Core STT handler
- * @param {object} options
- * @param {object} options.body - Request body { model, file, url, language, ... }
- * @param {object} options.modelInfo - { provider, model }
- * @param {object} options.credentials - Provider credentials
- * @param {object} [options.log] - Logger
- * @param {function} [options.onCredentialsRefreshed] - Called when creds are refreshed
- * @param {function} [options.onRequestSuccess] - Called on success
- * @returns {Promise<{ success: boolean, response: Response, status?: number, error?: string }>}
- */
-export async function handleSttCore({
-  body,
-  modelInfo,
-  credentials,
-  log,
-  onCredentialsRefreshed,
-  onRequestSuccess,
-}) {
-  const { provider, model } = modelInfo;
+// AssemblyAI: upload → submit → poll (max 120s)
+async function transcribeAssemblyAI(cfg, file, model, token) {
+  const auth = buildAuthHeaders(cfg, token);
+  const buf = await file.arrayBuffer();
+  const up = await fetch("https://api.assemblyai.com/v2/upload", {
+    method: "POST", headers: { ...auth, "Content-Type": "application/octet-stream" }, body: buf,
+  });
+  if (!up.ok) return upstreamError(up);
+  const { upload_url } = await up.json();
 
-  if (!body.file && !body.url) {
-    return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Missing required field: file or url");
+  const sub = await fetch(cfg.baseUrl, {
+    method: "POST",
+    headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ audio_url: upload_url, speech_models: [model], language_detection: true }),
+  });
+  if (!sub.ok) return upstreamError(sub);
+  const { id } = await sub.json();
+
+  const start = Date.now();
+  while (Date.now() - start < 120_000) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const poll = await fetch(`${cfg.baseUrl}/${id}`, { headers: auth });
+    if (!poll.ok) continue;
+    const r = await poll.json();
+    if (r.status === "completed") return jsonResponse({ text: r.text || "" });
+    if (r.status === "error") return createErrorResult(500, r.error || "AssemblyAI failed");
   }
+  return createErrorResult(504, "AssemblyAI timeout after 120s");
+}
 
-  const url = buildSttUrl(provider, model, credentials);
-  if (!url) {
-    return createErrorResult(
-      HTTP_STATUS.BAD_REQUEST,
-      `Provider '${provider}' does not support STT`
-    );
+// Nvidia NIM: multipart, normalize response
+async function transcribeNvidia(cfg, file, model, token) {
+  const fd = new FormData();
+  fd.append("file", file, file.name || "audio.wav");
+  fd.append("model", model);
+  const res = await fetch(cfg.baseUrl, { method: "POST", headers: buildAuthHeaders(cfg, token), body: fd });
+  if (!res.ok) return upstreamError(res);
+  const data = await res.json();
+  return jsonResponse({ text: data.text || data.transcript || "" });
+}
+
+// Gemini: generateContent with inline_data audio + transcription prompt
+async function transcribeGemini(cfg, file, model, token, formData) {
+  const buf = await file.arrayBuffer();
+  const b64 = Buffer.from(buf).toString("base64");
+  const mime = resolveAudioContentType(file);
+  const lang = formData.get("language");
+  const userPrompt = formData.get("prompt");
+  let promptText = userPrompt && typeof userPrompt === "string" && userPrompt.trim()
+    ? userPrompt.trim()
+    : "Generate a transcript of the speech. Return only the transcribed text, no commentary.";
+  if (typeof lang === "string" && lang.trim()) promptText += ` Language: ${lang.trim()}.`;
+
+  const url = `${cfg.baseUrl}/${model}:generateContent?key=${token}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mime, data: b64 } }] }],
+    }),
+  });
+  if (!res.ok) return upstreamError(res);
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
+  return jsonResponse({ text });
+}
+
+// HuggingFace: POST raw binary to {baseUrl}/{model_id}
+async function transcribeHuggingFace(cfg, file, model, token) {
+  if (model.includes("..") || model.includes("//")) return createErrorResult(400, "Invalid model ID");
+  const url = `${cfg.baseUrl.replace(/\/+$/, "")}/${model}`;
+  const buf = await file.arrayBuffer();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { ...buildAuthHeaders(cfg, token), "Content-Type": resolveAudioContentType(file) },
+    body: buf,
+  });
+  if (!res.ok) return upstreamError(res);
+  const data = await res.json();
+  return jsonResponse({ text: data.text || "" });
+}
+
+// Default: OpenAI/Groq/Whisper-compatible multipart
+async function transcribeOpenAICompatible(cfg, file, model, token, formData) {
+  const fd = new FormData();
+  fd.append("file", file, file.name || "audio.wav");
+  fd.append("model", model);
+  for (const k of ["language", "prompt", "response_format", "temperature"]) {
+    const v = formData.get(k);
+    if (v !== null && v !== undefined && v !== "") fd.append(k, v);
   }
+  const res = await fetch(cfg.baseUrl, { method: "POST", headers: buildAuthHeaders(cfg, token), body: fd });
+  if (!res.ok) return upstreamError(res);
+  const ct = res.headers.get("content-type") || "application/json";
+  const txt = await res.text();
+  return { success: true, response: new Response(txt, { status: 200, headers: { "Content-Type": ct, "Access-Control-Allow-Origin": "*" } }) };
+}
 
-  const headers = buildSttHeaders(provider, credentials);
-  const requestBody = buildSttBody(provider, body);
-
-  log?.debug?.("STT", `${provider.toUpperCase()} | ${model} | ${body.url ? `url=${body.url.slice(0, 50)}` : "file upload"}`);
-
-  let providerResponse;
-  try {
-    // Deepgram with URL uses JSON body
-    if (provider === "deepgram" && body.url) {
-      headers["Content-Type"] = "application/json";
-      providerResponse = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-    } else if (provider === "deepgram" && body.file) {
-      // Deepgram with file uses binary body
-      headers["Content-Type"] = "audio/wav";
-      providerResponse = await fetch(url, {
-        method: "POST",
-        headers,
-        body: body.file,
-      });
-    } else {
-      // AssemblyAI and others use JSON
-      headers["Content-Type"] = "application/json";
-      providerResponse = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-    }
-  } catch (error) {
-    const errMsg = formatProviderError(error, provider, model, HTTP_STATUS.BAD_GATEWAY);
-    log?.debug?.("STT", `Fetch error: ${errMsg}`);
-    return createErrorResult(HTTP_STATUS.BAD_GATEWAY, errMsg);
-  }
-
-  // Handle 401/403 — try token refresh
-  const executor = getExecutor(provider);
-  if (
-    !executor?.noAuth &&
-    (providerResponse.status === HTTP_STATUS.UNAUTHORIZED ||
-      providerResponse.status === HTTP_STATUS.FORBIDDEN)
-  ) {
-    const newCredentials = await refreshWithRetry(
-      () => executor.refreshCredentials(credentials, log),
-      3,
-      log
-    );
-
-    if (newCredentials?.accessToken || newCredentials?.apiKey) {
-      log?.info?.("TOKEN", `${provider.toUpperCase()} | refreshed for STT`);
-      Object.assign(credentials, newCredentials);
-      if (onCredentialsRefreshed && newCredentials) {
-        await onCredentialsRefreshed(newCredentials);
-      }
-
-      // Retry with refreshed credentials
-      const retryHeaders = buildSttHeaders(provider, credentials);
-      try {
-        if (provider === "deepgram" && body.url) {
-          retryHeaders["Content-Type"] = "application/json";
-          providerResponse = await fetch(url, {
-            method: "POST",
-            headers: retryHeaders,
-            body: JSON.stringify(requestBody),
-          });
-        } else if (provider === "deepgram" && body.file) {
-          retryHeaders["Content-Type"] = "audio/wav";
-          providerResponse = await fetch(url, {
-            method: "POST",
-            headers: retryHeaders,
-            body: body.file,
-          });
-        } else {
-          retryHeaders["Content-Type"] = "application/json";
-          providerResponse = await fetch(url, {
-            method: "POST",
-            headers: retryHeaders,
-            body: JSON.stringify(requestBody),
-          });
-        }
-      } catch (error) {
-        const errMsg = formatProviderError(error, provider, model, HTTP_STATUS.BAD_GATEWAY);
-        return createErrorResult(HTTP_STATUS.BAD_GATEWAY, errMsg);
-      }
-    }
-  }
-
-  // Handle non-2xx response
-  if (!providerResponse.ok) {
-    const { statusCode, message } = await parseUpstreamError(providerResponse);
-    log?.debug?.("STT", `Provider error: ${statusCode} ${message}`);
-    return createErrorResult(statusCode, message);
-  }
-
-  // Parse and normalize response
-  let responseBody;
-  try {
-    responseBody = await providerResponse.json();
-  } catch (error) {
-    log?.debug?.("STT", `Failed to parse response: ${error.message}`);
-    return createErrorResult(HTTP_STATUS.BAD_GATEWAY, "Invalid JSON response from provider");
-  }
-
-  const normalizedResponse = normalizeSttResponse(responseBody, provider);
-
-  // Call success callback
-  if (onRequestSuccess) {
-    await onRequestSuccess();
-  }
-
+function jsonResponse(obj) {
   return {
     success: true,
-    response: new Response(JSON.stringify(normalizedResponse), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+    response: new Response(JSON.stringify(obj), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     }),
   };
+}
+
+/**
+ * STT core handler — dispatch by sttConfig.format.
+ * @returns {Promise<{success, response, status?, error?}>}
+ */
+export async function handleSttCore({ provider, model, formData, credentials }) {
+  const file = formData.get("file");
+  if (!file) return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Missing required field: file");
+
+  const cfg = AI_PROVIDERS[provider]?.sttConfig;
+  if (!cfg) return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Provider '${provider}' does not support STT`);
+
+  const token = cfg.authType === "none" ? null : (credentials?.apiKey || credentials?.accessToken);
+  if (cfg.authType !== "none" && !token) {
+    return createErrorResult(HTTP_STATUS.UNAUTHORIZED, `No credentials for STT provider: ${provider}`);
+  }
+
+  try {
+    switch (cfg.format) {
+      case "deepgram":        return await transcribeDeepgram(cfg, file, model, token, formData);
+      case "assemblyai":      return await transcribeAssemblyAI(cfg, file, model, token);
+      case "nvidia-asr":      return await transcribeNvidia(cfg, file, model, token);
+      case "huggingface-asr": return await transcribeHuggingFace(cfg, file, model, token);
+      case "gemini-stt":      return await transcribeGemini(cfg, file, model, token, formData);
+      default:                return await transcribeOpenAICompatible(cfg, file, model, token, formData);
+    }
+  } catch (err) {
+    return createErrorResult(HTTP_STATUS.BAD_GATEWAY, err.message || "STT request failed");
+  }
 }

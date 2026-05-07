@@ -214,20 +214,9 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, pr
     // When content is empty (e.g. thinking models that used all tokens for reasoning),
     // reasoning_content is the only useful output and must be preserved.
     // Previously this was unconditional, which broke Qwen3.5, Claude extended thinking, etc.
-    // Fallback: if content is empty but reasoning_content exists, copy reasoning → content before stripping.
     if (parsed?.choices) {
       for (const choice of parsed.choices) {
-        const msg = choice?.message;
-        if (!msg) continue;
-        const content = typeof msg.content === 'string' ? msg.content.trim() : '';
-        const reasoning = typeof msg.reasoning_content === 'string' ? msg.reasoning_content.trim() : '';
-        const hasToolCalls = Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0;
-        // If no content but has reasoning (and no tool calls), copy reasoning → content
-        if (!content && reasoning && !hasToolCalls) {
-          msg.content = reasoning;
-        }
-        // Strip reasoning_content only if content is non-empty
-        if (msg.reasoning_content && msg.content) {
+        if (choice?.message?.reasoning_content && choice.message.content) {
           delete choice.message.reasoning_content;
         }
       }

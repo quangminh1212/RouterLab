@@ -15,53 +15,6 @@ import { decloakToolNames } from "../../utils/claudeCloaking.js";
 export function translateNonStreamingResponse(responseBody, targetFormat, sourceFormat) {
   if (targetFormat === sourceFormat || targetFormat === FORMATS.OPENAI) return responseBody;
 
-  if (targetFormat === FORMATS.OPENAI_RESPONSES) {
-    const output = Array.isArray(responseBody.output) ? responseBody.output : [];
-    const messageItem = [...output].reverse().find((item) => item?.type === "message") || output.find((item) => item?.type === "message");
-    const contentParts = Array.isArray(messageItem?.content) ? messageItem.content : [];
-    const textContent = contentParts
-      .map((part) => part?.text || part?.output_text || "")
-      .filter(Boolean)
-      .join("") || responseBody.output_text || output
-      .filter((item) => item?.type === "reasoning" && Array.isArray(item.summary))
-      .flatMap((item) => item.summary)
-      .map((part) => part?.text || "")
-      .filter(Boolean)
-      .join("");
-    const toolCalls = output
-      .filter((item) => item?.type === "function_call")
-      .map((item, index) => ({
-        id: item.call_id || `call_${item.name || "tool"}_${Date.now()}_${index}`,
-        type: "function",
-        function: {
-          name: item.name || "",
-          arguments: typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments || {}),
-        },
-      }));
-    const usage = responseBody.usage || {};
-
-    return {
-      id: responseBody.id || `chatcmpl-${Date.now()}`,
-      object: "chat.completion",
-      created: responseBody.created_at || Math.floor(Date.now() / 1000),
-      model: responseBody.model || "unknown",
-      choices: [{
-        index: 0,
-        message: {
-          role: "assistant",
-          content: textContent || (toolCalls.length ? null : ""),
-          ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
-        },
-        finish_reason: toolCalls.length ? "tool_calls" : (responseBody.status === "completed" ? "stop" : (responseBody.status || "stop")),
-      }],
-      usage: {
-        prompt_tokens: usage.input_tokens || usage.prompt_tokens || 0,
-        completion_tokens: usage.output_tokens || usage.completion_tokens || 0,
-        total_tokens: usage.total_tokens || ((usage.input_tokens || usage.prompt_tokens || 0) + (usage.output_tokens || usage.completion_tokens || 0)),
-      },
-    };
-  }
-
   // Gemini / Antigravity
   if (targetFormat === FORMATS.GEMINI || targetFormat === FORMATS.ANTIGRAVITY || targetFormat === FORMATS.GEMINI_CLI || targetFormat === FORMATS.VERTEX) {
     const response = responseBody.response || responseBody;
@@ -180,18 +133,6 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
   const contentType = providerResponse.headers.get("content-type") || "";
   let responseBody;
 
-  // Early detection: if content-type is HTML/plain text (not SSE), fail fast with retryable error
-  if (contentType.includes("text/html") ||
-      (contentType.includes("text/plain") && !contentType.includes("text/event-stream"))) {
-    appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
-    console.error(`[ChatCore] Bad content-type from ${provider}: ${contentType}`);
-    return {
-      ...createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Upstream provider returned invalid content-type: ${contentType}`),
-      retryable: true,
-      badUpstream: true
-    };
-  }
-
   if (contentType.includes("text/event-stream")) {
     const sseText = await providerResponse.text();
     const parsed = parseSSEToOpenAIResponse(sseText, model);
@@ -206,11 +147,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     } catch (err) {
       appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
       console.error(`[ChatCore] Failed to parse JSON from ${provider}:`, err.message);
-      return {
-        ...createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`),
-        retryable: true,
-        badUpstream: true
-      };
+      return createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`);
     }
   }
 
@@ -250,20 +187,6 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
 
   if (translatedResponse?.usage) {
     translatedResponse.usage = filterUsageForFormat(addBufferToUsage(translatedResponse.usage), sourceFormat);
-  }
-
-  // Compatibility fallback: if provider returns reasoning-only text, mirror it into content
-  // before stripping reasoning_content so downstream clients/channels still get a visible reply.
-  if (translatedResponse?.choices) {
-    for (const choice of translatedResponse.choices) {
-      if (!choice?.message) continue;
-      const content = typeof choice.message.content === "string" ? choice.message.content.trim() : "";
-      const reasoning = typeof choice.message.reasoning_content === "string" ? choice.message.reasoning_content.trim() : "";
-      const hasToolCalls = Array.isArray(choice.message.tool_calls) && choice.message.tool_calls.length > 0;
-      if (!content && reasoning && !hasToolCalls) {
-        choice.message.content = reasoning;
-      }
-    }
   }
 
   // Strip reasoning_content — some clients (e.g. Firecrawl AI SDK) have JSON parsers that
