@@ -11,6 +11,9 @@ import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, 
 
 export const dynamic = "force-dynamic";
 
+const PROVIDERS_GET_CACHE_TTL_MS = 3000;
+let providersGetCache = { ts: 0, data: null, promise: null };
+
 function normalizeProxyConfig(body = {}) {
   const enabled = body?.connectionProxyEnabled === true;
   const url = typeof body?.connectionProxyUrl === "string" ? body.connectionProxyUrl.trim() : "";
@@ -48,35 +51,62 @@ async function normalizeProxyPoolId(proxyPoolId) {
 // GET /api/providers - List all connections
 export async function GET() {
   try {
-    const connections = await getProviderConnections();
+    const now = Date.now();
+    if (providersGetCache.data && now - providersGetCache.ts < PROVIDERS_GET_CACHE_TTL_MS) {
+      return NextResponse.json(
+        { connections: providersGetCache.data },
+        { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=4" } }
+      );
+    }
 
-    // Build nodeNameMap for compatible providers (id → name)
-    let nodeNameMap = {};
-    try {
-      const nodes = await getProviderNodes();
-      for (const node of nodes) {
-        if (node.id && node.name) nodeNameMap[node.id] = node.name;
+    if (providersGetCache.promise) {
+      const safeConnections = await providersGetCache.promise;
+      return NextResponse.json(
+        { connections: safeConnections },
+        { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=4" } }
+      );
+    }
+
+    providersGetCache.promise = (async () => {
+      const connections = await getProviderConnections();
+
+      let nodeNameMap = {};
+      const needsNodeNames = connections.some((c) => isOpenAICompatibleProvider(c.provider) || isAnthropicCompatibleProvider(c.provider));
+      if (needsNodeNames) {
+        try {
+          const nodes = await getProviderNodes();
+          for (const node of nodes) {
+            if (node.id && node.name) nodeNameMap[node.id] = node.name;
+          }
+        } catch {}
       }
-    } catch { }
 
-    // Hide sensitive fields, enrich name for compatible providers
-    const safeConnections = connections.map(c => {
-      const isCompatible = isOpenAICompatibleProvider(c.provider) || isAnthropicCompatibleProvider(c.provider);
-      const name = isCompatible
-        ? (nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
-        : c.name;
-      return {
-        ...c,
-        name,
-        apiKey: undefined,
-        accessToken: undefined,
-        refreshToken: undefined,
-        idToken: undefined,
-      };
-    });
+      const safeConnections = connections.map(c => {
+        const isCompatible = isOpenAICompatibleProvider(c.provider) || isAnthropicCompatibleProvider(c.provider);
+        const name = isCompatible
+          ? (nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
+          : c.name;
+        return {
+          ...c,
+          name,
+          apiKey: undefined,
+          accessToken: undefined,
+          refreshToken: undefined,
+          idToken: undefined,
+        };
+      });
 
-    return NextResponse.json({ connections: safeConnections });
+      providersGetCache = { ts: Date.now(), data: safeConnections, promise: null };
+      return safeConnections;
+    })();
+
+    const safeConnections = await providersGetCache.promise;
+    return NextResponse.json(
+      { connections: safeConnections },
+      { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=4" } }
+    );
   } catch (error) {
+    providersGetCache.promise = null;
     console.log("Error fetching providers:", error);
     return NextResponse.json({ error: "Failed to fetch providers" }, { status: 500 });
   }

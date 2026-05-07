@@ -247,12 +247,17 @@ export default function UsageStats() {
     else setFetching(true);
 
     const start = Date.now();
-    Promise.allSettled([
+    const shouldFetchDebug = typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF;
+    const statsRequests = [
       fetchWithTimeout(`/api/usage/stats?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage stats timed out")
         .then((r) => (r.ok ? r.json() : null)),
-      fetchWithTimeout(`/api/usage/debug?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage debug timed out")
-        .then((r) => (r.ok ? r.json() : null)),
-    ])
+      shouldFetchDebug
+        ? fetchWithTimeout(`/api/usage/debug?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage debug timed out")
+          .then((r) => (r.ok ? r.json() : null))
+        : Promise.resolve(null),
+    ];
+
+    Promise.allSettled(statsRequests)
       .then(([statsResult, debugResult]) => {
         const data = statsResult.status === "fulfilled" ? statsResult.value : null;
         const debug = debugResult.status === "fulfilled" ? debugResult.value : null;
@@ -340,7 +345,7 @@ export default function UsageStats() {
           emptyMessage: "No usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -373,8 +378,8 @@ export default function UsageStats() {
           emptyMessage: "No account-specific usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -398,8 +403,8 @@ export default function UsageStats() {
           emptyMessage: "No API key usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -424,8 +429,8 @@ export default function UsageStats() {
           emptyMessage: "No endpoint usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
-              <td className="px-6 py-3 text-text-muted">â€”</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>

@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getRequestDetails } from "@/lib/requestDetailsDb";
 import { getProviderNodes } from "@/lib/localDb";
 import { AI_PROVIDERS, getProviderByAlias } from "@/shared/constants/providers";
 import { logger } from "@/lib/logger";
+
+const CACHE_TTL_MS = 5000;
+let providersCache = { ts: 0, data: null, promise: null };
 
 /**
  * GET /api/usage/providers
@@ -11,14 +14,31 @@ import { logger } from "@/lib/logger";
 export async function GET(request) {
   const traceId = request.headers.get("x-debug-trace-id") || logger.dashboardPerf.traceId("usage-providers");
   const start = Date.now();
+  const now = Date.now();
 
-  try {
+  if (providersCache.data && now - providersCache.ts < CACHE_TTL_MS) {
+    return NextResponse.json(
+      { providers: providersCache.data },
+      { headers: { "Cache-Control": "private, max-age=3, stale-while-revalidate=5" } }
+    );
+  }
+
+  if (providersCache.promise) {
+    try {
+      const providers = await providersCache.promise;
+      return NextResponse.json(
+        { providers },
+        { headers: { "Cache-Control": "private, max-age=3, stale-while-revalidate=5" } }
+      );
+    } catch {}
+  }
+
+  providersCache.promise = (async () => {
     const detailsStart = Date.now();
-    const { details } = await getRequestDetails({ pageSize: 9999 });
+    const { details } = await getRequestDetails({ pageSize: 2000 });
     const detailsDurationMs = Date.now() - detailsStart;
 
-    // Extract unique providers
-    const providerIds = [...new Set(details.map(r => r.provider).filter(Boolean))].sort();
+    const providerIds = [...new Set(details.map((r) => r.provider).filter(Boolean))].sort();
 
     const nodesStart = Date.now();
     const providerNodes = await getProviderNodes();
@@ -28,7 +48,7 @@ export async function GET(request) {
       nodeMap[node.id] = node.name;
     }
 
-    const providers = providerIds.map(providerId => {
+    const providers = providerIds.map((providerId) => {
       let name = providerId;
       if (nodeMap[providerId]) {
         name = nodeMap[providerId];
@@ -46,10 +66,21 @@ export async function GET(request) {
       nodesDurationMs,
       detailsCount: Array.isArray(details) ? details.length : 0,
       providersCount: providers.length,
+      cacheHit: false,
     });
 
-    return NextResponse.json({ providers });
+    providersCache = { ts: Date.now(), data: providers, promise: null };
+    return providers;
+  })();
+
+  try {
+    const providers = await providersCache.promise;
+    return NextResponse.json(
+      { providers },
+      { headers: { "Cache-Control": "private, max-age=3, stale-while-revalidate=5" } }
+    );
   } catch (error) {
+    providersCache.promise = null;
     logger.dashboardPerf.error("DASHBOARD_API", "usageProviders:error", {
       traceId,
       durationMs: Date.now() - start,

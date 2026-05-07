@@ -1,11 +1,10 @@
-import https from "https";
+﻿import https from "https";
 import pkg from "../../../../package.json" with { type: "json" };
 
 const NPM_PACKAGE_NAME = "xlabrouter";
 const VERSION_CACHE_TTL_MS = 10 * 60 * 1000;
-let versionCache = { ts: 0, data: null };
+let versionCache = { ts: 0, data: null, promise: null };
 
-// Fetch latest version from npm registry
 function fetchLatestVersion() {
   return new Promise((resolve) => {
     const req = https.get(
@@ -38,17 +37,35 @@ function compareVersions(a, b) {
   return 0;
 }
 
+async function refreshVersionCache() {
+  if (versionCache.promise) return versionCache.promise;
+  versionCache.promise = (async () => {
+    const latestVersion = await fetchLatestVersion();
+    const currentVersion = pkg.version;
+    const hasUpdate = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
+    const payload = { currentVersion, latestVersion, hasUpdate };
+    versionCache = { ts: Date.now(), data: payload, promise: null };
+    return payload;
+  })();
+  return versionCache.promise;
+}
+
 export async function GET() {
   const now = Date.now();
-  if (versionCache.data && now - versionCache.ts < VERSION_CACHE_TTL_MS) {
-    return Response.json(versionCache.data);
+  const isFresh = versionCache.data && now - versionCache.ts < VERSION_CACHE_TTL_MS;
+
+  if (isFresh) {
+    return Response.json(versionCache.data, { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" } });
   }
 
-  const latestVersion = await fetchLatestVersion();
-  const currentVersion = pkg.version;
-  const hasUpdate = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
-  const payload = { currentVersion, latestVersion, hasUpdate };
-  versionCache = { ts: now, data: payload };
+  // Return stale/fast response immediately, refresh in background.
+  const fallback = versionCache.data || { currentVersion: pkg.version, latestVersion: null, hasUpdate: false };
+  refreshVersionCache().catch(() => {});
 
-  return Response.json(payload);
+  return Response.json(fallback, {
+    headers: {
+      "Cache-Control": "private, max-age=15, stale-while-revalidate=300",
+      "X-Version-Refresh": versionCache.data ? "stale" : "pending",
+    },
+  });
 }
