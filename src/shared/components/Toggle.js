@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
+import { memo, useCallback } from "react";
 import { cn } from "@/shared/utils/cn";
 
-export default function Toggle({
+function Toggle({
   checked = false,
   onChange,
   label,
@@ -29,11 +30,11 @@ export default function Toggle({
     },
   };
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (!disabled && onChange) {
       onChange(!checked);
     }
-  };
+  }, [disabled, onChange, checked]);
 
   return (
     <div
@@ -88,3 +89,4 @@ export default function Toggle({
   );
 }
 
+export default memo(Toggle);

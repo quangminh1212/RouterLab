@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import useThemeStore from "@/store/themeStore";
 
-export function ThemeProvider({ children }) {
-  const { initTheme } = useThemeStore();
+function ThemeProviderComponent({ children }) {
+  const initTheme = useThemeStore((state) => state.initTheme);
 
   useEffect(() => {
     initTheme();
@@ -13,3 +13,4 @@ export function ThemeProvider({ children }) {
   return <>{children}</>;
 }
 
+export const ThemeProvider = memo(ThemeProviderComponent);

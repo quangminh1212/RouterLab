@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback, memo } from "react";
 import { cn } from "@/shared/utils/cn";
 import Button from "./Button";
 
-export default function Modal({
+function Modal({
   isOpen,
   onClose,
   title,
@@ -22,6 +22,12 @@ export default function Modal({
     xl: "max-w-xl",
     full: "max-w-4xl",
   };
+
+  const handleOverlayClick = useCallback(() => {
+    if (closeOnOverlay) {
+      onClose();
+    }
+  }, [closeOnOverlay, onClose]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -50,55 +56,38 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={closeOnOverlay ? onClose : undefined}
+        onClick={handleOverlayClick}
       />
-
-      {/* Modal content */}
       <div
         className={cn(
-          "relative w-full bg-surface",
-          "border border-black/10 dark:border-white/10",
-          "rounded-xl shadow-2xl",
-          "animate-in fade-in zoom-in-95 duration-200",
+          "relative bg-surface border border-black/10 dark:border-white/10",
+          "rounded-xl shadow-2xl w-full",
+          "animate-in fade-in-0 zoom-in-95 duration-200",
           sizes[size],
           className
         )}
       >
-        {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-2 border-b border-black/5 dark:border-white/5">
-            <div className="flex items-center">
-              <div className="flex items-center gap-2 mr-4">
-                <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-              </div>
-              {title && (
-                <h2 className="text-lg font-semibold text-text-main">
-                  {title}
-                </h2>
-              )}
-            </div>
+          <div className="flex items-center justify-between p-6 pb-4">
+            {title && (
+              <h2 className="text-lg font-semibold text-text-main">{title}</h2>
+            )}
             {showCloseButton && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="close"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
+                className="-mr-2"
+              />
             )}
           </div>
         )}
-
-        {/* Body */}
-        <div className="p-6 max-h-[calc(85vh-100px)] overflow-y-auto">{children}</div>
-
-        {/* Footer */}
+        <div className="px-6 pb-6">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-black/5 dark:border-white/5">
+          <div className="flex items-center justify-end gap-2 p-6 pt-4 border-t border-black/5 dark:border-white/5">
             {footer}
           </div>
         )}
@@ -107,37 +96,51 @@ export default function Modal({
   );
 }
 
-// Confirm Modal helper
-export function ConfirmModal({
+export default memo(Modal);
+
+function ConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title = "Confirm",
+  title,
   message,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  variant = "danger",
+  variant = "primary",
   loading = false,
 }) {
+  const handleConfirm = useCallback(() => {
+    onConfirm();
+  }, [onConfirm]);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={title}
       size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={loading}>
-            {cancelText}
-          </Button>
-          <Button variant={variant} onClick={onConfirm} loading={loading}>
-            {confirmText}
-          </Button>
-        </>
-      }
+      closeOnOverlay={!loading}
+      showCloseButton={!loading}
     >
-      <p className="text-text-muted">{message}</p>
+      <p className="text-text-secondary mb-6">{message}</p>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          disabled={loading}
+        >
+          {cancelText}
+        </Button>
+        <Button
+          variant={variant}
+          onClick={handleConfirm}
+          loading={loading}
+        >
+          {confirmText}
+        </Button>
+      </div>
     </Modal>
   );
 }
 
+export { ConfirmModal };

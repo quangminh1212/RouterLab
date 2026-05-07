@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
+import { memo } from "react";
 import { cn } from "@/shared/utils/cn";
 
-export default function Input({
+function Input({
   label,
   type = "text",
   placeholder,
@@ -43,7 +44,6 @@ export default function Input({
             "placeholder-text-muted/60",
             "focus:ring-1 focus:ring-primary/30 focus:border-primary/50 focus:outline-none",
             "transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed",
-            // iOS zoom fix
             "text-[16px] sm:text-sm",
             icon && "pl-10",
             error
@@ -67,3 +67,4 @@ export default function Input({
   );
 }
 
+export default memo(Input);

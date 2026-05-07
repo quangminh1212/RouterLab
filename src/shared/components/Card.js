@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
+import { memo } from "react";
 import { cn } from "@/shared/utils/cn";
 
-export default function Card({
+function Card({
   children,
   title,
   subtitle,
@@ -50,7 +51,7 @@ export default function Card({
               )}
             </div>
           </div>
-          {action}
+          {action && <div>{action}</div>}
         </div>
       )}
       {children}
@@ -58,65 +59,19 @@ export default function Card({
   );
 }
 
-// Sub-component: Bordered section inside Card
-Card.Section = function CardSection({ children, className, ...props }) {
+export default memo(Card);
+
+export function CardSkeleton({ className }) {
   return (
     <div
       className={cn(
-        "p-4 rounded-lg",
-        "bg-black/[0.02] dark:bg-white/[0.02]",
-        "border border-black/5 dark:border-white/5",
+        "bg-surface border border-black/5 dark:border-white/5 rounded-lg shadow-sm p-6 animate-pulse",
         className
       )}
-      {...props}
     >
-      {children}
+      <div className="h-4 bg-black/5 dark:bg-white/5 rounded w-1/3 mb-4" />
+      <div className="h-3 bg-black/5 dark:bg-white/5 rounded w-2/3 mb-2" />
+      <div className="h-3 bg-black/5 dark:bg-white/5 rounded w-1/2" />
     </div>
   );
-};
-
-// Sub-component: Hoverable row inside Card
-Card.Row = function CardRow({ children, className, ...props }) {
-  return (
-    <div
-      className={cn(
-        "p-3 -mx-3 px-3 transition-colors",
-        "border-b border-black/5 dark:border-white/5 last:border-b-0",
-        "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
-
-// Sub-component: List item with hover actions (macOS style)
-Card.ListItem = function CardListItem({ 
-  children, 
-  actions,
-  className, 
-  ...props 
-}) {
-  return (
-    <div
-      className={cn(
-        "group flex items-center justify-between p-3 -mx-3 px-3",
-        "border-b border-black/[0.03] dark:border-white/[0.03] last:border-b-0",
-        "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]",
-        "transition-colors",
-        className
-      )}
-      {...props}
-    >
-      <div className="flex-1 min-w-0">{children}</div>
-      {actions && (
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {actions}
-        </div>
-      )}
-    </div>
-  );
-};
-
+}

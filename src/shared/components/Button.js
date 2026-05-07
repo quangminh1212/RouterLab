@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { memo } from "react";
 import { cn } from "@/shared/utils/cn";
 
 const variants = {
@@ -16,7 +17,7 @@ const sizes = {
   lg: "h-11 px-6 text-sm rounded-lg",
 };
 
-export default function Button({
+function Button({
   children,
   variant = "primary",
   size = "md",
@@ -54,3 +55,4 @@ export default function Button({
   );
 }
 
+export default memo(Button);
