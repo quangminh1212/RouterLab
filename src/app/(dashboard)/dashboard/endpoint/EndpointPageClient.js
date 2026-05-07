@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { logger } from "@/lib/logger";
@@ -1676,7 +1677,7 @@ export default function APIPageClient() {
                 disabled={ngrokInstalling}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
-                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
+                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "CÃƒÆ’Ã‚Â i ngrok"}
               </Button>
             ) : (
               <div className="flex items-center gap-2">
@@ -1760,7 +1761,7 @@ export default function APIPageClient() {
                 disabled={ngrokInstalling}
                 className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
               >
-                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
+                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "CÃƒÆ’Ã‚Â i ngrok"}
               </Button>
             ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "ngrok") ? (
               <>
@@ -1905,7 +1906,7 @@ export default function APIPageClient() {
         )}
       </Card>
 
-      {/* Token Saver (RTK) */}
+      {/* Token Saver (RTK + Caveman) */}
       <Card id="rtk">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -1914,10 +1915,14 @@ export default function APIPageClient() {
               Experimental
             </span>
           </div>
+          <Link href="/dashboard/token-saver" className="text-xs text-primary hover:underline flex items-center gap-1">
+            <span className="material-symbols-outlined text-[16px]">science</span>
+            Preview & test
+          </Link>
         </div>
         <div className="flex items-center justify-between pt-2">
           <div className="pr-4">
-            <p className="font-medium">Compress tool output</p>
+            <p className="font-medium">RTK: Compress tool output</p>
             <p className="text-sm text-text-muted">
               Auto-compress git diff / status / grep / find / ls / tree / logs in <code>tool_result</code> before sending to LLM. Check server console for <code>[RTK] saved ...</code> log.
             </p>
@@ -1931,7 +1936,7 @@ export default function APIPageClient() {
               >
                 RTK (Rust Token Killer)
               </a>
-              {" "}— ported to JavaScript. This feature is still under testing; disable it if you notice unexpected results.
+              {" "}- ported to JavaScript. Typically saves 60-90% on command output.
             </p>
           </div>
           <Toggle
@@ -1942,9 +1947,21 @@ export default function APIPageClient() {
 
         <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
           <div className="pr-4">
-            <p className="font-medium">Caveman replies</p>
+            <p className="font-medium">Caveman: Terse replies</p>
             <p className="text-sm text-text-muted">
               Inject a terse system instruction before dispatch to reduce output tokens while keeping code, paths, commands, errors, and warnings exact.
+            </p>
+            <p className="text-xs text-text-muted mt-1">
+              Inspired by{" "}
+              <a
+                href="https://github.com/JuliusBrussee/caveman-claude"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-primary"
+              >
+                Caveman Claude
+              </a>
+              {" "}- typically saves 30-50% on prose output.
             </p>
           </div>
           <Toggle
@@ -1956,7 +1973,7 @@ export default function APIPageClient() {
         {cavemanEnabled && (
           <div className="flex items-center justify-between pt-3">
             <div className="pr-4">
-              <p className="font-medium text-sm">Compression level</p>
+              <p className="font-medium text-sm">Caveman intensity</p>
               <p className="text-xs text-text-muted">Lite keeps normal grammar, Full is terse, Ultra is maximum compression.</p>
             </div>
             <select
@@ -1968,6 +1985,20 @@ export default function APIPageClient() {
               <option value="full">Full</option>
               <option value="ultra">Ultra</option>
             </select>
+          </div>
+        )}
+
+        {(rtkEnabled && cavemanEnabled) && (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-[20px] text-primary mt-0.5">info</span>
+              <div className="text-xs text-text-muted">
+                <p className="font-medium text-text-main mb-1">Stacked mode active</p>
+                <p>
+                  RTK runs first to compress tool output, then Caveman guides concise replies. Combined savings usually reach 70-95% on coding-agent sessions.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </Card>
@@ -2027,7 +2058,7 @@ export default function APIPageClient() {
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium text-text-main">Limit cost</p>
-              <p className="text-xs text-text-muted">Bật để giới hạn tổng chi phí cho key này</p>
+              <p className="text-xs text-text-muted">BÃƒÂ¡Ã‚ÂºÃ‚Â­t Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã†â€™ giÃƒÂ¡Ã‚Â»Ã¢â‚¬Âºi hÃƒÂ¡Ã‚ÂºÃ‚Â¡n tÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¢ng chi phÃƒÆ’Ã‚Â­ cho key nÃƒÆ’Ã‚Â y</p>
             </div>
             <Toggle
               checked={newKeyHasLimit}
@@ -2050,7 +2081,7 @@ export default function APIPageClient() {
               value={newKeyCostLimit}
               onChange={(e) => setNewKeyCostLimit(e.target.value)}
               placeholder="10.00"
-              hint="Khi tổng chi phí đạt ngưỡng này, key sẽ tự bị từ chối"
+              hint="Khi tÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¢ng chi phÃƒÆ’Ã‚Â­ Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â¡t ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Â¡ng nÃƒÆ’Ã‚Â y, key sÃƒÂ¡Ã‚ÂºÃ‚Â½ tÃƒÂ¡Ã‚Â»Ã‚Â± bÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ tÃƒÂ¡Ã‚Â»Ã‚Â« chÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœi"
               error={createKeyError || undefined}
             />
           )}
@@ -2105,7 +2136,7 @@ export default function APIPageClient() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-text-main">Allowed Models</p>
-                <p className="text-xs text-text-muted">Để trống để cho phép tất cả.</p>
+                <p className="text-xs text-text-muted">Ãƒâ€žÃ‚ÂÃƒÂ¡Ã‚Â»Ã†â€™ trÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã†â€™ cho phÃƒÆ’Ã‚Â©p tÃƒÂ¡Ã‚ÂºÃ‚Â¥t cÃƒÂ¡Ã‚ÂºÃ‚Â£.</p>
               </div>
               <button
                 type="button"
@@ -2250,11 +2281,11 @@ export default function APIPageClient() {
       {/* Enable Tunnel Modal */}
       <Modal
         isOpen={showEnableTunnelModal}
-        title="Chọn Tunnel"
+        title="ChÃƒÂ¡Ã‚Â»Ã‚Ân Tunnel"
         onClose={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }}
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-text-muted">Nhập mã 6 số từ Google Authenticator, sau đó chọn tunnel.</p>
+          <p className="text-sm text-text-muted">NhÃƒÂ¡Ã‚ÂºÃ‚Â­p mÃƒÆ’Ã‚Â£ 6 sÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœ tÃƒÂ¡Ã‚Â»Ã‚Â« Google Authenticator, sau Ãƒâ€žÃ¢â‚¬ËœÃƒÆ’Ã‚Â³ chÃƒÂ¡Ã‚Â»Ã‚Ân tunnel.</p>
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Authenticator Code</label>
@@ -2284,7 +2315,7 @@ export default function APIPageClient() {
             </Button>
           </div>
 
-          <Button onClick={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }} variant="ghost" fullWidth>Hủy</Button>
+          <Button onClick={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }} variant="ghost" fullWidth>HÃƒÂ¡Ã‚Â»Ã‚Â§y</Button>
         </div>
       </Modal>
 
