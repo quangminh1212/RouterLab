@@ -5,6 +5,32 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { backupToGist, restoreFromGist } from "@/lib/gistBackup";
 
 const execFileAsync = promisify(execFile);
+const GITHUB_USER_CHECK_TIMEOUT_MS = Number(process.env.XLAB_GIST_AUTH_TIMEOUT_MS || 12000);
+
+function createTimeoutError(message) {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_USER_CHECK_TIMEOUT_MS, timeoutMessage = "GitHub request timed out") {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(createTimeoutError(timeoutMessage)), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw createTimeoutError(timeoutMessage);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function toPublicConfig(settings) {
   const gistBackup = settings?.gistBackup || {};
@@ -21,7 +47,7 @@ function toPublicConfig(settings) {
 }
 
 async function validateGitHubToken(token) {
-  const res = await fetch("https://api.github.com/user", {
+  const res = await fetchWithTimeout("https://api.github.com/user", {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
@@ -29,7 +55,7 @@ async function validateGitHubToken(token) {
       "X-GitHub-Api-Version": "2022-11-28",
     },
     cache: "no-store",
-  });
+  }, GITHUB_USER_CHECK_TIMEOUT_MS, "GitHub auth check timed out");
 
   if (!res.ok) {
     const err = new Error("GitHub token is invalid or missing required access");
@@ -60,6 +86,98 @@ async function getGitHubCliToken() {
       ? "GitHub CLI is not installed. Install gh and run gh auth login first."
       : "Cannot read GitHub CLI token. Run gh auth login first, then try again.";
     throw new Error(message);
+  }
+}
+
+async function refreshGitHubCliAuth() {
+  await execFileAsync("gh", ["auth", "refresh", "--hostname", "github.com", "--scopes", "gist,repo,read:org"], {
+    timeout: 30000,
+    windowsHide: true,
+    maxBuffer: 32 * 1024,
+  });
+}
+
+async function getGitHubCliLoginViaApi() {
+  const { stdout } = await execFileAsync("gh", ["api", "user", "--jq", ".login"], {
+    timeout: 10000,
+    windowsHide: true,
+    maxBuffer: 16 * 1024,
+  });
+  return String(stdout || "").trim();
+}
+
+async function getGitHubCliStatus() {
+  const { stdout } = await execFileAsync("gh", ["auth", "status", "--hostname", "github.com", "--json", "hosts"], {
+    timeout: 10000,
+    windowsHide: true,
+    maxBuffer: 64 * 1024,
+  });
+  const parsed = JSON.parse(String(stdout || "{}").trim() || "{}");
+  const entry = parsed?.hosts?.["github.com"]?.find?.((item) => item?.active) || parsed?.hosts?.["github.com"]?.[0] || null;
+  return {
+    login: typeof entry?.login === "string" ? entry.login.trim() : "",
+    active: entry?.active === true,
+    state: typeof entry?.state === "string" ? entry.state : "",
+    error: typeof entry?.error === "string" ? entry.error : "",
+    tokenSource: typeof entry?.tokenSource === "string" ? entry.tokenSource : "",
+  };
+}
+
+async function resolveGitHubCliIdentity(token, fallbackLogin = "") {
+  try {
+    const user = await validateGitHubToken(token);
+    return {
+      token,
+      githubLogin: user.login || fallbackLogin || "",
+    };
+  } catch (error) {
+    if (!isGitHubAuthError(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    const login = await getGitHubCliLoginViaApi();
+    if (login) {
+      return {
+        token,
+        githubLogin: login || fallbackLogin || "",
+      };
+    }
+  } catch {}
+
+  try {
+    const status = await getGitHubCliStatus();
+    if (status.active && status.login && !status.error) {
+      return {
+        token,
+        githubLogin: status.login || fallbackLogin || "",
+      };
+    }
+  } catch {}
+
+  const err = new Error("GitHub CLI token is invalid or GitHub CLI session cannot access user identity.");
+  err.status = 401;
+  throw err;
+}
+
+async function getValidatedGitHubCliAuth(fallbackLogin = "") {
+  let token = await getGitHubCliToken();
+  try {
+    return await resolveGitHubCliIdentity(token, fallbackLogin);
+  } catch (error) {
+    if (isGitHubAuthError(error)) {
+      try {
+        await refreshGitHubCliAuth();
+        token = await getGitHubCliToken();
+        return await resolveGitHubCliIdentity(token, fallbackLogin);
+      } catch (refreshError) {
+        const err = new Error("GitHub CLI token is invalid and automatic refresh failed. Run gh auth login first.");
+        err.cause = refreshError;
+        throw err;
+      }
+    }
+    throw error;
   }
 }
 
@@ -96,11 +214,7 @@ async function ensureCliAuth(current) {
   const preferGhCli = tokenSource === "gh-cli" || !storedToken;
   if (preferGhCli) {
     try {
-      const token = await getGitHubCliToken();
-      return {
-        token,
-        githubLogin: await resolveGitHubLogin(token, storedLogin),
-      };
+      return await getValidatedGitHubCliAuth(storedLogin);
     } catch (error) {
       if (!storedToken) throw error;
     }
@@ -125,18 +239,14 @@ async function ensureCliAuth(current) {
   }
 
   // Cu?i c?ng th? l?i gh CLI l?n n?a tr??c khi b?o l?i login.
-  const token = await getGitHubCliToken();
-  return {
-    token,
-    githubLogin: await resolveGitHubLogin(token, storedLogin),
-  };
+  return await getValidatedGitHubCliAuth(storedLogin);
 }
 
-async function launchGitHubCliLoginWindow() {
+async function launchGitHubCliRefreshWindow() {
   try {
     await execFileAsync("powershell.exe", [
       "-Command",
-      "Start-Process -FilePath powershell.exe -ArgumentList '-NoExit','-Command','gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org'",
+      "Start-Process -FilePath powershell.exe -ArgumentList '-NoExit','-Command','gh auth refresh --hostname github.com --scopes gist,repo,read:org'",
     ], {
       timeout: 10000,
       windowsHide: true,
@@ -172,27 +282,26 @@ export async function POST(request) {
 
     if (action === "use-gh-cli") {
       try {
-        const token = await getGitHubCliToken();
-        const githubLogin = await resolveGitHubLogin(token, current.githubLogin || "");
+        const auth = await getValidatedGitHubCliAuth(current.githubLogin || "");
         const nextConfig = {
           ...current,
           enabled: true,
-          token,
+          token: auth.token,
           tokenSource: "gh-cli",
-          githubLogin,
+          githubLogin: auth.githubLogin,
           fileName: current.fileName || "xlabrouter.backup.json",
         };
         await updateSettings({ gistBackup: nextConfig });
         return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
       } catch (error) {
-        const launched = await launchGitHubCliLoginWindow();
+        const launched = await launchGitHubCliRefreshWindow();
         return NextResponse.json({
           success: false,
           requiresLogin: true,
           launched,
           error: launched
-            ? "Kh?ng ??c ???c token t? GitHub CLI. ?? m? c?a s? ??ng nh?p, h?y ho?n t?t r?i b?m l?i 'D?ng GitHub CLI'."
-            : "Kh?ng ??c ???c token t? GitHub CLI. H?y ch?y `gh auth login --hostname github.com --web --git-protocol https --scopes gist,repo,read:org` r?i th? l?i.",
+            ? "Token GitHub CLI cần refresh. Hãy hoàn tất cửa sổ gh auth refresh rồi bấm lại 'Dùng GitHub CLI'."
+            : "Không đọc được token từ GitHub CLI. Hãy chạy `gh auth refresh --hostname github.com --scopes gist,repo,read:org` rồi thử lại.",
           details: error?.message || "",
           config: toPublicConfig({ gistBackup: current }),
         });

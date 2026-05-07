@@ -14,6 +14,33 @@ const BACKUP_GIST_DESCRIPTION = "xlabrouter";
 const LEGACY_BACKUP_GIST_DESCRIPTION = "XLab Router encrypted backup";
 const LEGACY_ENVELOPE_FORMAT = "xlabrouter-gist-backup";
 const PBKDF2_ITERATIONS = 210000;
+const GITHUB_API_TIMEOUT_MS = Number(process.env.XLAB_GIST_API_TIMEOUT_MS || 15000);
+const GITHUB_RAW_TIMEOUT_MS = Number(process.env.XLAB_GIST_RAW_TIMEOUT_MS || 20000);
+
+function createTimeoutError(message) {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_API_TIMEOUT_MS, timeoutMessage = "GitHub request timed out") {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(createTimeoutError(timeoutMessage)), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw createTimeoutError(timeoutMessage);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function getEncryptionKey(passphrase, salt, iterations = PBKDF2_ITERATIONS) {
   return crypto.pbkdf2Sync(passphrase, salt, iterations, 32, "sha256");
@@ -60,7 +87,7 @@ function decryptLegacyPayloadWithFallback(envelope, passphrases) {
 async function githubRequest(token, url, options = {}) {
   if (!token || typeof token !== "string") throw new Error("GitHub token is required");
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     ...options,
     headers: {
       Accept: "application/vnd.github+json",
@@ -70,7 +97,7 @@ async function githubRequest(token, url, options = {}) {
       ...(options.headers || {}),
     },
     cache: "no-store",
-  });
+  }, GITHUB_API_TIMEOUT_MS, "GitHub Gist request timed out");
 
   const rawText = await response.text().catch(() => "");
   let data = {};
@@ -132,14 +159,14 @@ async function findExistingBackupGist(token) {
 async function readFullGistFileContent(token, file) {
   let content = typeof file?.content === "string" ? file.content : "";
   if ((!content || file?.truncated === true) && typeof file?.raw_url === "string" && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, {
+    const rawRes = await fetchWithTimeout(file.raw_url, {
       headers: {
         Accept: "application/vnd.github.raw",
         Authorization: `Bearer ${token}`,
         "X-GitHub-Api-Version": "2022-11-28",
       },
       cache: "no-store",
-    });
+    }, GITHUB_RAW_TIMEOUT_MS, "Downloading full Gist backup timed out");
 
     if (!rawRes.ok) {
       throw new Error("Failed to download full Gist backup content");
