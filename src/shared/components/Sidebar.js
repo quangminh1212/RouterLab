@@ -49,6 +49,7 @@ const POWER_UP_ITEMS = [
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(() =>
     POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href))
@@ -65,6 +66,19 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmd;
   const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("xlabrouter-sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      const nextValue = !value;
+      window.localStorage.setItem("xlabrouter-sidebar-collapsed", String(nextValue));
+      return nextValue;
+    });
+  };
 
   useEffect(() => {
     let idleId = null;
@@ -187,28 +201,56 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   return (
     <>
-      <aside className="flex w-72 flex-col border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-colors duration-300 min-h-full">
+      <aside className={cn(
+        "flex flex-col overflow-hidden border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-all duration-300 min-h-full",
+        collapsed ? "w-16" : "w-72"
+      )}>
         {/* Traffic lights */}
-        <div className="flex items-center gap-2 px-6 pt-5 pb-2">
+        <div className={cn("flex items-center gap-2 pt-5 pb-2", collapsed ? "justify-center px-3" : "px-6")}>
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+            >
+              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+          ) : (
+            <>
           <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
           <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
           <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar"
+              >
+                <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Logo */}
-        <div className="px-6 py-4 flex flex-col gap-2">
-          <Link href="/dashboard" className="flex items-center gap-3">
+        <div className={cn("py-4 flex flex-col gap-2", collapsed ? "px-3" : "px-6")}>
+          <Link href="/dashboard" className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
             <div className="flex items-center justify-center size-9 rounded overflow-hidden">
               <img src="/topup.png" alt="XLab Router logo" className="w-full h-full object-cover" />
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-semibold tracking-tight text-text-main">
-                {APP_CONFIG.name}
-              </h1>
-              <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
-            </div>
+            {!collapsed && (
+              <div className="flex flex-col">
+                <h1 className="text-lg font-semibold tracking-tight text-text-main">
+                  {APP_CONFIG.name}
+                </h1>
+                <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
+              </div>
+            )}
           </Link>
-          {updateInfo && (
+          {updateInfo && !collapsed && (
             <div className="flex flex-col gap-1.5 rounded p-1 -m-1">
               <span className="text-xs font-semibold text-green-600 dark:text-amber-500">
                 ↑ New version available: v{updateInfo.latestVersion}
@@ -235,14 +277,14 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className={cn("flex-1 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isActive(item.href)
                   ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
                   : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
@@ -256,17 +298,21 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               >
                 {item.icon}
               </span>
-              <span className="text-sm font-medium">{item.label}</span>
+              {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
             </Link>
           ))}
 
           {/* System section */}
           <div className="pt-4 mt-2">
-            <p className="px-4 text-xs font-semibold text-primary/55 uppercase tracking-wider mb-2">
-              System
-            </p>
+            {!collapsed && (
+              <p className="px-4 text-xs font-semibold text-primary/55 uppercase tracking-wider mb-2">
+                System
+              </p>
+            )}
 
             {/* Media Providers accordion */}
+            {!collapsed && (
+              <>
             <button
               onClick={() => setMediaOpen((v) => !v)}
               className={cn(
@@ -316,8 +362,12 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 </Link>
               </div>
             )}
+              </>
+            )}
 
             {/* Power Up accordion */}
+            {!collapsed && (
+              <>
             <button
               onClick={() => setPowerUpOpen((v) => !v)}
               className={cn(
@@ -353,6 +403,8 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 ))}
               </div>
             )}
+              </>
+            )}
 
             {systemItems.map((item) => (
               <Link
@@ -360,7 +412,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                  collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                   isActive(item.href)
                     ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
                     : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
@@ -374,7 +426,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 >
                   {item.icon}
                 </span>
-                <span className="text-sm font-medium">{item.label}</span>
+                {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
               </Link>
             ))}
 
@@ -387,7 +439,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                    collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                     isActive(item.href)
                       ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
                       : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
@@ -401,7 +453,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   >
                     {item.icon}
                   </span>
-                  <span className="text-sm font-medium">{item.label}</span>
+                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                 </Link>
               ) : null;
             })}
@@ -411,7 +463,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               href="/dashboard/profile"
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isActive("/dashboard/profile")
                   ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
                   : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
@@ -425,13 +477,13 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               >
                 settings
               </span>
-              <span className="text-sm font-medium">Settings</span>
+              {!collapsed && <span className="text-sm font-medium">Settings</span>}
             </Link>
           </div>
         </nav>
 
         {/* Footer section */}
-        <div className="p-3 border-t border-primary/15">
+        <div className={cn("border-t border-primary/15", collapsed ? "p-2" : "p-3")}>
           {/* Shutdown button */}
           <Button
             variant="outline"
@@ -440,7 +492,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             onClick={() => setShowShutdownModal(true)}
             className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
           >
-            Shutdown
+            {collapsed ? "" : "Shutdown"}
           </Button>
         </div>
       </aside>
