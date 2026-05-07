@@ -3,6 +3,7 @@ export { default as CodexToolCard } from "./CodexToolCard";
 export { default as DroidToolCard } from "./DroidToolCard";
 export { default as OpenClawToolCard } from "./OpenClawToolCard";
 export { default as HermesToolCard } from "./HermesToolCard";
+export { default as CoworkToolCard } from "./CoworkToolCard";
 export { default as DefaultToolCard } from "./DefaultToolCard";
 export { default as AntigravityToolCard } from "./AntigravityToolCard";
 export { default as OpenCodeToolCard } from "./OpenCodeToolCard";
