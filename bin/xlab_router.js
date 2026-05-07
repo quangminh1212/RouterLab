@@ -1,3 +1,7 @@
+﻿#!/usr/bin/env node
+
+// Initialize graceful shutdown handlers
+require('../src/lib/gracefulShutdown');
 #!/usr/bin/env node
 
 const { spawn, exec } = require("child_process");
@@ -516,7 +520,7 @@ function isAutostartEnabled() {
 
 function ensureAutostartEnabled() {
   if (!isWindows()) {
-    throw new Error("Autostart hiện chỉ hỗ trợ trên Windows.");
+    throw new Error("Autostart hiá»‡n chá»‰ há»— trá»£ trÃªn Windows.");
   }
 
   const startupDir = getWindowsStartupDir();
@@ -528,7 +532,7 @@ function ensureAutostartEnabled() {
 
 function disableAutostart() {
   if (!isWindows()) {
-    throw new Error("Autostart hiện chỉ hỗ trợ trên Windows.");
+    throw new Error("Autostart hiá»‡n chá»‰ há»— trá»£ trÃªn Windows.");
   }
 
   const autostartScriptPath = getAutostartScriptPath();
@@ -540,17 +544,17 @@ function disableAutostart() {
 
 function printAutostartStatus() {
   if (!isWindows()) {
-    console.log("[INFO] Autostart hiện chỉ hỗ trợ trên Windows.");
+    console.log("[INFO] Autostart hiá»‡n chá»‰ há»— trá»£ trÃªn Windows.");
     return;
   }
 
   const autostartScriptPath = getAutostartScriptPath();
   if (isAutostartEnabled()) {
-    console.log(`[OK] Autostart đang bật: ${autostartScriptPath}`);
+    console.log(`[OK] Autostart Ä‘ang báº­t: ${autostartScriptPath}`);
     return;
   }
 
-  console.log(`[INFO] Autostart đang tắt: ${autostartScriptPath}`);
+  console.log(`[INFO] Autostart Ä‘ang táº¯t: ${autostartScriptPath}`);
 }
 
 async function launchWebUIProcess(options = {}) {
@@ -876,7 +880,7 @@ async function startTrayHost() {
         },
         {
           title: autostartEnabled ? "Autostart: ON" : "Autostart: OFF",
-          tooltip: isWindows() ? "Bật / tắt chạy cùng Windows" : "Autostart chỉ hỗ trợ trên Windows",
+          tooltip: isWindows() ? "Báº­t / táº¯t cháº¡y cÃ¹ng Windows" : "Autostart chá»‰ há»— trá»£ trÃªn Windows",
           checked: false,
           enabled: false,
         },
@@ -1131,8 +1135,8 @@ async function showMenu() {
             type: "confirm",
             name: "confirmToggle",
             message: enabled
-              ? "Autostart đang bật. Bạn muốn tắt không?"
-              : "Bật autostart để XLab Router tự chạy cùng Windows?",
+              ? "Autostart Ä‘ang báº­t. Báº¡n muá»‘n táº¯t khÃ´ng?"
+              : "Báº­t autostart Ä‘á»ƒ XLab Router tá»± cháº¡y cÃ¹ng Windows?",
             default: true,
           },
         ]);
@@ -1140,15 +1144,15 @@ async function showMenu() {
         if (enabled) {
           if (answer.confirmToggle) {
             disableAutostart();
-            console.log("[OK] Đã tắt autostart cho XLab Router.");
+            console.log("[OK] ÄÃ£ táº¯t autostart cho XLab Router.");
           } else {
-            console.log("[INFO] Giữ nguyên autostart đang bật.");
+            console.log("[INFO] Giá»¯ nguyÃªn autostart Ä‘ang báº­t.");
           }
         } else if (answer.confirmToggle) {
           const scriptPath = ensureAutostartEnabled();
-          console.log(`[OK] Đã bật autostart: ${scriptPath}`);
+          console.log(`[OK] ÄÃ£ báº­t autostart: ${scriptPath}`);
         } else {
-          console.log("[INFO] Chưa bật autostart.");
+          console.log("[INFO] ChÆ°a báº­t autostart.");
         }
       }
       console.log("");
