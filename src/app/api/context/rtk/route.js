@@ -1,24 +1,16 @@
-const { NextResponse } = require("next/server");
-const { DEFAULT_CONFIG, compressOutput, calculateStats, detectCommandCategory } = require("@/lib/compression/rtk");
+import { NextResponse } from "next/server";
+import { DEFAULT_CONFIG, compressOutput, calculateStats, detectCommandCategory } from "@/lib/compression/rtk";
 
-/**
- * GET /api/context/rtk
- * Get RTK compression configuration
- */
-exports.GET = async function GET() {
+export async function GET() {
   return NextResponse.json({
     enabled: true,
     engine: "rtk",
     config: DEFAULT_CONFIG,
     categories: ["git", "test", "build", "package", "docker", "shell", "generic"],
   });
-};
+}
 
-/**
- * POST /api/context/rtk
- * Preview RTK compression for command/tool output
- */
-exports.POST = async function POST(request) {
+export async function POST(request) {
   try {
     const body = await request.json();
     const { text, config = {} } = body;
@@ -51,4 +43,4 @@ exports.POST = async function POST(request) {
       { status: 500 }
     );
   }
-};
+}
