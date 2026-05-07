@@ -429,7 +429,6 @@ export default function APIPageClient() {
         applyStateDurationMs,
       });
 
-      void fetchTunnelStatus();
     } catch (error) {
       logDashboardPerf("error", "fetchBootstrap:error", {
         traceId,
@@ -441,6 +440,28 @@ export default function APIPageClient() {
       setLoading(false);
     }
   }, [fetchTunnelStatus]);
+
+  useEffect(() => {
+    if (loading) return;
+    let idleId = null;
+    let timeoutId = null;
+    const scheduleTunnelStatus = () => {
+      void fetchTunnelStatus();
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(scheduleTunnelStatus, { timeout: 2500 });
+    } else {
+      timeoutId = setTimeout(scheduleTunnelStatus, 1200);
+    }
+
+    return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      if (typeof window !== "undefined" && typeof window.cancelIdleCallback === "function" && idleId !== null) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
+  }, [fetchTunnelStatus, loading]);
 
   const checkNgrokInstalled = async () => {
     setNgrokInstalled(null);

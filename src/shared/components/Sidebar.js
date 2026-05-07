@@ -67,13 +67,27 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let idleId = null;
+    let timeoutId = null;
+    const loadSidebarSettings = () => {
       fetchWithTimeout("/api/settings", { cache: "no-store" }, SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS, "Loading sidebar settings timed out")
         .then(res => res.json())
         .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
         .catch(() => {});
-    }, 1200);
-    return () => clearTimeout(timer);
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(loadSidebarSettings, { timeout: 6000 });
+    } else {
+      timeoutId = setTimeout(loadSidebarSettings, 4500);
+    }
+
+    return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      if (typeof window !== "undefined" && typeof window.cancelIdleCallback === "function" && idleId !== null) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
   }, []);
 
   // Defer slow network update checks so first dashboard paint is not delayed.
