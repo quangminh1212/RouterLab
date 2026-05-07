@@ -85,6 +85,9 @@ SECURITY_AUDIT_*.txt
 bench_*.log
 dev_run.*
 .playwright-mcp/
+.tmp-*.log
+tmp_*.log
+next-dev*.log
 
 # local packaging/temp artifacts
 .tmp-*/
@@ -92,6 +95,15 @@ dev_run.*
 
 # RAM configuration
 .ram-config.json
-next-dev.log
-next-dev-*.log
+next-dev*.log
+next-dev*.err.log
+
+# Lighthouse reports
+.tmp-lighthouse*/
+
+# OpenClaw captures
+.tmp-openclaw-capture/
+
+# Test artifacts
+.tmp-global-test/
 
