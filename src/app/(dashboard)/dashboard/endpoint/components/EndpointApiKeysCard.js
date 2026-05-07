@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, Button, Toggle } from "@/shared/components";
+import Card from "@/shared/components/Card";
+import Button from "@/shared/components/Button";
+import Toggle from "@/shared/components/Toggle";
 
 export default function EndpointApiKeysCard({
   keysLoading,
@@ -105,17 +107,17 @@ export default function EndpointApiKeysCard({
 
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
                     <span>
-                      Chi phí: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
+                      Chi phÃ­: {Number.isFinite(Number(key.costLimit)) && Number(key.costLimit) > 0
                         ? `$${Number(key.costLimit).toFixed(2)}`
                         : "Unlimited"}
                     </span>
-                    <span>•</span>
+                    <span>â€¢</span>
                     <span>
                       RPM: {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
                         ? Math.floor(Number(key.rpmLimit))
                         : "Unlimited"}
                     </span>
-                    <span>•</span>
+                    <span>â€¢</span>
                     <span>
                       Models: {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
                         ? `${key.allowedModels.length} model${key.allowedModels.length > 1 ? "s" : ""}`
