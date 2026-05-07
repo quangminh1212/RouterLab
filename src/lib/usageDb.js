@@ -65,6 +65,8 @@ function addToCounter(target, key, values) {
   target[key].promptTokens += values.promptTokens || 0;
   target[key].completionTokens += values.completionTokens || 0;
   target[key].cost += values.cost || 0;
+  target[key].compressionSavedBytes = (target[key].compressionSavedBytes || 0) + (values.compressionSavedBytes || 0);
+  target[key].compressionHits = (target[key].compressionHits || 0) + (values.compressionHits || 0);
   if (values.meta) Object.assign(target[key], values.meta);
 }
 
@@ -73,6 +75,7 @@ function aggregateEntryToDailySummary(dailySummary, entry) {
   if (!dailySummary[dateKey]) {
     dailySummary[dateKey] = {
       requests: 0, promptTokens: 0, completionTokens: 0, cost: 0,
+      compressionSavedBytes: 0, compressionHits: 0,
       byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
     };
   }
@@ -80,12 +83,16 @@ function aggregateEntryToDailySummary(dailySummary, entry) {
   const promptTokens = entry.tokens?.prompt_tokens || entry.tokens?.input_tokens || 0;
   const completionTokens = entry.tokens?.completion_tokens || entry.tokens?.output_tokens || 0;
   const cost = entry.cost || 0;
-  const vals = { promptTokens, completionTokens, cost };
+  const compressionSavedBytes = Number(entry.compression?.savedBytes || 0);
+  const compressionHits = Number(entry.compression?.hits || 0);
+  const vals = { promptTokens, completionTokens, cost, compressionSavedBytes, compressionHits };
 
   day.requests += 1;
   day.promptTokens += promptTokens;
   day.completionTokens += completionTokens;
   day.cost += cost;
+  day.compressionSavedBytes += compressionSavedBytes;
+  day.compressionHits += compressionHits;
 
   if (entry.provider) addToCounter(day.byProvider, entry.provider, vals);
 
@@ -718,6 +725,7 @@ export async function getUsageStats(period = "all") {
           completionTokens: t.completion_tokens || t.output_tokens || 0,
           cost: computedCost,
           status: e.status || "ok",
+          compression: e.compression || null,
         };
       })
   );
@@ -733,6 +741,7 @@ export async function getUsageStats(period = "all") {
   const stats = {
     totalRequests: lifetimeTotalRequests,
     totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0,
+    compressionSavedBytes: 0, compressionHits: 0,
     rpm: 0,
     byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
     last10Minutes: [],
@@ -805,6 +814,8 @@ export async function getUsageStats(period = "all") {
       stats.totalPromptTokens += day.promptTokens || 0;
       stats.totalCompletionTokens += day.completionTokens || 0;
       stats.totalCost += day.cost || 0;
+      stats.compressionSavedBytes += day.compressionSavedBytes || 0;
+      stats.compressionHits += day.compressionHits || 0;
 
       // Merge byProvider
       for (const [prov, pData] of Object.entries(day.byProvider || {})) {
@@ -901,11 +912,15 @@ export async function getUsageStats(period = "all") {
         const promptTokens = entry.tokens?.prompt_tokens || entry.tokens?.input_tokens || 0;
         const completionTokens = entry.tokens?.completion_tokens || entry.tokens?.output_tokens || 0;
         const entryCost = Number(entry.cost || 0);
+        const compressionSavedBytes = Number(entry.compression?.savedBytes || 0);
+        const compressionHits = Number(entry.compression?.hits || 0);
         const providerDisplayName = providerNodeNameMap[entry.provider] || entry.provider;
 
         stats.totalPromptTokens += promptTokens;
         stats.totalCompletionTokens += completionTokens;
         stats.totalCost += entryCost;
+        stats.compressionSavedBytes += compressionSavedBytes;
+        stats.compressionHits += compressionHits;
 
         if (!stats.byProvider[entry.provider]) stats.byProvider[entry.provider] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0 };
         stats.byProvider[entry.provider].requests++;
@@ -1008,11 +1023,15 @@ export async function getUsageStats(period = "all") {
       const promptTokens = entry.tokens?.prompt_tokens || 0;
       const completionTokens = entry.tokens?.completion_tokens || 0;
       const entryCost = entry.cost || 0;
+      const compressionSavedBytes = Number(entry.compression?.savedBytes || 0);
+      const compressionHits = Number(entry.compression?.hits || 0);
       const providerDisplayName = providerNodeNameMap[entry.provider] || entry.provider;
 
       stats.totalPromptTokens += promptTokens;
       stats.totalCompletionTokens += completionTokens;
       stats.totalCost += entryCost;
+      stats.compressionSavedBytes += compressionSavedBytes;
+      stats.compressionHits += compressionHits;
 
       // byProvider
       if (!stats.byProvider[entry.provider]) stats.byProvider[entry.provider] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0 };
