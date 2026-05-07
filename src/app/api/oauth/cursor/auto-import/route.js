@@ -4,10 +4,9 @@ import { homedir } from "os";
 import { join } from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { createRequire } from "module";
+import Database from "better-sqlite3";
 
 const execFileAsync = promisify(execFile);
-const localRequire = createRequire(import.meta.url);
 
 const ACCESS_TOKEN_KEYS = ["cursorAuth/accessToken", "cursorAuth/token"];
 const MACHINE_ID_KEYS = [
@@ -79,8 +78,6 @@ const normalize = (value) => {
  * This is the preferred strategy — no external CLI required.
  */
 function extractTokensViaBetterSqlite(dbPath) {
-  const moduleName = ["better", "sqlite3"].join("-");
-  const Database = localRequire(moduleName);
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
 
   const query = (key) => {
@@ -258,3 +255,6 @@ export async function GET() {
     );
   }
 }
+
+
+
