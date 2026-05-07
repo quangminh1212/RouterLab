@@ -128,6 +128,15 @@ function Clear-NextCache {
     }
 }
 
+function Should-ClearNextCacheOnStart {
+    $flag = [string]($env:XLABROUTER_CLEAR_NEXT_CACHE_ON_START)
+    if ([string]::IsNullOrWhiteSpace($flag)) {
+        return $false
+    }
+
+    return $flag.Trim().ToLowerInvariant() -in @('1', 'true', 'yes', 'on')
+}
+
 function Has-NextCacheCorruption {
     param($Output)
     $text = ($Output | ForEach-Object { $_.ToString() }) -join "`n"
@@ -162,7 +171,9 @@ $currentPort = $targetPort
 # Pre-clear stale router processes/listeners before first start
 Kill-StaleRouterProcesses
 Kill-PortProcess -Port $currentPort | Out-Null
-Clear-NextCache
+if (Should-ClearNextCacheOnStart) {
+    Clear-NextCache
+}
 
 while ($attempt -lt $maxRetries -and -not $success) {
     $attempt++
