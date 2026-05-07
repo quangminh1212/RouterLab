@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus }) {
   const [status, setStatus] = useState(initialStatus || null);
@@ -274,6 +275,13 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
           {!checking && status && (
             <>
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getDisplayUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {/* Current base URL */}
                 {status?.config?.provider?.["xlabrouter"]?.options?.baseURL && (
                   <div className="flex items-center gap-2">

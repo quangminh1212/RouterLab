@@ -5,6 +5,7 @@ import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip } from "@/sh
 import { cn } from "@/shared/utils/cn";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 function ClaudeSettingsSelect({ label, value, options, onChange, className }) {
   const [open, setOpen] = useState(false);
@@ -514,6 +515,13 @@ export default function ClaudeToolCard({
               )}
 
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getDisplayUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {/* Current Base URL */}
                 {claudeStatus?.settings?.env?.ANTHROPIC_BASE_URL && (
                   <div className="flex items-center gap-2">

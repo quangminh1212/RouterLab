@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 export default function DroidToolCard({
   tool,
@@ -288,6 +289,13 @@ export default function DroidToolCard({
           {!checkingDroid && droidStatus && (
             <>
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getEffectiveBaseUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {/* Current Base URL */}
                 {droidStatus?.settings?.customModels?.find(m => m.id?.startsWith("custom:xlabrouter"))?.baseUrl && (
                   <div className="flex items-center gap-2">

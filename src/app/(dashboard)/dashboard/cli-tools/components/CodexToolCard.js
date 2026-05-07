@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus }) {
   const [codexStatus, setCodexStatus] = useState(initialStatus || null);
@@ -285,6 +286,13 @@ model = "${effectiveSubagentModel}"
               )}
 
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getDisplayUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {/* Current Base URL */}
                 {codexConfig && (() => {
                   const parsed = codexConfig.match(/base_url\s*=\s*"([^"]+)"/);

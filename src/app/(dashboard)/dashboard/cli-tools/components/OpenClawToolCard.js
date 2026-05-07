@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
 const normalizeOpenClawModel = (model) => {
@@ -362,6 +363,13 @@ export default function OpenClawToolCard({
           {!checkingOpenclaw && openclawStatus && (
             <>
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getDisplayUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {/* Current Tunnel URL */}
                 {openclawStatus?.settings?.models?.providers?.["xlabrouter"]?.baseUrl && (
                   <div className="flex items-center gap-2">

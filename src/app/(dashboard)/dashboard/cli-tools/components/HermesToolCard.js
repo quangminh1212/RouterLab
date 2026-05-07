@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
+import EndpointPresetControl from "./EndpointPresetControl";
 
 const ENDPOINT = "/api/cli-tools/hermes-settings";
 
@@ -231,6 +232,13 @@ export default function HermesToolCard({
           {!checking && hermesStatus?.installed && (
             <>
               <div className="flex flex-col gap-2">
+                <EndpointPresetControl
+                  baseUrl={getEffectiveBaseUrl()}
+                  apiKey={selectedApiKey}
+                  onBaseUrlChange={setCustomBaseUrl}
+                  onApiKeyChange={setSelectedApiKey}
+                />
+
                 {hermesStatus?.settings?.model?.base_url && (
                   <div className="flex items-center gap-2">
                     <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Current</span>
