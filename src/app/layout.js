@@ -1,4 +1,4 @@
-﻿import { Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/components/ThemeProvider";
 import { initConsoleLogCapture } from "@/lib/consoleLogBuffer";
@@ -73,3 +73,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+

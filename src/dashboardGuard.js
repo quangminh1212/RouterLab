@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
@@ -269,3 +269,4 @@ export const config = {
     "/api/shutdown",
   ],
 };
+
