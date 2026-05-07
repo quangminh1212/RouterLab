@@ -1,12 +1,17 @@
-import path from "node:path";
+﻿import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const hideDevIndicators = process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR === "1";
 const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
+const isProd = process.env.NODE_ENV === "production";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
+  productionBrowserSourceMaps: false,
   devIndicators: hideDevIndicators ? false : undefined,
   allowedDevOrigins: [
     "api.xlabrnd.com",
@@ -18,17 +23,73 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
+  experimental: {
+    optimizePackageImports: [
+      "@monaco-editor/react",
+      "monaco-editor",
+      "recharts",
+      "@xyflow/react",
+      "zustand"
+    ],
+  },
   env: {},
   turbopack: {
     root: PROJECT_ROOT,
   },
   webpack: (config, { isServer }) => {
+    if (isProd && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            monaco: {
+              name: 'monaco',
+              test: /[\\/]node_modules[\\/](monaco-editor|@monaco-editor)[\\/]/,
+              chunks: 'async',
+              priority: 40,
+            },
+            recharts: {
+              name: 'recharts',
+              test: /[\\/]node_modules[\\/](recharts)[\\/]/,
+              chunks: 'async',
+              priority: 35,
+            },
+            xyflow: {
+              name: 'xyflow',
+              test: /[\\/]node_modules[\\/](@xyflow)[\\/]/,
+              chunks: 'async',
+              priority: 35,
+            },
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+          },
+        },
+        minimize: true,
+      };
+    }
+
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       "@": path.resolve(PROJECT_ROOT, "src"),
     };
 
-    // Ignore fs/path modules in browser bundle
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -36,8 +97,6 @@ const nextConfig = {
         path: false,
       };
     }
-    // Ignore generated runtime artifacts so Next dev does not rebuild / full-reload
-    // when local logs or temp files are updated continuously.
     config.watchOptions = {
       ...config.watchOptions,
       ignored: [
