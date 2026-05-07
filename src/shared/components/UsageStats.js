@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FREE_PROVIDERS } from "@/shared/constants/providers";
 import Badge from "./Badge";
@@ -15,27 +15,26 @@ function fmtCost(value) {
   return `$${Number(value || 0).toFixed(4)}`;
 }
 
-function timeAgo(timestamp) {
-  const diff = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+function timeAgo(timestamp, nowTs = Date.now()) {
+  const diff = Math.floor((nowTs - new Date(timestamp)) / 1000);
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// Auto-update time display every second without re-rendering parent
-function TimeAgo({ timestamp }) {
-  const [, setTick] = useState(0);
-  
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  
-  return <>{timeAgo(timestamp)}</>;
+function TimeAgo({ timestamp, now }) {
+  return <>{timeAgo(timestamp, now)}</>;
 }
 
-function RecentRequests({ requests = [] }) {
+const RecentRequests = memo(function RecentRequests({ requests = [] }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <Card className="flex flex-col overflow-hidden" padding="sm" style={{ height: 480 }}>
       {/* Header */}
@@ -74,7 +73,7 @@ function RecentRequests({ requests = [] }) {
                     <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
                     </td>
-                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} /></td>
+                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} now={now} /></td>
                   </tr>
                 );
               })}
@@ -84,6 +83,20 @@ function RecentRequests({ requests = [] }) {
       )}
     </Card>
   );
+});
+
+const EMPTY_REALTIME_STATS = {
+  activeRequests: [],
+  recentRequests: [],
+  errorProvider: "",
+  pending: {},
+};
+
+function isSameRealtimeStats(prev, next) {
+  return prev.activeRequests === next.activeRequests
+    && prev.recentRequests === next.recentRequests
+    && prev.errorProvider === next.errorProvider
+    && prev.pending === next.pending;
 }
 
 function sortData(dataMap, pendingMap = {}, sortBy, sortOrder) {
@@ -207,6 +220,7 @@ export default function UsageStats() {
   const sortOrder = searchParams.get("sortOrder") || "asc";
 
   const [stats, setStats] = useState(null);
+  const [realtimeStats, setRealtimeStats] = useState(EMPTY_REALTIME_STATS);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [tableView, setTableView] = useState("model");
@@ -214,6 +228,23 @@ export default function UsageStats() {
   const [providers, setProviders] = useState([]);
   const [period, setPeriod] = useState("7d");
   const [debugInfo, setDebugInfo] = useState(null);
+
+  const pendingStats = useMemo(() => {
+    if (realtimeStats.pending && Object.keys(realtimeStats.pending).length > 0) {
+      return realtimeStats.pending;
+    }
+    return stats?.pending || {};
+  }, [realtimeStats.pending, stats]);
+
+  const activeRequests = realtimeStats.activeRequests.length > 0
+    ? realtimeStats.activeRequests
+    : (stats?.activeRequests || []);
+
+  const recentRequests = realtimeStats.recentRequests.length > 0
+    ? realtimeStats.recentRequests
+    : (stats?.recentRequests || []);
+
+  const errorProvider = realtimeStats.errorProvider || stats?.errorProvider || "";
 
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
@@ -242,10 +273,6 @@ export default function UsageStats() {
 
   // Fetch filtered stats via REST when period changes
   useEffect(() => {
-    // First load: show full spinner; subsequent: show subtle fetching indicator
-    if (!stats) setLoading(true);
-    else setFetching(true);
-
     const start = Date.now();
     const shouldFetchDebug = typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF;
     const statsRequests = [
@@ -273,7 +300,7 @@ export default function UsageStats() {
         setLoading(false);
         setFetching(false);
       });
-  }, [period]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [period]);
 
   // SSE connection - real-time updates for activeRequests + recentRequests only
   useEffect(() => {
@@ -292,14 +319,13 @@ export default function UsageStats() {
       try {
         messageCount++;
         const data = JSON.parse(e.data);
-        // Always merge only real-time fields, never overwrite full stats from REST
-        setStats((prev) => ({
-          ...(prev || {}),
+        const nextRealtimeStats = {
           activeRequests: data.activeRequests,
           recentRequests: data.recentRequests,
           errorProvider: data.errorProvider,
           pending: data.pending,
-        }));
+        };
+        setRealtimeStats((prev) => (isSameRealtimeStats(prev, nextRealtimeStats) ? prev : nextRealtimeStats));
         setLoading(false);
       } catch (err) {
         console.error("[SSE CLIENT] parse error:", err);
@@ -337,7 +363,7 @@ export default function UsageStats() {
     if (!stats) return null;
     switch (tableView) {
       case "model": {
-        const pendingMap = stats.pending?.byModel || {};
+        const pendingMap = pendingStats.byModel || {};
         return {
           columns: MODEL_COLUMNS,
           groupedData: groupDataByKey(sortData(stats.byModel, pendingMap, sortBy, sortOrder), "rawModel"),
@@ -362,9 +388,9 @@ export default function UsageStats() {
       }
       case "account": {
         const pendingMap = {};
-        if (stats?.pending?.byAccount) {
+        if (pendingStats.byAccount) {
           Object.entries(stats.byAccount || {}).forEach(([accountKey, data]) => {
-            const connPending = stats.pending.byAccount[data.connectionId];
+            const connPending = pendingStats.byAccount[data.connectionId];
             if (connPending) {
               const modelKey = data.provider ? `${data.rawModel} (${data.provider})` : data.rawModel;
               pendingMap[accountKey] = connPending[modelKey] || 0;
@@ -447,7 +473,7 @@ export default function UsageStats() {
         };
       }
     }
-  }, [stats, tableView, sortBy, sortOrder]);
+  }, [pendingStats, stats, tableView, sortBy, sortOrder]);
 
   if (!stats && !loading) return <div className="text-text-muted">Failed to load usage statistics.</div>;
 
@@ -473,7 +499,11 @@ export default function UsageStats() {
           {PERIODS.map((p) => (
             <button
               key={p.value}
-              onClick={() => setPeriod(p.value)}
+              onClick={() => {
+                if (period === p.value) return;
+                setFetching(true);
+                setPeriod(p.value);
+              }}
               disabled={fetching}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${period === p.value ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
             >
@@ -494,11 +524,11 @@ export default function UsageStats() {
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch">
           <ProviderTopology
             providers={providers}
-            activeRequests={stats.activeRequests || []}
-            lastProvider={stats.recentRequests?.[0]?.provider || ""}
-            errorProvider={stats.errorProvider || ""}
+            activeRequests={activeRequests}
+            lastProvider={recentRequests?.[0]?.provider || ""}
+            errorProvider={errorProvider}
           />
-          <RecentRequests requests={stats.recentRequests || []} />
+          <RecentRequests requests={recentRequests} />
         </div>
       )}
 

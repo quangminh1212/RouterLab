@@ -149,6 +149,10 @@ export default function APIPageClient() {
   const [modelAliases, setModelAliases] = useState({});
   const [activeProviders, setActiveProviders] = useState([]);
   const [showAllowedModelsModal, setShowAllowedModelsModal] = useState(false);
+  const tunnelStatusRequestRef = useRef(null);
+  const lastTunnelStatusFetchAtRef = useRef(0);
+  const modelPickerRequestRef = useRef(null);
+  const modelPickerLoadedRef = useRef(false);
 
   const [requireApiKey, setRequireApiKey] = useState(false);
   const [requireLogin, setRequireLogin] = useState(true);
@@ -279,7 +283,16 @@ export default function APIPageClient() {
     setTunnelCheckingBackground(false);
   }
 
-  const fetchTunnelStatus = useCallback(async () => {
+  const fetchTunnelStatus = useCallback(async ({ force = false } = {}) => {
+    const now = Date.now();
+    if (!force && tunnelStatusRequestRef.current) {
+      return tunnelStatusRequestRef.current;
+    }
+    if (!force && now - lastTunnelStatusFetchAtRef.current < 2500) {
+      return null;
+    }
+
+    const requestPromise = (async () => {
     const traceId = createDashboardTraceId("endpoint-tunnel-status");
     const start = performance.now();
     startTunnelCheckingUi();
@@ -328,8 +341,53 @@ export default function APIPageClient() {
       }, { force: true });
       console.log("Error fetching tunnel status:", error);
     } finally {
+      lastTunnelStatusFetchAtRef.current = Date.now();
+      tunnelStatusRequestRef.current = null;
       stopTunnelCheckingUi();
     }
+    })();
+
+    tunnelStatusRequestRef.current = requestPromise;
+    return requestPromise;
+  }, []);
+
+  const fetchModelPickerData = useCallback(async () => {
+    if (modelPickerLoadedRef.current) {
+      return null;
+    }
+    if (modelPickerRequestRef.current) {
+      return modelPickerRequestRef.current;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const [providersRes, aliasesRes] = await Promise.all([
+          fetch("/api/providers"),
+          fetch("/api/models/alias"),
+        ]);
+
+        if (providersRes.ok) {
+          const providersData = await providersRes.json();
+          setActiveProviders(providersData.connections || []);
+        }
+
+        if (aliasesRes.ok) {
+          const aliasesData = await aliasesRes.json();
+          setModelAliases(aliasesData.aliases || {});
+        }
+
+        if (providersRes.ok || aliasesRes.ok) {
+          modelPickerLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.log("Error fetching model picker data:", error);
+      } finally {
+        modelPickerRequestRef.current = null;
+      }
+    })();
+
+    modelPickerRequestRef.current = requestPromise;
+    return requestPromise;
   }, []);
 
   const fetchBootstrap = useCallback(async () => {
@@ -356,7 +414,15 @@ export default function APIPageClient() {
       applySettingsState(data.settings);
       const applyStateDurationMs = Math.round(performance.now() - applyStart);
 
-      void fetchModelPickerData();
+      const scheduleModelPickerFetch = () => {
+        void fetchModelPickerData();
+      };
+
+      if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(scheduleModelPickerFetch, { timeout: 1500 });
+      } else {
+        setTimeout(scheduleModelPickerFetch, 250);
+      }
 
       logDashboardPerf("info", "fetchBootstrap:done", {
         traceId,
@@ -378,7 +444,21 @@ export default function APIPageClient() {
       setKeysLoading(false);
       setLoading(false);
     }
-  }, [fetchTunnelStatus]);
+  }, [fetchModelPickerData, fetchTunnelStatus]);
+
+  const checkNgrokInstalled = async () => {
+    setNgrokInstalled(null);
+    try {
+      const res = await fetch("/api/tunnel/ngrok-check");
+      if (res.ok) {
+        const data = await res.json();
+        setNgrokInstalled(data.installed);
+        return data;
+      }
+    } catch { /* ignore */ }
+    setNgrokInstalled(false);
+    return { installed: false };
+  };
 
   useEffect(() => {
     let isDisposed = false;
@@ -577,27 +657,6 @@ export default function APIPageClient() {
       console.log("Error updating cavemanLevel:", error);
     }
   };
-
-  const fetchModelPickerData = useCallback(async () => {
-    try {
-      const [providersRes, aliasesRes] = await Promise.all([
-        fetch("/api/providers"),
-        fetch("/api/models/alias"),
-      ]);
-
-      if (providersRes.ok) {
-        const providersData = await providersRes.json();
-        setActiveProviders(providersData.connections || []);
-      }
-
-      if (aliasesRes.ok) {
-        const aliasesData = await aliasesRes.json();
-        setModelAliases(aliasesData.aliases || {});
-      }
-    } catch (error) {
-      console.log("Error fetching model picker data:", error);
-    }
-  }, []);
 
   const getAllowedModelsList = useCallback((value) => (
     value
@@ -1296,20 +1355,6 @@ export default function APIPageClient() {
     setTsInstallLog([]);
     setShowTsModal(true);
     await checkTailscaleInstalled();
-  };
-
-  const checkNgrokInstalled = async () => {
-    setNgrokInstalled(null);
-    try {
-      const res = await fetch("/api/tunnel/ngrok-check");
-      if (res.ok) {
-        const data = await res.json();
-        setNgrokInstalled(data.installed);
-        return data;
-      }
-    } catch { /* ignore */ }
-    setNgrokInstalled(false);
-    return { installed: false };
   };
 
   const handleInstallNgrok = async () => {
