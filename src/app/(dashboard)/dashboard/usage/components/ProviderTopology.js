@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   ReactFlow,
@@ -98,6 +98,21 @@ RouterNode.propTypes = {
 
 const nodeTypes = { provider: ProviderNode, router: RouterNode };
 
+function serializeProviders(providers = []) {
+  return providers
+    .map((provider) => `${provider.provider || ""}:${provider.name || ""}`)
+    .sort()
+    .join(",");
+}
+
+function serializeActiveRequests(activeRequests = []) {
+  return activeRequests
+    .map((request) => request.provider?.toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(",");
+}
+
 // Place N nodes evenly along an ellipse around the router center.
 function buildLayout(providers, activeSet, lastSet, errorSet) {
   const nodeW = 180;
@@ -190,7 +205,7 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
   return { nodes, edges };
 }
 
-export default function ProviderTopology({ providers = [], activeRequests = [], lastProvider = "", errorProvider = "" }) {
+function ProviderTopology({ providers = [], activeRequests = [], lastProvider = "", errorProvider = "" }) {
   // Serialize to stable string keys so useMemo only re-runs when values actually change
   const activeKey = useMemo(
     () => activeRequests.map((r) => r.provider?.toLowerCase()).filter(Boolean).sort().join(","),
@@ -205,7 +220,7 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
 
   const { nodes, edges } = useMemo(
     () => buildLayout(providers, activeSet, lastSet, errorSet),
-    [providers, activeKey, lastKey, errorKey]
+    [providers, activeSet, lastSet, errorSet]
   );
 
   // Stable key — only remount when provider list changes
@@ -214,9 +229,7 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
     [providers]
   );
 
-  const rfInstance = useRef(null);
   const onInit = useCallback((instance) => {
-    rfInstance.current = instance;
     setTimeout(() => instance.fitView({ padding: 0.3 }), 50);
   }, []);
 
@@ -249,6 +262,15 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
     </div>
   );
 }
+
+function areEqualProviderTopologyProps(prevProps, nextProps) {
+  return serializeProviders(prevProps.providers) === serializeProviders(nextProps.providers)
+    && serializeActiveRequests(prevProps.activeRequests) === serializeActiveRequests(nextProps.activeRequests)
+    && (prevProps.lastProvider || "") === (nextProps.lastProvider || "")
+    && (prevProps.errorProvider || "") === (nextProps.errorProvider || "");
+}
+
+export default memo(ProviderTopology, areEqualProviderTopologyProps);
 
 ProviderTopology.propTypes = {
   providers: PropTypes.arrayOf(PropTypes.shape({

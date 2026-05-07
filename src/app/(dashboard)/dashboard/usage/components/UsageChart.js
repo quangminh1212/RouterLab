@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   AreaChart,
@@ -22,29 +22,72 @@ const fmtTokens = (n) => {
 
 const fmtCost = (n) => `$${(n || 0).toFixed(4)}`;
 
-export default function UsageChart({ period = "7d" }) {
+const chartDataCache = new Map();
+const chartRequestCache = new Map();
+
+function UsageChart({ period = "7d" }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
   const [viewMode, setViewMode] = useState("tokens");
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/usage/chart?period=${period}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
-    } catch (e) {
-      console.error("Failed to fetch chart data:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [period]);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let disposed = false;
+
+    const run = async () => {
+      const cached = chartDataCache.get(period);
+      if (cached) {
+        if (!disposed) {
+          setData(cached);
+          setLoading(false);
+          setFetching(false);
+        }
+        return;
+      }
+
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+
+      if (!disposed) {
+        setLoading((prev) => (data.length === 0 ? true : prev));
+        setFetching(data.length > 0);
+      }
+
+      try {
+        let requestPromise = chartRequestCache.get(period);
+        if (!requestPromise) {
+          requestPromise = fetch(`/api/usage/chart?period=${period}`);
+          chartRequestCache.set(period, requestPromise);
+        }
+
+        const res = await requestPromise;
+        if (!res.ok) {
+          return;
+        }
+
+        const json = await res.json();
+        chartDataCache.set(period, json);
+        if (!disposed && requestIdRef.current === requestId) {
+          setData(json);
+        }
+      } catch (e) {
+        console.error("Failed to fetch chart data:", e);
+      } finally {
+        chartRequestCache.delete(period);
+        if (!disposed) {
+          setLoading(false);
+          setFetching(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      disposed = true;
+    };
+  }, [data.length, period]);
 
   const hasData = data.some((d) => d.tokens > 0 || d.cost > 0);
 
@@ -64,6 +107,10 @@ export default function UsageChart({ period = "7d" }) {
           Cost
         </button>
       </div>
+
+      {fetching && !loading ? (
+        <div className="-mt-1 text-xs text-text-muted">Refreshing chart…</div>
+      ) : null}
 
       {loading ? (
         <div className="h-48 flex items-center justify-center text-text-muted text-sm">Loading...</div>
@@ -135,6 +182,8 @@ export default function UsageChart({ period = "7d" }) {
     </Card>
   );
 }
+
+export default memo(UsageChart, (prev, next) => prev.period === next.period);
 
 UsageChart.propTypes = {
   period: PropTypes.string,
