@@ -1,11 +1,11 @@
-﻿import { NextResponse } from "next/server";
-import { getSettings, updateSettings } from "@/lib/localDb";
+﻿const { NextResponse } = require("next/server");
+const { getSettings, updateSettings } = require("@/lib/localDb");
 
 /**
  * PATCH /api/models/visibility
  * Toggle model visibility in catalog
  */
-export async function PATCH(request) {
+exports.PATCH = async function PATCH(request) {
   try {
     const body = await request.json();
     const { modelId, visible } = body;
@@ -22,10 +22,8 @@ export async function PATCH(request) {
 
     let updated;
     if (visible) {
-      // Remove from hidden list
       updated = hiddenModels.filter((id) => id !== modelId);
     } else {
-      // Add to hidden list
       if (!hiddenModels.includes(modelId)) {
         updated = [...hiddenModels, modelId];
       } else {
@@ -48,13 +46,13 @@ export async function PATCH(request) {
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * GET /api/models/visibility
  * Get list of hidden models
  */
-export async function GET() {
+exports.GET = async function GET() {
   try {
     const settings = await getSettings();
     const hiddenModels = settings.hiddenModels || [];
@@ -70,4 +68,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+};
