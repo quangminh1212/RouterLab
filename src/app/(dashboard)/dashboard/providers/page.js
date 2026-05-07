@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
+import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
 
@@ -106,6 +107,14 @@ export default function ProvidersPage() {
   const [testingMode, setTestingMode] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const notify = useNotificationStore();
+  const searchQuery = useHeaderSearchStore((state) => state.query);
+  const registerSearch = useHeaderSearchStore((state) => state.register);
+  const unregisterSearch = useHeaderSearchStore((state) => state.unregister);
+
+  useEffect(() => {
+    registerSearch("Search providers...");
+    return () => unregisterSearch();
+  }, [registerSearch, unregisterSearch]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -228,6 +237,12 @@ export default function ProvidersPage() {
     }
   };
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const matchesSearch = (value) => {
+    if (!normalizedSearchQuery) return true;
+    return String(value || "").toLowerCase().includes(normalizedSearchQuery);
+  };
+
   const compatibleProviders = providerNodes
     .filter((node) => node.type === "openai-compatible")
     .map((node) => ({
@@ -236,7 +251,8 @@ export default function ProvidersPage() {
       color: "#10A37F",
       textIcon: "OC",
       apiType: node.apiType,
-    }));
+    }))
+    .filter((provider) => matchesSearch(provider.name));
 
   const anthropicCompatibleProviders = providerNodes
     .filter((node) => node.type === "anthropic-compatible")
@@ -245,7 +261,21 @@ export default function ProvidersPage() {
       name: node.name || "Anthropic Compatible",
       color: "#187878",
       textIcon: "AC",
-    }));
+    }))
+    .filter((provider) => matchesSearch(provider.name));
+
+  const oauthProviders = Object.entries(OAUTH_PROVIDERS).filter(([, info]) =>
+    matchesSearch(info.name),
+  );
+  const freeProviders = Object.entries(FREE_PROVIDERS).filter(([, info]) =>
+    matchesSearch(info.name),
+  );
+  const freeTierProviders = Object.entries(FREE_TIER_PROVIDERS).filter(
+    ([, info]) => matchesSearch(info.name),
+  );
+  const apiKeyProviders = Object.entries(APIKEY_PROVIDERS)
+    .filter(([, info]) => (info.serviceKinds ?? ["llm"]).includes("llm"))
+    .filter(([, info]) => matchesSearch(info.name));
 
   if (loading) {
     return (
@@ -287,7 +317,7 @@ export default function ProvidersPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(OAUTH_PROVIDERS).map(([key, info]) => (
+          {oauthProviders.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -326,7 +356,7 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(FREE_PROVIDERS).map(([key, info]) => (
+          {freeProviders.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -336,7 +366,7 @@ export default function ProvidersPage() {
               onToggle={(active) => handleToggleProvider(key, "oauth", active)}
             />
           ))}
-          {Object.entries(FREE_TIER_PROVIDERS).map(([key, info]) => (
+          {freeTierProviders.map(([key, info]) => (
             <ApiKeyProviderCard
               key={key}
               providerId={key}
@@ -375,9 +405,7 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(APIKEY_PROVIDERS)
-            .filter(([, info]) => (info.serviceKinds ?? ["llm"]).includes("llm"))
-            .map(([key, info]) => (
+          {apiKeyProviders.map(([key, info]) => (
               <ApiKeyProviderCard
                 key={key}
                 providerId={key}

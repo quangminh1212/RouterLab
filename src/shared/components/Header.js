@@ -6,6 +6,7 @@ import Link from "next/link";
 import PropTypes from "prop-types";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import HeaderMenu from "@/shared/components/HeaderMenu";
+import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
@@ -166,6 +167,10 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
   const pathname = usePathname();
   const router = useRouter();
   const [systemMetrics, setSystemMetrics] = useState(null);
+  const headerSearchVisible = useHeaderSearchStore((state) => state.visible);
+  const headerSearchQuery = useHeaderSearchStore((state) => state.query);
+  const headerSearchPlaceholder = useHeaderSearchStore((state) => state.placeholder);
+  const setHeaderSearchQuery = useHeaderSearchStore((state) => state.setQuery);
 
   // Memoize page info to prevent unnecessary recalculations
   const pageInfo = useMemo(() => getPageInfo(pathname), [pathname]);
@@ -309,6 +314,30 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
 
       {/* Right actions - consolidated into dropdown menu */}
       <div className="flex items-center gap-2 ml-auto">
+        {headerSearchVisible && (
+          <div className="relative hidden sm:block w-[180px] lg:w-[240px]">
+            <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-[16px] pointer-events-none">
+              search
+            </span>
+            <input
+              type="text"
+              value={headerSearchQuery}
+              onChange={(event) => setHeaderSearchQuery(event.target.value)}
+              placeholder={headerSearchPlaceholder || "Search..."}
+              className="h-8 w-full rounded-lg border border-border bg-surface/70 pl-7 pr-7 text-sm text-text-main focus:outline-none focus:border-primary/50 transition-colors"
+            />
+            {headerSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setHeaderSearchQuery("")}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-muted hover:text-text-main"
+                aria-label="Clear search"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            )}
+          </div>
+        )}
         {systemMetrics && (
           <div className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold">
             <span className="group inline-flex h-7 items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 text-emerald-600 shadow-sm shadow-emerald-500/5 transition-colors dark:text-emerald-300 dark:border-emerald-400/25 dark:bg-emerald-400/10">
