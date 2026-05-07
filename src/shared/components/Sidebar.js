@@ -10,6 +10,7 @@ import { MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import Button from "./Button";
 import { ConfirmModal } from "./Modal";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 // const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "webSearch", "webFetch", "video", "music"];
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts"];
@@ -34,6 +35,8 @@ const debugItems = [
 const systemItems = [
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
 ];
+
+const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
   { href: "/dashboard/mcp-servers", label: "MCP", icon: "dns" },
@@ -65,11 +68,11 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetch("/api/settings")
+      fetchWithTimeout("/api/settings", { cache: "no-store" }, SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS, "Loading sidebar settings timed out")
         .then(res => res.json())
         .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
         .catch(() => {});
-    }, 300);
+    }, 1200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -93,7 +96,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         return;
       }
 
-      const promise = fetch("/api/version")
+      const promise = fetchWithTimeout("/api/version", { cache: "no-store" }, SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS, "Loading version timed out")
         .then(res => res.json())
         .then((data) => {
           globalThis[cacheKey] = { data };

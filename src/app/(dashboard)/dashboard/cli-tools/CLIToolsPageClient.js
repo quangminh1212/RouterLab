@@ -6,6 +6,7 @@ import { CLI_TOOLS } from "@/shared/constants/cliTools";
 import { getModelsByProviderId, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, HermesToolCard, DefaultToolCard, OpenCodeToolCard, MitmLinkCard } from "./components";
 import { MITM_TOOLS } from "@/shared/constants/cliTools";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 function normalizeCloudUrl(url) {
   if (typeof url !== "string") return "";
@@ -29,25 +30,10 @@ const STATUS_ENDPOINTS = {
   codex: "/api/cli-tools/codex-settings",
   opencode: "/api/cli-tools/opencode-settings",
   droid: "/api/cli-tools/droid-settings",
-  openclaw: "/api/cli-tools/openclaw-settings",
   hermes: "/api/cli-tools/hermes-settings",
 };
 
-const PROVIDERS_FETCH_TIMEOUT_MS = 8000;
-
-async function fetchWithTimeout(url, options = {}, timeoutMs = PROVIDERS_FETCH_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+const PROVIDERS_FETCH_TIMEOUT_MS = 4500;
 
 export default function CLIToolsPageClient() {
   const [connections, setConnections] = useState([]);
@@ -66,7 +52,7 @@ export default function CLIToolsPageClient() {
       const entries = await Promise.all(
         Object.entries(STATUS_ENDPOINTS).map(async ([toolId, url]) => {
           try {
-            const res = await fetch(url);
+            const res = await fetchWithTimeout(url, { cache: "no-store" }, PROVIDERS_FETCH_TIMEOUT_MS, `Loading ${toolId} status timed out`);
             const data = await res.json();
             return [toolId, data];
           } catch {
@@ -83,8 +69,8 @@ export default function CLIToolsPageClient() {
   async function loadCloudSettings() {
     try {
       const [settingsRes, tunnelRes] = await Promise.all([
-        fetch("/api/settings"),
-        fetch("/api/tunnel/status"),
+        fetchWithTimeout("/api/settings", { cache: "no-store" }, PROVIDERS_FETCH_TIMEOUT_MS, "Loading CLI cloud settings timed out"),
+        fetchWithTimeout("/api/tunnel/status", { cache: "no-store" }, PROVIDERS_FETCH_TIMEOUT_MS, "Loading tunnel status timed out"),
       ]);
       if (settingsRes.ok) {
         const data = await settingsRes.json();
@@ -104,7 +90,7 @@ export default function CLIToolsPageClient() {
 
   async function fetchApiKeys() {
     try {
-      const res = await fetch("/api/keys");
+      const res = await fetchWithTimeout("/api/keys", { cache: "no-store" }, PROVIDERS_FETCH_TIMEOUT_MS, "Loading API keys timed out");
       if (res.ok) {
         const data = await res.json();
         setApiKeys(data.keys || []);

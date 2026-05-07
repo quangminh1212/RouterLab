@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
 
 function getStatusDisplay(connected, error, errorCode) {
@@ -93,6 +94,8 @@ function getConnectionErrorTag(connection) {
   return "ERR";
 }
 
+const PROVIDERS_PAGE_FETCH_TIMEOUT_MS = 4500;
+
 export default function ProvidersPage() {
   const [connections, setConnections] = useState([]);
   const [providerNodes, setProviderNodes] = useState([]);
@@ -107,15 +110,24 @@ export default function ProvidersPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [connectionsRes, nodesRes] = await Promise.all([
-          fetch("/api/providers"),
-          fetch("/api/provider-nodes"),
+        const [connectionsRes, nodesRes] = await Promise.allSettled([
+          fetchWithTimeout("/api/providers", { cache: "no-store" }, PROVIDERS_PAGE_FETCH_TIMEOUT_MS, "Loading providers timed out"),
+          fetchWithTimeout("/api/provider-nodes", { cache: "no-store" }, PROVIDERS_PAGE_FETCH_TIMEOUT_MS, "Loading provider nodes timed out"),
         ]);
-        const connectionsData = await connectionsRes.json();
-        const nodesData = await nodesRes.json();
-        if (connectionsRes.ok)
-          setConnections(connectionsData.connections || []);
-        if (nodesRes.ok) setProviderNodes(nodesData.nodes || []);
+
+        if (connectionsRes.status === "fulfilled") {
+          const connectionsData = await connectionsRes.value.json();
+          if (connectionsRes.value.ok) {
+            setConnections(connectionsData.connections || []);
+          }
+        }
+
+        if (nodesRes.status === "fulfilled") {
+          const nodesData = await nodesRes.value.json();
+          if (nodesRes.value.ok) {
+            setProviderNodes(nodesData.nodes || []);
+          }
+        }
       } catch (error) {
         console.log("Error fetching data:", error);
       } finally {
@@ -521,7 +533,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
   };
 
   return (
-    <Link href={`/dashboard/providers/${providerId}`} className="group">
+    <Link href={`/dashboard/providers/${providerId}`} prefetch={false} className="group">
       <Card
         padding="xs"
         className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
@@ -649,7 +661,7 @@ function ApiKeyProviderCard({
   };
 
   return (
-    <Link href={`/dashboard/providers/${providerId}`} className="group">
+    <Link href={`/dashboard/providers/${providerId}`} prefetch={false} className="group">
       <Card
         padding="xs"
         className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}

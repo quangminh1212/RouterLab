@@ -3,47 +3,72 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-function getCpuTimes() {
-  return os.cpus().reduce(
-    (acc, cpu) => {
-      const times = cpu.times || {};
-      acc.idle += times.idle || 0;
-      acc.total += Object.values(times).reduce((sum, value) => sum + (value || 0), 0);
-      return acc;
-    },
-    { idle: 0, total: 0 }
-  );
+const METRICS_CACHE_TTL_MS = 5000;
+
+function getProcessCpuSnapshot() {
+  return {
+    usage: process.cpuUsage(),
+    hrtimeNs: process.hrtime.bigint(),
+  };
 }
 
-function getCpuUsagePercent() {
-  const current = getCpuTimes();
-  const previous = global.__xlabrouterSystemMetricsPrev || current;
-  global.__xlabrouterSystemMetricsPrev = current;
+function getProcessCpuPercent() {
+  const current = getProcessCpuSnapshot();
+  const previous = global.__xlabrouterProcessCpuPrev || current;
+  global.__xlabrouterProcessCpuPrev = current;
 
-  const idleDiff = current.idle - previous.idle;
-  const totalDiff = current.total - previous.total;
+  const elapsedNs = Number(current.hrtimeNs - previous.hrtimeNs);
+  if (!Number.isFinite(elapsedNs) || elapsedNs <= 0) return null;
 
-  if (totalDiff <= 0) return null;
-  const usage = 100 * (1 - idleDiff / totalDiff);
+  const userDiff = current.usage.user - previous.usage.user;
+  const systemDiff = current.usage.system - previous.usage.system;
+  const totalCpuMicros = Math.max(0, userDiff + systemDiff);
+  const elapsedMicros = elapsedNs / 1000;
+  const cpuCount = Math.max(1, os.cpus()?.length || 1);
+
+  if (!Number.isFinite(elapsedMicros) || elapsedMicros <= 0) return null;
+
+  const usage = (totalCpuMicros / (elapsedMicros * cpuCount)) * 100;
   return Math.max(0, Math.min(100, usage));
+}
+
+function buildMetricsPayload() {
+  const totalMem = os.totalmem();
+  const processMemory = process.memoryUsage();
+  const appUsedMem = processMemory.rss || processMemory.heapTotal || processMemory.heapUsed || 0;
+  const memoryPercent = totalMem > 0 ? (appUsedMem / totalMem) * 100 : 0;
+
+  return {
+    cpuPercent: getProcessCpuPercent(),
+    memoryPercent,
+    usedMemoryBytes: appUsedMem,
+    totalMemoryBytes: totalMem,
+    processMemoryBytes: appUsedMem,
+    heapUsedBytes: processMemory.heapUsed || 0,
+    heapTotalBytes: processMemory.heapTotal || 0,
+    sampledAt: Date.now(),
+  };
 }
 
 export async function GET() {
   try {
-    const totalMem = os.totalmem();
-    const processMemory = process.memoryUsage();
-    const appUsedMem = processMemory.rss || processMemory.heapTotal || processMemory.heapUsed || 0;
-    const memoryPercent = totalMem > 0 ? (appUsedMem / totalMem) * 100 : 0;
-    const cpuPercent = getCpuUsagePercent();
+    const now = Date.now();
+    const cached = global.__xlabrouterSystemMetricsCache;
+    if (cached && now - cached.sampledAt < METRICS_CACHE_TTL_MS) {
+      return NextResponse.json(cached, {
+        headers: {
+          "Cache-Control": "private, max-age=2, stale-while-revalidate=3",
+        },
+      });
+    }
 
-    return NextResponse.json({
-      cpuPercent,
-      memoryPercent,
-      usedMemoryBytes: appUsedMem,
-      totalMemoryBytes: totalMem,
-      processMemoryBytes: appUsedMem,
-      heapUsedBytes: processMemory.heapUsed || 0,
-      heapTotalBytes: processMemory.heapTotal || 0,
+    const payload = buildMetricsPayload();
+    global.__xlabrouterSystemMetricsCache = payload;
+
+    return NextResponse.json(payload, {
+      headers: {
+        "Cache-Control": "private, max-age=2, stale-while-revalidate=3",
+      },
     });
   } catch (error) {
     console.error("[API] Failed to get system metrics:", error);

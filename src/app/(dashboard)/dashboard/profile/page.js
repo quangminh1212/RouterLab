@@ -6,12 +6,15 @@ import { Skeleton } from "@/shared/components/Loading";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 const INITIAL_SECTION_LOADING = {
   security: true,
   routing: true,
   network: true,
   observability: true,
 };
+
+const PROFILE_FAST_FETCH_TIMEOUT_MS = 4500;
 
 const BASIC_CHAT_STORAGE_KEYS = {
   sessions: "basic-chat.sessions",
@@ -71,7 +74,7 @@ export default function ProfilePage() {
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
   useEffect(() => {
-    fetch("/api/settings")
+    fetchWithTimeout("/api/settings", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading profile settings timed out")
       .then((res) => res.json())
       .then((data) => {
         applySettings(data);
@@ -90,7 +93,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    fetch("/api/auth/oauth-qr", { cache: "no-store" })
+    fetchWithTimeout("/api/auth/oauth-qr", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading authenticator setup timed out")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.url) setOauthSetupUrl(data.url);
@@ -109,7 +112,7 @@ export default function ProfilePage() {
   }, [oauthSetupUrl]);
 
   useEffect(() => {
-    fetch(`/api/auth/google/status?t=${Date.now()}`, { cache: "no-store" })
+    fetchWithTimeout(`/api/auth/google/status?t=${Date.now()}`, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading Google backup status timed out")
       .then((res) => res.json())
       .then((data) => setGoogleStatus({
         loading: false,
@@ -123,7 +126,7 @@ export default function ProfilePage() {
       .catch(() => setGoogleStatus((prev) => ({ ...prev, loading: false })));
   }, []);
   useEffect(() => {
-    fetch("/api/settings/gist-backup", { cache: "no-store" })
+    fetchWithTimeout("/api/settings/gist-backup", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading Gist backup status timed out")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (!data) return;
@@ -273,7 +276,7 @@ export default function ProfilePage() {
   };
   const reloadSettings = async () => {
     try {
-      const res = await fetch("/api/settings");
+      const res = await fetchWithTimeout("/api/settings", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Reloading settings timed out");
       if (!res.ok) return;
       const data = await res.json();
       applySettings(data);
@@ -372,11 +375,30 @@ export default function ProfilePage() {
     }
   };
   const postGistBackup = async (body) => {
-    const res = await fetch("/api/settings/gist-backup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const action = String(body?.action || "sync");
+    const controller = new AbortController();
+    const timeoutMs = 45000;
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    let res;
+    try {
+      res = await fetch("/api/settings/gist-backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw new Error(`Gist ${action} timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+
     const rawText = await res.text().catch(() => "");
     let data = {};
     if (rawText) {

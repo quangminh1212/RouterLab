@@ -686,12 +686,18 @@ function getSettingsCacheTtlMs() {
 
 function getDbSlowLockWarnMs() {
   const raw = Number(process.env.DB_SLOW_LOCK_WARN_MS);
-  if (!Number.isFinite(raw) || raw < 0) return 80;
+  if (!Number.isFinite(raw) || raw < 0) return 500;
+  return raw;
+}
+
+function getDbLockRetryCount() {
+  const raw = Number(process.env.DB_LOCK_RETRIES);
+  if (!Number.isFinite(raw) || raw < 0) return 6;
   return raw;
 }
 
 const LOCK_OPTIONS = {
-  retries: { retries: 15, minTimeout: 50, maxTimeout: 1000 }, // was 3000ms — faster lock recovery
+  retries: { retries: getDbLockRetryCount(), minTimeout: 40, maxTimeout: 250 },
   stale: 10000,
 };
 

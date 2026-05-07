@@ -9,6 +9,7 @@ import HeaderMenu from "@/shared/components/HeaderMenu";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 const getPageInfo = (pathname) => {
   if (!pathname) return { title: "", description: "", breadcrumbs: [] };
@@ -153,6 +154,8 @@ const getPageInfo = (pathname) => {
   return { title: "", description: "", breadcrumbs: [] };
 };
 
+const HEADER_METRICS_TIMEOUT_MS = 1500;
+
 function formatMemoryGb(bytes) {
   const gb = bytes / (1024 ** 3);
   if (gb >= 1) return `${gb.toFixed(1)} GB`;
@@ -170,10 +173,14 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
 
   useEffect(() => {
     let mounted = true;
+    let interval = null;
 
     const fetchMetrics = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
       try {
-        const response = await fetch("/api/system/metrics", { cache: "no-store" });
+        const response = await fetchWithTimeout("/api/system/metrics", { cache: "no-store" }, HEADER_METRICS_TIMEOUT_MS, "Loading system metrics timed out");
         if (!response.ok) return;
         const data = await response.json();
         if (mounted) setSystemMetrics(data);
@@ -182,11 +189,34 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       }
     };
 
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(fetchMetrics, 5000);
+    };
+
+    const stopPolling = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchMetrics();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 3000);
+    startPolling();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       mounted = false;
-      clearInterval(interval);
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
@@ -280,17 +310,17 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       {/* Right actions - consolidated into dropdown menu */}
       <div className="flex items-center gap-2 ml-auto">
         {systemMetrics && (
-          <div className="hidden md:flex items-center gap-2 text-xs font-medium">
-            <span className="group inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-600 shadow-sm shadow-emerald-500/5 transition-colors dark:text-emerald-300 dark:border-emerald-400/20 dark:bg-emerald-400/10">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.75)]" />
-              <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-700/70 dark:text-emerald-200/70">CPU</span>
+          <div className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold">
+            <span className="group inline-flex h-7 items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 text-emerald-600 shadow-sm shadow-emerald-500/5 transition-colors dark:text-emerald-300 dark:border-emerald-400/25 dark:bg-emerald-400/10">
+              <span className="h-1.5 w-1.5 rounded-sm bg-emerald-500 shadow-[0_0_7px_rgba(16,185,129,0.75)]" />
+              <span className="text-[9px] uppercase tracking-[0.12em] text-emerald-700/70 dark:text-emerald-200/70">CPU</span>
               <span className="tabular-nums text-text-main dark:text-white">
                 {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
               </span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/20 dark:bg-sky-400/10" title={`XLab Router: ${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
-              <span className="material-symbols-outlined text-[15px] leading-none">memory</span>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-sky-700/70 dark:text-sky-200/70">RAM</span>
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/25 dark:bg-sky-400/10" title={`XLab Router: ${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
+              <span className="material-symbols-outlined text-[14px] leading-none">memory</span>
+              <span className="text-[9px] uppercase tracking-[0.12em] text-sky-700/70 dark:text-sky-200/70">RAM</span>
               <span className="tabular-nums text-text-main dark:text-white">
                 {formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / {formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}
               </span>

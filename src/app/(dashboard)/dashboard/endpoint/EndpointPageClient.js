@@ -39,6 +39,24 @@ const TUNNEL_BENEFITS = [
   { icon: "lock", title: "Encrypted", desc: "End-to-end TLS via Cloudflare" },
 ];
 
+function parseHostnameFromUrl(value) {
+  if (!value || typeof value !== "string") return "";
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isKnownTunnelHost(hostname) {
+  if (!hostname) return false;
+  return hostname === "api.xlabrnd.com"
+    || hostname.includes("trycloudflare.com")
+    || hostname.includes("ngrok")
+    || hostname.includes("tailscale")
+    || hostname.endsWith(".ts.net");
+}
+
 const TUNNEL_PING_INTERVAL_MS = 2000;
 const TUNNEL_PING_MAX_MS = 300000;
 const DASHBOARD_FETCH_TIMEOUT_MS = 3000;
@@ -141,8 +159,8 @@ export default function APIPageClient() {
   const [cavemanLevel, setCavemanLevelState] = useState("full");
 
   // Cloudflare Tunnel state
-  const [tunnelCheckingPrimary, setTunnelCheckingPrimary] = useState(true);
-  const [tunnelCheckingBackground, setTunnelCheckingBackground] = useState(true);
+  const [tunnelCheckingPrimary, setTunnelCheckingPrimary] = useState(false);
+  const [tunnelCheckingBackground, setTunnelCheckingBackground] = useState(false);
   const [cloudflareEnabled, setCloudflareEnabled] = useState(false);
   const [cloudflareUrl, setCloudflareUrl] = useState("");
   const [ngrokEnabled, setNgrokEnabled] = useState(false);
@@ -1505,6 +1523,15 @@ export default function APIPageClient() {
   const currentEndpoint = typeof window !== "undefined"
     ? `${window.location.origin}/v1`
     : "/v1";
+  const currentHostname = typeof window !== "undefined"
+    ? window.location.hostname.toLowerCase()
+    : "";
+  const isViewingFromTunnelHost = !!currentHostname && (
+    currentHostname === parseHostnameFromUrl(cloudflareUrl)
+    || currentHostname === parseHostnameFromUrl(ngrokUrl)
+    || currentHostname === parseHostnameFromUrl(tsUrl)
+    || isKnownTunnelHost(currentHostname)
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -1523,6 +1550,7 @@ export default function APIPageClient() {
             onCopy={copy}
           />
           {/* Cloudflare */}
+          {!isViewingFromTunnelHost && (
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
               cloudflareEnabled ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-sidebar text-text-muted"
@@ -1646,6 +1674,7 @@ export default function APIPageClient() {
               </div>
             )}
           </div>
+          )}
 
           {/* Ngrok */}
           <div className="flex items-center gap-2">
