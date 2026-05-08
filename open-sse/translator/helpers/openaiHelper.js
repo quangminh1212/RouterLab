@@ -4,6 +4,14 @@
 export const VALID_OPENAI_CONTENT_TYPES = ["text", "image_url", "image"];
 export const VALID_OPENAI_MESSAGE_TYPES = ["text", "image_url", "image", "tool_calls", "tool_result"];
 
+function isTextOnlyContent(blocks) {
+  return Array.isArray(blocks) && blocks.length > 0 && blocks.every((block) => block?.type === "text");
+}
+
+function flattenTextOnlyContent(blocks) {
+  return blocks.map((block) => block.text || "").join("\n");
+}
+
 // Filter messages to OpenAI standard format
 // Remove: thinking, redacted_thinking, signature, and other non-OpenAI blocks
 export function filterToOpenAIFormat(body) {
@@ -45,6 +53,10 @@ export function filterToOpenAIFormat(body) {
       // If all content was filtered, add empty text
       if (filteredContent.length === 0) {
         filteredContent.push({ type: "text", text: "" });
+      }
+
+      if (isTextOnlyContent(filteredContent)) {
+        return { ...msg, content: flattenTextOnlyContent(filteredContent) };
       }
       
       return { ...msg, content: filteredContent };

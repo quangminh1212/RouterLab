@@ -81,9 +81,14 @@ export const readSettings = async () => {
   try {
     const settingsPath = getClaudeSettingsPath();
     const content = await fs.readFile(settingsPath, "utf-8");
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     if (error.code === "ENOENT") {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      console.warn("Claude settings JSON parse error:", error.message);
       return null;
     }
     throw error;
@@ -100,9 +105,14 @@ export const writeSettings = async (settings) => {
 const readLegacySettings = async () => {
   try {
     const content = await fs.readFile(getClaudeLegacySettingsPath(), "utf-8");
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     if (error.code === "ENOENT") {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      console.warn("Claude legacy settings JSON parse error:", error.message);
       return null;
     }
     throw error;
@@ -177,13 +187,15 @@ export const restoreClaudeSettingsBackup = async (payload) => {
     throw new Error("Invalid Claude settings backup");
   }
 
-  await writeSettings(payload.settings || {});
+  const settingsToWrite = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+  await writeSettings(settingsToWrite);
 
   if ("legacySettings" in payload) {
     if (payload.legacySettings !== null && typeof payload.legacySettings !== "object") {
       throw new Error("Invalid Claude legacy settings backup");
     }
-    await writeLegacySettings(payload.legacySettings || {});
+    const legacyToWrite = payload.legacySettings && typeof payload.legacySettings === "object" ? payload.legacySettings : {};
+    await writeLegacySettings(legacyToWrite);
   }
 };
 
