@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const DEFAULT_CLAUDE_SETTINGS = {
   defaultMode: "acceptEdits",
   alwaysThinkingEnabled: true,
@@ -110,6 +111,39 @@ const readLegacySettings = async () => {
 
 const writeLegacySettings = async (settings) => {
   await fs.writeFile(getClaudeLegacySettingsPath(), JSON.stringify(settings, null, 2));
+};
+
+const persistWindowsUserEnv = async (env) => {
+  if (os.platform() !== "win32") return;
+
+  const script = `
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_BASE_URL', $env:XLAB_CLAUDE_BASE_URL, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $env:XLAB_CLAUDE_AUTH_TOKEN, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    [Environment]::SetEnvironmentVariable('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', '1', 'User')
+  `;
+
+  await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script], {
+    windowsHide: true,
+    env: {
+      ...process.env,
+      XLAB_CLAUDE_BASE_URL: env.ANTHROPIC_BASE_URL || "",
+      XLAB_CLAUDE_AUTH_TOKEN: env.ANTHROPIC_AUTH_TOKEN || "",
+    },
+  });
+};
+
+const clearWindowsUserEnv = async () => {
+  if (os.platform() !== "win32") return;
+
+  const script = `
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_BASE_URL', $null, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    [Environment]::SetEnvironmentVariable('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', $null, 'User')
+  `;
+
+  await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script], { windowsHide: true });
 };
 
 const buildLegacyClaudeSettings = (currentSettings, env, options = {}) => ({
@@ -246,6 +280,7 @@ export async function POST(request) {
     // Write new settings
     await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));
     await writeLegacySettings(newLegacySettings);
+    await persistWindowsUserEnv(env);
 
     return NextResponse.json({
       success: true,
@@ -327,6 +362,7 @@ export async function DELETE() {
     }
 
     await writeLegacySettings(legacySettings);
+    await clearWindowsUserEnv();
 
     return NextResponse.json({
       success: true,
