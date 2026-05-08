@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
+const COMBO_SETTINGS_TIMEOUT_MS = 5000;
 
 export default function CombosPage() {
   const [combos, setCombos] = useState([]);
@@ -23,20 +25,29 @@ export default function CombosPage() {
 
   const fetchData = async () => {
     try {
-      const [combosRes, providersRes, settingsRes] = await Promise.all([
-        fetch("/api/combos"),
-        fetch("/api/providers"),
-        fetch("/api/settings"),
+      const [combosRes, providersRes] = await Promise.all([
+        fetch("/api/combos", { cache: "no-store" }),
+        fetch("/api/providers", { cache: "no-store" }),
       ]);
       const combosData = await combosRes.json();
       const providersData = await providersRes.json();
-      const settingsData = settingsRes.ok ? await settingsRes.json() : {};
-      
+
       if (combosRes.ok) setCombos(combosData.combos || []);
       if (providersRes.ok) {
         setActiveProviders(providersData.connections || []);
       }
-      setComboStrategies(settingsData.comboStrategies || {});
+
+      if (combosData.combos && combosData.combos.length > 0) {
+        try {
+          const settingsRes = await fetchWithTimeout("/api/settings", { cache: "no-store" }, COMBO_SETTINGS_TIMEOUT_MS, "Settings fetch timed out");
+          if (settingsRes.ok) {
+            const settingsData = await settingsRes.json();
+            setComboStrategies(settingsData.comboStrategies || {});
+          }
+        } catch {
+          // silent fail — strategies remain empty
+        }
+      }
     } catch (error) {
       console.log("Error fetching data:", error);
     } finally {

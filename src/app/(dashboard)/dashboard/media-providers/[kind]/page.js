@@ -2,7 +2,7 @@
 
 import { useParams, notFound, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Badge, Button, AddCustomEmbeddingModal } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProvidersByKind, getProviderIconPath } from "@/shared/constants/providers";
@@ -77,6 +77,13 @@ export default function MediaProviderKindPage() {
   const [customNodes, setCustomNodes] = useState([]);
   const [showAddCustomEmbedding, setShowAddCustomEmbedding] = useState(false);
 
+  const kindConfig = useMemo(
+    () => MEDIA_PROVIDER_KINDS.find((item) => item.id === kind),
+    [kind],
+  );
+  const isEmbedding = kind === "embedding";
+  const providers = useMemo(() => getProvidersByKind(kind), [kind]);
+
   // webSearch/webFetch listing pages are merged into /web
   useEffect(() => {
     if (kind === "webSearch" || kind === "webFetch") {
@@ -84,26 +91,31 @@ export default function MediaProviderKindPage() {
     }
   }, [kind, router]);
 
-  const kindConfig = MEDIA_PROVIDER_KINDS.find((k) => k.id === kind);
-  const isEmbedding = kind === "embedding";
-
   useEffect(() => {
     if (!kindConfig) return;
-    fetch("/api/providers", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setConnections(d.connections || []))
-      .catch(() => {});
-    if (isEmbedding) {
-      fetch("/api/provider-nodes", { cache: "no-store" })
+
+    const requests = [
+      fetch("/api/providers", { cache: "no-store" })
         .then((r) => r.json())
-        .then((d) => setCustomNodes((d.nodes || []).filter((n) => n.type === "custom-embedding")))
-        .catch(() => {});
+        .then((d) => setConnections(d.connections || []))
+        .catch(() => {}),
+    ];
+
+    if (isEmbedding) {
+      requests.push(
+        fetch("/api/provider-nodes", { cache: "no-store" })
+          .then((r) => r.json())
+          .then((d) => setCustomNodes((d.nodes || []).filter((n) => n.type === "custom-embedding")))
+          .catch(() => {}),
+      );
+    } else {
+      setCustomNodes([]);
     }
+
+    void Promise.all(requests);
   }, [isEmbedding, kindConfig]);
 
   if (!kindConfig) return notFound();
-
-  const providers = getProvidersByKind(kind);
 
   // Map custom nodes to MediaProviderCard shape
   const customProviders = customNodes.map((n) => ({
