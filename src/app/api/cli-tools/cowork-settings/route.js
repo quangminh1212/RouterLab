@@ -224,7 +224,7 @@ const checkInstalled = async () => {
 const readJson = async (filePath) => {
   try {
     const content = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(content);
+    return JSON.parse(content.replace(/^\uFEFF/, ""));
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -410,4 +410,5 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to reset cowork settings" }, { status: 500 });
   }
 }
+
 
