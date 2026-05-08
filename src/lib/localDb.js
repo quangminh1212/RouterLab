@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
   providerStrategies: {},
   comboStrategy: "fallback",
   comboStrategies: {},
+  comboStickyRoundRobinLimit: 1,
   requireApiKey: false,
   requireLogin: true,
   tunnelDashboardAccess: true,
@@ -306,7 +307,7 @@ const DEFAULT_SETTINGS = {
     selectedSkills: [],
   },
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
-  rtkEnabled: false,
+  rtkEnabled: true,
   cavemanEnabled: false,
   cavemanLevel: "full",
 };
