@@ -237,9 +237,9 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
         {/* Logo */}
         <div className={cn("py-4 flex flex-col gap-2", collapsed ? "px-3" : "px-6")}>
-          <Link href="/dashboard" className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
+          <Link href="/dashboard" prefetch={false} className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
             <div className="flex items-center justify-center size-9 rounded overflow-hidden">
-              <img src="/topup.png" alt="XLab Router logo" className="w-full h-full object-cover" />
+              <img src="/topup.png" alt="XLab Router logo" loading="lazy" className="w-full h-full object-cover" />
             </div>
             {!collapsed && (
               <div className="flex flex-col">
@@ -282,6 +282,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onClick={onClose}
               className={cn(
                 collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
@@ -334,6 +335,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   <Link
                     key={kind.id}
                     href={`/dashboard/media-providers/${kind.id}`}
+                    prefetch={false}
                     onClick={onClose}
                     className={cn(
                       "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
@@ -349,6 +351,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 <Link
                   key={COMBINED_WEB_ITEM.id}
                   href={COMBINED_WEB_ITEM.href}
+                  prefetch={false}
                   onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
@@ -389,6 +392,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     onClick={onClose}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
@@ -410,6 +414,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onClick={onClose}
                 className={cn(
                   collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
@@ -437,6 +442,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={onClose}
                   className={cn(
                     collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
@@ -461,6 +467,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             {/* Settings */}
             <Link
               href="/dashboard/profile"
+              prefetch={false}
               onClick={onClose}
               className={cn(
                 collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
