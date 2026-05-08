@@ -49,6 +49,11 @@ const getClaudeSettingsPath = () => {
   return path.join(homeDir, ".claude", "settings.json");
 };
 
+const getClaudeLegacySettingsPath = () => {
+  const homeDir = os.homedir();
+  return path.join(homeDir, ".claude.json");
+};
+
 
 // Check if claude CLI is installed (via which/where or config file exists)
 const checkClaudeInstalled = async () => {
@@ -91,9 +96,44 @@ export const writeSettings = async (settings) => {
   await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 };
 
+const readLegacySettings = async () => {
+  try {
+    const content = await fs.readFile(getClaudeLegacySettingsPath(), "utf-8");
+    return JSON.parse(content);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+};
+
+const writeLegacySettings = async (settings) => {
+  await fs.writeFile(getClaudeLegacySettingsPath(), JSON.stringify(settings, null, 2));
+};
+
+const buildLegacyClaudeSettings = (currentSettings, env, options = {}) => ({
+  ...currentSettings,
+  hasCompletedOnboarding: true,
+  defaultMode: normalizeDefaultMode(options.defaultMode || currentSettings?.defaultMode),
+  alwaysThinkingEnabled:
+    typeof options.alwaysThinkingEnabled === "boolean"
+      ? options.alwaysThinkingEnabled
+      : typeof currentSettings?.alwaysThinkingEnabled === "boolean"
+        ? currentSettings.alwaysThinkingEnabled
+        : DEFAULT_CLAUDE_SETTINGS.alwaysThinkingEnabled,
+  effortLevel: normalizeEffortLevel(options.effortLevel || currentSettings?.effortLevel),
+  env: {
+    ...(currentSettings?.env || {}),
+    ...env,
+  },
+});
+
 export const getClaudeSettingsBackup = async () => ({
   settingsPath: getClaudeSettingsPath(),
   settings: await readSettings(),
+  legacySettingsPath: getClaudeLegacySettingsPath(),
+  legacySettings: await readLegacySettings(),
 });
 
 export const restoreClaudeSettingsBackup = async (payload) => {
@@ -104,10 +144,18 @@ export const restoreClaudeSettingsBackup = async (payload) => {
   }
 
   await writeSettings(payload.settings || {});
+
+  if ("legacySettings" in payload) {
+    if (payload.legacySettings !== null && typeof payload.legacySettings !== "object") {
+      throw new Error("Invalid Claude legacy settings backup");
+    }
+    await writeLegacySettings(payload.legacySettings || {});
+  }
 };
 
 export const clearClaudeSettings = async () => {
   await writeSettings({});
+  await writeLegacySettings({});
 };
 
 export const buildClaudeSettingsPayload = (currentSettings, env, options = {}) =>
@@ -127,13 +175,16 @@ export async function GET() {
     }
 
     const settings = await readSettings();
+    const legacySettings = await readLegacySettings();
     const hasxlabrouter = !!(settings?.env?.ANTHROPIC_BASE_URL);
 
     return NextResponse.json({
       installed: true,
       settings: settings,
+      legacySettings,
       hasxlabrouter: hasxlabrouter,
       settingsPath: getClaudeSettingsPath(),
+      legacySettingsPath: getClaudeLegacySettingsPath(),
     });
   } catch (error) {
     console.log("Error checking claude settings:", error);
@@ -185,9 +236,16 @@ export async function POST(request) {
       effortLevel,
       alwaysThinkingEnabled,
     });
+    const legacyCurrentSettings = (await readLegacySettings()) || {};
+    const newLegacySettings = buildLegacyClaudeSettings(legacyCurrentSettings, env, {
+      defaultMode,
+      effortLevel,
+      alwaysThinkingEnabled,
+    });
 
     // Write new settings
     await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));
+    await writeLegacySettings(newLegacySettings);
 
     return NextResponse.json({
       success: true,
@@ -216,6 +274,7 @@ const RESET_ENV_KEYS = [
 export async function DELETE() {
   try {
     const settingsPath = getClaudeSettingsPath();
+    const legacySettingsPath = getClaudeLegacySettingsPath();
 
     // Read current settings
     let currentSettings = {};
@@ -247,6 +306,28 @@ export async function DELETE() {
     // Write updated settings
     await fs.writeFile(settingsPath, JSON.stringify(currentSettings, null, 2));
 
+    let legacySettings = {};
+    try {
+      const legacyContent = await fs.readFile(legacySettingsPath, "utf-8");
+      legacySettings = JSON.parse(legacyContent);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    if (legacySettings.env) {
+      RESET_ENV_KEYS.forEach((key) => {
+        delete legacySettings.env[key];
+      });
+
+      if (Object.keys(legacySettings.env).length === 0) {
+        delete legacySettings.env;
+      }
+    }
+
+    await writeLegacySettings(legacySettings);
+
     return NextResponse.json({
       success: true,
       message: "Settings reset successfully",
@@ -259,4 +340,3 @@ export async function DELETE() {
     );
   }
 }
-
