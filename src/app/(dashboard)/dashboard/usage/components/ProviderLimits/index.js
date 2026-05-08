@@ -17,6 +17,18 @@ const isUsageEligible = (conn) =>
 const REFRESH_INTERVAL_MS = 60000; // 60 seconds
 const DEPLETED_QUOTA_THRESHOLD = 5; // percent
 const AUTO_REFRESH_STORAGE_KEY = "quotaAutoRefresh";
+const QUOTA_FETCH_CONCURRENCY = 3;
+
+async function runWithConcurrency(items, limit, worker) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
+}
 
 export default function ProviderLimits() {
   const [connections, setConnections] = useState([]);
@@ -71,7 +83,14 @@ export default function ProviderLimits() {
       console.log(
         `[ProviderLimits] Fetching quota for ${provider} (${connectionId})`,
       );
-      const response = await fetch(`/api/usage/${connectionId}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`/api/usage/${connectionId}`, {
+        signal: controller.signal,
+        cache: "no-store"
+      }).finally(() => clearTimeout(timeoutId));
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -247,8 +266,10 @@ export default function ProviderLimits() {
       // Filter eligible connections (OAuth + whitelisted apikey)
       const eligibleConnections = conns.filter(isUsageEligible);
 
-      await Promise.all(
-        eligibleConnections.map((conn) => fetchQuota(conn.id, conn.provider)),
+      await runWithConcurrency(
+        eligibleConnections,
+        QUOTA_FETCH_CONCURRENCY,
+        async (conn) => fetchQuota(conn.id, conn.provider),
       );
 
       setLastUpdated(new Date());
@@ -275,8 +296,10 @@ export default function ProviderLimits() {
       });
       setLoading(loadingState);
 
-      await Promise.all(
-        eligibleConnections.map((conn) => fetchQuota(conn.id, conn.provider)),
+      await runWithConcurrency(
+        eligibleConnections,
+        QUOTA_FETCH_CONCURRENCY,
+        async (conn) => fetchQuota(conn.id, conn.provider),
       );
       setLastUpdated(new Date());
     };

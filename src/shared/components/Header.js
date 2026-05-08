@@ -160,6 +160,7 @@ const getPageInfo = (pathname) => {
 };
 
 const HEADER_METRICS_TIMEOUT_MS = 1500;
+const HEADER_METRICS_CACHE_KEY = "__xlabrouterHeaderMetrics";
 
 function formatMemoryGb(bytes) {
   const gb = bytes / (1024 ** 3);
@@ -190,13 +191,44 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") {
         return;
       }
+
+      // Check cache first
+      const cached = globalThis[HEADER_METRICS_CACHE_KEY];
+      if (cached?.data && Date.now() - cached.timestamp < 4000) {
+        if (mounted) setSystemMetrics(cached.data);
+        return;
+      }
+
+      // Deduplicate concurrent requests
+      if (cached?.promise) {
+        try {
+          const data = await cached.promise;
+          if (mounted) setSystemMetrics(data);
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
       try {
-        const response = await fetchWithTimeout("/api/system/metrics", { cache: "no-store" }, HEADER_METRICS_TIMEOUT_MS, "Loading system metrics timed out");
-        if (!response.ok) return;
-        const data = await response.json();
+        const promise = fetchWithTimeout("/api/system/metrics", { cache: "no-store" }, HEADER_METRICS_TIMEOUT_MS, "Loading system metrics timed out")
+          .then(response => {
+            if (!response.ok) throw new Error("Metrics fetch failed");
+            return response.json();
+          })
+          .then(data => {
+            globalThis[HEADER_METRICS_CACHE_KEY] = { data, timestamp: Date.now() };
+            return data;
+          });
+
+        globalThis[HEADER_METRICS_CACHE_KEY] = { promise };
+        const data = await promise;
         if (mounted) setSystemMetrics(data);
       } catch {
         // ignore metrics errors in header
+        if (globalThis[HEADER_METRICS_CACHE_KEY]?.promise) {
+          delete globalThis[HEADER_METRICS_CACHE_KEY];
+        }
       }
     };
 

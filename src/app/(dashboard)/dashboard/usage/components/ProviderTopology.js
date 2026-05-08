@@ -1,14 +1,11 @@
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
-import {
-  ReactFlow,
-  Handle,
-  Position,
-} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
+
+let reactFlowModulePromise = null;
 
 function getProviderConfig(providerId) {
   return AI_PROVIDERS[providerId] || { color: "#6b7280", name: providerId };
@@ -19,84 +16,89 @@ function getProviderImageUrl(providerId) {
   return getProviderIconPath(providerId);
 }
 
-// Custom provider node - rectangle with image + name
-function ProviderNode({ data }) {
-  const { label, color, imageUrl, textIcon, active } = data;
-  const [imgError, setImgError] = useState(false);
-  return (
-    <div
-      className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
-      style={{
-        borderColor: active ? color : "var(--color-border)",
-        boxShadow: active ? `0 0 16px ${color}40` : "none",
-        minWidth: "150px",
-      }}
-    >
-      <Handle type="target" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="target" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
-
-      {/* Provider icon */}
+// Node component factories - created after React Flow module loads
+function createProviderNode(Handle, Position) {
+  function ProviderNode({ data }) {
+    const { label, color, imageUrl, textIcon, active } = data;
+    const [imgError, setImgError] = useState(false);
+    return (
       <div
-        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${color}15` }}
+        className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
+        style={{
+          borderColor: active ? color : "var(--color-border)",
+          boxShadow: active ? `0 0 16px ${color}40` : "none",
+          minWidth: "150px",
+        }}
       >
-        {!imgError ? (
-          <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
-        ) : (
-          <span className="text-sm font-bold" style={{ color }}>{textIcon}</span>
+        <Handle type="target" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="target" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="target" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
+
+        {/* Provider icon */}
+        <div
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${color}15` }}
+        >
+          {!imgError ? (
+            <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
+          ) : (
+            <span className="text-sm font-bold" style={{ color }}>{textIcon}</span>
+          )}
+        </div>
+
+        {/* Provider name */}
+        <span
+          className="text-base font-medium truncate"
+          style={{ color: active ? color : "var(--color-text)" }}
+        >
+          {label}
+        </span>
+
+        {/* Active indicator */}
+        {active && (
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }} />
+            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: color }} />
+          </span>
         )}
       </div>
+    );
+  }
 
-      {/* Provider name */}
-      <span
-        className="text-base font-medium truncate"
-        style={{ color: active ? color : "var(--color-text)" }}
-      >
-        {label}
-      </span>
+  ProviderNode.propTypes = {
+    data: PropTypes.object.isRequired,
+  };
 
-      {/* Active indicator */}
-      {active && (
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }} />
-          <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: color }} />
-        </span>
-      )}
-    </div>
-  );
+  return ProviderNode;
 }
 
-ProviderNode.propTypes = {
-  data: PropTypes.object.isRequired,
-};
+function createRouterNode(Handle, Position) {
+  function RouterNode({ data }) {
+    return (
+      <div className="flex items-center justify-center px-5 py-3 rounded-xl border-2 border-primary bg-primary/5 shadow-md min-w-[130px]">
+        <Handle type="source" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="source" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
-// Center xlabrouter node
-function RouterNode({ data }) {
-  return (
-    <div className="flex items-center justify-center px-5 py-3 rounded-xl border-2 border-primary bg-primary/5 shadow-md min-w-[130px]">
-      <Handle type="source" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
+        <img src="/topup.png" alt="XLab Router" className="w-6 h-6 mr-2" />
+        <span className="text-sm font-bold text-primary">XLab Router</span>
+        {data.activeCount > 0 && (
+          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
+            {data.activeCount}
+          </span>
+        )}
+      </div>
+    );
+  }
 
-      <img src="/topup.png" alt="XLab Router" className="w-6 h-6 mr-2" />
-      <span className="text-sm font-bold text-primary">XLab Router</span>
-      {data.activeCount > 0 && (
-        <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
-          {data.activeCount}
-        </span>
-      )}
-    </div>
-  );
+  RouterNode.propTypes = {
+    data: PropTypes.object.isRequired,
+  };
+
+  return RouterNode;
 }
-
-RouterNode.propTypes = {
-  data: PropTypes.object.isRequired,
-};
-
-const nodeTypes = { provider: ProviderNode, router: RouterNode };
 
 function serializeProviders(providers = []) {
   return providers
@@ -206,6 +208,31 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
 }
 
 function ProviderTopology({ providers = [], activeRequests = [], lastProvider = "", errorProvider = "" }) {
+  const [reactFlowModule, setReactFlowModule] = useState(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadReactFlow = async () => {
+      if (!reactFlowModulePromise) {
+        reactFlowModulePromise = import("@xyflow/react");
+      }
+
+      try {
+        const mod = await reactFlowModulePromise;
+        if (!disposed) setReactFlowModule(mod);
+      } catch {
+        if (!disposed) setReactFlowModule(null);
+      }
+    };
+
+    void loadReactFlow();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
   // Serialize to stable string keys so useMemo only re-runs when values actually change
   const activeKey = useMemo(
     () => activeRequests.map((r) => r.provider?.toLowerCase()).filter(Boolean).sort().join(","),
@@ -232,6 +259,27 @@ function ProviderTopology({ providers = [], activeRequests = [], lastProvider = 
   const onInit = useCallback((instance) => {
     setTimeout(() => instance.fitView({ padding: 0.3 }), 50);
   }, []);
+
+  const nodeTypes = useMemo(() => {
+    if (!reactFlowModule) return null;
+    const { Handle, Position } = reactFlowModule;
+    return {
+      provider: createProviderNode(Handle, Position),
+      router: createRouterNode(Handle, Position),
+    };
+  }, [reactFlowModule]);
+
+  if (!reactFlowModule || !nodeTypes) {
+    return (
+      <div className="w-full rounded-lg border border-border bg-bg-subtle/30" style={{ height: 480 }}>
+        <div className="h-full flex items-center justify-center text-text-muted text-sm">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  const { ReactFlow } = reactFlowModule;
 
   return (
     <div className="w-full rounded-lg border border-border bg-bg-subtle/30" style={{ height: 480 }}>

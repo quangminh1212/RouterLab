@@ -2,16 +2,6 @@
 
 import { memo, useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 import Card from "@/shared/components/Card";
 
 const fmtTokens = (n) => {
@@ -24,13 +14,38 @@ const fmtCost = (n) => `$${(n || 0).toFixed(4)}`;
 
 const chartDataCache = new Map();
 const chartRequestCache = new Map();
+let rechartsModulePromise = null;
 
 function UsageChart({ period = "7d" }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [viewMode, setViewMode] = useState("tokens");
+  const [recharts, setRecharts] = useState(null);
   const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadRecharts = async () => {
+      if (!rechartsModulePromise) {
+        rechartsModulePromise = import("recharts");
+      }
+
+      try {
+        const mod = await rechartsModulePromise;
+        if (!disposed) setRecharts(mod);
+      } catch {
+        if (!disposed) setRecharts(null);
+      }
+    };
+
+    void loadRecharts();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -91,6 +106,32 @@ function UsageChart({ period = "7d" }) {
 
   const hasData = data.some((d) => d.tokens > 0 || d.cost > 0);
 
+  if (loading || !recharts) {
+    return (
+      <Card className="p-4 flex flex-col gap-3">
+        <div className="h-48 flex items-center justify-center text-text-muted text-sm">Loading...</div>
+      </Card>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <Card className="p-4 flex flex-col gap-3">
+        <div className="h-48 flex items-center justify-center text-text-muted text-sm">No data for this period</div>
+      </Card>
+    );
+  }
+
+  const {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+  } = recharts;
+
   return (
     <Card className="p-4 flex flex-col gap-3">
       <div className="flex items-center gap-1 bg-bg-subtle rounded-lg p-1 border border-border self-start">
@@ -112,73 +153,67 @@ function UsageChart({ period = "7d" }) {
         <div className="-mt-1 text-xs text-text-muted">Refreshing chart…</div>
       ) : null}
 
-      {loading ? (
-        <div className="h-48 flex items-center justify-center text-text-muted text-sm">Loading...</div>
-      ) : !hasData ? (
-        <div className="h-48 flex items-center justify-center text-text-muted text-sm">No data for this period</div>
-      ) : (
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="gradTokens" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
+      <ResponsiveContainer width="100%" height={200}>
+        <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradTokens" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={viewMode === "tokens" ? fmtTokens : fmtCost}
+            width={50}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "var(--color-bg)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "8px",
+              fontSize: "12px",
+            }}
+            formatter={(value, name) =>
+              name === "tokens" ? [fmtTokens(value), "Tokens"] : [fmtCost(value), "Cost"]
+            }
+          />
+          {viewMode === "tokens" ? (
+            <Area
+              type="monotone"
+              dataKey="tokens"
+              stroke="#6366f1"
+              strokeWidth={2}
+              fill="url(#gradTokens)"
+              dot={false}
+              activeDot={{ r: 4 }}
             />
-            <YAxis
-              tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={viewMode === "tokens" ? fmtTokens : fmtCost}
-              width={50}
+          ) : (
+            <Area
+              type="monotone"
+              dataKey="cost"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              fill="url(#gradCost)"
+              dot={false}
+              activeDot={{ r: 4 }}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--color-bg)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                fontSize: "12px",
-              }}
-              formatter={(value, name) =>
-                name === "tokens" ? [fmtTokens(value), "Tokens"] : [fmtCost(value), "Cost"]
-              }
-            />
-            {viewMode === "tokens" ? (
-              <Area
-                type="monotone"
-                dataKey="tokens"
-                stroke="#6366f1"
-                strokeWidth={2}
-                fill="url(#gradTokens)"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            ) : (
-              <Area
-                type="monotone"
-                dataKey="cost"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                fill="url(#gradCost)"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            )}
-          </AreaChart>
-        </ResponsiveContainer>
-      )}
+          )}
+        </AreaChart>
+      </ResponsiveContainer>
     </Card>
   );
 }
