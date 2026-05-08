@@ -8,6 +8,7 @@ import BaseUrlSelect from "./BaseUrlSelect";
 
 
 const ENDPOINT = "/api/cli-tools/cowork-settings";
+const TRUSTED_HTTP_HOSTS = ["36.50.26.247"];
 
 const stripV1 = (url) => (url || "").replace(/\/v1\/?$/, "");
 const ensureV1 = (url) => {
@@ -18,7 +19,7 @@ const ensureV1 = (url) => {
 const isAllowedCoworkBaseUrl = (value) => {
   try {
     const parsed = new URL(ensureV1(value));
-    return parsed.protocol === "https:" || (parsed.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname));
+    return parsed.protocol === "https:" || (parsed.protocol === "http:" && ["localhost", "127.0.0.1", "::1", ...TRUSTED_HTTP_HOSTS].includes(parsed.hostname));
   } catch {
     return false;
   }
