@@ -17,6 +17,7 @@ export default function CombosPage() {
   const [editingCombo, setEditingCombo] = useState(null);
   const [activeProviders, setActiveProviders] = useState([]);
   const [comboStrategies, setComboStrategies] = useState({});
+  const [savingStrategy, setSavingStrategy] = useState({});
   const { copied, copy } = useCopyToClipboard();
 
   useEffect(() => {
@@ -105,24 +106,59 @@ export default function CombosPage() {
     }
   };
 
+  const persistComboStrategies = async (updated) => {
+    await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comboStrategies: updated }),
+    });
+  };
+
   const handleToggleRoundRobin = async (comboName, enabled) => {
     try {
+      setSavingStrategy((prev) => ({ ...prev, [comboName]: true }));
       const updated = { ...comboStrategies };
+      const currentSticky = comboStrategies[comboName]?.stickyRoundRobinLimit || 1;
       if (enabled) {
-        updated[comboName] = { fallbackStrategy: "round-robin" };
+        updated[comboName] = {
+          fallbackStrategy: "round-robin",
+          stickyRoundRobinLimit: currentSticky,
+        };
       } else {
         delete updated[comboName];
       }
-      
-      await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comboStrategies: updated }),
-      });
-      
+
+      await persistComboStrategies(updated);
       setComboStrategies(updated);
     } catch (error) {
       console.log("Error updating combo strategy:", error);
+    } finally {
+      setSavingStrategy((prev) => ({ ...prev, [comboName]: false }));
+    }
+  };
+
+  const handleStickyLimitChange = async (comboName, value) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return;
+
+    const updated = {
+      ...comboStrategies,
+      [comboName]: {
+        fallbackStrategy: "round-robin",
+        stickyRoundRobinLimit: parsed,
+      },
+    };
+
+    setComboStrategies(updated);
+
+    try {
+      setSavingStrategy((prev) => ({ ...prev, [comboName]: true }));
+      await persistComboStrategies(updated);
+    } catch (error) {
+      console.log("Error updating combo sticky limit:", error);
+      await fetchData();
+    } finally {
+      setSavingStrategy((prev) => ({ ...prev, [comboName]: false }));
     }
   };
 
@@ -164,7 +200,10 @@ export default function CombosPage() {
                 onEdit={() => setEditingCombo(openclawCombo)}
                 onDelete={() => handleDelete(openclawCombo.id)}
                 roundRobinEnabled={comboStrategies[openclawCombo.name]?.fallbackStrategy === "round-robin"}
+                stickyLimit={comboStrategies[openclawCombo.name]?.stickyRoundRobinLimit || 1}
+                savingStrategy={!!savingStrategy[openclawCombo.name]}
                 onToggleRoundRobin={(enabled) => handleToggleRoundRobin(openclawCombo.name, enabled)}
+                onStickyLimitChange={(value) => handleStickyLimitChange(openclawCombo.name, value)}
               />
             </div>
           );
@@ -205,7 +244,10 @@ export default function CombosPage() {
                   onEdit={() => setEditingCombo(combo)}
                   onDelete={() => handleDelete(combo.id)}
                   roundRobinEnabled={comboStrategies[combo.name]?.fallbackStrategy === "round-robin"}
+                  stickyLimit={comboStrategies[combo.name]?.stickyRoundRobinLimit || 1}
+                  savingStrategy={!!savingStrategy[combo.name]}
                   onToggleRoundRobin={(enabled) => handleToggleRoundRobin(combo.name, enabled)}
+                  onStickyLimitChange={(value) => handleStickyLimitChange(combo.name, value)}
                 />
               ))}
             </div>
@@ -235,10 +277,10 @@ export default function CombosPage() {
   );
 }
 
-function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled, onToggleRoundRobin }) {
+function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled, stickyLimit = 1, savingStrategy = false, onToggleRoundRobin, onStickyLimitChange }) {
   return (
     <Card padding="sm" className="group">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-primary text-[18px]">layers</span>
@@ -262,10 +304,8 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* Round Robin Toggle — always visible */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
             <span className="text-xs text-text-muted font-medium">Round Robin</span>
             <Toggle
               size="sm"
@@ -273,6 +313,26 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
               onChange={onToggleRoundRobin}
             />
           </div>
+
+          {roundRobinEnabled && (
+            <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Sticky</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={stickyLimit}
+                onChange={(e) => onStickyLimitChange?.(e.target.value)}
+                className="w-16 rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+                title="Giữ cùng model trong N requests trước khi rotate"
+              />
+              <span className="text-[11px] text-text-muted whitespace-nowrap">req</span>
+            </div>
+          )}
+
+          {savingStrategy && (
+            <span className="text-[11px] text-text-muted">Saving...</span>
+          )}
 
           <div className="flex gap-1">
             <button
