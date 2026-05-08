@@ -175,6 +175,10 @@ const getConfigDir = async () => path.join(await resolveAppRootForRead(), "confi
 const getWriteConfigDir = () => path.join(getWriteRoot(), "configLibrary");
 const getMetaPath = async () => path.join(await getConfigDir(), "_meta.json");
 const getWriteMetaPath = () => path.join(getWriteConfigDir(), "_meta.json");
+const getWritableConfigDirs = () => Array.from(new Set([
+  getWriteConfigDir(),
+  ...getCandidateRoots().map((root) => path.join(root, "configLibrary")),
+]));
 
 // Locate Claude (1p) folder for claude_desktop_config.json bootstrap
 const get1pRoot = () => {
@@ -244,6 +248,19 @@ const ensureMeta = async () => {
     await fs.writeFile(writeMetaPath, JSON.stringify(meta, null, 2));
   }
   return meta;
+};
+
+const syncConfigToKnownRoots = async (meta, config) => {
+  const written = [];
+  for (const configDir of getWritableConfigDirs()) {
+    try {
+      await fs.mkdir(configDir, { recursive: true });
+      await fs.writeFile(path.join(configDir, "_meta.json"), JSON.stringify(meta, null, 2));
+      await fs.writeFile(path.join(configDir, `${meta.appliedId}.json`), JSON.stringify(config, null, 2));
+      written.push(configDir);
+    } catch { /* best effort */ }
+  }
+  return written;
 };
 
 export async function GET() {
@@ -346,6 +363,7 @@ export async function POST(request) {
     }
 
     await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
+    const syncedConfigDirs = await syncConfigToKnownRoots(meta, newConfig);
 
     // Plugin folder mount (best-effort, doesn't fail the request)
     const pluginsResult = await writeOrgPluginsFolder(pluginsArray);
@@ -360,6 +378,7 @@ export async function POST(request) {
         ? "Cowork enabled (3p mode set). Quit & reopen Claude Desktop."
         : "Cowork settings applied. Quit & reopen Claude Desktop.",
       configPath,
+      syncedConfigDirs,
       plugins: pluginsResult,
       skipApprovals: skipResult,
     });
@@ -376,11 +395,13 @@ export async function DELETE() {
       return NextResponse.json({ success: true, message: "No active config to reset" });
     }
     const configPath = path.join(await getConfigDir(), `${meta.appliedId}.json`);
+    const emptyConfig = {};
     try {
-      await fs.writeFile(configPath, JSON.stringify({}, null, 2));
+      await fs.writeFile(configPath, JSON.stringify(emptyConfig, null, 2));
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
+    await syncConfigToKnownRoots(meta, emptyConfig);
     await writeOrgPluginsFolder([]);
     try { await writeSkipApprovals([]); } catch { /* ignore */ }
     return NextResponse.json({ success: true, message: "Cowork config reset" });
