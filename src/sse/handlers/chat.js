@@ -238,15 +238,17 @@ export async function handleChat(request, clientRawRequest = null) {
     const comboStrategies = settings.comboStrategies || {};
     const comboSpecificStrategy = comboStrategies[modelStr]?.fallbackStrategy;
     const comboStrategy = comboSpecificStrategy || settings.comboStrategy || "fallback";
+    const comboStickyLimit = Math.max(1, Number(comboStrategies[modelStr]?.stickyRoundRobinLimit || settings.comboStickyRoundRobinLimit || 1));
     
-    log.info("CHAT", `Combo "${modelStr}" with ${comboModels.length} models (strategy: ${comboStrategy})`);
+    log.info("CHAT", `Combo "${modelStr}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
     return handleComboChat({
       body,
       models: comboModels,
       handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
       log,
       comboName: modelStr,
-      comboStrategy
+      comboStrategy,
+      comboStickyLimit
     });
   }
 
@@ -277,15 +279,17 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       const comboStrategies = chatSettings.comboStrategies || {};
       const comboSpecificStrategy = comboStrategies[comboName]?.fallbackStrategy;
       const comboStrategy = comboSpecificStrategy || chatSettings.comboStrategy || "fallback";
+      const comboStickyLimit = Math.max(1, Number(comboStrategies[comboName]?.stickyRoundRobinLimit || chatSettings.comboStickyRoundRobinLimit || 1));
       
-      log.info("CHAT", `Combo "${comboName}" with ${comboModels.length} models (strategy: ${comboStrategy})`);
+      log.info("CHAT", `Combo "${comboName}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
       return handleComboChat({
         body,
         models: comboModels,
         handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
         log,
         comboName,
-        comboStrategy
+        comboStrategy,
+        comboStickyLimit
       });
     }
     log.warn("CHAT", "Invalid model format", { model: modelStr });
