@@ -438,10 +438,22 @@ export default function ClaudeToolCard({
       if (targetModel && model.envKey) env[model.envKey] = targetModel;
     });
     
+    const settingsPayload = { 
+      hasCompletedOnboarding: true, 
+      defaultMode: claudeDefaultMode, 
+      alwaysThinkingEnabled: claudeAlwaysThinkingEnabled, 
+      effortLevel: claudeEffortLevel, 
+      env 
+    };
+
     return [
       {
         filename: "~/.claude/settings.json",
-        content: JSON.stringify({ hasCompletedOnboarding: true, defaultMode: claudeDefaultMode, alwaysThinkingEnabled: claudeAlwaysThinkingEnabled, effortLevel: claudeEffortLevel, env }, null, 2),
+        content: JSON.stringify(settingsPayload, null, 2),
+      },
+      {
+        filename: "~/.claude.json",
+        content: JSON.stringify(settingsPayload, null, 2),
       },
     ];
   };
