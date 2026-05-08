@@ -13,7 +13,9 @@ const AUTH_SCHEME = "x-api-key";
 const isLocalhostUrl = (url) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(url || "");
 const normalizeBaseUrl = (url) => (url || "").trim().replace(/\/+$/, "");
 const isLoopbackHostname = (hostname) => hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-const isValidCoworkBaseUrl = (url) => url.protocol === "https:" || (url.protocol === "http:" && isLoopbackHostname(url.hostname));
+const TRUSTED_HTTP_HOSTS = ["36.50.26.247"];
+const isValidCoworkBaseUrl = (url, allowInsecure = false) =>
+  url.protocol === "https:" || (url.protocol === "http:" && (isLoopbackHostname(url.hostname) || TRUSTED_HTTP_HOSTS.includes(url.hostname) || allowInsecure));
 
 // Plugin folder mount location.
 // Claude Cowork 3p actually launches with --user-data-dir=Claude-3p, so plugins
@@ -317,7 +319,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { baseUrl, apiKey, models, plugins } = await request.json();
+    const { baseUrl, apiKey, models, plugins, allowInsecureHttp } = await request.json();
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
     const normalizedApiKey = (apiKey || "").trim();
 
@@ -332,9 +334,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "baseUrl must be a valid URL" }, { status: 400 });
     }
 
-    if (!isValidCoworkBaseUrl(parsedBaseUrl)) {
+    if (!isValidCoworkBaseUrl(parsedBaseUrl, allowInsecureHttp)) {
       return NextResponse.json({
-        error: "Claude Cowork requires HTTPS for public URLs, or HTTP only on localhost/127.0.0.1.",
+        error: "Claude Cowork requires HTTPS for public URLs, or HTTP only on localhost/127.0.0.1. Endpoint 36.50.26.247 is allowed over HTTP.",
       }, { status: 400 });
     }
 
