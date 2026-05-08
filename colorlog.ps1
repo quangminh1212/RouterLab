@@ -2,7 +2,7 @@ $ErrorActionPreference = "Continue"
 
 $logDir = "logs"
 $logPath = Join-Path $logDir "next-dev.log"
-$targetPort = if ($env:XLABROUTER_PORT) { [int]$env:XLABROUTER_PORT } elseif ($env:PORT) { [int]$env:PORT } else { 2000 }
+$targetPort = if ($env:XLABROUTER_PORT) { [int]$env:XLABROUTER_PORT } elseif ($env:PORT) { [int]$env:PORT } else { 1212 }
 $maxRetries = 3
 $devEngine = if ($env:XLABROUTER_NEXT_DEV_ENGINE) { $env:XLABROUTER_NEXT_DEV_ENGINE } else { "webpack" }
 
@@ -184,7 +184,8 @@ while ($attempt -lt $maxRetries -and -not $success) {
     Write-Host "[INFO] Starting dev server on port $currentPort using $devEngine" -ForegroundColor Cyan
     try {
        $engineFlag = if ($devEngine -eq "turbo" -or $devEngine -eq "turbopack") { "--turbo" } else { "--webpack" }
-        $output = npx next dev --port $currentPort $engineFlag --no-server-fast-refresh 2>&1 | Tee-Object -FilePath $resolvedLogPath
+        $hostName = if ($env:HOSTNAME) { $env:HOSTNAME } elseif ($env:XLABROUTER_HOSTNAME) { $env:XLABROUTER_HOSTNAME } else { "127.0.0.1" }
+        $output = npx next dev --hostname $hostName --port $currentPort $engineFlag --no-server-fast-refresh 2>&1 | Tee-Object -FilePath $resolvedLogPath
         $output | ForEach-Object { Write-ColoredLine $_.ToString() }
         $exitCode = $LASTEXITCODE
     } finally {

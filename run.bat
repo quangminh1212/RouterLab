@@ -6,14 +6,10 @@ cd /d "%~dp0"
 set LOG_FILE=logs\log.txt
 set DEV_RUN_LOG=logs\next-dev.log
 if not defined XLABROUTER_NEXT_DEV_ENGINE set XLABROUTER_NEXT_DEV_ENGINE=webpack
-if not defined XLABROUTER_PORT set XLABROUTER_PORT=2000
+if not defined XLABROUTER_PORT set XLABROUTER_PORT=1212
 set PORT=%XLABROUTER_PORT%
 set NODE_ENV=development
-if not defined APPDATA (
-    set DATA_DIR=%USERPROFILE%\AppData\Roaming\xlabrouter-dev
-) else (
-    set DATA_DIR=%APPDATA%\xlabrouter-dev
-)
+set HOSTNAME=127.0.0.1
 set CLOUDFLARED_PROCESS_MODE=true
 set CLOUDFLARED_WINDOWS_SERVICE_MODE=false
 
@@ -74,7 +70,7 @@ if not exist ".env" (
 )
 
 echo Starting dev server on http://localhost:%PORT% using %XLABROUTER_NEXT_DEV_ENGINE%
-echo Dev DATA_DIR is %DATA_DIR%
+echo Dev host is %HOSTNAME%
 echo Logs are shown in realtime with colors and also saved to %DEV_RUN_LOG%
 echo Press Ctrl+C to stop
 echo.
