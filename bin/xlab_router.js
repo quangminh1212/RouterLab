@@ -1,8 +1,7 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 // Initialize graceful shutdown handlers
 require('../src/lib/gracefulShutdown');
-#!/usr/bin/env node
 
 const { spawn, exec } = require("child_process");
 const fs = require("fs");

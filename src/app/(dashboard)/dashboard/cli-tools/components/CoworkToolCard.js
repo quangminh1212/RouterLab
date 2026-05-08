@@ -15,6 +15,14 @@ const ensureV1 = (url) => {
   if (!trimmed) return "";
   return /\/v1$/.test(trimmed) ? trimmed : `${trimmed}/v1`;
 };
+const isAllowedCoworkBaseUrl = (value) => {
+  try {
+    const parsed = new URL(ensureV1(value));
+    return parsed.protocol === "https:" || (parsed.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname));
+  } catch {
+    return false;
+  }
+};
 
 export default function CoworkToolCard({
   tool,
@@ -99,6 +107,11 @@ export default function CoworkToolCard({
   const handleApply = async () => {
     setMessage(null);
     const effectiveUrl = getEffectiveBaseUrl();
+
+    if (!isAllowedCoworkBaseUrl(effectiveUrl)) {
+      setMessage({ type: "error", text: "Claude Cowork chỉ chấp nhận HTTPS cho public URL, hoặc HTTP trên localhost/127.0.0.1." });
+      return;
+    }
 
     if (selectedModels.length === 0) {
       setMessage({ type: "error", text: "Please select at least one model" });

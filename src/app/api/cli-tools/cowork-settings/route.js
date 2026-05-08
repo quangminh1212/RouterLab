@@ -12,6 +12,8 @@ const AUTH_SCHEME = "x-api-key";
 
 const isLocalhostUrl = (url) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(url || "");
 const normalizeBaseUrl = (url) => (url || "").trim().replace(/\/+$/, "");
+const isLoopbackHostname = (hostname) => hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+const isValidCoworkBaseUrl = (url) => url.protocol === "https:" || (url.protocol === "http:" && isLoopbackHostname(url.hostname));
 
 // Plugin folder mount location.
 // Claude Cowork 3p actually launches with --user-data-dir=Claude-3p, so plugins
@@ -323,15 +325,16 @@ export async function POST(request) {
       return NextResponse.json({ error: "baseUrl and apiKey are required" }, { status: 400 });
     }
 
+    let parsedBaseUrl;
     try {
-      new URL(normalizedBaseUrl);
+      parsedBaseUrl = new URL(normalizedBaseUrl);
     } catch {
       return NextResponse.json({ error: "baseUrl must be a valid URL" }, { status: 400 });
     }
 
-    if (isLocalhostUrl(normalizedBaseUrl)) {
+    if (!isValidCoworkBaseUrl(parsedBaseUrl)) {
       return NextResponse.json({
-        error: "Claude Cowork sandbox cannot reach localhost. Use Tunnel, Tailscale, or a VPS public URL.",
+        error: "Claude Cowork requires HTTPS for public URLs, or HTTP only on localhost/127.0.0.1.",
       }, { status: 400 });
     }
 
