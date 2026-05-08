@@ -81,8 +81,9 @@ REM Start dev server in this console. Hidden wscript mode closes stdin and can m
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0colorlog.ps1"
 set EXIT_CODE=!ERRORLEVEL!
 
-REM Always cleanup leftover processes after PowerShell exits (including Ctrl+C)
-call "%~dp0stop.bat" >nul 2>&1
+REM Cleanup leftover processes after PowerShell exits (including Ctrl+C)
+REM Skip if already stopped to avoid double-cleanup warning
+if !EXIT_CODE! NEQ 0 call "%~dp0stop.bat" >nul 2>&1
 
 if exist "%DEV_RUN_LOG%" type "%DEV_RUN_LOG%" >> "%LOG_FILE%"
 
