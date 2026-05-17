@@ -2,17 +2,15 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import {
-  Card,
-  CardSkeleton,
-  Badge,
-  Button,
-  Input,
-  Modal,
-  Select,
-  Toggle,
-} from "@/shared/components";
+import Badge from "@/shared/components/Badge";
+import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import Input from "@/shared/components/Input";
+import Modal from "@/shared/components/Modal";
 import ProviderIcon from "@/shared/components/ProviderIcon";
+import Select from "@/shared/components/Select";
+import Toggle from "@/shared/components/Toggle";
+import { CardSkeleton } from "@/shared/components/Loading";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import {
   FREE_PROVIDERS,
