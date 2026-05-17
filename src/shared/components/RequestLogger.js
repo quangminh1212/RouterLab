@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "./Card";
 
 export default function RequestLogger() {
@@ -8,7 +8,21 @@ export default function RequestLogger() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const fetchLogs = useCallback(async (showLoading = true) => {
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  useEffect(() => {
+    let interval;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchLogs(false);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+
+  const fetchLogs = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
       const res = await fetch("/api/usage/request-logs");
@@ -21,24 +35,7 @@ export default function RequestLogger() {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      fetchLogs();
-    }, 0);
-    return () => clearTimeout(timeout);
-  }, [fetchLogs]);
-
-  useEffect(() => {
-    let interval;
-    if (autoRefresh) {
-      interval = setInterval(() => {
-        fetchLogs(false);
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [autoRefresh, fetchLogs]);
+  };
 
   return (
     <div className="flex flex-col gap-4">

@@ -32,7 +32,7 @@ export function useDebounce(callback, delay) {
 }
 
 export function useThrottle(callback, delay) {
-  const lastRan = useRef(0);
+  const lastRan = useRef(Date.now());
   const timeoutRef = useRef(null);
   const callbackRef = useRef(callback);
 

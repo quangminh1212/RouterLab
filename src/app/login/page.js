@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import QRCode from "qrcode";
-import { Card, Button, Input } from "@/shared/components";
 import { useRouter } from "next/navigation";
+import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import Input from "@/shared/components/Input";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
@@ -62,9 +63,22 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!oauthUrl) return;
-    QRCode.toDataURL(oauthUrl, { width: 240, margin: 1, errorCorrectionLevel: "M" })
-      .then(setQrDataUrl)
-      .catch(() => setError("Failed to render authenticator QR"));
+    let cancelled = false;
+
+    import("qrcode")
+      .then(({ default: QRCode }) =>
+        QRCode.toDataURL(oauthUrl, { width: 240, margin: 1, errorCorrectionLevel: "M" })
+      )
+      .then((dataUrl) => {
+        if (!cancelled) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to render authenticator QR");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [oauthUrl]);
 
   const handleSubmit = async () => {

@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG, UPDATER_CONFIG } from "@/shared/constants/config";
-import { MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import Button from "./Button";
 import { ConfirmModal } from "./Modal";
@@ -14,6 +13,11 @@ import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 // const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "webSearch", "webFetch", "video", "music"];
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts"];
+const MEDIA_NAV_ITEMS = [
+  { id: "embedding", label: "Embedding", icon: "data_array" },
+  { id: "image", label: "Text to Image", icon: "brush" },
+  { id: "tts", label: "Text To Speech", icon: "record_voice_over" },
+];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
 const navItems = [
@@ -49,10 +53,7 @@ const POWER_UP_ITEMS = [
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("xlabrouter-sidebar-collapsed") === "true";
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(() =>
     POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href))
@@ -69,6 +70,11 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmd;
   const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("xlabrouter-sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((value) => {
@@ -329,7 +335,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             </button>
             {mediaOpen && (
               <div className="pl-4">
-                {MEDIA_PROVIDER_KINDS.filter((k) => VISIBLE_MEDIA_KINDS.includes(k.id)).map((kind) => (
+                {MEDIA_NAV_ITEMS.filter((kind) => VISIBLE_MEDIA_KINDS.includes(kind.id)).map((kind) => (
                   <Link
                     key={kind.id}
                     href={`/dashboard/media-providers/${kind.id}`}
@@ -682,7 +688,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
         </div>
       ) : (
         <p className="text-xs text-white/50 text-center">
-          This may take 30-60 seconds. Please don&apos;t close this window.
+          This may take 30-60 seconds. Please don't close this window.
         </p>
       )}
     </div>
