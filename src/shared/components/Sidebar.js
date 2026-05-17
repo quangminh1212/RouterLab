@@ -15,44 +15,47 @@ import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts", "stt"];
 const MEDIA_NAV_ITEMS = [
   { id: "embedding", label: "Embedding", icon: "data_array" },
-  { id: "image", label: "Text to Image", icon: "brush" },
-  { id: "tts", label: "Text To Speech", icon: "record_voice_over" },
-  { id: "stt", label: "Speech To Text", icon: "mic" },
+  { id: "image", label: "T?o ?nh", icon: "brush" },
+  { id: "tts", label: "??c v?n b?n", icon: "record_voice_over" },
+  { id: "stt", label: "Nh?n gi?ng n?i", icon: "mic" },
 ];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
-const navItems = [
+const coreItems = [
   { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
-  { href: "/dashboard/endpoint", label: "Endpoint", icon: "api" },
-  { href: "/dashboard/providers", label: "Providers", icon: "dns" },
-  { href: "/dashboard/combos", label: "Combos", icon: "layers" },
-  { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
-  { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
-  { href: "/dashboard/token-saver", label: "Token Saver", icon: "compress" },
-  { href: "/dashboard/rules", label: "Rules", icon: "gavel" },
-  { href: "/dashboard/mitm", label: "MITM", icon: "security" },
-  { href: "/dashboard/cli-tools", label: "CLI Tools", icon: "terminal" },
-  { href: "/dashboard/ai-integrations", label: "AI Sources", icon: "hub" },
-  { href: "/dashboard/skills", label: "Skill Library", icon: "menu_book" },
+  { href: "/dashboard/endpoint", label: "?i?m cu?i", icon: "api" },
+  { href: "/dashboard/providers", label: "Nh? cung c?p", icon: "dns" },
+  { href: "/dashboard/combos", label: "K?t h?p", icon: "layers" },
+  { href: "/dashboard/usage", label: "Th?ng k?", icon: "bar_chart" },
+  { href: "/dashboard/quota", label: "H?n m?c", icon: "data_usage" },
+];
+
+const aiItems = [
+  { href: "/dashboard/token-saver", label: "Ti?t ki?m token", icon: "compress" },
+  { href: "/dashboard/rules", label: "Lu?t AI", icon: "gavel" },
+  { href: "/dashboard/ai-integrations", label: "Ngu?n AI", icon: "hub" },
+  { href: "/dashboard/skills", label: "Th? vi?n skill", icon: "menu_book" },
 ];
 
 const debugItems = [
-  { href: "/dashboard/console-log", label: "Console Log", icon: "terminal" },
-  { href: "/dashboard/translator", label: "Translator", icon: "translate" },
+  { href: "/dashboard/console-log", label: "Nh?t k? Console", icon: "terminal" },
+  { href: "/dashboard/translator", label: "D?ch thu?t", icon: "translate" },
 ];
 
 const systemItems = [
+  { href: "/dashboard/mitm", label: "MITM", icon: "security" },
+  { href: "/dashboard/cli-tools", label: "C?ng c? CLI", icon: "terminal" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
-  { href: "/dashboard/settings/pricing", label: "Pricing", icon: "payments" },
+  { href: "/dashboard/settings/pricing", label: "B?ng gi?", icon: "payments" },
 ];
 
 const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
   { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
-  { href: "/dashboard/ai-memory", label: "AI Memory", icon: "memory" },
-  { href: "/dashboard/ai-plugins", label: "Plugins", icon: "extension" },
-  { href: "/dashboard/ai-skills", label: "AI Skills", icon: "psychology" },
+  { href: "/dashboard/ai-memory", label: "B? nh? AI", icon: "memory" },
+  { href: "/dashboard/ai-plugins", label: "Plugin", icon: "extension" },
+  { href: "/dashboard/ai-skills", label: "K? n?ng AI", icon: "psychology" },
 ];
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
@@ -157,6 +160,35 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   };
 
   const isPowerUpActive = POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href));
+  const renderNavItem = (item) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      prefetch={false}
+      onClick={onClose}
+      className={cn(
+        collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+        isActive(item.href)
+          ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+          : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+      )}
+    >
+      <span
+        className={cn(
+          "material-symbols-outlined text-[18px]",
+          isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
+        )}
+      >
+        {item.icon}
+      </span>
+      {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+    </Link>
+  );
+  const renderSectionTitle = (label) => !collapsed && (
+    <p className="px-4 pt-4 pb-2 text-xs font-semibold text-primary/55 uppercase tracking-wider">
+      {label}
+    </p>
+  );
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -284,38 +316,14 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
         {/* Navigation */}
         <nav className={cn("flex-1 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={false}
-              onClick={onClose}
-              className={cn(
-                collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                isActive(item.href)
-                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-              )}
-            >
-              <span
-                className={cn(
-                  "material-symbols-outlined text-[18px]",
-                  isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
-                )}
-              >
-                {item.icon}
-              </span>
-              {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </Link>
-          ))}
+          {renderSectionTitle("CORE")}
+          {coreItems.map(renderNavItem)}
+          {renderSectionTitle("AI")}
+          {aiItems.map(renderNavItem)}
 
-          {/* System section */}
-          <div className="pt-4 mt-2">
-            {!collapsed && (
-              <p className="px-4 text-xs font-semibold text-primary/55 uppercase tracking-wider mb-2">
-                System
-              </p>
-            )}
+          {/* Media + System sections */}
+          <div className="mt-2">
+            {renderSectionTitle("MEDIA")}
 
             {/* Media Providers accordion */}
             {!collapsed && (
@@ -387,7 +395,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               )}
             >
               <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">rocket_launch</span>
-              <span className="text-sm font-medium flex-1 text-left">Power Up</span>
+              <span className="text-sm font-medium flex-1 text-left">AI N?ng cao</span>
               <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 expand_more
               </span>
@@ -416,30 +424,8 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               </>
             )}
 
-            {systemItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                onClick={onClose}
-                className={cn(
-                  collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                  isActive(item.href)
-                    ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                    : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-                )}
-              >
-                <span
-                  className={cn(
-                    "material-symbols-outlined text-[18px]",
-                    isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
-                  )}
-                >
-                  {item.icon}
-                </span>
-                {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-              </Link>
-            ))}
+            {renderSectionTitle("SYSTEM")}
+            {systemItems.map(renderNavItem)}
 
             {/* Debug items (inside System section, before Settings) */}
             {debugItems.map((item) => {
@@ -490,7 +476,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               >
                 settings
               </span>
-              {!collapsed && <span className="text-sm font-medium">Settings</span>}
+              {!collapsed && <span className="text-sm font-medium">C?i ??t</span>}
             </Link>
           </div>
         </nav>
@@ -505,7 +491,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             onClick={() => setShowShutdownModal(true)}
             className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
           >
-            {collapsed ? "" : "Shutdown"}
+            {collapsed ? "" : "T?t m?y"}
           </Button>
         </div>
       </aside>
@@ -515,9 +501,9 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         isOpen={showShutdownModal}
         onClose={() => setShowShutdownModal(false)}
         onConfirm={handleShutdown}
-        title="Close Proxy"
-        message="Are you sure you want to close the proxy server?"
-        confirmText="Close"
+        title="T?t Proxy"
+        message="B?n c? ch?c mu?n t?t proxy server kh?ng?"
+        confirmText="T?t"
         cancelText="Cancel"
         variant="danger"
         loading={isShuttingDown}
