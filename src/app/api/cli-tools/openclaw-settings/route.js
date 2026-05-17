@@ -1,235 +1,72 @@
+"use server";
+
 import { NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
-import { headers, cookies } from "next/headers";
-import { jwtVerify } from "jose";
-import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getAuthSecret } from "@/lib/auth/sessionSecret";
-import { setModelAlias } from "@/lib/localDb";
 
 const execAsync = promisify(exec);
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
-const SECRET = getAuthSecret();
-const CLI_TOKEN_HEADER = "x-9r-cli-token";
-const CLI_TOKEN_SALT = "9r-cli-auth";
-
-async function hasValidCliToken() {
-  const hdrs = await headers();
-  const token = hdrs.get(CLI_TOKEN_HEADER);
-  if (!token) return false;
-  return token === await getConsistentMachineId(CLI_TOKEN_SALT);
-}
-
-async function hasValidJwtCookie() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-  if (!token) return false;
-  try {
-    await jwtVerify(token, SECRET);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function requireAuth() {
-  if (await hasValidCliToken()) return null;
-  if (await hasValidJwtCookie()) return null;
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-
-const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
-const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
-const getDefaultAgentModelsDir = () => path.join(getOpenClawDir(), "agents", "main", "agent");
-const getDefaultAgentSessionsDir = () => path.join(getOpenClawDir(), "agents", "main", "sessions");
-const OPENCLAW_RECOMMENDED_MODEL = "openclaw";
-const OPENCLAW_LOCAL_BASE_URL = "http://127.0.0.1:1212/v1";
-const OPENCLAW_DEFAULT_TUNNEL_BASE_URL = "https://api.xlabrnd.com/v1";
-const OPENCLAW_TELEGRAM_API_ROOT = "https://api.telegram.org";
-
-const normalizeOpenClawModel = (model) => {
-  const normalized = String(model || "").trim().replace(/^xlabrouter\//, "");
-  return !normalized ? OPENCLAW_RECOMMENDED_MODEL : normalized;
-};
-
-const normalizeOpenClawBaseUrl = (baseUrl) => {
-  const url = String(baseUrl || "").trim();
-  if (!url) return OPENCLAW_LOCAL_BASE_URL;
-  try {
-    const parsed = new URL(url.endsWith("/v1") ? url : `${url}/v1`);
-    return parsed.toString().replace(/\/$/, "");
-  } catch {
-    return url.endsWith("/v1") ? url : `${url}/v1`;
-  }
-};
-
-const isTelegramBotToken = (token) => /^\d+:[A-Za-z0-9_-]{30,}$/.test(String(token || "").trim());
-
-const getPreferredTelegramBotToken = (...tokens) => {
-  for (const token of tokens) {
-    const normalized = String(token || "").trim();
-    if (isTelegramBotToken(normalized)) return normalized;
-  }
+// OpenClaw 2026.5.x writes agents[].model as either a plain string
+// (legacy) or as an object `{ primary, fallbacks }`. Normalize to the
+// string id so downstream consumers can call `.startsWith()` safely.
+const resolveAgentModel = (m) => {
+  if (typeof m === "string") return m;
+  if (m && typeof m === "object") return m.primary ?? "";
   return "";
 };
 
-const fileExists = async (targetPath) => {
-  if (!targetPath) return false;
-  try {
-    await fs.access(targetPath);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const parseJsonFile = async (targetPath) => {
-  const content = await fs.readFile(targetPath, "utf-8");
-  return JSON.parse(String(content).replace(/^\uFEFF/, "").trim());
-};
-
-const findWindowsOpenClawInstallation = async () => {
-  const candidateBins = [];
-  const appData = process.env.APPDATA;
-  const userProfile = process.env.USERPROFILE;
-  const localAppData = process.env.LOCALAPPDATA;
-
-  if (appData) candidateBins.push(path.join(appData, "npm"));
-  if (userProfile) candidateBins.push(path.join(userProfile, "AppData", "Roaming", "npm"));
-  if (localAppData) candidateBins.push(path.join(localAppData, "Programs", "npm"));
-
-  try {
-    const { stdout } = await execAsync("npm config get prefix", { windowsHide: true });
-    const prefix = String(stdout || "").trim();
-    if (prefix) candidateBins.push(prefix);
-  } catch {}
-
-  const uniqueBins = [...new Set(candidateBins.filter(Boolean))];
-  const env = { ...process.env, PATH: [...uniqueBins, process.env.PATH || ""].join(";") };
-
-  for (const command of ["where.exe openclaw", "where.exe openclaw.cmd", "where.exe openclaw.ps1"]) {
-    try {
-      const { stdout } = await execAsync(command, { windowsHide: true, env });
-      const detectedPath = String(stdout || "").split(/\r?\n/).map((line) => line.trim()).find(Boolean);
-      if (detectedPath) {
-        return { installed: true, method: command, cliPath: detectedPath, checkedBins: uniqueBins };
-      }
-    } catch {}
-  }
-
-  for (const binDir of uniqueBins) {
-    for (const executable of ["openclaw.cmd", "openclaw.ps1", "openclaw"]) {
-      const candidate = path.join(binDir, executable);
-      if (await fileExists(candidate)) {
-        return { installed: true, method: `file:${executable}`, cliPath: candidate, checkedBins: uniqueBins };
-      }
-    }
-  }
-
-  const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
-  try {
-    const userDirs = await fs.readdir(usersRoot, { withFileTypes: true });
-    for (const dirent of userDirs) {
-      if (!dirent.isDirectory()) continue;
-      for (const executable of ["openclaw.cmd", "openclaw.ps1", "openclaw"]) {
-        const candidate = path.join(usersRoot, dirent.name, "AppData", "Roaming", "npm", executable);
-        if (await fileExists(candidate)) {
-          return { installed: true, method: `scan:${executable}`, cliPath: candidate, checkedBins: uniqueBins };
-        }
-      }
-    }
-  } catch {}
-
-  return { installed: false, method: null, cliPath: null, checkedBins: uniqueBins };
-};
+const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
+const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 
 // Check if openclaw CLI is installed (via which/where or config file exists)
 const checkOpenClawInstalled = async () => {
-  const detection = {
-    installed: false,
-    method: null,
-    cliPath: null,
-    settingsPath: null,
-    checkedBins: [],
-  };
-
   try {
     const isWindows = os.platform() === "win32";
-    if (isWindows) {
-      const windowsDetection = await findWindowsOpenClawInstallation();
-      Object.assign(detection, windowsDetection);
-      if (windowsDetection.installed) return detection;
-    } else {
-      const { stdout } = await execAsync("which openclaw", { windowsHide: true, env: process.env });
-      const cliPath = String(stdout || "").split(/\r?\n/).map((line) => line.trim()).find(Boolean) || null;
-      if (cliPath) {
-        return { ...detection, installed: true, method: "which openclaw", cliPath };
-      }
-    }
+    const command = isWindows ? "where openclaw" : "which openclaw";
+    // On Windows, inject %APPDATA%\npm into PATH so npm global packages are found
+    const env = isWindows
+      ? { ...process.env, PATH: `${process.env.APPDATA}\\npm;${process.env.PATH}` }
+      : process.env;
+    await execAsync(command, { windowsHide: true, env });
+    return true;
   } catch {
-    // fall through to settings file check below
-  }
-
-  // Fallback: existing local config means OpenClaw was configured at least once
-  if (await fileExists(getOpenClawSettingsPath())) {
-    return {
-      ...detection,
-      installed: true,
-      method: "settings-file",
-      settingsPath: getOpenClawSettingsPath(),
-    };
-  }
-
-  // Optional fallback for elevated process using another homedir
-  const usersRoot = `${process.env.SystemDrive || "C:"}${path.sep}Users`;
-  try {
-    const userDirs = await fs.readdir(usersRoot, { withFileTypes: true });
-    for (const dirent of userDirs) {
-      if (!dirent.isDirectory()) continue;
-      const candidate = path.join(usersRoot, dirent.name, ".openclaw", "openclaw.json");
-      if (await fileExists(candidate)) {
-        return {
-          ...detection,
-          installed: true,
-          method: "settings-scan",
-          settingsPath: candidate,
-        };
-      }
+    try {
+      await fs.access(getOpenClawSettingsPath());
+      return true;
+    } catch {
+      return false;
     }
-  } catch {}
-
-  return detection;
+  }
 };
 
 // Read current settings.json
 const readSettings = async () => {
   try {
     const settingsPath = getOpenClawSettingsPath();
-    return await parseJsonFile(settingsPath);
+    const content = await fs.readFile(settingsPath, "utf-8");
+    return JSON.parse(content);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
 };
 
-// Check if settings has xlabrouter config
-const hasxlabrouterConfig = (settings) => {
+// Check if settings has 9Router config
+const has9RouterConfig = (settings) => {
   if (!settings || !settings.models || !settings.models.providers) return false;
-  return !!settings.models.providers["xlabrouter"];
+  return !!settings.models.providers["9router"];
 };
 
-// Read per-agent models.json and return current model id (without "xlabrouter/" prefix)
+// Read per-agent models.json and return current model id (without "9router/" prefix)
 const readAgentModel = async (agentDir) => {
   try {
     const modelsPath = path.join(agentDir, "models.json");
     const content = await fs.readFile(modelsPath, "utf-8");
     const data = JSON.parse(content);
-    const models = data?.providers?.["xlabrouter"]?.models;
+    const models = data?.providers?.["9router"]?.models;
     return models?.[0]?.id || null;
   } catch {
     return null;
@@ -238,28 +75,27 @@ const readAgentModel = async (agentDir) => {
 
 // GET - Check openclaw CLI and read current settings
 export async function GET() {
-  const unauthorized = await requireAuth();
-  if (unauthorized) return unauthorized;
   try {
-    const detection = await checkOpenClawInstalled();
+    const isInstalled = await checkOpenClawInstalled();
     
-    if (!detection.installed) {
+    if (!isInstalled) {
       return NextResponse.json({
         installed: false,
         settings: null,
         message: "Open Claw CLI is not installed",
-        detection,
       });
     }
 
     const settings = await readSettings();
 
-    // Enrich agents list with current per-agent model from models.json
+    // Enrich agents list with current per-agent model from models.json.
+    // Coerce agent.model to its string id when OpenClaw stores it as
+    // `{ primary, fallbacks }` so downstream `.startsWith()` calls work.
     const agentList = settings?.agents?.list || [];
     const enrichedAgents = await Promise.all(
       agentList.map(async (agent) => {
         const agentModel = agent.agentDir ? await readAgentModel(agent.agentDir) : null;
-        return { ...agent, currentModel: agentModel };
+        return { ...agent, model: resolveAgentModel(agent.model), currentModel: agentModel };
       })
     );
 
@@ -267,9 +103,8 @@ export async function GET() {
       installed: true,
       settings,
       agents: enrichedAgents,
-      hasxlabrouter: hasxlabrouterConfig(settings),
+      has9Router: has9RouterConfig(settings),
       settingsPath: getOpenClawSettingsPath(),
-      detection,
     });
   } catch (error) {
     console.log("Error checking openclaw settings:", error);
@@ -278,7 +113,7 @@ export async function GET() {
 }
 
 // Write per-agent models.json
-const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
+const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   await fs.mkdir(agentDir, { recursive: true });
   const modelsPath = path.join(agentDir, "models.json");
   let existing = {};
@@ -288,144 +123,20 @@ const writeAgentModels = async (agentDir, models, baseUrl, apiKey) => {
   } catch { /* No existing */ }
 
   if (!existing.providers) existing.providers = {};
-  const modelIds = [...new Set(models.map((item) => normalizeOpenClawModel(item)).filter(Boolean))];
-  const primaryModel = modelIds[0] || OPENCLAW_RECOMMENDED_MODEL;
-  existing.providers["xlabrouter"] = {
+  existing.providers["9router"] = {
     baseUrl,
     apiKey: apiKey || "your_api_key",
     api: "openai-completions",
-    models: modelIds.map((id) => ({ id, name: id.split("/").pop() || id })),
-  };
-  existing.defaults = {
-    ...(existing.defaults || {}),
-    model: {
-      ...(existing.defaults?.model || {}),
-      primary: `xlabrouter/${primaryModel}`,
-    },
-    models: {
-      ...(existing.defaults?.models || {}),
-      ...Object.fromEntries(modelIds.map((id) => [`xlabrouter/${id}`, {}])),
-    },
-    workspace: existing.defaults?.workspace || "C:\\Dev\\XLab_Router",
+    models: [{ id: model, name: model.split("/").pop() || model }],
   };
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
-const normalizeRestoredOpenClawSettings = (settings, currentSettings = {}) => {
-  const next = settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {};
-  if (!next.agents) next.agents = {};
-  if (!next.agents.defaults) next.agents.defaults = {};
-  if (!next.agents.defaults.model) next.agents.defaults.model = {};
-  if (!next.agents.defaults.models) next.agents.defaults.models = {};
-  if (!next.models) next.models = {};
-  if (!next.models.providers) next.models.providers = {};
-
-  const model = OPENCLAW_RECOMMENDED_MODEL;
-  next.agents.defaults.model.primary = `xlabrouter/${model}`;
-  next.agents.defaults.models = { [`xlabrouter/${model}`]: {} };
-  const restoredBaseUrl = normalizeOpenClawBaseUrl(
-    next.models.providers.xlabrouter?.baseUrl
-    || currentSettings?.models?.providers?.xlabrouter?.baseUrl
-    || OPENCLAW_DEFAULT_TUNNEL_BASE_URL
-  );
-  next.models.providers.xlabrouter = {
-    baseUrl: restoredBaseUrl,
-    apiKey: next.models.providers.xlabrouter?.apiKey || "your_api_key",
-    api: "openai-completions",
-    models: [{ id: model, name: model.split("/").pop() || model }],
-  };
-
-  const restoredTelegramToken = next.channels?.telegram?.botToken;
-  const currentTelegramToken = currentSettings?.channels?.telegram?.botToken;
-  if (!next.channels) next.channels = {};
-  if (!next.channels.telegram) next.channels.telegram = {};
-  if (!next.channels.telegram.network) next.channels.telegram.network = {};
-  next.channels.telegram.network.autoSelectFamily = false;
-  next.channels.telegram.network.dnsResultOrder = "ipv4first";
-  if (process.env.OPENCLAW_PROXY_URL?.trim()) next.channels.telegram.proxy = process.env.OPENCLAW_PROXY_URL.trim();
-  next.channels.telegram.timeoutSeconds = 70;
-  next.channels.telegram.pollingStallThresholdMs = 240000;
-  next.channels.telegram.retry = {
-    attempts: 2,
-    minDelayMs: 1000,
-    maxDelayMs: 8000,
-    jitter: 0.2,
-  };
-  next.channels.telegram.errorCooldownMs = 15000;
-  next.channels.telegram.apiRoot = OPENCLAW_TELEGRAM_API_ROOT;
-  const telegramToken = getPreferredTelegramBotToken(
-    process.env.OPENCLAW_TELEGRAM_BOT_TOKEN,
-    restoredTelegramToken,
-    currentTelegramToken
-  );
-  if (telegramToken && next.channels?.telegram) {
-    next.channels.telegram.botToken = telegramToken;
-  }
-  if (next.channels?.telegram) {
-    next.channels.telegram.commands = { ...(next.channels.telegram.commands || {}), native: false };
-  }
-  if (!next.plugins) next.plugins = {};
-  if (!next.plugins.entries) next.plugins.entries = {};
-  if (!next.plugins.entries.bonjour) next.plugins.entries.bonjour = {};
-  next.plugins.entries.bonjour.enabled = false;
-  if (!next.plugins.allow) next.plugins.allow = [];
-  next.plugins.allow = ["telegram"];
-  next.tools = {
-    ...(next.tools || {}),
-    profile: "minimal",
-  };
-  next.skills = {
-    ...(next.skills || {}),
-    limits: {
-      ...(next.skills?.limits || {}),
-      maxCandidatesPerRoot: 1,
-      maxSkillsLoadedPerSource: 1,
-      maxSkillsPromptChars: 0,
-      maxSkillsInPrompt: 0,
-    },
-  };
-  return next;
-};
-
-const getConfiguredAgentModelDirs = (settings) => {
-  const dirs = new Set();
-  const agentList = Array.isArray(settings?.agents?.list) ? settings.agents.list : [];
-  for (const agent of agentList) {
-    if (agent?.agentDir) dirs.add(agent.agentDir);
-  }
-  dirs.add(getDefaultAgentModelsDir());
-  return [...dirs];
-};
-
-const syncOpenClawModelAliases = async (normalizedModel) => {
-  const target = `xlabrouter/${normalizeOpenClawModel(normalizedModel)}`;
-  await Promise.allSettled([
-    setModelAlias("openclaw", target),
-    setModelAlias("XLab", target),
-  ]);
-};
-
-const resetOpenClawSessionState = async () => {
-  const sessionsDir = getDefaultAgentSessionsDir();
-  const sessionsPath = path.join(sessionsDir, "sessions.json");
-  await fs.mkdir(sessionsDir, { recursive: true });
-  await fs.rm(`${sessionsPath}.lock`, { force: true }).catch(() => {});
-  const sessionEntries = await fs.readdir(sessionsDir, { withFileTypes: true }).catch(() => []);
-  await Promise.all(sessionEntries.map(async (entry) => {
-    if (!entry.isFile()) return;
-    if (!/\.(jsonl|trajectory\.jsonl|trajectory-path\.json)$/i.test(entry.name)) return;
-    await fs.rm(path.join(sessionsDir, entry.name), { force: true }).catch(() => {});
-  }));
-  await fs.writeFile(sessionsPath, JSON.stringify({}, null, 2));
-};
-
-// POST - Update xlabrouter settings (merge with existing settings)
+// POST - Update 9Router settings (merge with existing settings)
 export async function POST(request) {
-  const unauthorized = await requireAuth();
-  if (unauthorized) return unauthorized;
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
-    const { baseUrl, apiKey, model, agentModels = {}, telegramBotToken } = await request.json();
+    const { baseUrl, apiKey, model, agentModels = {} } = await request.json();
     
     if (!baseUrl || !model) {
       return NextResponse.json({ error: "baseUrl and model are required" }, { status: 400 });
@@ -438,10 +149,9 @@ export async function POST(request) {
 
     let settings = {};
     try {
-      settings = await parseJsonFile(settingsPath);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
+      const existingSettings = await fs.readFile(settingsPath, "utf-8");
+      settings = JSON.parse(existingSettings);
+    } catch { /* No existing settings */ }
 
     if (!settings.agents) settings.agents = {};
     if (!settings.agents.defaults) settings.agents.defaults = {};
@@ -450,34 +160,31 @@ export async function POST(request) {
     if (!settings.models) settings.models = {};
     if (!settings.models.providers) settings.models.providers = {};
 
-    const normalizedBaseUrl = normalizeOpenClawBaseUrl(baseUrl);
-    const normalizedModel = normalizeOpenClawModel(model);
-    const normalizedAgentModels = Object.fromEntries(
-      Object.entries(agentModels).map(([agentId, agentModel]) => [agentId, normalizeOpenClawModel(agentModel)])
-    );
-    const fullModelId = `xlabrouter/${normalizedModel}`;
+    const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
+    const fullModelId = `9router/${model}`;
 
-    // Remove all old xlabrouter/* entries from agents.defaults.models
+    // Remove all old 9router/* entries from agents.defaults.models
     Object.keys(settings.agents.defaults.models)
-      .filter((k) => k.startsWith("xlabrouter/"))
+      .filter((k) => k.startsWith("9router/"))
       .forEach((k) => { delete settings.agents.defaults.models[k]; });
 
     // Update default model
     settings.agents.defaults.model.primary = fullModelId;
 
     // Collect all unique models (default + per-agent)
-    const allModelIds = new Set([normalizedModel]);
-    Object.values(normalizedAgentModels).forEach((m) => { if (m) allModelIds.add(m); });
+    const allModelIds = new Set([model]);
+    Object.values(agentModels).forEach((m) => { if (m) allModelIds.add(m); });
 
-    // Add fresh xlabrouter models to allowlist
+    // Add fresh 9router models to allowlist
     allModelIds.forEach((m) => {
-      settings.agents.defaults.models[`xlabrouter/${m}`] = {};
+      settings.agents.defaults.models[`9router/${m}`] = {};
     });
 
-    // Remove old xlabrouter model from each agent in agents.list
+    // Remove old 9router model from each agent in agents.list. The
+    // model field may be a plain string or `{ primary, fallbacks }`.
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
-        if (agent.model?.startsWith("xlabrouter/")) {
+        if (resolveAgentModel(agent.model).startsWith("9router/")) {
           const { model: _, ...rest } = agent;
           return rest;
         }
@@ -485,8 +192,8 @@ export async function POST(request) {
       });
     }
 
-    // Update models.providers.xlabrouter with all models
-    settings.models.providers["xlabrouter"] = {
+    // Update models.providers.9router with all models
+    settings.models.providers["9router"] = {
       baseUrl: normalizedBaseUrl,
       apiKey: apiKey || "your_api_key",
       api: "openai-completions",
@@ -496,75 +203,23 @@ export async function POST(request) {
     // Set per-agent model in agents.list and write models.json
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
-        const agentModel = normalizedAgentModels[agent.id];
-        if (agentModel) return { ...agent, model: `xlabrouter/${agentModel}` };
+        const agentModel = agentModels[agent.id];
+        if (agentModel) return { ...agent, model: `9router/${agentModel}` };
         return agent;
       });
 
+      // Write per-agent models.json for agents with agentDir
+      await Promise.all(
+        settings.agents.list.map(async (agent) => {
+          if (!agent.agentDir) return;
+          const agentModel = agentModels[agent.id];
+          const modelToWrite = agentModel || model; // fallback to default
+          await writeAgentModels(agent.agentDir, modelToWrite, normalizedBaseUrl, apiKey);
+        })
+      );
     }
 
-    // OpenClaw also keeps a runtime model cache under agents/main/agent/models.json
-    // even when agents.list is absent. Keep every known cache in sync.
-    await Promise.all(
-      getConfiguredAgentModelDirs(settings).map(async (agentDir) => {
-        const agent = settings.agents?.list?.find((item) => item.agentDir === agentDir);
-        const modelToWrite = (agent?.id && normalizedAgentModels[agent.id]) || normalizedModel;
-        await writeAgentModels(agentDir, [...allModelIds, modelToWrite], normalizedBaseUrl, apiKey);
-      })
-    );
-
-    if (!settings.channels) settings.channels = {};
-    if (!settings.channels.telegram) settings.channels.telegram = {};
-    if (!settings.channels.telegram.network) settings.channels.telegram.network = {};
-    settings.channels.telegram.network.autoSelectFamily = false;
-    settings.channels.telegram.network.dnsResultOrder = "ipv4first";
-    if (process.env.OPENCLAW_PROXY_URL?.trim()) settings.channels.telegram.proxy = process.env.OPENCLAW_PROXY_URL.trim();
-    settings.channels.telegram.timeoutSeconds = 70;
-    settings.channels.telegram.pollingStallThresholdMs = 240000;
-    settings.channels.telegram.retry = {
-      attempts: 2,
-      minDelayMs: 1000,
-      maxDelayMs: 8000,
-      jitter: 0.2,
-    };
-    settings.channels.telegram.errorCooldownMs = 15000;
-    settings.channels.telegram.apiRoot = OPENCLAW_TELEGRAM_API_ROOT;
-    if (!settings.channels.telegram.commands) settings.channels.telegram.commands = {};
-    settings.channels.telegram.commands.native = false;
-    const nextTelegramToken = getPreferredTelegramBotToken(
-      telegramBotToken,
-      process.env.OPENCLAW_TELEGRAM_BOT_TOKEN,
-      settings.channels.telegram.botToken
-    );
-    if (nextTelegramToken) settings.channels.telegram.botToken = nextTelegramToken;
-
-    if (!settings.plugins) settings.plugins = {};
-    if (!settings.plugins.entries) settings.plugins.entries = {};
-    if (!settings.plugins.entries.bonjour) settings.plugins.entries.bonjour = {};
-    settings.plugins.entries.bonjour.enabled = false;
-    if (!settings.plugins.allow) settings.plugins.allow = [];
-    settings.plugins.allow = ["telegram"];
-
-    settings.tools = {
-      ...(settings.tools || {}),
-      profile: "minimal",
-    };
-
-    if (!settings.skills) settings.skills = {};
-    if (!settings.skills.limits) settings.skills.limits = {};
-    Object.assign(settings.skills.limits, {
-      maxCandidatesPerRoot: 1,
-      maxSkillsLoadedPerSource: 1,
-      maxSkillsPromptChars: 0,
-      maxSkillsInPrompt: 0,
-    });
-
-    const serializedSettings = JSON.stringify(settings, null, 2);
-    await fs.writeFile(settingsPath, serializedSettings);
-    await fs.writeFile(`${settingsPath}.bak`, serializedSettings).catch(() => {});
-    await fs.writeFile(`${settingsPath}.last-good`, serializedSettings).catch(() => {});
-    await resetOpenClawSessionState();
-    await syncOpenClawModelAliases(normalizedModel);
+    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -577,17 +232,16 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove xlabrouter settings only (keep other settings)
+// DELETE - Remove 9Router settings only (keep other settings)
 export async function DELETE() {
-  const unauthorized = await requireAuth();
-  if (unauthorized) return unauthorized;
   try {
     const settingsPath = getOpenClawSettingsPath();
 
     // Read existing settings
     let settings = {};
     try {
-      settings = await parseJsonFile(settingsPath);
+      const existingSettings = await fs.readFile(settingsPath, "utf-8");
+      settings = JSON.parse(existingSettings);
     } catch (error) {
       if (error.code === "ENOENT") {
         return NextResponse.json({
@@ -598,9 +252,9 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove xlabrouter from models.providers
+    // Remove 9Router from models.providers
     if (settings.models && settings.models.providers) {
-      delete settings.models.providers["xlabrouter"];
+      delete settings.models.providers["9router"];
       
       // Remove providers object if empty
       if (Object.keys(settings.models.providers).length === 0) {
@@ -608,9 +262,9 @@ export async function DELETE() {
       }
     }
 
-    // Remove xlabrouter models from agents.defaults.models allowlist
+    // Remove 9router models from agents.defaults.models allowlist
     if (settings.agents?.defaults?.models) {
-      const keysToRemove = Object.keys(settings.agents.defaults.models).filter((k) => k.startsWith("xlabrouter/"));
+      const keysToRemove = Object.keys(settings.agents.defaults.models).filter((k) => k.startsWith("9router/"));
       for (const key of keysToRemove) {
         delete settings.agents.defaults.models[key];
       }
@@ -619,8 +273,8 @@ export async function DELETE() {
       }
     }
 
-    // Reset agents.defaults.model.primary if it uses xlabrouter
-    if (settings.agents?.defaults?.model?.primary?.startsWith("xlabrouter/")) {
+    // Reset agents.defaults.model.primary if it uses 9router
+    if (settings.agents?.defaults?.model?.primary?.startsWith("9router/")) {
       delete settings.agents.defaults.model.primary;
     }
 
@@ -629,81 +283,10 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "xlabrouter settings removed successfully",
+      message: "9Router settings removed successfully",
     });
   } catch (error) {
     console.log("Error resetting openclaw settings:", error);
     return NextResponse.json({ error: "Failed to reset openclaw settings" }, { status: 500 });
   }
 }
-
-const readAgentModelsBackup = async (agentDir) => {
-  try {
-    const content = await fs.readFile(path.join(agentDir, "models.json"), "utf-8");
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-};
-
-export const getOpenClawSettingsBackup = async () => {
-  const settings = await readSettings();
-  const agentList = Array.isArray(settings?.agents?.list) ? settings.agents.list : [];
-  const agentModels = {};
-
-  await Promise.all(
-    agentList.map(async (agent) => {
-      if (!agent?.id || !agent?.agentDir) return;
-      agentModels[agent.id] = {
-        agentDir: agent.agentDir,
-        models: await readAgentModelsBackup(agent.agentDir),
-      };
-    })
-  );
-
-  return {
-    settingsPath: getOpenClawSettingsPath(),
-    settings,
-    agentModels,
-  };
-};
-
-export const restoreOpenClawSettingsBackup = async (payload) => {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
-  if (payload.settings !== null && typeof payload.settings !== "object") {
-    throw new Error("Invalid OpenClaw settings backup");
-  }
-
-  await fs.mkdir(getOpenClawDir(), { recursive: true });
-  let currentSettings = {};
-  try {
-    currentSettings = await parseJsonFile(getOpenClawSettingsPath());
-  } catch {}
-  const settings = normalizeRestoredOpenClawSettings(payload.settings || {}, currentSettings);
-  const settingsPath = getOpenClawSettingsPath();
-  const serializedSettings = JSON.stringify(settings, null, 2);
-  await fs.writeFile(settingsPath, serializedSettings);
-  await fs.writeFile(`${settingsPath}.bak`, serializedSettings).catch(() => {});
-  await fs.writeFile(`${settingsPath}.last-good`, serializedSettings).catch(() => {});
-  const restoredProvider = settings?.models?.providers?.xlabrouter;
-  const restoredModelIds = Array.isArray(restoredProvider?.models)
-    ? restoredProvider.models.map((item) => normalizeOpenClawModel(item?.id || item)).filter(Boolean)
-    : [];
-  const modelIdsToWrite = restoredModelIds.length > 0 ? [...new Set(restoredModelIds)] : [OPENCLAW_RECOMMENDED_MODEL];
-  const restoredBaseUrl = normalizeOpenClawBaseUrl(restoredProvider?.baseUrl);
-  const restoredApiKey = restoredProvider?.apiKey || currentSettings?.models?.providers?.xlabrouter?.apiKey || "your_api_key";
-
-  if (payload.agentModels && typeof payload.agentModels === "object") {
-    await Promise.all(
-      Object.values(payload.agentModels).map(async (entry) => {
-        if (!entry?.agentDir || !entry?.models || typeof entry.models !== "object") return;
-        await fs.mkdir(entry.agentDir, { recursive: true });
-        await writeAgentModels(entry.agentDir, modelIdsToWrite, restoredBaseUrl, restoredApiKey);
-      })
-    );
-  }
-
-  await writeAgentModels(getDefaultAgentModelsDir(), modelIdsToWrite, restoredBaseUrl, restoredApiKey);
-  await resetOpenClawSessionState();
-  await syncOpenClawModelAliases(modelIdsToWrite[0] || OPENCLAW_RECOMMENDED_MODEL);
-};
