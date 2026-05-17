@@ -235,6 +235,21 @@ export function getProviderAlias(providerId) {
   return provider?.alias || providerId;
 }
 
+export function getProviderIconPath(providerId) {
+  const resolvedProviderId = resolveProviderId(providerId);
+  const iconOverrides = {
+    "cloudflare-ai": "/plugins/icons/cloudflare.png",
+    "xiaomi-mimo": "/providers/local-device.png",
+    "xiaomi-tokenplan": "/providers/local-device.png",
+    "vercel-ai-gateway": "/vercel.svg",
+    commandcode: "/providers/oai-cc.png",
+  };
+  if (iconOverrides[resolvedProviderId]) {
+    return iconOverrides[resolvedProviderId];
+  }
+  return `/providers/${resolvedProviderId}.png`;
+}
+
 // Alias to ID mapping (for quick lookup)
 export const ALIAS_TO_ID = Object.values(AI_PROVIDERS).reduce((acc, p) => {
   acc[p.alias] = p.id;

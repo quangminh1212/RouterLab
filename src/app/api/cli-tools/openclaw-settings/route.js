@@ -54,6 +54,28 @@ const readSettings = async () => {
   }
 };
 
+const writeSettings = async (settings) => {
+  const settingsPath = getOpenClawSettingsPath();
+  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+};
+
+export const getOpenClawSettingsBackup = async () => ({
+  settingsPath: getOpenClawSettingsPath(),
+  settings: await readSettings(),
+});
+
+export const restoreOpenClawSettingsBackup = async (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (!("settings" in payload)) return;
+  if (payload.settings !== null && typeof payload.settings !== "object") {
+    throw new Error("Invalid OpenClaw settings backup");
+  }
+
+  const settingsToWrite = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+  await writeSettings(settingsToWrite);
+};
+
 // Check if settings has 9Router config
 const has9RouterConfig = (settings) => {
   if (!settings || !settings.models || !settings.models.providers) return false;
