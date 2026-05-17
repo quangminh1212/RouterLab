@@ -28,8 +28,12 @@ const navItems = [
   { href: "/dashboard/combos", label: "Combos", icon: "layers" },
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
+  { href: "/dashboard/token-saver", label: "Token Saver", icon: "compress" },
+  { href: "/dashboard/rules", label: "Rules", icon: "gavel" },
   { href: "/dashboard/mitm", label: "MITM", icon: "security" },
   { href: "/dashboard/cli-tools", label: "CLI Tools", icon: "terminal" },
+  { href: "/dashboard/ai-integrations", label: "AI Sources", icon: "hub" },
+  { href: "/dashboard/skills", label: "Skill Library", icon: "menu_book" },
 ];
 
 const debugItems = [
@@ -45,14 +49,10 @@ const systemItems = [
 const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
-  { href: "/dashboard/ai-integrations", label: "AI Integrations", icon: "hub" },
-  { href: "/dashboard/mcp-servers", label: "MCP", icon: "dns" },
-  { href: "/dashboard/ai-memory", label: "Memory", icon: "memory" },
+  { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
+  { href: "/dashboard/ai-memory", label: "AI Memory", icon: "memory" },
   { href: "/dashboard/ai-plugins", label: "Plugins", icon: "extension" },
-  { href: "/dashboard/ai-skills", label: "Skills", icon: "psychology" },
-  { href: "/dashboard/skills", label: "Skill Library", icon: "menu_book" },
-  { href: "/dashboard/rules", label: "Rules", icon: "gavel" },
-  { href: "/dashboard/token-saver", label: "Token Saver", icon: "token" },
+  { href: "/dashboard/ai-skills", label: "AI Skills", icon: "psychology" },
 ];
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
@@ -259,7 +259,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
           {updateInfo && !collapsed && (
             <div className="flex flex-col gap-1.5 rounded p-1 -m-1">
               <span className="text-xs font-semibold text-green-600 dark:text-amber-500">
-                ↑ New version available: v{updateInfo.latestVersion}
+                Ã¢â€ â€˜ New version available: v{updateInfo.latestVersion}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -274,7 +274,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   className="flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                 >
                   <code className="block text-[10px] text-green-600/80 dark:text-amber-400/70 font-mono truncate">
-                    {copied ? "✓ copied!" : INSTALL_CMD}
+                    {copied ? "Ã¢Å“â€œ copied!" : INSTALL_CMD}
                   </code>
                 </button>
               </div>
@@ -600,7 +600,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
     },
     {
       key: "finished",
-      label: done && success ? "Installed — ready to restart" : "Waiting to finish",
+      label: done && success ? "Installed Ã¢â‚¬â€ ready to restart" : "Waiting to finish",
       state: done && success ? "done" : (done && !success ? "error" : "pending"),
     },
   ];
@@ -684,7 +684,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
             className="w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors"
           >
             <code className="text-xs font-mono text-amber-400">
-              {copied ? "✓ copied!" : installCmd}
+              {copied ? "Ã¢Å“â€œ copied!" : installCmd}
             </code>
           </button>
         </div>
