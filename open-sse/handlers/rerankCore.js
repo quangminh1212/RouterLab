@@ -1,6 +1,28 @@
 import { createErrorResult } from "../utils/error.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { AI_PROVIDERS } from "../../src/shared/constants/providers.js";
+import { NextResponse } from "next/server";
+
+const FALLBACK_RERANK_CONFIGS = {
+  cohere: {
+    baseUrl: "https://api.cohere.com/v2/rerank",
+    authType: "apikey",
+    authHeader: "bearer",
+    format: "cohere",
+  },
+  "jina-ai": {
+    baseUrl: "https://api.jina.ai/v1/rerank",
+    authType: "apikey",
+    authHeader: "bearer",
+    format: "jina",
+  },
+  "voyage-ai": {
+    baseUrl: "https://api.voyageai.com/v1/rerank",
+    authType: "apikey",
+    authHeader: "bearer",
+    format: "voyage",
+  },
+};
 
 /**
  * Build auth headers from rerankConfig + credentials
@@ -115,7 +137,7 @@ export async function handleRerankCore({ provider, model, query, documents, cred
     return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Missing required fields: query, documents");
   }
   
-  const cfg = AI_PROVIDERS[provider]?.rerankConfig;
+  const cfg = AI_PROVIDERS[provider]?.rerankConfig || FALLBACK_RERANK_CONFIGS[provider];
   if (!cfg) {
     return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Provider '${provider}' does not support rerank`);
   }
@@ -145,7 +167,7 @@ export async function handleRerankCore({ provider, model, query, documents, cred
     
     return {
       success: true,
-      response: new Response(JSON.stringify(result), {
+      response: NextResponse.json(result, {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",

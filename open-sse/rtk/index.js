@@ -4,14 +4,25 @@ import { RAW_CAP, MIN_COMPRESS_SIZE } from "./constants.js";
 import { autoDetectFilter } from "./autodetect.js";
 import { safeApply } from "./applyFilter.js";
 
+let rtkEnabled = false;
+
+export function setRtkEnabled(enabled) {
+  rtkEnabled = Boolean(enabled);
+}
+
+export function isRtkEnabled() {
+  return rtkEnabled;
+}
+
 // Compress tool_result content in-place. Returns stats or null if disabled/failed.
 export function compressMessages(body, enabled) {
-  if (!enabled) return null;
+  const effectiveEnabled = typeof enabled === "boolean" ? enabled : rtkEnabled;
+  if (!effectiveEnabled) return null;
   if (!body) return null;
 
   // Kiro format: conversationState.history + conversationState.currentMessage
   if (body.conversationState) {
-    return compressKiroFormat(body, enabled);
+    return compressKiroFormat(body, effectiveEnabled);
   }
 
   // Support both OpenAI/Claude "messages" and OpenAI Responses "input"

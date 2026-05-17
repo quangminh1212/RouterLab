@@ -1,6 +1,22 @@
 import { createErrorResult } from "../utils/error.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { AI_PROVIDERS } from "../../src/shared/constants/providers.js";
+import { NextResponse } from "next/server";
+
+const FALLBACK_MODERATION_CONFIGS = {
+  openai: {
+    baseUrl: "https://api.openai.com/v1/moderations",
+    authType: "apikey",
+    authHeader: "bearer",
+    format: "openai",
+  },
+  azure: {
+    baseUrl: "azure",
+    authType: "apikey",
+    authHeader: "api-key",
+    format: "azure",
+  },
+};
 
 /**
  * Build auth headers from moderationConfig + credentials
@@ -79,7 +95,7 @@ export async function handleModerationCore({ provider, model, input, credentials
     return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Missing required field: input");
   }
   
-  const cfg = AI_PROVIDERS[provider]?.moderationConfig;
+  const cfg = AI_PROVIDERS[provider]?.moderationConfig || FALLBACK_MODERATION_CONFIGS[provider];
   if (!cfg) {
     return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Provider '${provider}' does not support moderation`);
   }
@@ -106,7 +122,7 @@ export async function handleModerationCore({ provider, model, input, credentials
     
     return {
       success: true,
-      response: new Response(JSON.stringify(result), {
+      response: NextResponse.json(result, {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
