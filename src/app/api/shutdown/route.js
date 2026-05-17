@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { killAppProcesses } from "@/lib/appUpdater";
 
 export async function POST() {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ success: false, message: "Not allowed in production" }, { status: 403 });
   }
 
-  const secret = process.env.SHUTDOWN_SECRET;
-  const authorization = headers().get("authorization");
-
-  if (!secret || authorization !== `Bearer ${secret}`) {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    await killAppProcesses();
+  } catch {}
 
   const response = NextResponse.json({ success: true, message: "Shutting down..." });
 
@@ -21,4 +18,3 @@ export async function POST() {
 
   return response;
 }
-

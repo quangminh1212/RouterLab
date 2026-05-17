@@ -3,9 +3,37 @@ import { getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
-import { openaiToCommandCode } from "open-sse/translator/request/openai-to-commandcode.js";
 import { PROVIDER_ENDPOINTS } from "@/shared/constants/config";
-import { normalizeProviderId } from "@/lib/providerNormalization";
+
+const PROVIDER_ALIAS_MAP = {
+  vercel: "vercel-ai-gateway",
+  "vercel-ai-gateway": "vercel-ai-gateway",
+  ds: "deepseek",
+  cmc: "commandcode",
+  commandcode: "commandcode",
+  dg: "deepgram",
+  ark: "volcengine-ark",
+  "volcengine-ark": "volcengine-ark",
+  mimo: "xiaomi-mimo",
+  "xiaomi-mimo": "xiaomi-mimo",
+  cf: "cloudflare-ai",
+  "cloudflare-ai": "cloudflare-ai",
+};
+
+function normalizeProviderId(provider) {
+  const normalized = String(provider || "").trim().toLowerCase();
+  return PROVIDER_ALIAS_MAP[normalized] || normalized;
+}
+
+function buildCommandCodeValidationPayload(model) {
+  return {
+    model,
+    prompt: "ping",
+    max_tokens: 1,
+    stream: false,
+    messages: [{ role: "user", content: "ping" }],
+  };
+}
 
 // Probe a webSearch/webFetch provider using its searchConfig/fetchConfig.
 // Returns true if API key is accepted (status !== 401 && !== 403).
@@ -414,11 +442,7 @@ export async function POST(request) {
         case "commandcode": {
           const cfg = PROVIDERS.commandcode;
           const model = getDefaultModel("commandcode");
-          const payload = openaiToCommandCode(model, {
-            messages: [{ role: "user", content: "ping" }],
-            max_tokens: 1,
-            stream: false,
-          }, false);
+          const payload = buildCommandCodeValidationPayload(model);
           const res = await fetch(cfg.baseUrl, {
             method: "POST",
             headers: {
