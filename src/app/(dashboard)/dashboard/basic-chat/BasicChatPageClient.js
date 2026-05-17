@@ -758,6 +758,7 @@ export default function BasicChatPageClient() {
           Accept: "text/event-stream",
         },
         body: JSON.stringify({
+          sessionId,
           model: model.requestModel || model.id,
           messages: requestMessages,
           stream: true,

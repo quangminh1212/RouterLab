@@ -51,6 +51,8 @@ const DEFAULT_SETTINGS = {
   comboStrategy: "fallback",
   comboStrategies: {},
   comboStickyRoundRobinLimit: 1,
+  contextRelayEnabled: true,
+  contextRelayMaxMessages: 16,
   requireApiKey: false,
   requireLogin: true,
   tunnelDashboardAccess: true,
@@ -370,6 +372,7 @@ function cloneDefaultData() {
     providerConnections: [],
     providerNodes: [],
     proxyPools: [],
+    contextHandoffs: [],
     modelAliases: {},
     mitmAlias: {},
     combos: [],
@@ -1746,6 +1749,57 @@ export async function getSettings() {
   } finally {
     settingsCachePromise = null;
   }
+}
+
+export async function getContextHandoff(sessionId, comboName = "") {
+  if (!sessionId) return null;
+  const db = await getDb();
+  const handoffs = Array.isArray(db.data.contextHandoffs) ? db.data.contextHandoffs : [];
+  const now = Date.now();
+  const record = handoffs.find((item) => item.sessionId === sessionId && (item.comboName || "") === (comboName || ""));
+  if (!record) return null;
+  if (record.expiresAt && new Date(record.expiresAt).getTime() <= now) {
+    db.data.contextHandoffs = handoffs.filter((item) => item !== record);
+    await safeWrite(db);
+    return null;
+  }
+  return record;
+}
+
+export async function upsertContextHandoff(payload) {
+  if (!payload?.sessionId) return null;
+  const db = await getDb();
+  if (!Array.isArray(db.data.contextHandoffs)) db.data.contextHandoffs = [];
+  const comboName = payload.comboName || "";
+  const next = {
+    sessionId: payload.sessionId,
+    comboName,
+    fromAccount: payload.fromAccount || "",
+    provider: payload.provider || "",
+    model: payload.model || "",
+    summary: payload.summary || "",
+    keyDecisions: Array.isArray(payload.keyDecisions) ? payload.keyDecisions : [],
+    taskProgress: payload.taskProgress || "",
+    activeEntities: Array.isArray(payload.activeEntities) ? payload.activeEntities : [],
+    createdAt: payload.createdAt || new Date().toISOString(),
+    expiresAt: payload.expiresAt || new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+  };
+  const index = db.data.contextHandoffs.findIndex((item) => item.sessionId === next.sessionId && (item.comboName || "") === comboName);
+  if (index >= 0) db.data.contextHandoffs[index] = next;
+  else db.data.contextHandoffs.push(next);
+  await safeWrite(db);
+  return next;
+}
+
+export async function deleteContextHandoff(sessionId, comboName = "") {
+  if (!sessionId) return false;
+  const db = await getDb();
+  const handoffs = Array.isArray(db.data.contextHandoffs) ? db.data.contextHandoffs : [];
+  const next = handoffs.filter((item) => !(item.sessionId === sessionId && (item.comboName || "") === (comboName || "")));
+  if (next.length === handoffs.length) return false;
+  db.data.contextHandoffs = next;
+  await safeWrite(db);
+  return true;
 }
 
 export async function updateSettings(updates) {

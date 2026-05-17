@@ -13,6 +13,14 @@ import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
 import { handleComboChat } from "open-sse/services/combo.js";
+import {
+  buildHandoffPayload,
+  clearContextHandoff,
+  extractSessionId,
+  injectHandoffIntoBody,
+  loadContextHandoff,
+  storeContextHandoff,
+} from "open-sse/services/contextHandoff.js";
 import { handleBypassRequest } from "open-sse/utils/bypassHandler.js";
 import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
 import { INTERNAL_REQUEST_HEADER } from "open-sse/config/appConstants.js";
@@ -244,7 +252,7 @@ export async function handleChat(request, clientRawRequest = null) {
     return handleComboChat({
       body,
       models: comboModels,
-      handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+      handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { comboName: modelStr, openClawTunnelCompat }),
       log,
       comboName: modelStr,
       comboStrategy,
@@ -285,7 +293,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       return handleComboChat({
         body,
         models: comboModels,
-        handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+        handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { ...options, comboName }),
         log,
         comboName,
         comboStrategy,
@@ -307,6 +315,8 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
 
   // Extract userAgent from request
   const userAgent = request?.headers?.get("user-agent") || "";
+  const sessionId = extractSessionId(body);
+  const contextRelayKey = options.comboName || `${provider}/${model}`;
 
   // Try with available accounts (fallback on errors)
   const excludeConnectionIds = new Set();
@@ -350,8 +360,18 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     // Use shared chatCore
     const chatSettings = await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
-    const runChatCore = async (requestBody) => handleChatCore({
-      body: { ...requestBody, model: `${provider}/${model}` },
+    let requestBody = options.openClawTunnelCompat ? buildOpenClawCompatBody(body) : body;
+
+    if (chatSettings.contextRelayEnabled && sessionId && contextRelayKey) {
+      const handoff = await loadContextHandoff(sessionId, contextRelayKey);
+      if (handoff?.summary && handoff.fromAccount && handoff.fromAccount !== credentials.connectionId) {
+        requestBody = injectHandoffIntoBody(requestBody, handoff);
+        log.info("CHAT", `Injected context handoff for session ${sessionId} on ${contextRelayKey}`);
+      }
+    }
+
+    const runChatCore = async (nextRequestBody) => handleChatCore({
+      body: { ...nextRequestBody, model: `${provider}/${model}` },
       modelInfo: { provider, model },
       credentials: refreshedCredentials,
       log,
@@ -365,7 +385,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       cavemanLevel: chatSettings.cavemanLevel || "full",
       providerThinking,
       // Detect source format by endpoint + body
-      sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, requestBody) : null,
+      sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, nextRequestBody) : null,
       onCredentialsRefreshed: async (newCreds) => {
         await updateProviderCredentials(credentials.connectionId, {
           accessToken: newCreds.accessToken,
@@ -376,14 +396,16 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       },
       onRequestSuccess: async () => {
         await clearAccountError(credentials.connectionId, credentials, model);
+        if (sessionId && contextRelayKey) {
+          await clearContextHandoff(sessionId, contextRelayKey);
+        }
       }
     });
 
-    const baseBody = options.openClawTunnelCompat ? buildOpenClawCompatBody(body) : body;
-    let result = await runChatCore(baseBody);
+    let result = await runChatCore(requestBody);
 
     if (!result.success && [HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.FORBIDDEN, HTTP_STATUS.BAD_GATEWAY].includes(result.status)) {
-      const mergedBody = mergeSystemIntoFirstUserMessage(baseBody);
+      const mergedBody = mergeSystemIntoFirstUserMessage(requestBody);
       if (mergedBody) {
         log.warn("CHAT", `[${provider}/${model}] retrying with merged system prompt after upstream ${result.status}`);
         result = await runChatCore(mergedBody);
@@ -416,6 +438,21 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);
 
     if (shouldFallback) {
+      if (chatSettings.contextRelayEnabled && sessionId && contextRelayKey) {
+        const handoffPayload = buildHandoffPayload({
+          body: requestBody,
+          sessionId,
+          comboName: contextRelayKey,
+          fromAccount: credentials.connectionId,
+          provider,
+          model,
+          maxMessages: Number(chatSettings.contextRelayMaxMessages) || 16,
+        });
+        if (handoffPayload) {
+          await storeContextHandoff(handoffPayload);
+          log.info("CHAT", `Stored context handoff for session ${sessionId} on ${contextRelayKey}`);
+        }
+      }
       log.warn("AUTH", `Account ${credentials.connectionName} unavailable (${result.status}), trying fallback`);
       excludeConnectionIds.add(credentials.connectionId);
       lastError = result.error;
