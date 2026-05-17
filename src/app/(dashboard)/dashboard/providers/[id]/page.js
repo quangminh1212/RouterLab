@@ -38,6 +38,7 @@ export default function ProviderDetailPage() {
   const [modelsTestError, setModelsTestError] = useState("");
   const [testingModelId, setTestingModelId] = useState(null);
   const [showAddCustomModel, setShowAddCustomModel] = useState(false);
+  const [importingModels, setImportingModels] = useState(false);
   const [selectedConnectionIds, setSelectedConnectionIds] = useState([]);
   const [bulkProxyPoolId, setBulkProxyPoolId] = useState("__none__");
   const [bulkUpdatingProxy, setBulkUpdatingProxy] = useState(false);
@@ -262,6 +263,47 @@ export default function ProviderDetailPage() {
       }
     } catch (error) {
       console.log("Error setting alias:", error);
+    }
+  };
+
+  const generateImportedModelAlias = (modelId) => {
+    const simpleAlias = String(modelId || "").split("/").pop();
+    const fullModel = `${providerStorageAlias}/${modelId}`;
+    if (!modelId || Object.values(modelAliases).includes(fullModel)) return null;
+    if (simpleAlias && !modelAliases[simpleAlias]) return simpleAlias;
+    const prefixedAlias = `${providerDisplayAlias}-${simpleAlias || modelId}`;
+    if (!modelAliases[prefixedAlias]) return prefixedAlias;
+    return null;
+  };
+
+  const handleImportModels = async () => {
+    if (importingModels) return;
+    const activeConnection = connections.find((conn) => conn.isActive !== false);
+    if (!activeConnection) {
+      alert("Add an active connection before importing models.");
+      return;
+    }
+    setImportingModels(true);
+    try {
+      const res = await fetch(`/api/providers/${activeConnection.id}/models`);
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Failed to import models"); return; }
+      const importedModels = data.models || [];
+      if (importedModels.length === 0) { alert("No models returned from /models."); return; }
+      let importedCount = 0;
+      for (const model of importedModels) {
+        const modelId = model.id || model.name || model.model;
+        const alias = generateImportedModelAlias(modelId);
+        if (!alias) continue;
+        await handleSetAlias(modelId, alias, providerStorageAlias);
+        importedCount += 1;
+      }
+      if (importedCount === 0) alert("No new models were added.");
+    } catch (error) {
+      console.log("Error importing models:", error);
+      alert("Failed to import models.");
+    } finally {
+      setImportingModels(false);
     }
   };
 
@@ -660,6 +702,15 @@ export default function ProviderDetailPage() {
         >
           <span className="material-symbols-outlined text-sm">add</span>
           Add Model
+        </button>
+        <button
+          onClick={handleImportModels}
+          disabled={connections.length === 0 || importingModels}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-black/15 dark:border-white/15 text-xs text-text-muted hover:text-primary hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          title={connections.length === 0 ? "Add a connection first" : "Import from /models endpoint"}
+        >
+          <span className="material-symbols-outlined text-sm">download</span>
+          {importingModels ? "Importing..." : "Import from /models"}
         </button>
 
         {/* Suggested models from provider API — show only models not yet added */}
