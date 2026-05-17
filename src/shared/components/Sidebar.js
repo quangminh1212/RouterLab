@@ -12,11 +12,12 @@ import { ConfirmModal } from "./Modal";
 import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 
 // const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "webSearch", "webFetch", "video", "music"];
-const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts"];
+const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts", "stt"];
 const MEDIA_NAV_ITEMS = [
   { id: "embedding", label: "Embedding", icon: "data_array" },
   { id: "image", label: "Text to Image", icon: "brush" },
   { id: "tts", label: "Text To Speech", icon: "record_voice_over" },
+  { id: "stt", label: "Speech To Text", icon: "mic" },
 ];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
@@ -38,15 +39,18 @@ const debugItems = [
 
 const systemItems = [
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
+  { href: "/dashboard/settings/pricing", label: "Pricing", icon: "payments" },
 ];
 
 const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
+  { href: "/dashboard/ai-integrations", label: "AI Integrations", icon: "hub" },
   { href: "/dashboard/mcp-servers", label: "MCP", icon: "dns" },
   { href: "/dashboard/ai-memory", label: "Memory", icon: "memory" },
   { href: "/dashboard/ai-plugins", label: "Plugins", icon: "extension" },
   { href: "/dashboard/ai-skills", label: "Skills", icon: "psychology" },
+  { href: "/dashboard/skills", label: "Skill Library", icon: "menu_book" },
   { href: "/dashboard/rules", label: "Rules", icon: "gavel" },
   { href: "/dashboard/token-saver", label: "Token Saver", icon: "token" },
 ];
@@ -54,10 +58,8 @@ const POWER_UP_ITEMS = [
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [mediaOpen, setMediaOpen] = useState(false);
-  const [powerUpOpen, setPowerUpOpen] = useState(() =>
-    POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href))
-  );
+  const [mediaOpen, setMediaOpen] = useState(true);
+  const [powerUpOpen, setPowerUpOpen] = useState(true);
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
