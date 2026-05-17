@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { Button, Card, CardSkeleton } from "@/shared/components";
+import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import { CardSkeleton } from "@/shared/components/Loading";
 
 const EMPTY_AI_INTEGRATIONS = {
   enabled: false,
@@ -218,4 +220,3 @@ export default function AiSourcesPageClient({ group }) {
 AiSourcesPageClient.propTypes = {
   group: PropTypes.oneOf(["mcpServers", "plugins"]).isRequired,
 };
-
