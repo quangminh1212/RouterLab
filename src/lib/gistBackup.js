@@ -66,7 +66,7 @@ function decryptLegacyPayload(envelope, passphrase) {
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  return JSON.parse(decrypted.toString("utf8"));
+  return safeJsonParse(decrypted.toString("utf8"));
 }
 
 function decryptLegacyPayloadWithFallback(envelope, passphrases) {
@@ -103,7 +103,7 @@ async function githubRequest(token, url, options = {}) {
   let data = {};
   if (rawText) {
     try {
-      data = JSON.parse(rawText);
+      data = safeJsonParse(rawText);
     } catch {
       data = { message: rawText.slice(0, 500) };
     }
@@ -180,10 +180,21 @@ function isValidBackupPayload(payload) {
   return isBackupBundle(payload) || isUsageBackupPayload(payload);
 }
 
+function stripBomAndWhitespace(text) {
+  if (typeof text !== "string") return text;
+  let s = text;
+  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1);
+  return s.trimStart();
+}
+
+function safeJsonParse(text) {
+  return JSON.parse(stripBomAndWhitespace(text || ""));
+}
+
 function parseGistBackupPayload(content, passphrases) {
   let parsed;
   try {
-    parsed = JSON.parse(content);
+    parsed = safeJsonParse(content);
   } catch {
     throw new Error("Gist backup content is corrupted or incomplete");
   }
@@ -211,7 +222,7 @@ async function verifyBackupGist(token, gist) {
 
   let parsed;
   try {
-    parsed = JSON.parse(content);
+    parsed = safeJsonParse(content);
   } catch {
     throw new Error("Backup file content is not valid JSON after Gist write");
   }
