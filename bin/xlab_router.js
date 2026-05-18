@@ -394,6 +394,7 @@ async function warmupRoutes(baseUrl) {
   const targets = [
     { method: "GET", path: "/login" },
     { method: "GET", path: "/api/settings" },
+    { method: "GET", path: "/api/tunnel/status" },
     { method: "GET", path: "/api/proxy/systems/list" },
     {
       method: "POST",
