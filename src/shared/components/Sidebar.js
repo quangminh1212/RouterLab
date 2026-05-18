@@ -63,7 +63,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   const [collapsed, setCollapsed] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(false);
-  const [sectionsOpen, setSectionsOpen] = useState({ core: false, ai: false, media: false, system: false });
+  
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
@@ -88,10 +88,6 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
       window.localStorage.setItem("xlabrouter-sidebar-collapsed", String(nextValue));
       return nextValue;
     });
-  };
-
-  const toggleSection = (key) => {
-    setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   useEffect(() => {
@@ -190,25 +186,6 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
       {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
     </Link>
   );
-  const renderSectionTitle = (label) => !collapsed && (
-    <p className="px-4 pt-4 pb-2 text-xs font-semibold text-primary/55 uppercase tracking-wider">
-      {label}
-    </p>
-  );
-  const renderCollapsibleHeader = (key, label) => !collapsed && (
-    <button
-      type="button"
-      onClick={() => toggleSection(key)}
-      className="w-full flex items-center justify-between px-4 pt-4 pb-2 text-xs font-semibold text-primary/55 uppercase tracking-wider hover:text-primary transition-colors"
-      aria-expanded={sectionsOpen[key]}
-    >
-      <span>{label}</span>
-      <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: sectionsOpen[key] ? "rotate(0deg)" : "rotate(-90deg)" }}>
-        expand_more
-      </span>
-    </button>
-  );
-
   const handleUpdate = async () => {
     setIsUpdating(true);
     setShowUpdateModal(false);
@@ -335,17 +312,13 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
         {/* Navigation */}
         <nav className={cn("flex-1 min-h-0 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
-          {renderCollapsibleHeader("core", "CORE")}
-          {(collapsed || sectionsOpen.core) && coreItems.map(renderNavItem)}
-          {renderCollapsibleHeader("ai", "AI")}
-          {(collapsed || sectionsOpen.ai) && aiItems.map(renderNavItem)}
+          {coreItems.map(renderNavItem)}
+          {aiItems.map(renderNavItem)}
 
           {/* Media + System sections */}
           <div className="mt-2">
-            {renderCollapsibleHeader("media", "MEDIA")}
-
             {/* Media Providers accordion */}
-            {!collapsed && sectionsOpen.media && (
+            {!collapsed && (
               <>
             <button
               onClick={() => setMediaOpen((v) => !v)}
@@ -404,7 +377,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             )}
 
             {/* Power Up accordion */}
-            {!collapsed && sectionsOpen.media && (
+            {!collapsed && (
               <>
             <button
               onClick={() => setPowerUpOpen((v) => !v)}
@@ -446,11 +419,10 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               </>
             )}
 
-            {renderCollapsibleHeader("system", "SYSTEM")}
-            {(collapsed || sectionsOpen.system) && systemItems.map(renderNavItem)}
+            {systemItems.map(renderNavItem)}
 
             {/* Debug items (inside System section, before Settings) */}
-            {(collapsed || sectionsOpen.system) && debugItems.map((item) => {
+            {debugItems.map((item) => {
               const show = item.href !== "/dashboard/translator" || enableTranslator;
               return show ? (
                 <Link
