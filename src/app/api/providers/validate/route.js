@@ -132,8 +132,12 @@ export async function POST(request) {
           return NextResponse.json({ error: "OpenAI Compatible node not found" }, { status: 404 });
         }
         const modelsUrl = `${node.baseUrl?.replace(/\/$/, "")}/models`;
+        const headers = { "Authorization": `Bearer ${apiKey}` };
+        if ((node.baseUrl || "").includes("cungcapai")) {
+          headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+        }
         const res = await fetch(modelsUrl, {
-          headers: { "Authorization": `Bearer ${apiKey}` },
+          headers,
         });
         isValid = res.ok;
         return NextResponse.json({
