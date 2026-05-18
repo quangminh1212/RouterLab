@@ -30,13 +30,6 @@ const coreItems = [
   { href: "/dashboard/quota", label: "Hạn mức", icon: "data_usage" },
 ];
 
-const aiItems = [
-  { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "compress" },
-  { href: "/dashboard/rules", label: "Luật AI", icon: "gavel" },
-  { href: "/dashboard/ai-integrations", label: "Nguồn AI", icon: "hub" },
-  { href: "/dashboard/skills", label: "Thư viện skill", icon: "menu_book" },
-];
-
 const debugItems = [
   { href: "/dashboard/console-log", label: "Nhật ký Console", icon: "terminal" },
   { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate" },
@@ -53,6 +46,10 @@ const TOOLS_ITEMS = [
 ];
 
 const POWER_UP_ITEMS = [
+  { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "compress" },
+  { href: "/dashboard/rules", label: "Luật AI", icon: "gavel" },
+  { href: "/dashboard/ai-integrations", label: "Nguồn AI", icon: "hub" },
+  { href: "/dashboard/skills", label: "Thư viện skill", icon: "menu_book" },
   { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
   { href: "/dashboard/ai-memory", label: "Bộ nhớ AI", icon: "memory" },
   { href: "/dashboard/ai-plugins", label: "Plugin", icon: "extension" },
@@ -315,7 +312,6 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         {/* Navigation */}
         <nav className={cn("flex-1 min-h-0 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
           {coreItems.map(renderNavItem)}
-          {aiItems.map(renderNavItem)}
 
           {/* Media + System sections */}
           <div className="mt-2">
