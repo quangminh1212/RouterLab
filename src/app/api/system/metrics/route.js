@@ -1,4 +1,6 @@
 import os from "os";
+import fs from "fs";
+import { execSync } from "child_process";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,43 @@ function getProcessCpuPercent() {
   return Math.max(0, Math.min(100, usage));
 }
 
+function getDiskUsage() {
+  try {
+    if (process.platform === "win32") {
+      const drive = (process.cwd().slice(0, 2) || "C:").toUpperCase();
+      const out = execSync(`wmic logicaldisk where "DeviceID='${drive}'" get FreeSpace,Size /format:list`, { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
+      const free = Number((out.match(/FreeSpace=(\d+)/) || [])[1] || 0);
+      const size = Number((out.match(/Size=(\d+)/) || [])[1] || 0);
+      if (size > 0) return { totalBytes: size, freeBytes: free, usedBytes: size - free };
+    } else {
+      const stat = fs.statfsSync ? fs.statfsSync(process.cwd()) : null;
+      if (stat) {
+        const total = Number(stat.blocks) * Number(stat.bsize);
+        const free = Number(stat.bfree) * Number(stat.bsize);
+        return { totalBytes: total, freeBytes: free, usedBytes: total - free };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+let _diskCache = { ts: 0, value: null };
+const DISK_CACHE_TTL_MS = 30000;
+function getCachedDiskUsage() {
+  const now = Date.now();
+  if (_diskCache.value && now - _diskCache.ts < DISK_CACHE_TTL_MS) return _diskCache.value;
+  const value = getDiskUsage();
+  _diskCache = { ts: now, value };
+  return value;
+}
+
 function buildMetricsPayload() {
   const totalMem = os.totalmem();
   const processMemory = process.memoryUsage();
   const appUsedMem = processMemory.rss || processMemory.heapTotal || processMemory.heapUsed || 0;
   const memoryPercent = totalMem > 0 ? (appUsedMem / totalMem) * 100 : 0;
 
+  const disk = getCachedDiskUsage();
   return {
     cpuPercent: getProcessCpuPercent(),
     memoryPercent,
@@ -46,6 +79,9 @@ function buildMetricsPayload() {
     processMemoryBytes: appUsedMem,
     heapUsedBytes: processMemory.heapUsed || 0,
     heapTotalBytes: processMemory.heapTotal || 0,
+    diskUsedBytes: disk?.usedBytes ?? null,
+    diskFreeBytes: disk?.freeBytes ?? null,
+    diskTotalBytes: disk?.totalBytes ?? null,
     sampledAt: Date.now(),
   };
 }
