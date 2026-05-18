@@ -258,7 +258,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   return (
     <>
       <aside className={cn(
-        "flex flex-col overflow-hidden border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-all duration-300 min-h-full",
+        "flex flex-col overflow-hidden border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-all duration-300 h-full",
         collapsed ? "w-16" : "w-72"
       )}>
         {/* Traffic lights */}
@@ -333,7 +333,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         </div>
 
         {/* Navigation */}
-        <nav className={cn("flex-1 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
+        <nav className={cn("flex-1 min-h-0 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
           {renderCollapsibleHeader("core", "CORE")}
           {(collapsed || sectionsOpen.core) && coreItems.map(renderNavItem)}
           {renderCollapsibleHeader("ai", "AI")}
