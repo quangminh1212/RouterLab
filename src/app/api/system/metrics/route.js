@@ -76,7 +76,9 @@ function getCachedDiskUsage() {
 function buildMetricsPayload() {
   const totalMem = os.totalmem();
   const processMemory = process.memoryUsage();
-  const appUsedMem = processMemory.rss || processMemory.heapTotal || processMemory.heapUsed || 0;
+  const heapUsed = processMemory.heapUsed || 0;
+  const rssUsed = processMemory.rss || 0;
+  const appUsedMem = heapUsed || processMemory.heapTotal || rssUsed || 0;
   const memoryPercent = totalMem > 0 ? (appUsedMem / totalMem) * 100 : 0;
 
   const disk = getCachedDiskUsage();
@@ -85,8 +87,8 @@ function buildMetricsPayload() {
     memoryPercent,
     usedMemoryBytes: appUsedMem,
     totalMemoryBytes: totalMem,
-    processMemoryBytes: appUsedMem,
-    heapUsedBytes: processMemory.heapUsed || 0,
+    processMemoryBytes: rssUsed,
+    heapUsedBytes: heapUsed,
     heapTotalBytes: processMemory.heapTotal || 0,
     diskUsedBytes: disk?.usedBytes ?? null,
     sampledAt: Date.now(),

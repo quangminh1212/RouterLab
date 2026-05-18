@@ -398,7 +398,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
                 {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
               </span>
             </span>
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/25 dark:bg-sky-400/10" title={`XLab Router: ${formatMemoryGb(systemMetrics.usedMemoryBytes || 0)} / Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/25 dark:bg-sky-400/10" title={`Heap: ${formatMemoryGb(systemMetrics.heapUsedBytes || 0)} | RSS: ${formatMemoryGb(systemMetrics.processMemoryBytes || 0)} | Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
               <span className="material-symbols-outlined text-[14px] leading-none">memory</span>
               <span className="text-[9px] uppercase tracking-[0.12em] text-sky-700/70 dark:text-sky-200/70">RAM</span>
               <span className="tabular-nums text-text-main dark:text-white">
