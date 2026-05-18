@@ -135,6 +135,11 @@ export class DefaultExecutor extends BaseExecutor {
         }
     }
 
+    // Add machine-id for CungCapAI (both direct and openai-compatible)
+    const _cungcapaiBase = credentials?.providerSpecificData?.baseUrl || this.config?.baseUrl || "";
+    if (_cungcapaiBase.includes("cungcapai") || this.provider === "cungcapai") {
+      headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+    }
     // Strip first-party Claude Code identity headers for non-Anthropic anthropic-compatible upstreams
     if (this.provider?.startsWith?.("anthropic-compatible-")) {
       const baseUrl = credentials?.providerSpecificData?.baseUrl || "";
