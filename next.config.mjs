@@ -1,4 +1,4 @@
-﻿import path from "node:path";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const hideDevIndicators = process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR === "1";
@@ -44,9 +44,31 @@ const nextConfig = {
         runtimeChunk: 'single',
         splitChunks: {
           chunks: 'all',
+          maxInitialRequests: 25,
+          minSize: 20000,
+          maxSize: 244000,
           cacheGroups: {
             default: false,
             vendors: false,
+            framework: {
+              name: 'framework',
+              chunks: 'all',
+              test: /[/\\]node_modules[/\\](react|react-dom|scheduler|next)[/\\]/,
+              priority: 50,
+              enforce: true,
+            },
+            lib: {
+              test(module) {
+                return module.size() > 160000 && /node_modules/.test(module.identifier());
+              },
+              name(module) {
+                const match = module.identifier().match(/[/\\]node_modules[/\\](?:\.pnpm[/\\])?(?:@[^/\\]+[/\\])?([^/\\]+)/);
+                return match ? `lib-${match[1].replace(/[^a-zA-Z0-9_-]/g, '_')}` : 'lib';
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
             vendor: {
               name: 'vendor',
               chunks: 'all',
@@ -55,19 +77,19 @@ const nextConfig = {
             },
             monaco: {
               name: 'monaco',
-              test: /[\\/]node_modules[\\/](monaco-editor|@monaco-editor)[\\/]/,
+              test: /[/\\]node_modules[/\\](monaco-editor|@monaco-editor)[/\\]/,
               chunks: 'async',
               priority: 40,
             },
             recharts: {
               name: 'recharts',
-              test: /[\\/]node_modules[\\/](recharts)[\\/]/,
+              test: /[/\\]node_modules[/\\](recharts)[/\\]/,
               chunks: 'async',
               priority: 35,
             },
             xyflow: {
               name: 'xyflow',
-              test: /[\\/]node_modules[\\/](@xyflow)[\\/]/,
+              test: /[/\\]node_modules[/\\](@xyflow)[/\\]/,
               chunks: 'async',
               priority: 35,
             },
@@ -78,6 +100,7 @@ const nextConfig = {
               priority: 10,
               reuseExistingChunk: true,
               enforce: true,
+              maxSize: 200000,
             },
           },
         },
