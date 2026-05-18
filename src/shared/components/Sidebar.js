@@ -63,7 +63,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   const [collapsed, setCollapsed] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(false);
-  const [sectionsOpen, setSectionsOpen] = useState({ core: false, ai: false, system: false });
+  const [sectionsOpen, setSectionsOpen] = useState({ core: false, ai: false, media: false, system: false });
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
@@ -342,10 +342,10 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
           {/* Media + System sections */}
           <div className="mt-2">
-            {renderSectionTitle("MEDIA")}
+            {renderCollapsibleHeader("media", "MEDIA")}
 
             {/* Media Providers accordion */}
-            {!collapsed && (
+            {!collapsed && sectionsOpen.media && (
               <>
             <button
               onClick={() => setMediaOpen((v) => !v)}
@@ -404,7 +404,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             )}
 
             {/* Power Up accordion */}
-            {!collapsed && (
+            {!collapsed && sectionsOpen.media && (
               <>
             <button
               onClick={() => setPowerUpOpen((v) => !v)}
