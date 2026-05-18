@@ -364,16 +364,21 @@ const _shutdownHandler = async () => {
 function ensureShutdownHandler() {
   if (isCloud) return;
 
-  // Remove any previously registered listeners from this module (hot-reload safety)
-  process.off("beforeExit", _shutdownHandler);
-  process.off("SIGINT", _shutdownHandler);
-  process.off("SIGTERM", _shutdownHandler);
-  process.off("exit", _shutdownHandler);
+  // Use globalThis flag to avoid re-registering across hot-reload
+  const g = globalThis;
+  g.__xlabRequestDetailsShutdownHandler = _shutdownHandler;
+  if (g.__xlabRequestDetailsShutdownRegistered) return;
+  g.__xlabRequestDetailsShutdownRegistered = true;
 
-  process.on("beforeExit", _shutdownHandler);
-  process.on("SIGINT", _shutdownHandler);
-  process.on("SIGTERM", _shutdownHandler);
-  process.on("exit", _shutdownHandler);
+  const handler = async () => {
+    const cur = globalThis.__xlabRequestDetailsShutdownHandler;
+    if (cur) await cur();
+  };
+
+  process.on("beforeExit", handler);
+  process.on("SIGINT", handler);
+  process.on("SIGTERM", handler);
+  process.on("exit", handler);
 }
 
 ensureShutdownHandler();

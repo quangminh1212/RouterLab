@@ -72,16 +72,11 @@ function UsageChart({ period = "7d" }) {
       try {
         let requestPromise = chartRequestCache.get(period);
         if (!requestPromise) {
-          requestPromise = fetch(`/api/usage/chart?period=${period}`);
+          requestPromise = fetch(`/api/usage/chart?period=${period}`).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
           chartRequestCache.set(period, requestPromise);
         }
 
-        const res = await requestPromise;
-        if (!res.ok) {
-          return;
-        }
-
-        const json = await res.json();
+        const json = await requestPromise;
         chartDataCache.set(period, json);
         if (!disposed && requestIdRef.current === requestId) {
           setData(json);
