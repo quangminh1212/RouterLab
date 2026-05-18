@@ -10,7 +10,7 @@ import Modal from "@/shared/components/Modal";
 import { CardSkeleton } from "@/shared/components/Loading";
 import Toggle from "@/shared/components/Toggle";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { logger } from "@/lib/logger";
+const logger = { dashboardPerf: { traceId: (p) => `${p}-${Date.now().toString(36)}`, info: () => {}, warn: () => {}, error: () => {} } };
 
 const EndpointApiKeysCard = dynamic(() => import("./components/EndpointApiKeysCard"), {
   ssr: true,
