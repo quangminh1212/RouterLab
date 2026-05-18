@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+﻿import crypto from 'node:crypto';
 import os from 'node:os';
 import { machineIdSync } from 'node-machine-id';
 
@@ -30,6 +30,8 @@ function getStableFallbackRawMachineId() {
   return cachedRawMachineId;
 }
 
+const MACHINE_ID_OVERRIDE = process.env.XLABROUTER_MACHINE_ID || '';
+
 function getRawMachineIdFast() {
   ensureWindowsEnv();
   try {
@@ -58,6 +60,9 @@ export async function getConsistentMachineId(salt = null) {
   }
 
   const computePromise = Promise.resolve().then(() => {
+    if (MACHINE_ID_OVERRIDE) {
+      return MACHINE_ID_OVERRIDE;
+    }
     const saltValue = salt || process.env.MACHINE_ID_SALT || 'endpoint-proxy-salt';
     const rawMachineId = getRawMachineIdFast();
     const hashedMachineId = crypto
@@ -90,3 +95,4 @@ export async function getRawMachineId() {
 export function isBrowser() {
   return typeof window !== 'undefined';
 }
+
