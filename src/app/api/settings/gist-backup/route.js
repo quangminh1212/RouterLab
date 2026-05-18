@@ -112,7 +112,7 @@ async function getGitHubCliStatus() {
     windowsHide: true,
     maxBuffer: 64 * 1024,
   });
-  const parsed = JSON.parse(String(stdout || "{}").trim() || "{}");
+  const parsed = JSON.parse(String(stdout || "{}").replace(/^\uFEFF/, "").trimStart() || "{}");
   const entry = parsed?.hosts?.["github.com"]?.find?.((item) => item?.active) || parsed?.hosts?.["github.com"]?.[0] || null;
   return {
     login: typeof entry?.login === "string" ? entry.login.trim() : "",

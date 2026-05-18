@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { Card, Button, Toggle, Input } from "@/shared/components";
@@ -345,7 +345,8 @@ export default function ProfilePage() {
     setDbStatus({ type: "", message: "" });
     try {
       const raw = await file.text();
-      const payload = JSON.parse(raw);
+      const sanitizedRaw = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1).trimStart() : raw.trimStart();
+      const payload = JSON.parse(sanitizedRaw);
       const res = await fetch("/api/settings/database", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
