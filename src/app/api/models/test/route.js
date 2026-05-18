@@ -28,7 +28,7 @@ export async function POST(request) {
         method: "POST",
         headers,
         body: JSON.stringify({ model, input: "test" }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(45000),
       });
       const latencyMs = Date.now() - start;
       const rawText = await res.text().catch(() => "");
@@ -56,7 +56,7 @@ export async function POST(request) {
         stream: false,
         messages: [{ role: "user", content: "hi" }],
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(45000),
     });
     const latencyMs = Date.now() - start;
 
@@ -98,7 +98,7 @@ export async function POST(request) {
       });
     }
 
-    const hasChoices = Array.isArray(parsed?.choices) && parsed.choices.length > 0;
+    const hasChoices = (Array.isArray(parsed?.choices) && parsed.choices.length > 0) || (Array.isArray(parsed?.output) && parsed.output.length > 0) || parsed?.status === "completed";
     if (!hasChoices) {
       return NextResponse.json({
         ok: false,
