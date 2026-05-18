@@ -80,13 +80,6 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   useEffect(() => {
     const saved = window.localStorage.getItem("xlabrouter-sidebar-collapsed");
     if (saved === "true") setCollapsed(true);
-    try {
-      const savedSections = window.localStorage.getItem("xlabrouter-sidebar-sections");
-      if (savedSections) {
-        const parsed = JSON.parse(savedSections);
-        setSectionsOpen((prev) => ({ ...prev, ...parsed }));
-      }
-    } catch { /* ignore corrupted prefs */ }
   }, []);
 
   const toggleCollapsed = () => {
@@ -98,13 +91,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   };
 
   const toggleSection = (key) => {
-    setSectionsOpen((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try {
-        window.localStorage.setItem("xlabrouter-sidebar-sections", JSON.stringify(next));
-      } catch { /* storage may be unavailable */ }
-      return next;
-    });
+    setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   useEffect(() => {
