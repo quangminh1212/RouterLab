@@ -42,14 +42,15 @@ const debugItems = [
   { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate" },
 ];
 
-const systemItems = [
+const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
+
+const TOOLS_ITEMS = [
   { href: "/dashboard/mitm", label: "MITM", icon: "security" },
   { href: "/dashboard/cli-tools", label: "Công cụ CLI", icon: "terminal" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
   { href: "/dashboard/settings/pricing", label: "Bảng giá", icon: "payments" },
+  { href: "/dashboard/console-log", label: "Nhật ký Console", icon: "terminal" },
 ];
-
-const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
   { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
@@ -62,6 +63,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(false);
   
   const [showShutdownModal, setShowShutdownModal] = useState(false);
@@ -419,37 +421,67 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               </>
             )}
 
-            {systemItems.map(renderNavItem)}
-
-            {/* Debug items (inside System section, before Settings) */}
-            {debugItems.map((item) => {
-              const show = item.href !== "/dashboard/translator" || enableTranslator;
-              return show ? (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={false}
-                  onClick={onClose}
-                  title={item.label}
-                  className={cn(
-                    collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                    isActive(item.href)
-                      ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                      : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-                  )}
-                >
-                  <span
+            {/* Tools accordion */}
+            {!collapsed && (
+              <>
+            <button
+              type="button"
+              onClick={() => setToolsOpen((v) => !v)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
+                TOOLS_ITEMS.some((it) => pathname.startsWith(it.href))
+                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
+                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+              )}
+            >
+              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">build</span>
+              <span className="text-sm font-medium flex-1 text-left">Công cụ</span>
+              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                expand_more
+              </span>
+            </button>
+            {toolsOpen && (
+              <div className="pl-3 space-y-0.5">
+                {TOOLS_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    onClick={onClose}
+                    title={item.label}
                     className={cn(
-                      "material-symbols-outlined text-[18px]",
-                      isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
+                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
+                      pathname.startsWith(item.href)
+                        ? "text-primary"
+                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
                     )}
                   >
-                    {item.icon}
-                  </span>
-                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-                </Link>
-              ) : null;
-            })}
+                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
+                    <span className="text-[13px]">{item.label}</span>
+                  </Link>
+                ))}
+                {debugItems.filter((d) => d.href === "/dashboard/translator" && enableTranslator).map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    onClick={onClose}
+                    title={item.label}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
+                      pathname.startsWith(item.href)
+                        ? "text-primary"
+                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
+                    <span className="text-[13px]">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+              </>
+            )}
 
             {/* Settings */}
             <Link
