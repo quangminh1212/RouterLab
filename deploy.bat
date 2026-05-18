@@ -22,12 +22,6 @@ if not exist "%DEPLOY_PY%" (
     exit /b 1
 )
 
-if "%XLABROUTER_VPS_PASSWORD%"=="" (
-    echo [!] Missing env XLABROUTER_VPS_PASSWORD
-    echo     setx XLABROUTER_VPS_PASSWORD "your_password"  ^&^& open new shell
-    exit /b 1
-)
-
 where npm >nul 2>&1
 if errorlevel 1 (
     echo [!] npm not found in PATH
