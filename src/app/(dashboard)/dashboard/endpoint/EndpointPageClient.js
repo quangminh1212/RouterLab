@@ -974,6 +974,74 @@ export default function APIPageClient() {
     }
   };
 
+  const handleEnableCloudflareWithRetry = async () => {
+    setSelectedTunnelProvider("cloudflare");
+    setTunnelLoading(true);
+    setTunnelStatus(null);
+    setTunnelProgress("Starting Cloudflare tunnel...");
+    const oauthCode = oauthCodeInput.trim();
+    const tryEnable = async () => {
+      const res = await fetch("/api/tunnel/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "cloudflare", oauthCode }),
+      });
+      return { res, data: await res.json().catch(() => ({})) };
+    };
+    const tryForceReset = async () => {
+      setTunnelProgress("Resetting connectors and retrying...");
+      const res = await fetch("/api/tunnel/cloudflare-force-reset", { method: "POST" });
+      return res.ok;
+    };
+    const trySwitchHost = async () => {
+      setTunnelProgress("Switching to this machine and retrying...");
+      const res = await fetch("/api/tunnel/cloudflare-switch-host", { method: "POST" });
+      return res.ok;
+    };
+    try {
+      let { res, data } = await tryEnable();
+      if (res.ok) {
+        const url = data.publicUrl || data.tunnelUrl;
+        if (url) { setCloudflareUrl(url); setCloudflareEnabled(true); setNgrokEnabled(false); }
+        setTunnelStatus({ type: "success", message: "Cloudflare tunnel enabled successfully" });
+        if (url) await pingTunnelHealth(url);
+        return;
+      }
+      const isConflict = res.status === 409 || /lease|conflict|already active/i.test(data.error || "");
+      const isConnectorErr = /connector|connection|already running/i.test(data.error || "");
+      if (isConflict || isConnectorErr) {
+        await tryForceReset();
+        await new Promise((r) => setTimeout(r, 3000));
+        const r2 = await tryEnable();
+        if (r2.res.ok) {
+          const url = r2.data.publicUrl || r2.data.tunnelUrl;
+          if (url) { setCloudflareUrl(url); setCloudflareEnabled(true); setNgrokEnabled(false); }
+          setTunnelStatus({ type: "success", message: "Cloudflare tunnel enabled after reset" });
+          if (url) await pingTunnelHealth(url);
+          return;
+        }
+        await trySwitchHost();
+        await new Promise((r) => setTimeout(r, 3000));
+        const r3 = await tryEnable();
+        if (r3.res.ok) {
+          const url = r3.data.publicUrl || r3.data.tunnelUrl;
+          if (url) { setCloudflareUrl(url); setCloudflareEnabled(true); setNgrokEnabled(false); }
+          setTunnelStatus({ type: "success", message: "Cloudflare tunnel enabled after switch" });
+          if (url) await pingTunnelHealth(url);
+          return;
+        }
+        setTunnelStatus({ type: "error", message: r3.data.error || "Failed to enable Cloudflare tunnel after retries" });
+      } else {
+        setTunnelStatus({ type: "error", message: data.error || "Failed to enable Cloudflare tunnel" });
+      }
+    } catch (err) {
+      setTunnelStatus({ type: "error", message: err.message || "Unexpected error enabling Cloudflare tunnel" });
+    } finally {
+      setTunnelLoading(false);
+      setTunnelProgress("");
+    }
+  };
+
   const handleEnableSecuredTunnel = async (provider) => {
     setSelectedTunnelProvider(provider);
     let enabled = await ensureRequireApiKeyEnabled();
@@ -990,7 +1058,11 @@ export default function APIPageClient() {
         return;
       }
     }
-    handleEnableTunnel(provider);
+    if (provider === "cloudflare") {
+      await handleEnableCloudflareWithRetry();
+    } else {
+      handleEnableTunnel(provider);
+    }
   };
 
   const handleDisableTunnel = async () => {
@@ -1668,7 +1740,7 @@ export default function APIPageClient() {
                 <Button size="sm" icon="sync_alt" onClick={handleSwitchCloudflareToThisMachine} disabled={cloudflareSwitchLoading}>
                   {cloudflareSwitchLoading ? "Switching..." : "Switch Here"}
                 </Button>
-                <Button size="sm" icon="cloud_upload" onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}>Enable</Button>
+                <Button size="sm" icon="cloud_upload" onClick={() => setShowEnableTunnelModal(true)}>Enable</Button>
               </>
             ) : (tunnelStatus?.type === "success" && selectedTunnelProvider === "cloudflare") ? (
               <>
@@ -2327,7 +2399,7 @@ export default function APIPageClient() {
 
           <div className="grid grid-cols-2 gap-2">
             <Button
-              onClick={() => { setSelectedTunnelProvider("cloudflare"); handleEnableTunnel("cloudflare"); }}
+              onClick={() => { setShowEnableTunnelModal(false); handleEnableCloudflareWithRetry(); }}
               fullWidth
               disabled={!oauthCodeInput.trim()}
               className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
