@@ -217,7 +217,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
         <div className="flex flex-col gap-3">
           {allModels.map(({ modelId, fullModel, alias }) => (
             <CompatibleModelRow
-              key={fullModel}
+              key={alias}
               modelId={modelId}
               fullModel={`${providerDisplayAlias}/${modelId}`}
               copied={copied}
