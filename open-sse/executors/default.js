@@ -129,6 +129,9 @@ export class DefaultExecutor extends BaseExecutor {
           Object.assign(headers, buildClineHeaders(credentials.apiKey || credentials.accessToken));
         } else {
           headers["Authorization"] = `Bearer ${credentials.apiKey || credentials.accessToken}`;
+          if ((credentials?.providerSpecificData?.baseUrl || "").includes("cungcapai")) {
+            headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+          }
         }
     }
 
