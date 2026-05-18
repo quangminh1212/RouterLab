@@ -1728,58 +1728,6 @@ export default function APIPageClient() {
                   <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
                 </button>
               </>
-            ) : (tunnelStatus?.type === "error" && selectedTunnelProvider === "cloudflare") ? (
-              <>
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-red-300 dark:border-red-800 bg-red-500/5 text-sm text-red-600 dark:text-red-400">
-                  <span className="material-symbols-outlined text-sm">error</span>
-                  {tunnelStatus.message}
-                </div>
-                <Button size="sm" icon="restart_alt" onClick={handleForceResetCloudflare} disabled={cloudflareResetLoading}>
-                  {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
-                </Button>
-                <Button size="sm" icon="sync_alt" onClick={handleSwitchCloudflareToThisMachine} disabled={cloudflareSwitchLoading}>
-                  {cloudflareSwitchLoading ? "Switching..." : "Switch Here"}
-                </Button>
-                <Button size="sm" icon="cloud_upload" onClick={() => setShowEnableTunnelModal(true)}>Enable</Button>
-              </>
-            ) : (tunnelStatus?.type === "success" && selectedTunnelProvider === "cloudflare") ? (
-              <>
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-green-300 dark:border-green-800 bg-green-500/5 text-sm text-green-600 dark:text-green-400">
-                  <span className="material-symbols-outlined text-sm">check_circle</span>
-                  {tunnelStatus.message}
-                </div>
-              </>
-            ) : (tunnelStatus?.type === "warning" && selectedTunnelProvider === "cloudflare") ? (
-              <>
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-yellow-300 dark:border-yellow-800 bg-yellow-500/5 text-sm text-yellow-600 dark:text-yellow-400">
-                  <span className="material-symbols-outlined text-sm">warning</span>
-                  {tunnelStatus.message}
-                </div>
-              </>
-            ) : (tunnelCheckingPrimary && selectedTunnelProvider === "cloudflare") ? (
-              <>
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-input text-sm text-text-muted">
-                  <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                  Checking...
-                </div>
-                <button
-                  onClick={stopTunnelCheckingUi}
-                  className="p-2 hover:bg-red-500/10 rounded text-red-500 transition-colors shrink-0"
-                  title="Stop"
-                >
-                  <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
-                </button>
-              </>
-            ) : false ? (
-              <Button
-                size="sm"
-                icon="download"
-                onClick={handleInstallNgrok}
-                disabled={ngrokInstalling}
-                className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
-              >
-                {ngrokInstalling ? `Installing... ${Math.max(0, Math.min(100, ngrokInstallProgress))}%` : "Cài ngrok"}
-              </Button>
             ) : (
               <div className="flex items-center gap-2">
                 <Button
