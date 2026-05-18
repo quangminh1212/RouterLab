@@ -22,7 +22,7 @@ if (!isCloud && fs && typeof fs.existsSync === "function") {
   }
 }
 
-const MAX_HISTORY = 10000;
+const MAX_HISTORY = 200;
 const USAGE_EXPORT_VERSION = 2;
 
 const defaultData = {

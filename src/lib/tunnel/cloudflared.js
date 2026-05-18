@@ -378,24 +378,32 @@ export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.
   });
 }
 
-export function isCloudflaredServiceInstalled() {
-  if (!IS_WINDOWS) return false;
+let _scQueryCache = { ts: 0, output: null };
+const SC_QUERY_CACHE_TTL_MS = 5000;
+
+function getScQueryOutput() {
+  const now = Date.now();
+  if (_scQueryCache.output !== null && now - _scQueryCache.ts < SC_QUERY_CACHE_TTL_MS) {
+    return _scQueryCache.output;
+  }
   try {
     const output = execSync("sc query cloudflared", { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
-    return /SERVICE_NAME\s*:\s*cloudflared/i.test(output);
+    _scQueryCache = { ts: now, output };
+    return output;
   } catch {
-    return false;
+    _scQueryCache = { ts: now, output: "" };
+    return "";
   }
+}
+
+export function isCloudflaredServiceInstalled() {
+  if (!IS_WINDOWS) return false;
+  return /SERVICE_NAME\s*:\s*cloudflared/i.test(getScQueryOutput());
 }
 
 export function isCloudflaredServiceRunning() {
   if (!IS_WINDOWS) return false;
-  try {
-    const output = execSync("sc query cloudflared", { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
-    return /STATE\s*:\s*\d+\s+RUNNING/i.test(output);
-  } catch {
-    return false;
-  }
+  return /STATE\s*:\s*\d+\s+RUNNING/i.test(getScQueryOutput());
 }
 
 /**
