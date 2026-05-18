@@ -15,47 +15,47 @@ import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts", "stt"];
 const MEDIA_NAV_ITEMS = [
   { id: "embedding", label: "Embedding", icon: "data_array" },
-  { id: "image", label: "T?o ?nh", icon: "brush" },
-  { id: "tts", label: "??c v?n b?n", icon: "record_voice_over" },
-  { id: "stt", label: "Nh?n gi?ng n?i", icon: "mic" },
+  { id: "image", label: "Tạo ảnh", icon: "brush" },
+  { id: "tts", label: "Đọc văn bản", icon: "record_voice_over" },
+  { id: "stt", label: "Nhận giọng nói", icon: "mic" },
 ];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
 const coreItems = [
   { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
-  { href: "/dashboard/endpoint", label: "?i?m cu?i", icon: "api" },
-  { href: "/dashboard/providers", label: "Nh? cung c?p", icon: "dns" },
-  { href: "/dashboard/combos", label: "K?t h?p", icon: "layers" },
-  { href: "/dashboard/usage", label: "Th?ng k?", icon: "bar_chart" },
-  { href: "/dashboard/quota", label: "H?n m?c", icon: "data_usage" },
+  { href: "/dashboard/endpoint", label: "Điểm cuối", icon: "api" },
+  { href: "/dashboard/providers", label: "Nhà cung cấp", icon: "dns" },
+  { href: "/dashboard/combos", label: "Kết hợp", icon: "layers" },
+  { href: "/dashboard/usage", label: "Thống kê", icon: "bar_chart" },
+  { href: "/dashboard/quota", label: "Hạn mức", icon: "data_usage" },
 ];
 
 const aiItems = [
-  { href: "/dashboard/token-saver", label: "Ti?t ki?m token", icon: "compress" },
-  { href: "/dashboard/rules", label: "Lu?t AI", icon: "gavel" },
-  { href: "/dashboard/ai-integrations", label: "Ngu?n AI", icon: "hub" },
-  { href: "/dashboard/skills", label: "Th? vi?n skill", icon: "menu_book" },
+  { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "compress" },
+  { href: "/dashboard/rules", label: "Luật AI", icon: "gavel" },
+  { href: "/dashboard/ai-integrations", label: "Nguồn AI", icon: "hub" },
+  { href: "/dashboard/skills", label: "Thư viện skill", icon: "menu_book" },
 ];
 
 const debugItems = [
-  { href: "/dashboard/console-log", label: "Nh?t k? Console", icon: "terminal" },
-  { href: "/dashboard/translator", label: "D?ch thu?t", icon: "translate" },
+  { href: "/dashboard/console-log", label: "Nhật ký Console", icon: "terminal" },
+  { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate" },
 ];
 
 const systemItems = [
   { href: "/dashboard/mitm", label: "MITM", icon: "security" },
-  { href: "/dashboard/cli-tools", label: "C?ng c? CLI", icon: "terminal" },
+  { href: "/dashboard/cli-tools", label: "Công cụ CLI", icon: "terminal" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
-  { href: "/dashboard/settings/pricing", label: "B?ng gi?", icon: "payments" },
+  { href: "/dashboard/settings/pricing", label: "Bảng giá", icon: "payments" },
 ];
 
 const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
 
 const POWER_UP_ITEMS = [
   { href: "/dashboard/mcp-servers", label: "MCP Servers", icon: "dns" },
-  { href: "/dashboard/ai-memory", label: "B? nh? AI", icon: "memory" },
+  { href: "/dashboard/ai-memory", label: "Bộ nhớ AI", icon: "memory" },
   { href: "/dashboard/ai-plugins", label: "Plugin", icon: "extension" },
-  { href: "/dashboard/ai-skills", label: "K? n?ng AI", icon: "psychology" },
+  { href: "/dashboard/ai-skills", label: "Kỹ năng AI", icon: "psychology" },
 ];
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
@@ -291,7 +291,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
           {updateInfo && !collapsed && (
             <div className="flex flex-col gap-1.5 rounded p-1 -m-1">
               <span className="text-xs font-semibold text-green-600 dark:text-amber-500">
-                Ã¢â€ â€˜ New version available: v{updateInfo.latestVersion}
+                ✨ New version available: v{updateInfo.latestVersion}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -306,7 +306,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   className="flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                 >
                   <code className="block text-[10px] text-green-600/80 dark:text-amber-400/70 font-mono truncate">
-                    {copied ? "Ã¢Å“â€œ copied!" : INSTALL_CMD}
+                    {copied ? "✓ copied!" : INSTALL_CMD}
                   </code>
                 </button>
               </div>
@@ -395,7 +395,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               )}
             >
               <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">rocket_launch</span>
-              <span className="text-sm font-medium flex-1 text-left">AI N?ng cao</span>
+              <span className="text-sm font-medium flex-1 text-left">AI Nâng cao</span>
               <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 expand_more
               </span>
@@ -476,7 +476,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               >
                 settings
               </span>
-              {!collapsed && <span className="text-sm font-medium">C?i ??t</span>}
+              {!collapsed && <span className="text-sm font-medium">Cài đặt</span>}
             </Link>
           </div>
         </nav>
@@ -491,7 +491,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             onClick={() => setShowShutdownModal(true)}
             className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
           >
-            {collapsed ? "" : "T?t m?y"}
+            {collapsed ? "" : "Tắt máy"}
           </Button>
         </div>
       </aside>
@@ -501,9 +501,9 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         isOpen={showShutdownModal}
         onClose={() => setShowShutdownModal(false)}
         onConfirm={handleShutdown}
-        title="T?t Proxy"
-        message="B?n c? ch?c mu?n t?t proxy server kh?ng?"
-        confirmText="T?t"
+        title="Tắt Proxy"
+        message="Bạn có chắc muốn tắt proxy server không?"
+        confirmText="Tắt"
         cancelText="Cancel"
         variant="danger"
         loading={isShuttingDown}
@@ -586,7 +586,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
     },
     {
       key: "finished",
-      label: done && success ? "Installed Ã¢â‚¬â€ ready to restart" : "Waiting to finish",
+      label: done && success ? "Installed — ready to restart" : "Waiting to finish",
       state: done && success ? "done" : (done && !success ? "error" : "pending"),
     },
   ];
@@ -670,7 +670,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
             className="w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors"
           >
             <code className="text-xs font-mono text-amber-400">
-              {copied ? "Ã¢Å“â€œ copied!" : installCmd}
+              {copied ? "✓ copied!" : installCmd}
             </code>
           </button>
         </div>
