@@ -1,7 +1,8 @@
 import os from "os";
 import fs from "fs";
-import { execSync } from "child_process";
+import path from "path";
 import { NextResponse } from "next/server";
+import { DATA_DIR } from "@/lib/dataDir";
 
 export const dynamic = "force-dynamic";
 
@@ -34,24 +35,32 @@ function getProcessCpuPercent() {
   return Math.max(0, Math.min(100, usage));
 }
 
-function getDiskUsage() {
+function getFolderSize(dirPath) {
+  let total = 0;
   try {
-    if (process.platform === "win32") {
-      const drive = (process.cwd().slice(0, 2) || "C:").toUpperCase();
-      const out = execSync(`wmic logicaldisk where "DeviceID='${drive}'" get FreeSpace,Size /format:list`, { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 3000 }).toString();
-      const free = Number((out.match(/FreeSpace=(\d+)/) || [])[1] || 0);
-      const size = Number((out.match(/Size=(\d+)/) || [])[1] || 0);
-      if (size > 0) return { totalBytes: size, freeBytes: free, usedBytes: size - free };
-    } else {
-      const stat = fs.statfsSync ? fs.statfsSync(process.cwd()) : null;
-      if (stat) {
-        const total = Number(stat.blocks) * Number(stat.bsize);
-        const free = Number(stat.bfree) * Number(stat.bsize);
-        return { totalBytes: total, freeBytes: free, usedBytes: total - free };
-      }
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dirPath, entry.name);
+      try {
+        if (entry.isDirectory()) {
+          total += getFolderSize(full);
+        } else if (entry.isFile()) {
+          total += fs.statSync(full).size;
+        }
+      } catch {}
     }
   } catch {}
-  return null;
+  return total;
+}
+
+function getProjectDiskUsage() {
+  try {
+    if (!DATA_DIR || !fs.existsSync(DATA_DIR)) return null;
+    const usedBytes = getFolderSize(DATA_DIR);
+    return { usedBytes };
+  } catch {
+    return null;
+  }
 }
 
 let _diskCache = { ts: 0, value: null };
@@ -59,7 +68,7 @@ const DISK_CACHE_TTL_MS = 30000;
 function getCachedDiskUsage() {
   const now = Date.now();
   if (_diskCache.value && now - _diskCache.ts < DISK_CACHE_TTL_MS) return _diskCache.value;
-  const value = getDiskUsage();
+  const value = getProjectDiskUsage();
   _diskCache = { ts: now, value };
   return value;
 }
@@ -80,8 +89,6 @@ function buildMetricsPayload() {
     heapUsedBytes: processMemory.heapUsed || 0,
     heapTotalBytes: processMemory.heapTotal || 0,
     diskUsedBytes: disk?.usedBytes ?? null,
-    diskFreeBytes: disk?.freeBytes ?? null,
-    diskTotalBytes: disk?.totalBytes ?? null,
     sampledAt: Date.now(),
   };
 }
