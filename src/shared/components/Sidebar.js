@@ -61,9 +61,9 @@ const POWER_UP_ITEMS = [
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [mediaOpen, setMediaOpen] = useState(true);
-  const [powerUpOpen, setPowerUpOpen] = useState(true);
-  const [sectionsOpen, setSectionsOpen] = useState({ core: true, ai: true, system: true });
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [powerUpOpen, setPowerUpOpen] = useState(false);
+  const [sectionsOpen, setSectionsOpen] = useState({ core: false, ai: false, system: false });
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
