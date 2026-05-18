@@ -1,8 +1,8 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getUsageStats } from "@/lib/usageDb";
 
 const VALID_PERIODS = new Set(["24h", "7d", "30d", "60d", "all"]);
-const CACHE_TTL_MS = 3000;
+const CACHE_TTL_MS = 5000;
 const statsCache = new Map();
 
 export const dynamic = "force-dynamic";

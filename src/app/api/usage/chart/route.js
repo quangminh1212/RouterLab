@@ -1,8 +1,8 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getChartData } from "@/lib/usageDb";
 
 const VALID_PERIODS = new Set(["24h", "7d", "30d", "60d", "all"]);
-const CACHE_TTL_MS = 3000;
+const CACHE_TTL_MS = 15000;
 const chartCache = new Map();
 
 export async function GET(request) {

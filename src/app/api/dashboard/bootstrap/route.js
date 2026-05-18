@@ -1,10 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/localDb";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const BOOTSTRAP_CACHE_TTL_MS = 3000;
+const BOOTSTRAP_CACHE_TTL_MS = 10000;
 let bootstrapCache = { ts: 0, data: null, promise: null };
 
 async function timedStep(name, fn) {

@@ -1,10 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getRequestDetails } from "@/lib/requestDetailsDb";
 import { getProviderNodes } from "@/lib/localDb";
 import { AI_PROVIDERS, getProviderByAlias } from "@/shared/constants/providers";
 import { logger } from "@/lib/logger";
 
-const CACHE_TTL_MS = 5000;
+const CACHE_TTL_MS = 30000;
 let providersCache = { ts: 0, data: null, promise: null };
 
 /**
