@@ -171,6 +171,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
       href={item.href}
       prefetch={false}
       onClick={onClose}
+      title={item.label}
       className={cn(
         collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
         isActive(item.href)
@@ -369,6 +370,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                     href={`/dashboard/media-providers/${kind.id}`}
                     prefetch={false}
                     onClick={onClose}
+                      title={kind.label}
                     className={cn(
                       "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                       pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
@@ -385,6 +387,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   href={COMBINED_WEB_ITEM.href}
                   prefetch={false}
                   onClick={onClose}
+                  title={COMBINED_WEB_ITEM.label}
                   className={cn(
                     "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                     pathname.startsWith(COMBINED_WEB_ITEM.href)
@@ -426,6 +429,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                     href={item.href}
                     prefetch={false}
                     onClick={onClose}
+                    title={item.label}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
                       pathname.startsWith(item.href)
@@ -454,6 +458,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
                   href={item.href}
                   prefetch={false}
                   onClick={onClose}
+                  title={item.label}
                   className={cn(
                     collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                     isActive(item.href)
@@ -479,6 +484,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               href="/dashboard/profile"
               prefetch={false}
               onClick={onClose}
+              title="Cài đặt"
               className={cn(
                 collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
                 isActive("/dashboard/profile")
