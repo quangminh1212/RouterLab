@@ -10,7 +10,7 @@ import Modal from "@/shared/components/Modal";
 import { CardSkeleton } from "@/shared/components/Loading";
 import Toggle from "@/shared/components/Toggle";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-const logger = { dashboardPerf: { traceId: (p) => `${p}-${Date.now().toString(36)}`, info: () => {}, warn: () => {}, error: () => {} } };
+const _noop = () => {}; const logger = { dashboardPerf: new Proxy({}, { get: (_, key) => key === "traceId" ? ((p) => `${p}-${Date.now().toString(36)}`) : _noop }) };
 
 const EndpointApiKeysCard = dynamic(() => import("./components/EndpointApiKeysCard"), {
   ssr: true,
