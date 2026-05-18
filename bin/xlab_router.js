@@ -602,7 +602,7 @@ async function launchWebUIProcess(options = {}) {
     PORT: String(port),
     HOSTNAME: hostname,
     NODE_PATH: sourceNodeModules,
-    NODE_OPTIONS: [process.env.NODE_OPTIONS, `--max-old-space-size=${ramMB}`].filter(Boolean).join(" "),
+    NODE_OPTIONS: [process.env.NODE_OPTIONS, `--max-old-space-size=${ramMB}`, `--max-semi-space-size=64`, "--expose-gc"].filter(Boolean).join(" "),
     XLABROUTER_HIDE_NEXT_DEV_INDICATOR: installedFromNpm ? "1" : (process.env.XLABROUTER_HIDE_NEXT_DEV_INDICATOR || "0"),
     CLOUDFLARED_PROCESS_MODE: process.platform === "win32" ? (process.env.CLOUDFLARED_PROCESS_MODE || "true") : process.env.CLOUDFLARED_PROCESS_MODE,
     CLOUDFLARED_WINDOWS_SERVICE_MODE: process.platform === "win32" ? (process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE || "false") : process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE,

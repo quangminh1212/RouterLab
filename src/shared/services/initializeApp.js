@@ -1,4 +1,4 @@
-import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
+﻿import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
 import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
 import { killNgrok, isNgrokRunning } from "@/lib/tunnel/ngrok";
@@ -35,7 +35,7 @@ import os from "os";
 // Multiple modules register SIGINT/SIGTERM handlers legitimately
 process.setMaxListeners(20);
 
-// Use global to survive Next.js hot reload — prevents duplicate intervals
+// Use global to survive Next.js hot reload â€” prevents duplicate intervals
 const g = global.__appSingleton ??= {
   signalHandlersRegistered: false,
   watchdogInterval: null,
@@ -90,7 +90,7 @@ export async function initializeApp() {
       // Watchdog: recover tunnel after process crash
       startWatchdog();
 
-      // Network monitor: detect sleep/wake + network changes → restart tunnel
+      // Network monitor: detect sleep/wake + network changes â†’ restart tunnel
       startNetworkMonitor();
     } else {
       console.log("[InitApp] Fast startup enabled, skipping tunnel watchdog/network monitor");
@@ -183,7 +183,7 @@ function getNetworkFingerprint() {
   return active.sort().join("|");
 }
 
-/** Monitor network changes + sleep/wake → kill and reconnect tunnel */
+/** Monitor network changes + sleep/wake â†’ kill and reconnect tunnel */
 function startNetworkMonitor() {
   if (g.networkMonitorInterval) return;
 
@@ -237,5 +237,33 @@ function startNetworkMonitor() {
 
   if (g.networkMonitorInterval.unref) g.networkMonitorInterval.unref();
 }
+
+
+function startHeapGcTimer() {
+  if (typeof global.gc !== "function") return;
+  const g = globalThis;
+  if (g.__xlabHeapGcTimer) return;
+
+  const GC_INTERVAL_MS = 5 * 60 * 1000;
+  const HEAP_TRIGGER_RATIO = 0.7;
+
+  const tick = () => {
+    try {
+      const { heapUsed, heapTotal } = process.memoryUsage();
+      if (heapTotal === 0 || heapUsed / heapTotal < HEAP_TRIGGER_RATIO) return;
+      global.gc();
+      const after = process.memoryUsage().heapUsed;
+      const freedMB = Math.round((heapUsed - after) / 1024 / 1024);
+      if (freedMB > 10) {
+        console.log(`[GC] Freed ${freedMB}MB heap`);
+      }
+    } catch {}
+  };
+
+  g.__xlabHeapGcTimer = setInterval(tick, GC_INTERVAL_MS);
+  if (g.__xlabHeapGcTimer.unref) g.__xlabHeapGcTimer.unref();
+}
+
+startHeapGcTimer();
 
 export default initializeApp;
