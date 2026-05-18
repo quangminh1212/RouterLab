@@ -1784,29 +1784,11 @@ export default function APIPageClient() {
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  icon="restart_alt"
-                  onClick={handleForceResetCloudflare}
-                  disabled={cloudflareResetLoading}
-                  className="bg-sidebar border border-border text-text-muted hover:text-primary"
-                >
-                  {cloudflareResetLoading ? "Resetting..." : "Force Reset"}
-                </Button>
-                <Button
-                  size="sm"
-                  icon="sync_alt"
-                  onClick={handleSwitchCloudflareToThisMachine}
-                  disabled={cloudflareSwitchLoading}
-                  className="bg-sidebar border border-border text-text-muted hover:text-primary"
-                >
-                  {cloudflareSwitchLoading ? "Switching..." : "Switch Here"}
-                </Button>
-                <Button
-                  size="sm"
                   icon="cloud_upload"
                   onClick={() => handleEnableSecuredTunnel("cloudflare")}
                   className="bg-linear-to-r from-primary to-blue-500 hover:from-primary-hover hover:to-blue-600 text-white!"
                 >
-                  Enable
+                  Bật
                 </Button>
                 {tunnelCheckingBackground && selectedTunnelProvider === "cloudflare" && (
                   <span className="material-symbols-outlined animate-spin text-[14px] text-text-muted" title="Checking tunnel status in background">
