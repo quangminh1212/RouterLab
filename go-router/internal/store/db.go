@@ -2,11 +2,14 @@ package store
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 )
@@ -35,6 +38,26 @@ type APIKey struct {
 	CreatedAt string `json:"createdAt,omitempty"`
 }
 
+type UsageEntry struct {
+	Timestamp        string  `json:"timestamp,omitempty"`
+	Provider         string  `json:"provider,omitempty"`
+	Model            string  `json:"model,omitempty"`
+	TotalCost        float64 `json:"totalCost,omitempty"`
+	PromptTokens     int64   `json:"promptTokens,omitempty"`
+	CompletionTokens int64   `json:"completionTokens,omitempty"`
+}
+
+type UsageData struct {
+	History               []UsageEntry            `json:"history"`
+	TotalRequestsLifetime int64                   `json:"totalRequestsLifetime"`
+	DailySummary          map[string]DailySummary `json:"dailySummary"`
+}
+
+type DailySummary struct {
+	Requests int64   `json:"requests"`
+	Cost     float64 `json:"cost"`
+}
+
 type Settings struct {
 	RequireAPIKey              bool   `json:"requireApiKey"`
 	RequireLogin               bool   `json:"requireLogin"`
@@ -54,11 +77,13 @@ type DB struct {
 	Settings            Settings               `json:"settings"`
 	ModelAliases        map[string]string      `json:"modelAliases"`
 	Pricing             map[string]interface{} `json:"pricing"`
+	UsageData           UsageData              `json:"usageData"`
 }
 
 type Store struct {
 	mu       sync.RWMutex
 	db       DB
+	rawRoot  map[string]json.RawMessage
 	dbPath   string
 	loadedAt time.Time
 }
@@ -95,6 +120,7 @@ func (s *Store) load() error {
 	data, err := os.ReadFile(s.dbPath)
 	if os.IsNotExist(err) {
 		s.db = defaultDB()
+		s.rawRoot = map[string]json.RawMessage{}
 		s.loadedAt = time.Now()
 		return nil
 	}
@@ -102,9 +128,13 @@ func (s *Store) load() error {
 		return fmt.Errorf("read db.json: %w", err)
 	}
 	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse db.json root: %w", err)
+	}
 	var db DB
 	if err := json.Unmarshal(data, &db); err != nil {
-		return fmt.Errorf("parse db.json: %w", err)
+		return fmt.Errorf("parse db.json typed: %w", err)
 	}
 	if db.ModelAliases == nil {
 		db.ModelAliases = map[string]string{}
@@ -112,7 +142,11 @@ func (s *Store) load() error {
 	if db.Pricing == nil {
 		db.Pricing = map[string]interface{}{}
 	}
+	if db.UsageData.DailySummary == nil {
+		db.UsageData.DailySummary = map[string]DailySummary{}
+	}
 	s.db = db
+	s.rawRoot = root
 	s.loadedAt = time.Now()
 	return nil
 }
@@ -121,29 +155,78 @@ func defaultDB() DB {
 	return DB{
 		ProviderConnections: []ProviderConnection{},
 		APIKeys:             []APIKey{},
-		Settings: Settings{
-			RequireLogin:               true,
-			StickyRoundRobinLimit:      3,
-			ComboStrategy:              "fallback",
-			ComboStickyRoundRobinLimit: 1,
-			ObservabilityEnabled:       true,
-			ObservabilityMaxRecords:    1000,
-		},
-		ModelAliases: map[string]string{},
-		Pricing:      map[string]interface{}{},
+		Settings:            Settings{RequireLogin: true, StickyRoundRobinLimit: 3, ComboStrategy: "fallback", ComboStickyRoundRobinLimit: 1, ObservabilityEnabled: true, ObservabilityMaxRecords: 1000},
+		ModelAliases:        map[string]string{},
+		Pricing:             map[string]interface{}{},
+		UsageData:           UsageData{History: []UsageEntry{}, TotalRequestsLifetime: 0, DailySummary: map[string]DailySummary{}},
 	}
 }
 
-func (s *Store) Reload() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.load()
+func mustJSON(v interface{}) (json.RawMessage, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(b), nil
 }
 
-func (s *Store) GetSettings() Settings {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.db.Settings
+func (s *Store) persistLocked() error {
+	if s.rawRoot == nil {
+		s.rawRoot = map[string]json.RawMessage{}
+	}
+	var err error
+	if s.rawRoot["providerConnections"], err = mustJSON(s.db.ProviderConnections); err != nil {
+		return err
+	}
+	if s.rawRoot["apiKeys"], err = mustJSON(s.db.APIKeys); err != nil {
+		return err
+	}
+	if s.rawRoot["settings"], err = mustJSON(s.db.Settings); err != nil {
+		return err
+	}
+	if s.rawRoot["modelAliases"], err = mustJSON(s.db.ModelAliases); err != nil {
+		return err
+	}
+	if s.rawRoot["pricing"], err = mustJSON(s.db.Pricing); err != nil {
+		return err
+	}
+	if s.rawRoot["usageData"], err = mustJSON(s.db.UsageData); err != nil {
+		return err
+	}
+	payload, err := json.MarshalIndent(s.rawRoot, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := s.dbPath + ".tmp"
+	if err := os.WriteFile(tmp, payload, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.dbPath)
+}
+
+func (s *Store) Reload() error         { s.mu.Lock(); defer s.mu.Unlock(); return s.load() }
+func (s *Store) GetSettings() Settings { s.mu.RLock(); defer s.mu.RUnlock(); return s.db.Settings }
+
+func (s *Store) UpdateSettings(patch map[string]interface{}) (Settings, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	raw, _ := json.Marshal(s.db.Settings)
+	merged := map[string]interface{}{}
+	_ = json.Unmarshal(raw, &merged)
+	for k, v := range patch {
+		merged[k] = v
+	}
+	nextRaw, _ := json.Marshal(merged)
+	var next Settings
+	if err := json.Unmarshal(nextRaw, &next); err != nil {
+		return Settings{}, err
+	}
+	s.db.Settings = next
+	return next, s.persistLocked()
+}
+
+func sortConnections(conns []ProviderConnection) {
+	sort.SliceStable(conns, func(i, j int) bool { return conns[i].Priority < conns[j].Priority })
 }
 
 func (s *Store) GetActiveConnections(provider string) []ProviderConnection {
@@ -159,11 +242,7 @@ func (s *Store) GetActiveConnections(provider string) []ProviderConnection {
 		}
 		out = append(out, c)
 	}
-	for i := 1; i < len(out); i++ {
-		for j := i; j > 0 && out[j].Priority < out[j-1].Priority; j-- {
-			out[j], out[j-1] = out[j-1], out[j]
-		}
-	}
+	sortConnections(out)
 	return out
 }
 
@@ -177,7 +256,78 @@ func (s *Store) GetAllConnections() []ProviderConnection {
 		c.RefreshToken = ""
 		out[i] = c
 	}
+	sortConnections(out)
 	return out
+}
+
+func randID(prefix string) string {
+	buf := make([]byte, 8)
+	_, _ = rand.Read(buf)
+	return prefix + hex.EncodeToString(buf)
+}
+
+func (s *Store) CreateProviderConnection(c ProviderConnection) (ProviderConnection, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC().Format(time.RFC3339)
+	if c.ID == "" {
+		c.ID = randID("pc_")
+	}
+	if c.Priority <= 0 {
+		c.Priority = 1
+	}
+	c.CreatedAt = now
+	c.UpdatedAt = now
+	s.db.ProviderConnections = append(s.db.ProviderConnections, c)
+	return c, s.persistLocked()
+}
+
+func (s *Store) UpdateProviderConnection(id string, patch map[string]interface{}) (ProviderConnection, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	idx := -1
+	for i, c := range s.db.ProviderConnections {
+		if c.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ProviderConnection{}, fmt.Errorf("provider connection not found")
+	}
+	raw, _ := json.Marshal(s.db.ProviderConnections[idx])
+	merged := map[string]interface{}{}
+	_ = json.Unmarshal(raw, &merged)
+	for k, v := range patch {
+		merged[k] = v
+	}
+	merged["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
+	nextRaw, _ := json.Marshal(merged)
+	var next ProviderConnection
+	if err := json.Unmarshal(nextRaw, &next); err != nil {
+		return ProviderConnection{}, err
+	}
+	s.db.ProviderConnections[idx] = next
+	return next, s.persistLocked()
+}
+
+func (s *Store) DeleteProviderConnection(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next := s.db.ProviderConnections[:0]
+	found := false
+	for _, c := range s.db.ProviderConnections {
+		if c.ID == id {
+			found = true
+			continue
+		}
+		next = append(next, c)
+	}
+	if !found {
+		return fmt.Errorf("provider connection not found")
+	}
+	s.db.ProviderConnections = next
+	return s.persistLocked()
 }
 
 func (s *Store) ValidateAPIKey(key string) bool {
@@ -199,6 +349,23 @@ func (s *Store) GetModelAliases() map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+func (s *Store) GetUsageSummary() map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	totalCost := 0.0
+	for _, item := range s.db.UsageData.History {
+		totalCost += item.TotalCost
+	}
+	providers := map[string]DailySummary{}
+	for _, item := range s.db.UsageData.History {
+		cur := providers[item.Provider]
+		cur.Requests++
+		cur.Cost += item.TotalCost
+		providers[item.Provider] = cur
+	}
+	return map[string]interface{}{"totalRequests": s.db.UsageData.TotalRequestsLifetime, "totalCost": totalCost, "providers": providers, "days": s.db.UsageData.DailySummary, "historySize": len(s.db.UsageData.History)}
 }
 
 func (s *Store) DBSnapshot() ([]byte, error) {
