@@ -1,130 +1,96 @@
-<div align="center">
-  
-  # XLab Router - Free AI Router
-  
-  **Never stop coding. Auto-route to FREE & cheap AI models with smart fallback.**
-  
-  **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
-  
+# XLab Router
 
-  [🚀 Quick Start](#quick-start) • [💡 Features](#key-features) • [📖 Setup](#setup-guide) • [🌐 Website](https://xlabrouter.com)
+XLab Router là bộ định tuyến AI đa nhà cung cấp, hỗ trợ gom endpoint, quota, fallback, tunnel và dashboard quản trị tập trung.
 
-  [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
-</div>
-
----
-
-## 🤔 Why XLab Router?
-
-**Stop wasting money and hitting limits:**
-
-- ❌ Subscription quota expires unused every month
-- ❌ Rate limits stop you mid-coding
-- ❌ Expensive APIs ($20-50/month per provider)
-- ❌ Manual switching between providers
-
-**XLab Router solves this:**
-
-- ✅ **Maximize subscriptions** - Track quota, use every bit before reset
-- ✅ **Auto fallback** - Subscription → Cheap → Free, zero downtime
-- ✅ **Multi-account** - Round-robin between accounts per provider
-- ✅ **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
-
----
-
-## 🔄 How It Works
-
-```
-┌─────────────┐
-│  Your CLI   │  (Claude Code, Codex, Gemini CLI, OpenClaw, Cursor, Cline...)
-│   Tool      │
-└──────┬──────┘
-       │ http://localhost:1212/v1
-       ↓
-┌─────────────────────────────────────────┐
-│           XLab Router (Smart Router)        │
-│  • Format translation (OpenAI ↔ Claude) │
-│  • Quota tracking                       │
-│  • Auto token refresh                   │
-└──────┬──────────────────────────────────┘
-       │
-       ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
-       │   ↓ quota exhausted
-       ├─→ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
-       │   ↓ budget limit
-       └─→ [Tier 3: FREE] iFlow, Qwen, Kiro (unlimited)
-
-Result: Never stop coding, minimal cost
-```
-
----
-
-## 🚀 Quick Start
-
-**1. Install and run:**
-
-Global install (recommended if you want the `xlabrouter` command everywhere):
+## Quick Start
 
 ```bash
 npm install -g xlabrouter
 xlabrouter
-# optional alias:
-# xrouter
 ```
 
-Run without global install:
+Hoặc chạy local:
 
 ```bash
-npx xlabrouter
-# optional alias:
-# npx xrouter
+npm install
+npm run build
+npm start
 ```
 
-Local project install:
+Dashboard mặc định: `http://localhost:1212`
+API endpoint mặc định: `http://localhost:1212/v1`
+
+## Tính năng chính
+
+- Kết nối nhiều AI providers và nhiều loại model
+- Route/fallback giữa provider, account, quota
+- Dashboard quản lý endpoint, usage, quota, tunnel, providers
+- Hỗ trợ CLI tools như Codex, Claude Code, Cursor, OpenCode, Copilot...
+- Backup/restore local database và GitHub Gist backup
+- Tunnel Cloudflare / Ngrok / Tailscale
+
+## Cấu trúc dữ liệu runtime
+
+- Windows local data dir: `%APPDATA%\\xlabrouter`
+- Linux server data dir: `~/.xlabrouter`
+- Các file chính:
+  - `db.json`
+  - `request-details.json`
+  - `usage.json` (nếu có)
+  - `.session-secret`
+
+## Docker
+
+Build image:
 
 ```bash
-npm install xlabrouter
-npx xlabrouter
-# or: npx xrouter
-# or: ./node_modules/.bin/xlabrouter
+docker build -t xlabrouter .
 ```
 
-XLab Router starts the Web UI in the current terminal by default.
-Open the dashboard at `http://localhost:1212`.
-Use `xlabrouter --tray` if you want the background/system tray mode.
-You can also use the shorter alias `xrouter` if you prefer.
+Run container:
 
-**2. Connect a FREE provider (no signup needed):**
-
-Dashboard → Providers → Connect **Claude Code** or **Antigravity** → OAuth login → Done!
-
-**3. Use in your CLI tool:**
-
-```
-Claude Code/Codex/Gemini CLI/OpenClaw/Cursor/Cline Settings:
-  Endpoint: http://localhost:1212/v1
-  API Key: [copy from dashboard]
-  Model: if/kimi-k2-thinking
+```bash
+docker run --rm \
+  -p 20128:20128 \
+  -v "$HOME/.xlabrouter:/app/data" \
+  -e DATA_DIR=/app/data \
+  --name xlabrouter \
+  xlabrouter
 ```
 
-**That's it!** Start coding with FREE AI models.
+## Performance notes
 
----
+Các tối ưu chính hiện có:
 
-## 📖 Full Documentation
+- Code splitting cho Monaco / Recharts / XYFlow
+- Vendor/framework chunk splitting để giảm first-load bundle
+- Dynamic imports cho modal và heavy components
+- Heap limit + smart GC timer để giảm RAM bloat
+- Cache nhẹ cho dashboard bootstrap
 
-Visit [xlabrouter.com](https://xlabrouter.com) for complete setup guides, provider configuration, and advanced features.
+## Deploy VPS
 
----
+Repo hiện dùng `deploy.bat` để build + pack + deploy lên VPS `157.66.100.194:1212`.
 
-## 🛠️ Support
+Nếu cần sync cả data, cần upload thêm từ local `%APPDATA%\\xlabrouter` lên VPS `~/.xlabrouter` rồi restart service.
 
-- **Website**: [xlabrouter.com](https://xlabrouter.com)
-- **GitHub**: [github.com/quangminh1212/XLab_Router](https://github.com/quangminh1212/XLab_Router)
-- **Issues**: [github.com/quangminh1212/XLab_Router/issues](https://github.com/quangminh1212/XLab_Router/issues)
+## Changelog ngắn
 
----
+### 2026-05
+- Thêm TamMao / CungCapAI provider và `x-machine-id`
+- Sửa test model chậm cho CungCapAI
+- Sửa lỗi reload form do button submit mặc định
+- Sửa lỗi duplicate React key ở compatible models
+- Sửa BOM JSON ở backup/import/GitHub CLI flow
+- Tối ưu RAM với heap limit + smart GC timer
+- Tối ưu bundle load bằng cách tách vendor/framework/common chunk nhỏ hơn
 
-## 📄 License
+## Ghi chú nội bộ
 
-ISC License - see [LICENSE](LICENSE) for details.
+- Không push remote tự động
+- Deploy script nằm ở `deploy.bat`
+- Dự án đang chạy production bằng `next build --webpack`
+
+## License
+
+ISC
