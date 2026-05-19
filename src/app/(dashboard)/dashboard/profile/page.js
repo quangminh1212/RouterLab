@@ -387,7 +387,14 @@ export default function ProfilePage() {
   const postGistBackup = async (body) => {
     const action = String(body?.action || "sync");
     const controller = new AbortController();
-    const timeoutMs = 45000;
+    const timeoutByActionMs = {
+      "use-gh-cli": 45000,
+      backup: 90000,
+      restore: 120000,
+      sync: 120000,
+      disconnect: 30000,
+    };
+    const timeoutMs = timeoutByActionMs[action] || 90000;
     const timeout = setTimeout(() => {
       controller.abort();
     }, timeoutMs);
