@@ -159,7 +159,7 @@ const getPageInfo = (pathname) => {
   return { title: "", description: "", breadcrumbs: [] };
 };
 
-const HEADER_METRICS_TIMEOUT_MS = 1500;
+const HEADER_METRICS_TIMEOUT_MS = 3000;
 const HEADER_METRICS_CACHE_KEY = "__xlabrouterHeaderMetrics";
 
 function formatMemoryGb(bytes) {
@@ -194,7 +194,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
 
       // Check cache first
       const cached = globalThis[HEADER_METRICS_CACHE_KEY];
-      if (cached?.data && Date.now() - cached.timestamp < 4000) {
+      if (cached?.data && Date.now() - cached.timestamp < 9000) {
         if (mounted) setSystemMetrics(cached.data);
         return;
       }
@@ -234,7 +234,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
 
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(fetchMetrics, 5000);
+      interval = setInterval(fetchMetrics, 10000);
     };
 
     const stopPolling = () => {
@@ -260,7 +260,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
     if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
       idleId = window.requestIdleCallback(startMetricsWork, { timeout: 4000 });
     } else {
-      timeoutId = setTimeout(startMetricsWork, 2500);
+      timeoutId = setTimeout(startMetricsWork, 1000);
     }
 
     document.addEventListener("visibilitychange", onVisibilityChange);

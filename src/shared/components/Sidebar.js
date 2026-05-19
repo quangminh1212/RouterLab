@@ -35,7 +35,7 @@ const debugItems = [
   { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate" },
 ];
 
-const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 2500;
+const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 5000;
 
 const TOOLS_ITEMS = [
   { href: "/dashboard/mitm", label: "MITM", icon: "security" },
@@ -58,7 +58,10 @@ const POWER_UP_ITEMS = [
 
 export default function Sidebar({ onClose, initialEnableTranslator = false, initialUpdateInfo = null }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("xlabrouter-sidebar-collapsed") === "true";
+  });
   const [mediaOpen, setMediaOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [powerUpOpen, setPowerUpOpen] = useState(false);
@@ -75,11 +78,6 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmd;
   const STATUS_URL = `http://localhost:${UPDATER_CONFIG.statusPort}/update/status`;
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem("xlabrouter-sidebar-collapsed");
-    if (saved === "true") setCollapsed(true);
-  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((value) => {
@@ -700,7 +698,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
         </div>
       ) : (
         <p className="text-xs text-white/50 text-center">
-          This may take 30-60 seconds. Please don't close this window.
+          This may take 30-60 seconds. Please don&apos;t close this window.
         </p>
       )}
     </div>

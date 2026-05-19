@@ -14,7 +14,7 @@ const INITIAL_SECTION_LOADING = {
   observability: true,
 };
 
-const PROFILE_FAST_FETCH_TIMEOUT_MS = 4500;
+const PROFILE_FAST_FETCH_TIMEOUT_MS = 8000;
 
 const BASIC_CHAT_STORAGE_KEYS = {
   sessions: "basic-chat.sessions",
@@ -83,13 +83,25 @@ export default function ProfilePage() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountStatus, setAccountStatus] = useState({ type: "", message: "" });
   useEffect(() => {
-    fetchWithTimeout("/api/settings", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading profile settings timed out")
-      .then((res) => res.json())
-      .then((data) => {
-        applySettings(data);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch settings:", err);
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    const fetchJson = (url, timeoutMessage) =>
+      fetchWithTimeout(url, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, timeoutMessage)
+        .then((res) => (res.ok ? res.json() : null));
+
+    Promise.allSettled([
+      fetchJson("/api/settings", "Loading profile settings timed out"),
+      fetchJson("/api/auth/change-credentials", "Loading account settings timed out"),
+      fetchJson("/api/auth/oauth-qr", "Loading authenticator setup timed out"),
+      fetchJson(`/api/auth/google/status?t=${Date.now()}`, "Loading Google backup status timed out"),
+      fetchJson("/api/settings/gist-backup", "Loading Gist backup status timed out"),
+    ]).then(([settingsResult, accountResult, oauthResult, googleResult, gistResult]) => {
+      if (cancelled) return;
+
+      if (settingsResult.status === "fulfilled" && settingsResult.value) {
+        applySettings(settingsResult.value);
+      } else {
+        console.error("Failed to fetch settings:", settingsResult.reason);
         setSectionLoading({
           security: false,
           routing: false,
@@ -97,68 +109,39 @@ export default function ProfilePage() {
           observability: false,
         });
         setSettingsLoadError(true);
-      });
-  }, []);
+      }
 
-
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    fetchWithTimeout("/api/auth/change-credentials", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading account settings timed out")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (!data?.username) return;
+      const account = accountResult.status === "fulfilled" ? accountResult.value : null;
+      if (account?.username) {
         setAccountForm((current) => ({
           ...current,
-          currentUsername: data.username,
-          username: data.username,
+          currentUsername: account.username,
+          username: account.username,
         }));
-      })
-      .catch(() => {});
-  }, []);
+      }
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    fetchWithTimeout("/api/auth/oauth-qr", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading authenticator setup timed out")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.url) setOauthSetupUrl(data.url);
-        if (data?.secret) setOauthSetupSecret(data.secret);
-        if (typeof data?.backupCodeCount === "number") setBackupCodeCount(data.backupCodeCount);
-        else setOauthSetupUrl("");
-      })
-      .catch(() => setOauthSetupUrl(""));
-  }, []);
+      const oauth = oauthResult.status === "fulfilled" ? oauthResult.value : null;
+      if (oauth?.url) setOauthSetupUrl(oauth.url);
+      else setOauthSetupUrl("");
+      if (oauth?.secret) setOauthSetupSecret(oauth.secret);
+      if (typeof oauth?.backupCodeCount === "number") setBackupCodeCount(oauth.backupCodeCount);
 
-  useEffect(() => {
-    if (!oauthSetupUrl) return;
-    QRCode.toDataURL(oauthSetupUrl, { width: 220, margin: 1, errorCorrectionLevel: "M" })
-      .then(setOauthSetupQrUrl)
-      .catch(() => setPassStatus({ type: "error", message: "Failed to render Authenticator QR" }));
-  }, [oauthSetupUrl]);
-
-  useEffect(() => {
-    fetchWithTimeout(`/api/auth/google/status?t=${Date.now()}`, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading Google backup status timed out")
-      .then((res) => res.json())
-      .then((data) => setGoogleStatus({
+      const google = googleResult.status === "fulfilled" ? googleResult.value : null;
+      setGoogleStatus({
         loading: false,
-        configured: !!data?.configured,
-        connected: !!data?.connected,
-        email: data?.email || "",
-        backup: data?.backup || null,
-        authSource: data?.authSource || "none",
-        expectedRedirectUri: data?.expectedRedirectUri || "",
-      }))
-      .catch(() => setGoogleStatus((prev) => ({ ...prev, loading: false })));
-  }, []);
-  useEffect(() => {
-    fetchWithTimeout("/api/settings/gist-backup", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading Gist backup status timed out")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (!data) return;
-        setGistConfig(data);
-      })
-      .catch(() => {});
+        configured: !!google?.configured,
+        connected: !!google?.connected,
+        email: google?.email || "",
+        backup: google?.backup || null,
+        authSource: google?.authSource || "none",
+        expectedRedirectUri: google?.expectedRedirectUri || "",
+      });
+
+      const gist = gistResult.status === "fulfilled" ? gistResult.value : null;
+      if (gist) setGistConfig(gist);
+    });
+
+    return () => { cancelled = true; };
   }, []);
   const InlineSettingSkeleton = ({ wide = false }) => (
     <div className="flex items-center justify-between gap-4">
@@ -169,7 +152,7 @@ export default function ProfilePage() {
       <Skeleton className="h-6 w-11 rounded-full" />
     </div>
   );
-  const applySettings = (data) => {
+  function applySettings(data) {
     setSettings(data);
     setProxyForm({
       outboundProxyEnabled: data?.outboundProxyEnabled === true,
@@ -183,7 +166,7 @@ export default function ProfilePage() {
       observability: false,
     });
     setSettingsLoadError(false);
-  };
+  }
   const patchSettings = async (body) => {
     const res = await fetch("/api/settings", {
       method: "PATCH",
