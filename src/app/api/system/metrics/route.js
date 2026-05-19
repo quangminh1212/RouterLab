@@ -64,13 +64,23 @@ function getProjectDiskUsage() {
 }
 
 let _diskCache = { ts: 0, value: null };
+let _diskSampleInFlight = null;
 const DISK_CACHE_TTL_MS = 30000;
 function getCachedDiskUsage() {
   const now = Date.now();
   if (_diskCache.value && now - _diskCache.ts < DISK_CACHE_TTL_MS) return _diskCache.value;
-  const value = getProjectDiskUsage();
-  _diskCache = { ts: now, value };
-  return value;
+  if (!_diskSampleInFlight) {
+    _diskSampleInFlight = Promise.resolve().then(() => {
+      const value = getProjectDiskUsage();
+      _diskCache = { ts: Date.now(), value };
+      _diskSampleInFlight = null;
+      return value;
+    }).catch(() => {
+      _diskSampleInFlight = null;
+      return null;
+    });
+  }
+  return _diskCache.value;
 }
 
 function buildMetricsPayload() {
