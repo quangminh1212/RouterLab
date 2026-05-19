@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { APP_CONFIG } from "@/shared/constants/config";
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 const footerLinks = {
   product: [
     { label: "Features", href: "#features" },
@@ -114,7 +116,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-text-muted">
-            © {new Date().getFullYear()} {APP_CONFIG.name} Inc. All rights reserved.
+            © <span suppressHydrationWarning>{CURRENT_YEAR}</span> {APP_CONFIG.name} Inc. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-text-muted">
             <Link href="#" className="hover:text-primary transition-colors">
@@ -129,4 +131,3 @@ export default function Footer() {
     </footer>
   );
 }
-

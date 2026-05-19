@@ -47,7 +47,8 @@ const readSettings = async () => {
   try {
     const settingsPath = getOpenClawSettingsPath();
     const content = await fs.readFile(settingsPath, "utf-8");
-    return JSON.parse(content);
+    const sanitized = content.replace(/^\uFEFF/, "").trimStart();
+    return JSON.parse(sanitized);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -87,7 +88,8 @@ const readAgentModel = async (agentDir) => {
   try {
     const modelsPath = path.join(agentDir, "models.json");
     const content = await fs.readFile(modelsPath, "utf-8");
-    const data = JSON.parse(content);
+    const sanitized = content.replace(/^\uFEFF/, "").trimStart();
+    const data = JSON.parse(sanitized);
     const models = data?.providers?.["9router"]?.models;
     return models?.[0]?.id || null;
   } catch {
@@ -141,7 +143,8 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   let existing = {};
   try {
     const content = await fs.readFile(modelsPath, "utf-8");
-    existing = JSON.parse(content);
+    const sanitized = content.replace(/^\uFEFF/, "").trimStart();
+    existing = JSON.parse(sanitized);
   } catch { /* No existing */ }
 
   if (!existing.providers) existing.providers = {};
@@ -263,7 +266,8 @@ export async function DELETE() {
     let settings = {};
     try {
       const existingSettings = await fs.readFile(settingsPath, "utf-8");
-      settings = JSON.parse(existingSettings);
+      const sanitized = existingSettings.replace(/^\uFEFF/, "").trimStart();
+      settings = JSON.parse(sanitized);
     } catch (error) {
       if (error.code === "ENOENT") {
         return NextResponse.json({
