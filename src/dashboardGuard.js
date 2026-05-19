@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
@@ -8,7 +8,7 @@ const SECRET = getAuthSecret();
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
-const AUTH_DISABLED = true;
+const AUTH_DISABLED = false;
 
 let cachedCliToken = null;
 async function getCliToken() {
@@ -281,5 +281,6 @@ export const config = {
     "/api/shutdown",
   ],
 };
+
 
 
