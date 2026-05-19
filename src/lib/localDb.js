@@ -53,6 +53,7 @@ const DEFAULT_SETTINGS = {
   comboStickyRoundRobinLimit: 1,
   contextRelayEnabled: true,
   contextRelayMaxMessages: 16,
+  forcedModelMappings: {},
   requireApiKey: false,
   requireLogin: true,
   tunnelDashboardAccess: true,
@@ -1951,3 +1952,5 @@ export async function resetAllPricing() {
   await safeWrite(db);
   return db.data.pricing;
 }
+
+
