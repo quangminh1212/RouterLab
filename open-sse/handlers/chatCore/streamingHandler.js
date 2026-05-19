@@ -20,7 +20,7 @@ function buildTransformStream({ provider, sourceFormat, targetFormat, userAgent,
   const needsCodexTranslation = provider === "codex" && targetFormat === FORMATS.OPENAI_RESPONSES && !isDroidCLI;
 
   if (needsCodexTranslation) {
-    // Codex returns Responses API SSE Ã¢â€ â€™ translate to client format
+    // Codex returns Responses API SSE -> translate to client format
     let codexTarget;
     if (sourceFormat === FORMATS.OPENAI_RESPONSES) codexTarget = FORMATS.OPENAI_RESPONSES;
     else if (sourceFormat === FORMATS.CLAUDE) codexTarget = FORMATS.CLAUDE;
@@ -37,7 +37,7 @@ function buildTransformStream({ provider, sourceFormat, targetFormat, userAgent,
 }
 
 /**
- * Handle streaming response Ã¢â‚¬â€ pipe provider SSE through transform stream to client.
+ * Handle streaming response - pipe provider SSE through transform stream to client.
  */
 export function handleStreamingResponse({ providerResponse, provider, model, sourceFormat, targetFormat, userAgent, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, reqLogger, toolNameMap, streamController, onStreamComplete, rtkStats }) {
   if (onRequestSuccess) onRequestSuccess();

@@ -2346,7 +2346,7 @@ export default function APIPageClient() {
             </Button>
           </div>
 
-          <Button onClick={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }} variant="ghost" fullWidth>Há»§y</Button>
+          <Button onClick={() => { setShowEnableTunnelModal(false); setOauthCodeInput(""); }} variant="ghost" fullWidth>Hủy</Button>
         </div>
       </Modal>
 

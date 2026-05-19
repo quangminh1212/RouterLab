@@ -10,7 +10,7 @@ import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
 
 /**
- * Translate non-streaming response body from provider format Ã¢â€ â€™ OpenAI format.
+ * Translate non-streaming response body from provider format -> OpenAI format.
  */
 export function translateNonStreamingResponse(responseBody, targetFormat, sourceFormat) {
   if (targetFormat === sourceFormat || targetFormat === FORMATS.OPENAI) return responseBody;
@@ -189,7 +189,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     translatedResponse.usage = filterUsageForFormat(addBufferToUsage(translatedResponse.usage), sourceFormat);
   }
 
-  // Strip reasoning_content Ã¢â‚¬â€ some clients (e.g. Firecrawl AI SDK) have JSON parsers that
+  // Strip reasoning_content - some clients (e.g. Firecrawl AI SDK) have JSON parsers that
   // break on this non-standard field, even though OpenAI allows it in extensions.
   if (translatedResponse?.choices) {
     for (const choice of translatedResponse.choices) {
