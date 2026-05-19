@@ -108,6 +108,7 @@ next-dev*.err.log
 
 # Test artifacts
 .tmp-global-test/
+test-results/
 
 
 .tmp_deploy*.py
