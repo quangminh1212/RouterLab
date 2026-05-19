@@ -37,6 +37,7 @@ function toPublicConfig(settings) {
   return {
     enabled: gistBackup.enabled === true,
     hasToken: !!gistBackup.token,
+    hasRefreshToken: !!gistBackup.refreshToken,
     gistId: gistBackup.gistId || "",
     htmlUrl: gistBackup.htmlUrl || "",
     updatedAt: gistBackup.updatedAt || "",
@@ -312,6 +313,7 @@ export async function POST(request) {
       const nextConfig = {
         enabled: false,
         token: "",
+        refreshToken: "",
         tokenSource: "",
         githubLogin: "",
         gistId: "",
@@ -321,6 +323,33 @@ export async function POST(request) {
       };
       await updateSettings({ gistBackup: nextConfig });
       return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
+    }
+
+    if (action === "set-token") {
+      const token = String(body?.token || "").trim();
+      const refreshToken = String(body?.refreshToken || "").trim();
+      if (!token && !refreshToken) {
+        return NextResponse.json({ error: "GitHub token or refresh token is required" }, { status: 400 });
+      }
+
+      const resolvedToken = token || String(current?.token || "").trim();
+      let githubLogin = current.githubLogin || "";
+      if (resolvedToken) {
+        const user = await validateGitHubToken(resolvedToken);
+        githubLogin = user.login || githubLogin;
+      }
+
+      const nextConfig = {
+        ...current,
+        enabled: true,
+        token: resolvedToken,
+        refreshToken: refreshToken || String(current?.refreshToken || "").trim(),
+        tokenSource: resolvedToken ? "manual" : (current.tokenSource || "manual"),
+        githubLogin,
+        fileName: current.fileName || "xlabrouter.backup.json",
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, action, config: toPublicConfig({ gistBackup: nextConfig }) });
     }
 
     if (action === "backup") {

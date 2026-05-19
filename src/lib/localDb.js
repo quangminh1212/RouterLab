@@ -68,6 +68,7 @@ const DEFAULT_SETTINGS = {
   gistBackup: {
     enabled: false,
     token: "",
+    refreshToken: "",
     gistId: "",
     htmlUrl: "",
     updatedAt: "",
