@@ -145,6 +145,121 @@ function getRuntimeDataDir() {
   return path.join(os.homedir(), ".xlabrouter");
 }
 
+function safeStatMs(targetPath) {
+  try {
+    return fs.statSync(targetPath).mtimeMs || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function getDirectorySizeBytes(targetPath) {
+  try {
+    return (fs.readdirSync(targetPath, { withFileTypes: true }) || []).reduce((sum, entry) => {
+      const fullPath = path.join(targetPath, entry.name);
+      if (entry.isDirectory()) return sum + getDirectorySizeBytes(fullPath);
+      try {
+        return sum + fs.statSync(fullPath).size;
+      } catch {
+        return sum;
+      }
+    }, 0);
+  } catch {
+    return 0;
+  }
+}
+
+function removePathQuietly(targetPath) {
+  try {
+    fs.rmSync(targetPath, { recursive: true, force: true, maxRetries: 2 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function ensureDirQuietly(targetPath) {
+  try {
+    fs.mkdirSync(targetPath, { recursive: true });
+  } catch {}
+}
+
+function runAutoCleanup(appRoot) {
+  const now = Date.now();
+  const stateFile = path.join(getRuntimeDataDir(), "cleanup-state.json");
+  const runIntervalMs = 12 * 60 * 60 * 1000;
+
+  try {
+    const state = fs.existsSync(stateFile)
+      ? JSON.parse(fs.readFileSync(stateFile, "utf8"))
+      : {};
+    if (state.lastRunAt && now - Number(state.lastRunAt) < runIntervalMs) {
+      return;
+    }
+  } catch {}
+
+  const repoRoot = appRoot;
+  const cleanupReport = {
+    freedBytes: 0,
+    deleted: [],
+  };
+
+  const deleteIfOlderThan = (targetPath, maxAgeMs) => {
+    if (!fs.existsSync(targetPath)) return;
+    if (now - safeStatMs(targetPath) < maxAgeMs) return;
+    const sizeBytes = fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()
+      ? getDirectorySizeBytes(targetPath)
+      : (() => { try { return fs.statSync(targetPath).size; } catch { return 0; } })();
+    if (removePathQuietly(targetPath)) {
+      cleanupReport.freedBytes += sizeBytes;
+      cleanupReport.deleted.push(path.relative(repoRoot, targetPath) || targetPath);
+    }
+  };
+
+  const removeOldChildren = (baseDir, matcher, maxAgeMs) => {
+    if (!fs.existsSync(baseDir)) return;
+    for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+      const targetPath = path.join(baseDir, entry.name);
+      if (!matcher(entry.name, entry)) continue;
+      deleteIfOlderThan(targetPath, maxAgeMs);
+    }
+  };
+
+  try {
+    removeOldChildren(path.join(appRoot, ".next"), (name, entry) => entry.isDirectory() && (name === "cache" || name === "dev"), 3 * 24 * 60 * 60 * 1000);
+    removeOldChildren(repoRoot, (name, entry) => {
+      if (entry.isDirectory()) return name.startsWith(".tmp-") || name === ".tmp-global-test" || name === "test-results";
+      return /^\.tmp-.*|^tmp_.*|\.tgz$/i.test(name) || /^next-dev.*\.log$/i.test(name) || /^bench_.*\.log$/i.test(name);
+    }, 2 * 24 * 60 * 60 * 1000);
+    removeOldChildren(path.join(repoRoot, "logs"), () => true, 7 * 24 * 60 * 60 * 1000);
+
+    const worktreesDir = path.join(repoRoot, ".claude", "worktrees");
+    if (fs.existsSync(worktreesDir)) {
+      for (const entry of fs.readdirSync(worktreesDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const targetPath = path.join(worktreesDir, entry.name);
+        if (now - safeStatMs(targetPath) < 7 * 24 * 60 * 60 * 1000) continue;
+        const gitDir = path.join(targetPath, ".git");
+        if (!fs.existsSync(gitDir)) {
+          deleteIfOlderThan(targetPath, 7 * 24 * 60 * 60 * 1000);
+        }
+      }
+    }
+  } catch (error) {
+    process.stderr.write(`[WARN] Auto cleanup failed: ${error.message}\n`);
+  }
+
+  try {
+    ensureDirQuietly(path.dirname(stateFile));
+    fs.writeFileSync(stateFile, JSON.stringify({ lastRunAt: now, freedBytes: cleanupReport.freedBytes, deleted: cleanupReport.deleted.slice(0, 50) }, null, 2), "utf8");
+  } catch {}
+
+  if (cleanupReport.freedBytes > 0) {
+    const freedMb = Math.round(cleanupReport.freedBytes / 1024 / 1024);
+    console.log(`[INFO] Auto cleanup freed ${freedMb} MB.`);
+  }
+}
+
 function setupFileLogging() {
   const logFilePath = getLogFilePath();
 
@@ -583,6 +698,7 @@ async function launchWebUIProcess(options = {}) {
   console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
   console.log(`[INFO] Runtime paths => repoRoot: ${repoRoot} | appRoot: ${appRoot}`);
 
+  runAutoCleanup(appRoot);
   const killedPids = await stopOldXLabRouterProcesses(port, repoRoot);
   if (killedPids.length > 0) {
     console.log(`[INFO] Stopped old process(es) on port ${port}: ${killedPids.join(", ")}`);
