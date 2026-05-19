@@ -294,7 +294,8 @@ const SOURCE_LABELS = {
   empty: "Empty",
 };
 
-const USAGE_FAST_FETCH_TIMEOUT_MS = 4500;
+const USAGE_FETCH_TIMEOUT_MS = 15000;
+const PROVIDERS_FETCH_TIMEOUT_MS = 4500;
 
 export default function UsageStats() {
   const router = useRouter();
@@ -336,7 +337,7 @@ export default function UsageStats() {
   // Always include noAuth free providers (e.g. opencode) regardless of connections
   useEffect(() => {
     const start = Date.now();
-    fetchWithTimeout("/api/providers", { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading providers timed out")
+    fetchWithTimeout("/api/providers", { cache: "no-store" }, PROVIDERS_FETCH_TIMEOUT_MS, "Loading providers timed out")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         const durationMs = Date.now() - start;
@@ -362,10 +363,10 @@ export default function UsageStats() {
     const start = Date.now();
     const shouldFetchDebug = typeof window !== "undefined" && window.DEBUG_DASHBOARD_PERF;
     const statsRequests = [
-      fetchWithTimeout(`/api/usage/stats?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage stats timed out")
+      fetchWithTimeout(`/api/usage/stats?period=${period}`, { cache: "no-store" }, USAGE_FETCH_TIMEOUT_MS, "Loading usage stats timed out")
         .then((r) => (r.ok ? r.json() : null)),
       shouldFetchDebug
-        ? fetchWithTimeout(`/api/usage/debug?period=${period}`, { cache: "no-store" }, USAGE_FAST_FETCH_TIMEOUT_MS, "Loading usage debug timed out")
+        ? fetchWithTimeout(`/api/usage/debug?period=${period}`, { cache: "no-store" }, USAGE_FETCH_TIMEOUT_MS, "Loading usage debug timed out")
           .then((r) => (r.ok ? r.json() : null))
         : Promise.resolve(null),
     ];
