@@ -44,6 +44,7 @@ const PROTECTED_API_PATHS = [
   "/api/providers/client",
   "/api/provider-nodes/validate",
   "/api/debug",
+  "/api/monitoring",
 ];
 
 async function hasValidToken(request) {

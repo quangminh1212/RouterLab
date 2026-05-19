@@ -13,6 +13,7 @@ vi.mock("next/server", () => ({
 vi.mock("@/lib/localDb", () => ({
   getSettings: vi.fn(),
   getProviderConnections: vi.fn(),
+  updateProviderConnection: vi.fn(),
 }));
 
 vi.mock("@/shared/constants/config", () => ({
@@ -112,5 +113,88 @@ describe("GET /api/monitoring/health", () => {
 
     const gemini = body.providers.find((provider) => provider.provider === "gemini");
     expect(gemini.connections[0].status).toBe("inactive");
+  });
+
+  it("POST resets all provider health states", async () => {
+    const { getSettings, getProviderConnections, updateProviderConnection } = await import("@/lib/localDb");
+    vi.mocked(getSettings).mockResolvedValue({
+      requireApiKey: false,
+      requireLogin: true,
+      fallbackStrategy: "fill-first",
+      observabilityEnabled: true,
+    });
+    vi.mocked(getProviderConnections).mockResolvedValue([
+      {
+        id: "conn-a",
+        provider: "openai",
+        isActive: true,
+        testStatus: "unavailable",
+        modelLock_gpt4o: new Date(Date.now() + 30_000).toISOString(),
+      },
+      {
+        id: "conn-b",
+        provider: "claude",
+        isActive: true,
+        testStatus: "unavailable",
+      },
+    ]);
+    vi.mocked(updateProviderConnection).mockResolvedValue(undefined);
+
+    const { POST } = await import("../../src/app/api/monitoring/health/route.js");
+    const response = await POST();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.resetCount).toBe(2);
+    expect(updateProviderConnection).toHaveBeenCalledTimes(2);
+    expect(updateProviderConnection).toHaveBeenCalledWith("conn-a", expect.objectContaining({
+      modelLock_gpt4o: null,
+      testStatus: "active",
+      backoffLevel: 0,
+    }));
+  });
+
+  it("DELETE clears scoped provider state", async () => {
+    const { getSettings, getProviderConnections, updateProviderConnection } = await import("@/lib/localDb");
+    vi.mocked(getSettings).mockResolvedValue({
+      requireApiKey: false,
+      requireLogin: true,
+      fallbackStrategy: "fill-first",
+      observabilityEnabled: true,
+    });
+    vi.mocked(getProviderConnections).mockResolvedValue([
+      {
+        id: "conn-openai-1",
+        provider: "openai",
+        isActive: true,
+        testStatus: "unavailable",
+        modelLock_gpt4o: new Date(Date.now() + 30_000).toISOString(),
+      },
+      {
+        id: "conn-openai-2",
+        provider: "openai",
+        isActive: true,
+        testStatus: "active",
+      },
+    ]);
+    vi.mocked(updateProviderConnection).mockResolvedValue(undefined);
+
+    const { DELETE } = await import("../../src/app/api/monitoring/health/route.js");
+    const response = await DELETE(new Request("http://localhost/api/monitoring/health", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "openai", connectionId: "conn-openai-1", model: "gpt4o" }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.clearedCount).toBe(1);
+    expect(updateProviderConnection).toHaveBeenCalledTimes(1);
+    expect(updateProviderConnection).toHaveBeenCalledWith("conn-openai-1", expect.objectContaining({
+      modelLock_gpt4o: null,
+      testStatus: "active",
+    }));
   });
 });
