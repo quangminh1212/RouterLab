@@ -7,8 +7,14 @@ export async function POST(request) {
     const { model, kind } = await request.json();
     if (!model) return NextResponse.json({ error: "Model required" }, { status: 400 });
 
-    const baseUrl = process.env.BASE_URL ||
-      (() => { const u = new URL(request.url); return `${u.protocol}//${u.host}`; })();
+    const configured = process.env.INTERNAL_BASE_URL || process.env.XLABROUTER_INTERNAL_BASE_URL;
+    const baseUrl = configured
+      ? String(configured).trim().replace(/\/+$/, "")
+      : (() => {
+        const u = new URL(request.url);
+        const port = process.env.PORT || u.port || "1212";
+        return `http://127.0.0.1:${port}`;
+      })();
 
     // Get an active internal API key for auth (if requireApiKey is enabled)
     let apiKey = null;

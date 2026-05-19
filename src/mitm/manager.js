@@ -16,6 +16,10 @@ const { MITM_DIR } = require("./paths");
 const { log, err } = require("./logger");
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
+const LEGACY_MITM_ROUTER_BASES = new Set([
+  "http://localhost:20128",
+  "http://127.0.0.1:20128",
+]);
 
 function shellQuoteSingle(str) {
   if (str == null || str === "") return "''";
@@ -28,9 +32,11 @@ async function resolveMitmRouterBaseUrl() {
     const s = await _getSettings();
     const raw = s && s.mitmRouterBaseUrl != null ? String(s.mitmRouterBaseUrl).trim() : "";
     if (!raw) return DEFAULT_MITM_ROUTER_BASE;
-    const u = new URL(raw);
+    const normalized = raw.replace(/\/+$/, "");
+    if (LEGACY_MITM_ROUTER_BASES.has(normalized)) return DEFAULT_MITM_ROUTER_BASE;
+    const u = new URL(normalized);
     if (u.protocol !== "http:" && u.protocol !== "https:") return DEFAULT_MITM_ROUTER_BASE;
-    return raw.replace(/\/+$/, "");
+    return normalized;
   } catch {
     return DEFAULT_MITM_ROUTER_BASE;
   }

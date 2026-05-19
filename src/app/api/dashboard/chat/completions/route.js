@@ -4,13 +4,19 @@ import { INTERNAL_REQUEST_HEADER } from "open-sse/config/appConstants.js";
 
 export const dynamic = "force-dynamic";
 
+function getInternalBaseUrl(request) {
+  const configured = process.env.INTERNAL_BASE_URL || process.env.XLABROUTER_INTERNAL_BASE_URL;
+  if (configured) return String(configured).trim().replace(/\/+$/, "");
+
+  const url = new URL(request.url);
+  const port = process.env.PORT || url.port || "1212";
+  return `http://127.0.0.1:${port}`;
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
-    const baseUrl = process.env.BASE_URL || (() => {
-      const u = new URL(request.url);
-      return `${u.protocol}//${u.host}`;
-    })();
+    const baseUrl = getInternalBaseUrl(request);
 
     let apiKey = null;
     try {

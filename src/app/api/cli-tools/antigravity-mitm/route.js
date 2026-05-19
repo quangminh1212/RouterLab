@@ -16,12 +16,17 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 initDbHooks(getSettings, updateSettings);
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
+const LEGACY_MITM_ROUTER_BASES = new Set([
+  "http://localhost:20128",
+  "http://127.0.0.1:20128",
+]);
 
 function normalizeMitmRouterBaseUrlInput(input) {
   if (input == null || String(input).trim() === "") {
     return DEFAULT_MITM_ROUTER_BASE;
   }
   const t = String(input).trim().replace(/\/+$/, "");
+  if (LEGACY_MITM_ROUTER_BASES.has(t)) return DEFAULT_MITM_ROUTER_BASE;
   let u;
   try {
     u = new URL(t);
@@ -63,9 +68,7 @@ export async function GET() {
       dnsStatus: status.dnsStatus || {},
       hasCachedPassword: !!getCachedPassword() || !!(await loadEncryptedPassword()),
       isAdmin: checkIsAdmin(),
-      mitmRouterBaseUrl:
-        (settings.mitmRouterBaseUrl && String(settings.mitmRouterBaseUrl).trim()) ||
-        DEFAULT_MITM_ROUTER_BASE,
+      mitmRouterBaseUrl: normalizeMitmRouterBaseUrlInput(settings.mitmRouterBaseUrl),
     });
   } catch (error) {
     console.log("Error getting MITM status:", error.message);
