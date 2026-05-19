@@ -14,7 +14,8 @@ const INITIAL_SECTION_LOADING = {
   observability: true,
 };
 
-const PROFILE_FAST_FETCH_TIMEOUT_MS = 8000;
+const PROFILE_FAST_FETCH_TIMEOUT_MS = 20000;
+const PROFILE_RETRY_DELAY_MS = 600;
 
 const BASIC_CHAT_STORAGE_KEYS = {
   sessions: "basic-chat.sessions",
@@ -89,12 +90,21 @@ export default function ProfilePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
-    const fetchJson = (url, timeoutMessage) =>
-      fetchWithTimeout(url, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, timeoutMessage)
-        .then((res) => (res.ok ? res.json() : null));
+    const fetchJson = async (url, timeoutMessage, { retry = false } = {}) => {
+      const attempt = () =>
+        fetchWithTimeout(url, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, timeoutMessage)
+          .then((res) => (res.ok ? res.json() : null));
+      try {
+        return await attempt();
+      } catch (error) {
+        if (!retry || error?.name !== "AbortError") throw error;
+        await new Promise((resolve) => setTimeout(resolve, PROFILE_RETRY_DELAY_MS));
+        return attempt();
+      }
+    };
 
     Promise.allSettled([
-      fetchJson("/api/settings", "Loading profile settings timed out"),
+      fetchJson("/api/settings", "Loading profile settings timed out", { retry: true }),
       fetchJson("/api/auth/change-credentials", "Loading account settings timed out"),
       fetchJson("/api/auth/oauth-qr", "Loading authenticator setup timed out"),
       fetchJson(`/api/auth/google/status?t=${Date.now()}`, "Loading Google backup status timed out"),
@@ -105,7 +115,7 @@ export default function ProfilePage() {
       if (settingsResult.status === "fulfilled" && settingsResult.value) {
         applySettings(settingsResult.value);
       } else {
-        console.error("Failed to fetch settings:", settingsResult.reason);
+        console.warn("[profile] Failed to fetch settings:", settingsResult.reason?.message || settingsResult.reason);
         setSectionLoading({
           security: false,
           routing: false,
