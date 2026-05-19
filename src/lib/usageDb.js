@@ -709,32 +709,37 @@ export async function getUsageStats(period = "all") {
   }
 
   // Recent requests (always from live history)
+  const recentHistory = [...history]
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .filter((e) => {
+      const t = e.tokens || {};
+      return (t.prompt_tokens || t.input_tokens || 0) > 0
+        || (t.completion_tokens || t.output_tokens || 0) > 0;
+    })
+    .slice(0, 20);
+
   const recentRequestsRaw = await Promise.all(
-    [...history]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .map(async (e) => {
-        const t = e.tokens || {};
-        const existingCost = Number(e.cost || 0);
-        const computedCost = existingCost > 0
-          ? existingCost
-          : await calculateCost(e.provider, e.model, t);
-        return {
-          timestamp: e.timestamp,
-          model: e.model,
-          provider: e.provider || "",
-          promptTokens: t.prompt_tokens || t.input_tokens || 0,
-          completionTokens: t.completion_tokens || t.output_tokens || 0,
-          cost: computedCost,
-          status: e.status || "ok",
-          compression: e.compression || null,
-          durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
-        };
-      })
+    recentHistory.map(async (e) => {
+      const t = e.tokens || {};
+      const existingCost = Number(e.cost || 0);
+      const computedCost = existingCost > 0
+        ? existingCost
+        : await calculateCost(e.provider, e.model, t);
+      return {
+        timestamp: e.timestamp,
+        model: e.model,
+        provider: e.provider || "",
+        promptTokens: t.prompt_tokens || t.input_tokens || 0,
+        completionTokens: t.completion_tokens || t.output_tokens || 0,
+        cost: computedCost,
+        status: e.status || "ok",
+        compression: e.compression || null,
+        durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
+      };
+    })
   );
 
-  const recentRequests = recentRequestsRaw
-    .filter((e) => e.promptTokens > 0 || e.completionTokens > 0)
-    .slice(0, 20);
+  const recentRequests = recentRequestsRaw;
 
   const lifetimeTotalRequests = typeof db.data.totalRequestsLifetime === "number"
     ? db.data.totalRequestsLifetime
