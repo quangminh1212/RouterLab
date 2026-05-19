@@ -31,6 +31,10 @@ function isTunnelLikeRequest(request, settings) {
 
 export async function GET(request) {
   try {
+    if (process.env.XLAB_DISABLE_AUTH === "true") {
+      return NextResponse.json({ requireLogin: false, tunnelDashboardAccess: true, tunnelUrl: "", tailscaleUrl: "", hasPassword: false });
+    }
+
     const settings = await getSettings();
     const requireLogin = isLocalhostRequest(request)
       ? false
