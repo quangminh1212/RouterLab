@@ -267,7 +267,7 @@ export async function handleChat(request, clientRawRequest = null) {
     clientRawRequest,
     request,
     apiKey,
-    { openClawTunnelCompat }
+    { openClawTunnelCompat, settings }
   );
 }
 
@@ -282,7 +282,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     const comboName = modelInfo.model || modelStr;
     const comboModels = await getComboModels(comboName);
     if (comboModels) {
-      const chatSettings = await getSettings();
+      const chatSettings = options.settings || await getSettings();
       // Check for combo-specific strategy first, fallback to global
       const comboStrategies = chatSettings.comboStrategies || {};
       const comboSpecificStrategy = comboStrategies[comboName]?.fallbackStrategy;
@@ -293,7 +293,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       return handleComboChat({
         body,
         models: comboModels,
-        handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { ...options, comboName }),
+        handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { ...options, comboName, settings: chatSettings }),
         log,
         comboName,
         comboStrategy,
@@ -358,7 +358,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     }
 
     // Use shared chatCore
-    const chatSettings = await getSettings();
+    const chatSettings = options.settings || await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
     let requestBody = options.openClawTunnelCompat ? buildOpenClawCompatBody(body) : body;
 

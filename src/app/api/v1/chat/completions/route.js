@@ -3,6 +3,7 @@ import { initTranslators } from "open-sse/translator/index.js";
 import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
+let initializePromise = null;
 
 const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 45000;
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
@@ -11,11 +12,20 @@ const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PR
 const OPENCLAW_COMPAT_TOKEN = "sk-6520dcd38ef3521c-liwdr1-9137175c";
 
 async function ensureInitialized() {
-  if (!initialized) {
-    await initTranslators();
-    initialized = true;
+  if (initialized) return;
+  if (!initializePromise) {
+    initializePromise = initTranslators()
+      .then(() => {
+        initialized = true;
+      })
+      .finally(() => {
+        initializePromise = null;
+      });
   }
+  await initializePromise;
 }
+
+ensureInitialized().catch(() => {});
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -154,13 +164,24 @@ async function proxyOpenClawCapture(request) {
 }
 
 async function postHandler(request) {
-  const requestBody = await request.clone().json().catch(() => null);
+  const bodyText = await request.text();
+  let requestBody = null;
+  if (bodyText) {
+    try {
+      requestBody = JSON.parse(bodyText);
+    } catch {
+      requestBody = null;
+    }
+  }
+  const forwardedRequest = new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: bodyText,
+  });
 
   if (process.env.OPENCLAW_DEBUG_CAPTURE === "true") {
     try {
       const [{ promises: fs }, path] = await Promise.all([import("fs"), import("path")]);
-      const cloned = request.clone();
-      const bodyText = await cloned.text();
       const auth = request.headers.get("authorization") || "";
       if (auth.includes("sk-6520dcd38ef3521c-liwdr1-9137175c")) {
         const captureDir = "C:\\tmp\\openclaw-debug-capture";
@@ -175,21 +196,21 @@ async function postHandler(request) {
     } catch {}
   }
 
-  if (OPENCLAW_CAPTURE_PROXY_ENABLED && !isCaptureSelfLoop(request)) {
-    return proxyOpenClawCapture(request);
+  if (OPENCLAW_CAPTURE_PROXY_ENABLED && !isCaptureSelfLoop(forwardedRequest)) {
+    return proxyOpenClawCapture(forwardedRequest);
   }
 
-  if (OPENCLAW_CAPTURE_PROXY_ENABLED && isCaptureSelfLoop(request)) {
+  if (OPENCLAW_CAPTURE_PROXY_ENABLED && isCaptureSelfLoop(forwardedRequest)) {
     await writeOpenClawCapture("capture-bypass", {
       reason: "self-loop-detected",
-      incomingUrl: request.url,
+      incomingUrl: forwardedRequest.url,
       upstreamUrl: OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL,
     });
   }
 
   await ensureInitialized();
-  const response = await handleChat(request);
-  return await normalizeChatCompletionsJson(response, request, requestBody);
+  const response = await handleChat(forwardedRequest);
+  return await normalizeChatCompletionsJson(response, forwardedRequest, requestBody);
 }
 
 function extractResponseText(payload) {
