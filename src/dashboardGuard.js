@@ -158,6 +158,10 @@ export async function proxy(request) {
   const { pathname } = request.nextUrl;
   const start = Date.now();
 
+  if (AUTH_DISABLED && pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (isCrossSiteUnsafeRequest(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -191,6 +195,10 @@ export async function proxy(request) {
 
   // Protect all dashboard routes
   if (pathname.startsWith("/dashboard")) {
+    if (AUTH_DISABLED) {
+      return addSecurityHeaders(NextResponse.next());
+    }
+
     if (isLocalhostRequest(request)) {
       return addSecurityHeaders(NextResponse.next());
     }
@@ -256,6 +264,7 @@ export async function proxy(request) {
 export const config = {
   matcher: [
     "/",
+    "/login",
     "/dashboard/:path*",
     "/api/settings/:path*",
     "/api/keys/:path*",
