@@ -208,7 +208,7 @@ export function resolveModelAliasFromMap(alias, aliases) {
  * @param {string} modelStr - Model string
  * @param {object|function} aliasesOrGetter - Aliases object or async function to get aliases
  */
-export async function getModelInfoCore(modelStr, aliasesOrGetter) {
+export async function getModelInfoCore(modelStr, aliasesOrGetter, forcedMappings = null) {
   const parsed = parseModel(modelStr);
 
   if (!parsed.isAlias) {
@@ -224,8 +224,7 @@ export async function getModelInfoCore(modelStr, aliasesOrGetter) {
       ? await aliasesOrGetter()
       : aliasesOrGetter;
 
-  // Resolve alias
-  const resolved = resolveModelAliasFromMap(parsed.model, aliases);
+  // Forced mappings override aliases first`r`n  const forcedResolved = resolveModelAliasFromMap(parsed.model, forcedMappings);`r`n  if (forcedResolved) {`r`n    return forcedResolved;`r`n  }`r`n`r`n  // Resolve alias`r`n  const resolved = resolveModelAliasFromMap(parsed.model, aliases);
   if (resolved) {
     return resolved;
   }
@@ -253,3 +252,4 @@ function inferProviderFromModelName(modelName) {
   // Default fallback
   return "openai";
 }
+

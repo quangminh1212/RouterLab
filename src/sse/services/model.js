@@ -1,5 +1,5 @@
 // Re-export from open-sse with localDb integration
-import { getModelAliases, getComboByName, getProviderNodes } from "@/lib/localDb";
+import { getModelAliases, getComboByName, getProviderNodes, getSettings } from "@/lib/localDb";
 import { parseModel, resolveModelAliasFromMap, getModelInfoCore } from "open-sse/services/model.js";
 
 export { parseModel };
@@ -68,7 +68,9 @@ export async function getModelInfo(modelStr) {
     return { provider: null, model: parsed.model };
   }
 
-  return getModelInfoCore(modelStr, getModelAliases);
+  const settings = await getSettings();
+  const forcedMappings = settings.forcedModelMappings || null;
+  return getModelInfoCore(modelStr, getModelAliases, forcedMappings);
 }
 
 /**
@@ -85,3 +87,5 @@ export async function getComboModels(modelStr) {
   }
   return null;
 }
+
+
