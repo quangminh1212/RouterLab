@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { exec, execFile } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { isCliInstalled } from "../_lib/cliInstalled";
 
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 const DEFAULT_CLAUDE_SETTINGS = {
   defaultMode: "acceptEdits",
@@ -58,22 +58,7 @@ const getClaudeLegacySettingsPath = () => {
 
 // Check if claude CLI is installed (via which/where or config file exists)
 const checkClaudeInstalled = async () => {
-  try {
-    const isWindows = os.platform() === "win32";
-    const command = isWindows ? "where claude" : "which claude";
-    const env = isWindows
-      ? { ...process.env, PATH: `${process.env.APPDATA}\\npm;${process.env.PATH}` }
-      : process.env;
-    await execAsync(command, { windowsHide: true, env });
-    return true;
-  } catch {
-    try {
-      await fs.access(getClaudeSettingsPath());
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  return isCliInstalled("claude", [getClaudeSettingsPath(), getClaudeLegacySettingsPath()]);
 };
 
 // Read current settings

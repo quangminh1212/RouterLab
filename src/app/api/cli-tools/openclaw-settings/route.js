@@ -1,13 +1,10 @@
 "use server";
 
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
-
-const execAsync = promisify(exec);
+import { isCliInstalled } from "../_lib/cliInstalled";
 
 // OpenClaw 2026.5.x writes agents[].model as either a plain string
 // (legacy) or as an object `{ primary, fallbacks }`. Normalize to the
@@ -22,25 +19,7 @@ const getOpenClawDir = () => path.join(os.homedir(), ".openclaw");
 const getOpenClawSettingsPath = () => path.join(getOpenClawDir(), "openclaw.json");
 
 // Check if openclaw CLI is installed (via which/where or config file exists)
-const checkOpenClawInstalled = async () => {
-  try {
-    const isWindows = os.platform() === "win32";
-    const command = isWindows ? "where openclaw" : "which openclaw";
-    // On Windows, inject %APPDATA%\npm into PATH so npm global packages are found
-    const env = isWindows
-      ? { ...process.env, PATH: `${process.env.APPDATA}\\npm;${process.env.PATH}` }
-      : process.env;
-    await execAsync(command, { windowsHide: true, env });
-    return true;
-  } catch {
-    try {
-      await fs.access(getOpenClawSettingsPath());
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
+const checkOpenClawInstalled = async () => isCliInstalled("openclaw", getOpenClawSettingsPath());
 
 // Read current settings.json
 const readSettings = async () => {
