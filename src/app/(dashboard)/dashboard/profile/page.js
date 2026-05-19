@@ -41,8 +41,10 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
-  const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
+  const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, hasRefreshToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
   const [gistLoading, setGistLoading] = useState(false);
+  const [showGistTokenForm, setShowGistTokenForm] = useState(false);
+  const [gistTokenForm, setGistTokenForm] = useState({ token: "", refreshToken: "" });
   const [googleStatus, setGoogleStatus] = useState({
     loading: true,
     configured: false,
@@ -389,6 +391,7 @@ export default function ProfilePage() {
     const controller = new AbortController();
     const timeoutByActionMs = {
       "use-gh-cli": 45000,
+      "set-token": 45000,
       backup: 90000,
       restore: 120000,
       sync: 120000,
@@ -635,6 +638,26 @@ export default function ProfilePage() {
       setGistLoading(false);
     }
   };
+  const saveGistToken = async (event) => {
+    event.preventDefault();
+    setGistLoading(true);
+    setDbStatus({ type: "", message: "" });
+    try {
+      const data = await postGistBackup({
+        action: "set-token",
+        token: gistTokenForm.token,
+        refreshToken: gistTokenForm.refreshToken,
+      });
+      setGistConfig(data.config);
+      setGistTokenForm({ token: "", refreshToken: "" });
+      setShowGistTokenForm(false);
+      setDbStatus({ type: "success", message: "GitHub token saved to db.json" });
+    } catch (err) {
+      setDbStatus({ type: "error", message: err.message || "Failed to save GitHub token" });
+    } finally {
+      setGistLoading(false);
+    }
+  };
   const runGoogleSync = async (action) => {
     setGoogleLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -799,6 +822,9 @@ export default function ProfilePage() {
                 <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
                   Dùng GitHub CLI
                 </Button>
+                <Button variant="outline" size="sm" icon="key" onClick={() => setShowGistTokenForm((value) => !value)} disabled={gistLoading}>
+                  Nhập token
+                </Button>
                 <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
                   Sync
                 </Button>
@@ -812,6 +838,41 @@ export default function ProfilePage() {
                   Disconnect
                 </Button>
               </div>
+              {showGistTokenForm ? (
+                <form onSubmit={saveGistToken} className="grid gap-3 pt-3 border-t border-border/50 sm:grid-cols-2">
+                  <Input
+                    label="GitHub token"
+                    type="password"
+                    value={gistTokenForm.token}
+                    onChange={(event) => setGistTokenForm((current) => ({ ...current, token: event.target.value }))}
+                    autoComplete="off"
+                    placeholder="ghp_... hoặc github_pat_..."
+                    disabled={gistLoading}
+                  />
+                  <Input
+                    label="GitHub refresh token"
+                    type="password"
+                    value={gistTokenForm.refreshToken}
+                    onChange={(event) => setGistTokenForm((current) => ({ ...current, refreshToken: event.target.value }))}
+                    autoComplete="off"
+                    placeholder="Tùy chọn"
+                    disabled={gistLoading}
+                  />
+                  <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+                    <Button type="submit" variant="primary" size="sm" loading={gistLoading}>
+                      Lưu token
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setShowGistTokenForm(false)} disabled={gistLoading}>
+                      Hủy
+                    </Button>
+                    <span className="text-xs text-text-muted">
+                      Nhập GitHub token để dùng Gist ngay; refresh token được lưu kèm trong db.json nếu có.
+                    </span>
+                  </div>
+                </form>
+              ) : gistConfig.hasRefreshToken ? (
+                <p className="text-xs text-text-muted">Refresh token đã được lưu trong db.json.</p>
+              ) : null}
             </div>
             {dbStatus.message && (
               <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
