@@ -15,6 +15,14 @@ function fmtCost(value) {
   return `$${Number(value || 0).toFixed(4)}`;
 }
 
+function fmtDuration(durationMs) {
+  const ms = Number(durationMs);
+  if (!Number.isFinite(ms) || ms < 0) return "--";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
+  return `${(ms / 60000).toFixed(ms < 600000 ? 1 : 0)}m`;
+}
+
 function timeAgo(timestamp, nowTs = Date.now()) {
   const ts = new Date(timestamp).getTime();
   if (!Number.isFinite(ts)) return "--";
@@ -59,6 +67,7 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
                 <th className="py-1.5 text-left font-semibold text-text-muted">Model</th>
                 <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">In / Out</th>
                 <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">Cost</th>
+                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">Duration</th>
                 <th className="py-1.5 text-right font-semibold text-text-muted">When</th>
               </tr>
             </thead>
@@ -83,6 +92,9 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
+                    </td>
+                    <td className="py-1.5 text-right whitespace-nowrap text-text-muted">
+                      {fmtDuration(r.durationMs)}
                     </td>
                     <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} now={now} /></td>
                   </tr>
@@ -154,6 +166,7 @@ function serializeRecentRequest(request = {}) {
     request.promptTokens || 0,
     request.completionTokens || 0,
     request.cost || request.totalCost || 0,
+    Number.isFinite(Number(request.durationMs)) ? Number(request.durationMs) : "",
   ].join("|");
 }
 

@@ -94,7 +94,17 @@ export function buildOnStreamComplete({ provider, model, connectionId, apiKey, r
       console.error("[RequestDetail] Failed to update streaming content:", err.message);
     });
 
-    saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint, label: "STREAM USAGE", compression: rtkStats });
+    saveUsageStats({
+      provider,
+      model,
+      tokens: usage,
+      connectionId,
+      apiKey,
+      endpoint: clientRawRequest?.endpoint,
+      label: "STREAM USAGE",
+      compression: rtkStats,
+      durationMs: Date.now() - requestStartTime,
+    });
   };
 
   return { onStreamComplete, streamDetailId };

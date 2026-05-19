@@ -306,6 +306,7 @@ export async function getActiveRequests() {
           completionTokens,
           cost: computedCost,
           status: e.status || "ok",
+          durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
         };
       })
   );
@@ -726,6 +727,7 @@ export async function getUsageStats(period = "all") {
           cost: computedCost,
           status: e.status || "ok",
           compression: e.compression || null,
+          durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
         };
       })
   );

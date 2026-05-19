@@ -159,7 +159,16 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
 
   const usage = extractUsageFromResponse(responseBody);
   appendLog({ tokens: usage, status: "200 OK" });
-  saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint, compression: rtkStats });
+  saveUsageStats({
+    provider,
+    model,
+    tokens: usage,
+    connectionId,
+    apiKey,
+    endpoint: clientRawRequest?.endpoint,
+    compression: rtkStats,
+    durationMs: Date.now() - requestStartTime,
+  });
 
   const translatedResponse = needsTranslation(targetFormat, sourceFormat)
     ? translateNonStreamingResponse(responseBody, targetFormat, sourceFormat)
