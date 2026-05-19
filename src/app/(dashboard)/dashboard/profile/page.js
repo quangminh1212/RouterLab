@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { Card, Button, Toggle, Input } from "@/shared/components";
@@ -43,6 +43,8 @@ export default function ProfilePage() {
   const importFileRef = useRef(null);
   const [gistConfig, setGistConfig] = useState({ enabled: false, hasToken: false, hasRefreshToken: false, gistId: "", htmlUrl: "", updatedAt: "", tokenSource: "", githubLogin: "" });
   const [gistLoading, setGistLoading] = useState(false);
+  const gistMenuRef = useRef(null);
+  const [showGistMenu, setShowGistMenu] = useState(false);
   const [showGistTokenForm, setShowGistTokenForm] = useState(false);
   const [gistTokenForm, setGistTokenForm] = useState({ token: "", refreshToken: "" });
   const [googleStatus, setGoogleStatus] = useState({
@@ -145,6 +147,17 @@ export default function ProfilePage() {
 
     return () => { cancelled = true; };
   }, []);
+  useEffect(() => {
+    if (typeof window === "undefined" || !showGistMenu) return undefined;
+
+    const closeMenu = (event) => {
+      if (gistMenuRef.current?.contains(event.target)) return;
+      setShowGistMenu(false);
+    };
+
+    window.addEventListener("pointerdown", closeMenu);
+    return () => window.removeEventListener("pointerdown", closeMenu);
+  }, [showGistMenu]);
   const InlineSettingSkeleton = ({ wide = false }) => (
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1 space-y-2">
@@ -814,29 +827,46 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={cn("text-xs px-2 py-1 rounded-full border whitespace-nowrap", gistConfig.hasToken ? "text-green-600 border-green-500/30 bg-green-500/10" : "text-text-muted border-border") }>
-                    {gistConfig.hasToken ? "CLI" : "Off"}
+                    {gistConfig.hasToken ? (gistConfig.tokenSource === "manual" ? "Manual" : "CLI") : "Off"}
                   </span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" icon="terminal" onClick={connectGitHubCli} loading={gistLoading}>
-                  Dùng GitHub CLI
-                </Button>
-                <Button variant="outline" size="sm" icon="key" onClick={() => setShowGistTokenForm((value) => !value)} disabled={gistLoading}>
-                  Nhập token
-                </Button>
-                <Button variant="secondary" size="sm" icon="sync" onClick={() => runGistBackup("sync")} loading={gistLoading}>
-                  Sync
-                </Button>
-                <Button variant="secondary" size="sm" icon="cloud_upload" onClick={() => runGistBackup("backup")} loading={gistLoading}>
-                  Backup
-                </Button>
-                <Button variant="outline" size="sm" icon="cloud_download" onClick={() => runGistBackup("restore")} loading={gistLoading}>
-                  Restore
-                </Button>
-                <Button variant="ghost" size="sm" onClick={disconnectGistBackup} disabled={gistLoading || !gistConfig.hasToken}>
-                  Disconnect
-                </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative" ref={gistMenuRef}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon="tune"
+                    onClick={() => setShowGistMenu((value) => !value)}
+                    disabled={gistLoading}
+                  >
+                    Tùy chọn Gist
+                  </Button>
+                  {showGistMenu ? (
+                    <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-lg border border-border bg-sidebar p-1 shadow-lg">
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); connectGitHubCli(); }}>
+                        Dùng GitHub CLI
+                      </button>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); setShowGistTokenForm((value) => !value); }}>
+                        Nhập token
+                      </button>
+                      <div className="my-1 border-t border-border/60" />
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("sync"); }}>
+                        Sync
+                      </button>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("backup"); }}>
+                        Backup
+                      </button>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("restore"); }}>
+                        Restore
+                      </button>
+                      <div className="my-1 border-t border-border/60" />
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors disabled:opacity-50" onClick={() => { setShowGistMenu(false); disconnectGistBackup(); }} disabled={gistLoading || !gistConfig.hasToken}>
+                        Disconnect
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               {showGistTokenForm ? (
                 <form onSubmit={saveGistToken} className="grid gap-3 pt-3 border-t border-border/50 sm:grid-cols-2">
