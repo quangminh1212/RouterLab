@@ -837,31 +837,35 @@ export default function ProfilePage() {
                     variant="secondary"
                     size="sm"
                     icon="tune"
-                    onClick={() => setShowGistMenu((value) => !value)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setShowGistMenu((value) => !value);
+                    }}
                     disabled={gistLoading}
                   >
                     Tùy chọn Gist
                   </Button>
                   {showGistMenu ? (
                     <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-lg border border-border bg-sidebar p-1 shadow-lg">
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); connectGitHubCli(); }}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); connectGitHubCli(); }}>
                         Dùng GitHub CLI
                       </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); setShowGistTokenForm((value) => !value); }}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); setShowGistTokenForm((value) => !value); }}>
                         Nhập token
                       </button>
                       <div className="my-1 border-t border-border/60" />
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("sync"); }}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("sync"); }}>
                         Sync
                       </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("backup"); }}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("backup"); }}>
                         Backup
                       </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={() => { setShowGistMenu(false); runGistBackup("restore"); }}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("restore"); }}>
                         Restore
                       </button>
                       <div className="my-1 border-t border-border/60" />
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors disabled:opacity-50" onClick={() => { setShowGistMenu(false); disconnectGistBackup(); }} disabled={gistLoading || !gistConfig.hasToken}>
+                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors disabled:opacity-50" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); disconnectGistBackup(); }} disabled={gistLoading || !gistConfig.hasToken}>
                         Disconnect
                       </button>
                     </div>
