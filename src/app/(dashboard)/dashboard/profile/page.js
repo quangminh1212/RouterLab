@@ -863,13 +863,13 @@ export default function ProfilePage() {
                     <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
                   </div>
                   <div>
-                    <p className="font-medium">Qu?n l? t?i kho?n</p>
-                    <p className="text-sm text-text-muted">??i t?n ??ng nh?p v? m?t kh?u ??ng nh?p dashboard.</p>
+                    <p className="font-medium">Quản lý tài khoản</p>
+                    <p className="text-sm text-text-muted">Đổi tên đăng nhập và mật khẩu đăng nhập dashboard.</p>
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Input
-                    label="T?i kho?n hi?n t?i"
+                    label="Tài khoản hiện tại"
                     type="text"
                     value={accountForm.currentUsername}
                     onChange={(event) => setAccountForm((current) => ({ ...current, currentUsername: event.target.value }))}
@@ -878,7 +878,7 @@ export default function ProfilePage() {
                     required
                   />
                   <Input
-                    label="M?t kh?u hi?n t?i"
+                    label="Mật khẩu hiện tại"
                     type="password"
                     value={accountForm.currentPassword}
                     onChange={(event) => setAccountForm((current) => ({ ...current, currentPassword: event.target.value }))}
@@ -887,7 +887,7 @@ export default function ProfilePage() {
                     required
                   />
                   <Input
-                    label="T?n ??ng nh?p m?i"
+                    label="Tên đăng nhập mới"
                     type="text"
                     value={accountForm.username}
                     onChange={(event) => setAccountForm((current) => ({ ...current, username: event.target.value }))}
@@ -896,7 +896,7 @@ export default function ProfilePage() {
                     required
                   />
                   <Input
-                    label="M?t kh?u m?i"
+                    label="Mật khẩu mới"
                     type="password"
                     value={accountForm.password}
                     onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))}
@@ -905,7 +905,7 @@ export default function ProfilePage() {
                     required
                   />
                   <Input
-                    label="Nh?p l?i m?t kh?u m?i"
+                    label="Nhập lại mật khẩu mới"
                     type="password"
                     value={accountForm.confirmPassword}
                     onChange={(event) => setAccountForm((current) => ({ ...current, confirmPassword: event.target.value }))}
@@ -922,7 +922,7 @@ export default function ProfilePage() {
                 ) : null}
                 <div>
                   <Button type="submit" variant="primary" loading={accountLoading} disabled={accountLoading || disableSecurityControls}>
-                    L?u t?i kho?n
+                    Lưu tài khoản
                   </Button>
                 </div>
               </form>
