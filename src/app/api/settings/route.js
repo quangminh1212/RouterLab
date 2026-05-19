@@ -4,7 +4,13 @@ import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 
 function sanitizeSettings(settings) {
-  const { password, ...safeSettings } = settings || {};
+  const { password, adminAuth, ...safeSettings } = settings || {};
+  if (adminAuth && typeof adminAuth === "object") {
+    safeSettings.adminAuth = {
+      username: adminAuth.username || "admin",
+      hasCustomCredentials: Boolean(adminAuth.passwordHash),
+    };
+  }
   if (safeSettings.gistBackup && typeof safeSettings.gistBackup === "object") {
     safeSettings.gistBackup = {
       ...safeSettings.gistBackup,

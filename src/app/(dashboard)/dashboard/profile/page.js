@@ -73,6 +73,15 @@ export default function ProfilePage() {
   const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    currentUsername: "admin",
+    currentPassword: "",
+    username: "admin",
+    password: "",
+    confirmPassword: "",
+  });
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountStatus, setAccountStatus] = useState({ type: "", message: "" });
   useEffect(() => {
     fetchWithTimeout("/api/settings", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading profile settings timed out")
       .then((res) => res.json())
@@ -89,6 +98,23 @@ export default function ProfilePage() {
         });
         setSettingsLoadError(true);
       });
+  }, []);
+
+
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    fetchWithTimeout("/api/auth/change-credentials", { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, "Loading account settings timed out")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.username) return;
+        setAccountForm((current) => ({
+          ...current,
+          currentUsername: data.username,
+          username: data.username,
+        }));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -561,6 +587,51 @@ export default function ProfilePage() {
     }
   };
 
+  const changeAccountCredentials = async (event) => {
+    event?.preventDefault();
+    const { currentUsername, currentPassword, username, password, confirmPassword } = accountForm;
+    if (!currentUsername.trim() || !currentPassword) {
+      setAccountStatus({ type: "error", message: "Vui lòng nhập tài khoản và mật khẩu hiện tại" });
+      return;
+    }
+    if (!username.trim()) {
+      setAccountStatus({ type: "error", message: "Vui lòng nhập tên đăng nhập mới" });
+      return;
+    }
+    if (!password) {
+      setAccountStatus({ type: "error", message: "Vui lòng nhập mật khẩu mới" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAccountStatus({ type: "error", message: "Mật khẩu xác nhận không khớp" });
+      return;
+    }
+    setAccountLoading(true);
+    setAccountStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/auth/change-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentUsername, currentPassword, username: username.trim(), password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Đổi tài khoản thất bại");
+      setAccountForm((current) => ({
+        ...current,
+        currentUsername: data.username,
+        username: data.username,
+        currentPassword: "",
+        password: "",
+        confirmPassword: "",
+      }));
+      setAccountStatus({ type: "success", message: "Đổi tài khoản thành công" });
+    } catch (err) {
+      setAccountStatus({ type: "error", message: err.message || "Đổi tài khoản thất bại" });
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
   const disconnectGistBackup = async () => {
     setGistLoading(true);
     setDbStatus({ type: "", message: "" });
@@ -644,7 +715,7 @@ export default function ProfilePage() {
   const disableRoutingControls = routingLoading;
   const disableNetworkControls = networkLoading || proxyLoading;
   const disableObservabilityControls = observabilityLoading;
-  const showSecurityForm = !securityLoading && requireLoginEnabled;
+  const showSecurityForm = false;
   const showStickyLimit = !routingLoading && roundRobinEnabled;
   const showProxyForm = !networkLoading && outboundProxyEnabled;
   void isDark;
@@ -802,12 +873,82 @@ export default function ProfilePage() {
                 disabled={disableSecurityControls}
               />
             </div>
-            {securityLoading ? (
+            {!securityLoading ? (
+              <form onSubmit={changeAccountCredentials} className="flex flex-col gap-4 pt-4 border-t border-border/50">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">Qu?n l? t?i kho?n</p>
+                    <p className="text-sm text-text-muted">??i t?n ??ng nh?p v? m?t kh?u ??ng nh?p dashboard.</p>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    label="T?i kho?n hi?n t?i"
+                    type="text"
+                    value={accountForm.currentUsername}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, currentUsername: event.target.value }))}
+                    autoComplete="username"
+                    disabled={accountLoading || disableSecurityControls}
+                    required
+                  />
+                  <Input
+                    label="M?t kh?u hi?n t?i"
+                    type="password"
+                    value={accountForm.currentPassword}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, currentPassword: event.target.value }))}
+                    autoComplete="current-password"
+                    disabled={accountLoading || disableSecurityControls}
+                    required
+                  />
+                  <Input
+                    label="T?n ??ng nh?p m?i"
+                    type="text"
+                    value={accountForm.username}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, username: event.target.value }))}
+                    autoComplete="username"
+                    disabled={accountLoading || disableSecurityControls}
+                    required
+                  />
+                  <Input
+                    label="M?t kh?u m?i"
+                    type="password"
+                    value={accountForm.password}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))}
+                    autoComplete="new-password"
+                    disabled={accountLoading || disableSecurityControls}
+                    required
+                  />
+                  <Input
+                    label="Nh?p l?i m?t kh?u m?i"
+                    type="password"
+                    value={accountForm.confirmPassword}
+                    onChange={(event) => setAccountForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                    autoComplete="new-password"
+                    disabled={accountLoading || disableSecurityControls}
+                    required
+                    className="sm:col-span-2"
+                  />
+                </div>
+                {accountStatus.message ? (
+                  <p className={`text-sm ${accountStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
+                    {accountStatus.message}
+                  </p>
+                ) : null}
+                <div>
+                  <Button type="submit" variant="primary" loading={accountLoading} disabled={accountLoading || disableSecurityControls}>
+                    L?u t?i kho?n
+                  </Button>
+                </div>
+              </form>
+            ) : (
               <div className="pt-4 border-t border-border/50 flex flex-col gap-4">
                 {renderInlineSkeleton(true)}
                 {renderInlineSkeleton(true)}
               </div>
-            ) : null}
+            )}
             {renderFallbackNotice()}
             {showSecurityForm && (
               <div className="flex flex-col gap-4 pt-4 border-t border-border/50">
