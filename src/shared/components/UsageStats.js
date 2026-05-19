@@ -16,8 +16,10 @@ function fmtCost(value) {
 }
 
 function fmtDuration(durationMs) {
+  if (durationMs == null) return "--";
   const ms = Number(durationMs);
-  if (durationMs == null || !Number.isFinite(ms) || ms < 0) return "--";
+  if (!Number.isFinite(ms) || ms < 0) return "--";
+  if (ms < 1) return "<1ms";
   if (ms < 1000) return `${Math.round(ms)}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
   return `${(ms / 60000).toFixed(ms < 600000 ? 1 : 0)}m`;
@@ -26,7 +28,9 @@ function fmtDuration(durationMs) {
 function timeAgo(timestamp, nowTs = Date.now()) {
   const ts = new Date(timestamp).getTime();
   if (!Number.isFinite(ts)) return "--";
-  const diff = Math.max(0, Math.floor((nowTs - ts) / 1000));
+  const diff = Math.floor((nowTs - ts) / 1000);
+  if (diff < 0) return "just now";
+  if (diff < 5) return "just now";
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -45,7 +49,7 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
   );
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 
