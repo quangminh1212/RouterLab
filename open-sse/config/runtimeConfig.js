@@ -29,11 +29,16 @@ export const MEMORY_CONFIG = {
   sessionCleanupIntervalMs: 30 * 60 * 1000,
   dnsCacheTtlMs: 5 * 60 * 1000,
   proxyDispatchersMaxSize: 20,
+  directDispatchersMaxSize: 50,
 };
 
 export const NETWORK_GUARD_CONFIG = {
   defaultFetchTimeoutMs: Number(process.env.DEFAULT_FETCH_TIMEOUT_MS || 45000),
   streamingFetchTimeoutMs: Number(process.env.STREAMING_FETCH_TIMEOUT_MS || 300000),
+  keepAliveTimeoutMs: Number(process.env.FETCH_KEEP_ALIVE_TIMEOUT_MS || 60000),
+  keepAliveMaxTimeoutMs: Number(process.env.FETCH_KEEP_ALIVE_MAX_TIMEOUT_MS || 120000),
+  directConnectionsPerOrigin: Number(process.env.FETCH_DIRECT_CONNECTIONS_PER_ORIGIN || 32),
+  directPipelining: Number(process.env.FETCH_DIRECT_PIPELINING || 1),
 };
 
 // Default token limits

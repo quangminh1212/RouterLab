@@ -5,6 +5,7 @@ const isCloud = typeof caches !== "undefined" && typeof caches === "object";
 
 const originalFetch = globalThis.fetch;
 const proxyDispatchers = new Map();
+const directDispatchers = new Map();
 
 // DNS cache - use Map to avoid prototype pollution via malformed hostnames
 const DNS_CACHE = new Map();
@@ -139,6 +140,30 @@ async function getDispatcher(proxyUrl) {
   }
 
   return proxyDispatchers.get(normalized);
+}
+
+async function getDirectDispatcher(targetUrl) {
+  let origin;
+  try {
+    origin = new URL(targetUrl).origin;
+  } catch {
+    return null;
+  }
+
+  if (!directDispatchers.has(origin)) {
+    if (directDispatchers.size >= MEMORY_CONFIG.directDispatchersMaxSize) {
+      directDispatchers.delete(directDispatchers.keys().next().value);
+    }
+    const { Agent } = await import("undici");
+    directDispatchers.set(origin, new Agent({
+      keepAliveTimeout: NETWORK_GUARD_CONFIG.keepAliveTimeoutMs,
+      keepAliveMaxTimeout: NETWORK_GUARD_CONFIG.keepAliveMaxTimeoutMs,
+      connections: NETWORK_GUARD_CONFIG.directConnectionsPerOrigin,
+      pipelining: NETWORK_GUARD_CONFIG.directPipelining,
+    }));
+  }
+
+  return directDispatchers.get(origin);
 }
 
 /**
@@ -439,9 +464,11 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
     }
   }
 
+  const dispatcher = await getDirectDispatcher(targetUrl);
+  const directOptions = dispatcher ? { ...options, dispatcher } : options;
   return withFetchTimeout(
     (effectiveOptions) => originalFetch(url, effectiveOptions),
-    options,
+    directOptions,
     timeoutMs,
   );
 }
