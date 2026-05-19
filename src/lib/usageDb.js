@@ -291,8 +291,10 @@ export async function getActiveRequests() {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .filter((e) => {
       const t = e.tokens || {};
-      return (t.prompt_tokens || t.input_tokens || 0) > 0
+      const hasTokens = (t.prompt_tokens || t.input_tokens || 0) > 0
         || (t.completion_tokens || t.output_tokens || 0) > 0;
+      const hasLegacyZeroDuration = Number.isFinite(Number(e?.durationMs)) && Number(e.durationMs) === 0;
+      return hasTokens && !hasLegacyZeroDuration;
     })
     .slice(0, 20);
   const recentRequestsRaw = await Promise.all(
@@ -718,8 +720,10 @@ export async function getUsageStats(period = "all") {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .filter((e) => {
       const t = e.tokens || {};
-      return (t.prompt_tokens || t.input_tokens || 0) > 0
+      const hasTokens = (t.prompt_tokens || t.input_tokens || 0) > 0
         || (t.completion_tokens || t.output_tokens || 0) > 0;
+      const hasLegacyZeroDuration = Number.isFinite(Number(e?.durationMs)) && Number(e.durationMs) === 0;
+      return hasTokens && !hasLegacyZeroDuration;
     })
     .slice(0, 20);
 
