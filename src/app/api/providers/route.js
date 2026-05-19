@@ -228,9 +228,10 @@ export async function POST(request) {
     const result = { ...newConnection };
     delete result.apiKey;
 
-    return NextResponse.json({ connection: result }, { status: 201 });
+    return NextResponse.json({ connection: result, ...result }, { status: 201 });
   } catch (error) {
     console.log("Error creating provider:", error);
     return NextResponse.json({ error: "Failed to create provider" }, { status: 500 });
   }
 }
+
