@@ -17,7 +17,7 @@ function fmtCost(value) {
 
 function fmtDuration(durationMs) {
   const ms = Number(durationMs);
-  if (!Number.isFinite(ms) || ms < 0) return "--";
+  if (durationMs == null || !Number.isFinite(ms) || ms < 0) return "--";
   if (ms < 1000) return `${Math.round(ms)}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
   return `${(ms / 60000).toFixed(ms < 600000 ? 1 : 0)}m`;
@@ -166,7 +166,7 @@ function serializeRecentRequest(request = {}) {
     request.promptTokens || 0,
     request.completionTokens || 0,
     request.cost || request.totalCost || 0,
-    Number.isFinite(Number(request.durationMs)) ? Number(request.durationMs) : "",
+    request.durationMs == null ? "" : (Number.isFinite(Number(request.durationMs)) ? Number(request.durationMs) : ""),
   ].join("|");
 }
 

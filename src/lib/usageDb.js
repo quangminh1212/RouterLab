@@ -287,33 +287,38 @@ export async function getActiveRequests() {
   const db = await getUsageDb();
   await db.read();
   const history = db.data.history || [];
+  const recentHistory = [...history]
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .filter((e) => {
+      const t = e.tokens || {};
+      return (t.prompt_tokens || t.input_tokens || 0) > 0
+        || (t.completion_tokens || t.output_tokens || 0) > 0;
+    })
+    .slice(0, 20);
   const recentRequestsRaw = await Promise.all(
-    [...history]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .map(async (e) => {
-        const t = e.tokens || {};
-        const promptTokens = t.prompt_tokens || t.input_tokens || 0;
-        const completionTokens = t.completion_tokens || t.output_tokens || 0;
-        const existingCost = Number(e.cost || 0);
-        const computedCost = existingCost > 0
-          ? existingCost
-          : await calculateCost(e.provider, e.model, t);
-        return {
-          timestamp: e.timestamp,
-          model: e.model,
-          provider: e.provider || "",
-          promptTokens,
-          completionTokens,
-          cost: computedCost,
-          status: e.status || "ok",
-          durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
-        };
-      })
+    recentHistory.map(async (e) => {
+      const t = e.tokens || {};
+      const promptTokens = t.prompt_tokens || t.input_tokens || 0;
+      const completionTokens = t.completion_tokens || t.output_tokens || 0;
+      const existingCost = Number(e.cost || 0);
+      const computedCost = existingCost > 0
+        ? existingCost
+        : await calculateCost(e.provider, e.model, t);
+      return {
+        timestamp: e.timestamp,
+        model: e.model,
+        provider: e.provider || "",
+        promptTokens,
+        completionTokens,
+        cost: computedCost,
+        status: e.status || "ok",
+        compression: e.compression || null,
+        durationMs: Number.isFinite(Number(e.durationMs)) ? Number(e.durationMs) : null,
+      };
+    })
   );
 
-  const recentRequests = recentRequestsRaw
-    .filter((e) => e.promptTokens > 0 || e.completionTokens > 0)
-    .slice(0, 20);
+  const recentRequests = recentRequestsRaw;
 
   // Error provider (auto-clear after 10s)
   const errorProvider = (Date.now() - lastErrorProvider.ts < 10000) ? lastErrorProvider.provider : "";
