@@ -16,7 +16,9 @@ function fmtCost(value) {
 }
 
 function timeAgo(timestamp, nowTs = Date.now()) {
-  const diff = Math.floor((nowTs - new Date(timestamp)) / 1000);
+  const ts = new Date(timestamp).getTime();
+  if (!Number.isFinite(ts)) return "--";
+  const diff = Math.max(0, Math.floor((nowTs - ts) / 1000));
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -29,6 +31,10 @@ function TimeAgo({ timestamp, now }) {
 
 const RecentRequests = memo(function RecentRequests({ requests = [] }) {
   const [now, setNow] = useState(() => Date.now());
+  const sortedRequests = useMemo(
+    () => [...requests].sort((a, b) => new Date(b?.timestamp || 0).getTime() - new Date(a?.timestamp || 0).getTime()),
+    [requests],
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
@@ -42,7 +48,7 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
         <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Recent Requests</span>
       </div>
 
-      {!requests.length ? (
+      {!sortedRequests.length ? (
         <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No requests yet.</div>
       ) : (
         <div className="flex-1 overflow-y-auto">
@@ -57,7 +63,7 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {requests.map((r, i) => {
+              {sortedRequests.map((r, i) => {
                 const ok = !r.status || r.status === "ok" || r.status === "success";
                 return (
                   <tr key={`${i}-${r.timestamp || ""}-${r.model || ""}`} className="hover:bg-bg-subtle transition-colors">
