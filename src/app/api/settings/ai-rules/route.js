@@ -1,8 +1,36 @@
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 
+function normalizePriority(rawPriority) {
+  if (typeof rawPriority === "string") {
+    const normalized = rawPriority.trim().toLowerCase();
+    if (normalized === "high" || normalized === "medium" || normalized === "low") {
+      return normalized;
+    }
+
+    const numeric = Number(normalized);
+    if (Number.isFinite(numeric)) {
+      if (numeric <= 1) return "high";
+      if (numeric >= 3) return "low";
+    }
+  }
+
+  const numeric = Number(rawPriority);
+  if (Number.isFinite(numeric)) {
+    if (numeric <= 1) return "high";
+    if (numeric >= 3) return "low";
+  }
+
+  return "medium";
+}
+
+function getPriorityRank(priority) {
+  if (priority === "high") return 1;
+  if (priority === "low") return 3;
+  return 2;
+}
+
 function normalizeRule(raw, index) {
-  const priority = Number(raw?.priority);
   return {
     id: typeof raw?.id === "string" && raw.id.trim() ? raw.id.trim() : `rule-${Date.now()}-${index}`,
     name: typeof raw?.name === "string" ? raw.name.trim() : "Rule mới",
@@ -10,7 +38,7 @@ function normalizeRule(raw, index) {
     content: typeof raw?.content === "string"
       ? raw.content
       : (typeof raw?.actionValue === "string" ? raw.actionValue : ""),
-    priority: Number.isFinite(priority) ? priority : 100,
+    priority: normalizePriority(raw?.priority),
     applyType: typeof raw?.applyType === "string" ? raw.applyType : "always",
     applyValue: typeof raw?.applyValue === "string" ? raw.applyValue : "",
     updatedAt: typeof raw?.updatedAt === "string" ? raw.updatedAt : new Date().toISOString(),
@@ -34,7 +62,7 @@ export async function PUT(request) {
     const rules = incoming
       .map((item, index) => normalizeRule(item, index))
       .filter((item) => item.content.trim().length > 0)
-      .sort((a, b) => a.priority - b.priority);
+      .sort((a, b) => getPriorityRank(a.priority) - getPriorityRank(b.priority));
 
     const settings = await updateSettings({ aiRules: rules });
     return NextResponse.json({ rules: Array.isArray(settings?.aiRules) ? settings.aiRules : [] });

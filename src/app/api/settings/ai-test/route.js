@@ -43,12 +43,14 @@ export async function POST(request) {
       });
 
       const authRejected = Boolean(apiKey) && (res.status === 401 || res.status === 403);
+      const ok = res.ok && !authRejected;
       return NextResponse.json({
-        ok: res.status < 500 && !authRejected,
+        ok,
         status: res.status,
         statusText: res.statusText,
+        error: ok ? null : (authRejected ? "Authentication rejected" : `Endpoint returned ${res.status}`),
         elapsedMs: Date.now() - startedAt,
-      }, { status: res.status < 500 && !authRejected ? 200 : 502 });
+      }, { status: ok ? 200 : 502 });
     } finally {
       clearTimeout(timeout);
     }
