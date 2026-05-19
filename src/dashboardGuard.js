@@ -8,6 +8,7 @@ const SECRET = getAuthSecret();
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
+const AUTH_DISABLED = process.env.XLAB_DISABLE_AUTH === "true";
 
 let cachedCliToken = null;
 async function getCliToken() {
@@ -136,6 +137,7 @@ async function loadSettings() {
 }
 
 async function isAuthenticated(request) {
+  if (AUTH_DISABLED) return true;
   if (isLocalhostRequest(request)) return true;
   if (await hasValidToken(request)) return true;
   const settings = await loadSettings();
