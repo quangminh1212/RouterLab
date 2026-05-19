@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button, Input, Card } from "@/shared/components";
 import { APP_CONFIG } from "@/shared/constants/config";
 
@@ -15,7 +16,7 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     if (!username.trim() || !password) {
-      setError("Vui long nhap ten dang nhap va mat khau");
+      setError("Vui lòng nhập tên đăng nhập và mật khẩu");
       return;
     }
     setLoading(true);
@@ -27,12 +28,12 @@ export default function LoginPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Dang nhap that bai");
+        setError(data.error || "Đăng nhập thất bại");
         return;
       }
       router.replace("/dashboard");
     } catch {
-      setError("Loi ket noi, vui long thu lai");
+      setError("Lỗi kết nối, vui lòng thử lại");
     } finally {
       setLoading(false);
     }
@@ -42,16 +43,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
-            <span className="material-symbols-outlined text-primary text-[28px]">router</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4 overflow-hidden">
+            <Image src="/icon.png" alt="XLab Router" width={56} height={56} priority />
           </div>
           <h1 className="text-xl font-semibold text-text-main">{APP_CONFIG?.name || "XLab Router"}</h1>
-          <p className="text-sm text-text-muted mt-1">Dang nhap de tiep tuc</p>
+          <p className="text-sm text-text-muted mt-1">Đăng nhập để tiếp tục</p>
         </div>
         <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
-              label="Ten dang nhap"
+              label="Tên đăng nhập"
               type="text"
               placeholder="admin"
               value={username}
@@ -62,7 +63,7 @@ export default function LoginPage() {
               required
             />
             <Input
-              label="Mat khau"
+              label="Mật khẩu"
               type="password"
               placeholder="••••••"
               value={password}
@@ -78,7 +79,7 @@ export default function LoginPage() {
               </p>
             )}
             <Button type="submit" fullWidth loading={loading} disabled={loading}>
-              Dang nhap
+              Đăng nhập
             </Button>
           </form>
         </Card>
