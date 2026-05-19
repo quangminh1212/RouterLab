@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseUpstreamError } from "../../open-sse/utils/error.js";
+import { checkFallbackError } from "../../open-sse/services/accountFallback.js";
 
 function makeResponse(body, status = 500, contentType = "application/json") {
   return new Response(body, {
@@ -52,5 +53,29 @@ describe("parseUpstreamError", () => {
     expect(parsed.isBadUpstream).toBe(true);
     expect(parsed.isRetryable).toBe(true);
     expect(parsed.message).not.toContain("<html>");
+  });
+});
+
+describe("checkFallbackError", () => {
+  it("does not fallback on unmatched client 400 errors", () => {
+    const result = checkFallbackError(400, "input must be a string or array");
+    expect(result.shouldFallback).toBe(false);
+    expect(result.cooldownMs).toBe(0);
+  });
+
+  it("keeps fallback for explicit auth/quota statuses", () => {
+    const unauthorized = checkFallbackError(401, "Invalid API key");
+    const rateLimited = checkFallbackError(429, "Rate limit exceeded", 0);
+
+    expect(unauthorized.shouldFallback).toBe(true);
+    expect(unauthorized.cooldownMs).toBeGreaterThan(0);
+    expect(rateLimited.shouldFallback).toBe(true);
+    expect(rateLimited.cooldownMs).toBeGreaterThan(0);
+  });
+
+  it("falls back on unmatched upstream 5xx errors", () => {
+    const result = checkFallbackError(500, "Unexpected upstream failure");
+    expect(result.shouldFallback).toBe(true);
+    expect(result.cooldownMs).toBeGreaterThan(0);
   });
 });

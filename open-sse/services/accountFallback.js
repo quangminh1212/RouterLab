@@ -45,7 +45,10 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
     }
   }
 
-  // Default: transient cooldown for any unmatched error
+  if (Number.isInteger(status) && status >= 400 && status < 500) {
+    return { shouldFallback: false, cooldownMs: 0 };
+  }
+
   return { shouldFallback: true, cooldownMs: TRANSIENT_COOLDOWN_MS };
 }
 
