@@ -85,6 +85,36 @@ function isTransientUpstreamStatus(status) {
          status === 524 || status === 529;
 }
 
+function parseRetryAfterMs(value, now = Date.now()) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) {
+    return now + Math.max(0, seconds) * 1000;
+  }
+
+  const dateMs = Date.parse(raw);
+  return Number.isFinite(dateMs) && dateMs > now ? dateMs : null;
+}
+
+function parseResetHeaderMs(headers, now = Date.now()) {
+  const retryAfterMs = parseRetryAfterMs(headers.get("retry-after"), now);
+  if (retryAfterMs) return retryAfterMs;
+
+  for (const name of ["x-ratelimit-reset", "x-rate-limit-reset", "ratelimit-reset"]) {
+    const raw = headers.get(name);
+    if (!raw) continue;
+    const value = Number(String(raw).trim());
+    if (!Number.isFinite(value)) continue;
+    const millis = value > 10_000_000_000 ? value : value * 1000;
+    if (millis > now) return millis;
+  }
+
+  return null;
+}
+
 /**
  * Parse upstream provider error response
  * @param {Response} response - Fetch response from provider
@@ -105,6 +135,7 @@ export async function parseUpstreamError(response, executor = null) {
   const isTransient = isTransientUpstreamStatus(response.status);
   const isBadUpstream = isBadContentType || hasErrorPhrases || isTransient;
   const isRetryable = isBadUpstream && isTransient;
+  const headerResetsAtMs = parseResetHeaderMs(response.headers);
 
   // Let executor-specific parser extract provider-specific fields (e.g. codex resetsAtMs)
   if (executor && typeof executor.parseError === "function") {
@@ -112,7 +143,7 @@ export async function parseUpstreamError(response, executor = null) {
       const parsed = executor.parseError(response, bodyText);
       if (parsed && typeof parsed === "object") {
         const msg = parsed.message || DEFAULT_ERROR_MESSAGES[response.status] || `Upstream error: ${response.status}`;
-        return { statusCode: parsed.status || response.status, message: msg, resetsAtMs: parsed.resetsAtMs, isBadUpstream, isRetryable };
+        return { statusCode: parsed.status || response.status, message: msg, resetsAtMs: parsed.resetsAtMs || headerResetsAtMs, isBadUpstream, isRetryable };
       }
     } catch { /* fall through to default parsing */ }
   }
@@ -128,13 +159,13 @@ export async function parseUpstreamError(response, executor = null) {
   // Sanitize message if bad upstream detected
   if (isBadUpstream && (isBadContentType || hasErrorPhrases)) {
     const sanitized = DEFAULT_ERROR_MESSAGES[response.status] || "Upstream provider returned an invalid or transient error response";
-    return { statusCode: response.status, message: sanitized, isBadUpstream, isRetryable };
+    return { statusCode: response.status, message: sanitized, resetsAtMs: headerResetsAtMs, isBadUpstream, isRetryable };
   }
 
   const messageStr = typeof message === "string" ? message : JSON.stringify(message);
   const finalMessage = messageStr || DEFAULT_ERROR_MESSAGES[response.status] || `Upstream error: ${response.status}`;
 
-  return { statusCode: response.status, message: finalMessage, isBadUpstream, isRetryable };
+  return { statusCode: response.status, message: finalMessage, resetsAtMs: headerResetsAtMs, isBadUpstream, isRetryable };
 }
 
 /**

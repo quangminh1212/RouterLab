@@ -318,9 +318,9 @@ export async function handleWebSearchCore({
 
   // Handle non-2xx response
   if (!providerResponse.ok) {
-    const { statusCode, message } = await parseUpstreamError(providerResponse);
+    const { statusCode, message, resetsAtMs } = await parseUpstreamError(providerResponse);
     log?.debug?.("SEARCH", `Provider error: ${statusCode} ${message}`);
-    return createErrorResult(statusCode, message);
+    return createErrorResult(statusCode, message, resetsAtMs);
   }
 
   // Parse and normalize response

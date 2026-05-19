@@ -54,6 +54,45 @@ describe("parseUpstreamError", () => {
     expect(parsed.isRetryable).toBe(true);
     expect(parsed.message).not.toContain("<html>");
   });
+
+  it("extracts resetsAtMs from Retry-After seconds header", async () => {
+    const response = new Response(
+      JSON.stringify({ error: { message: "Rate limit exceeded" } }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": "120",
+        },
+      },
+    );
+
+    const now = Date.now();
+    const parsed = await parseUpstreamError(response);
+
+    expect(parsed.statusCode).toBe(429);
+    expect(parsed.resetsAtMs).toBeGreaterThan(now + 110_000);
+    expect(parsed.resetsAtMs).toBeLessThanOrEqual(now + 121_000);
+  });
+
+  it("extracts resetsAtMs from x-ratelimit-reset epoch header", async () => {
+    const resetAtSec = Math.floor(Date.now() / 1000) + 90;
+    const response = new Response(
+      JSON.stringify({ error: { message: "Too many requests" } }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "x-ratelimit-reset": String(resetAtSec),
+        },
+      },
+    );
+
+    const parsed = await parseUpstreamError(response);
+
+    expect(parsed.statusCode).toBe(429);
+    expect(parsed.resetsAtMs).toBe(resetAtSec * 1000);
+  });
 });
 
 describe("checkFallbackError", () => {
