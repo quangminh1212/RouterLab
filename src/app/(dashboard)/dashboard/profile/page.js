@@ -834,6 +834,7 @@ export default function ProfilePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative" ref={gistMenuRef}>
                   <Button
+                    type="button"
                     variant="secondary"
                     size="sm"
                     icon="tune"
@@ -848,26 +849,14 @@ export default function ProfilePage() {
                   </Button>
                   {showGistMenu ? (
                     <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-lg border border-border bg-sidebar p-1 shadow-lg">
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); connectGitHubCli(); }}>
-                        Dùng GitHub CLI
-                      </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); setShowGistTokenForm((value) => !value); }}>
-                        Nhập token
-                      </button>
+                      <div role="menuitem" tabIndex={0} className="w-full cursor-pointer text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { setShowGistMenu(false); connectGitHubCli(); }}>Dùng GitHub CLI</div>
+                      <div role="menuitem" tabIndex={0} className="w-full cursor-pointer text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { setShowGistMenu(false); setShowGistTokenForm((value) => !value); }}>Nhập token</div>
                       <div className="my-1 border-t border-border/60" />
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("sync"); }}>
-                        Sync
-                      </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("backup"); }}>
-                        Backup
-                      </button>
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); runGistBackup("restore"); }}>
-                        Restore
-                      </button>
+                      <div role="menuitem" tabIndex={0} className="w-full cursor-pointer text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { setShowGistMenu(false); runGistBackup("sync"); }}>Sync</div>
+                      <div role="menuitem" tabIndex={0} className="w-full cursor-pointer text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { setShowGistMenu(false); runGistBackup("backup"); }}>Backup</div>
+                      <div role="menuitem" tabIndex={0} className="w-full cursor-pointer text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { setShowGistMenu(false); runGistBackup("restore"); }}>Restore</div>
                       <div className="my-1 border-t border-border/60" />
-                      <button type="button" className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-white/10 transition-colors disabled:opacity-50" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowGistMenu(false); disconnectGistBackup(); }} disabled={gistLoading || !gistConfig.hasToken}>
-                        Disconnect
-                      </button>
+                      <div role="menuitem" aria-disabled={gistLoading || !gistConfig.hasToken} className={cn("w-full text-left px-3 py-2 text-sm rounded-md transition-colors", gistLoading || !gistConfig.hasToken ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-white/10")} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={() => { if (gistLoading || !gistConfig.hasToken) return; setShowGistMenu(false); disconnectGistBackup(); }}>Disconnect</div>
                     </div>
                   ) : null}
                 </div>
@@ -1400,3 +1389,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
