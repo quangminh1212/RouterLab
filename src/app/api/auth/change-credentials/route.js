@@ -52,7 +52,7 @@ export async function GET(request) {
       hasCustomCredentials: await hasStoredCredentials(),
     });
   } catch (error) {
-    return NextResponse.json({ error: error.message || "Kh?ng t?i ???c t?i kho?n" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Không tải được tài khoản" }, { status: 500 });
   }
 }
 
@@ -73,12 +73,12 @@ export async function POST(request) {
 
     const currentOk = await verifyCredentials(currentUsername, currentPassword);
     if (!currentOk) {
-      return NextResponse.json({ error: "T?i kho?n ho?c m?t kh?u hi?n t?i kh?ng ??ng" }, { status: 401 });
+      return NextResponse.json({ error: "Tài khoản hoặc mật khẩu hiện tại không đúng" }, { status: 401 });
     }
 
     const updated = await setCredentials({ username, password });
     return NextResponse.json({ success: true, username: updated.username });
   } catch (error) {
-    return NextResponse.json({ error: error.message || "Kh?ng ??i ???c t?i kho?n" }, { status: 400 });
+    return NextResponse.json({ error: error.message || "Không đổi được tài khoản" }, { status: 400 });
   }
 }
