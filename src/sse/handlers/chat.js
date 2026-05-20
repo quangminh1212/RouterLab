@@ -28,6 +28,11 @@ import { detectFormatByEndpoint } from "open-sse/translator/formats.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection } from "open-sse/services/projectId.js";
+import {
+  computeRequestDedupHash,
+  shouldDeduplicateRequest,
+  withRequestDedup,
+} from "../services/requestDedup.js";
 
 function flattenMessageText(content) {
   if (typeof content === "string") return content;
@@ -370,7 +375,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       }
     }
 
-    const runChatCore = async (nextRequestBody) => handleChatCore({
+    const executeChatCore = async (nextRequestBody) => handleChatCore({
       body: { ...nextRequestBody, model: `${provider}/${model}` },
       modelInfo: { provider, model },
       credentials: refreshedCredentials,
@@ -401,6 +406,22 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         }
       }
     });
+
+    const runChatCore = async (nextRequestBody) => {
+      if (!shouldDeduplicateRequest(nextRequestBody)) {
+        return executeChatCore(nextRequestBody);
+      }
+
+      const dedupHash = computeRequestDedupHash(nextRequestBody, provider, model);
+      const { result: dedupResult, deduplicated } = await withRequestDedup(
+        dedupHash,
+        () => executeChatCore(nextRequestBody),
+      );
+      if (deduplicated) {
+        log.info("CHAT", `[${provider}/${model}] reused in-flight request ${dedupHash}`);
+      }
+      return dedupResult;
+    };
 
     let result = await runChatCore(requestBody);
 
