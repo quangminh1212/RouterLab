@@ -23,6 +23,12 @@ vi.mock("@/shared/constants/config", () => ({
   },
 }));
 
+vi.mock("@/sse/services/providerBreaker", () => ({
+  getAllBreakerStatuses: vi.fn(() => []),
+  resetAllBreakers: vi.fn(),
+  resetProviderBreaker: vi.fn(),
+}));
+
 describe("GET /api/monitoring/health", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,6 +96,7 @@ describe("GET /api/monitoring/health", () => {
       fallbackStrategy: "round-robin",
       observabilityEnabled: true,
     });
+    expect(body.circuitBreakers).toEqual([]);
     expect(body.totals).toMatchObject({
       providers: 3,
       connections: 4,
@@ -117,6 +124,7 @@ describe("GET /api/monitoring/health", () => {
 
   it("POST resets all provider health states", async () => {
     const { getSettings, getProviderConnections, updateProviderConnection } = await import("@/lib/localDb");
+    const { resetAllBreakers } = await import("@/sse/services/providerBreaker");
     vi.mocked(getSettings).mockResolvedValue({
       requireApiKey: false,
       requireLogin: true,
@@ -147,6 +155,7 @@ describe("GET /api/monitoring/health", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.resetCount).toBe(2);
+    expect(resetAllBreakers).toHaveBeenCalledTimes(1);
     expect(updateProviderConnection).toHaveBeenCalledTimes(2);
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-a", expect.objectContaining({
       modelLock_gpt4o: null,
@@ -157,6 +166,7 @@ describe("GET /api/monitoring/health", () => {
 
   it("DELETE clears scoped provider state", async () => {
     const { getSettings, getProviderConnections, updateProviderConnection } = await import("@/lib/localDb");
+    const { resetProviderBreaker } = await import("@/sse/services/providerBreaker");
     vi.mocked(getSettings).mockResolvedValue({
       requireApiKey: false,
       requireLogin: true,
@@ -191,6 +201,7 @@ describe("GET /api/monitoring/health", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.clearedCount).toBe(1);
+    expect(resetProviderBreaker).toHaveBeenCalledWith("openai");
     expect(updateProviderConnection).toHaveBeenCalledTimes(1);
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-openai-1", expect.objectContaining({
       modelLock_gpt4o: null,

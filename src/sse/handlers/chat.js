@@ -33,6 +33,12 @@ import {
   shouldDeduplicateRequest,
   withRequestDedup,
 } from "../services/requestDedup.js";
+import {
+  canExecuteProvider,
+  isBreakerTrippableStatus,
+  recordProviderFailure,
+  recordProviderSuccess,
+} from "../services/providerBreaker.js";
 
 function flattenMessageText(content) {
   if (typeof content === "string") return content;
@@ -329,6 +335,12 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   let lastStatus = null;
 
   while (true) {
+    if (!canExecuteProvider(provider)) {
+      const message = `[${provider}/${model}] provider circuit is open`;
+      log.warn("BREAKER", message);
+      return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, message);
+    }
+
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
 
     // All accounts unavailable
@@ -441,7 +453,10 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       }
     }
 
-    if (result.success) return result.response;
+    if (result.success) {
+      recordProviderSuccess(provider);
+      return result.response;
+    }
 
     const alternateModelResponse = await tryAlternateModels({
       body,
@@ -454,6 +469,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       errorText: result.error,
     });
     if (alternateModelResponse) return alternateModelResponse;
+
+    if (isBreakerTrippableStatus(result.status)) {
+      recordProviderFailure(provider, result.status);
+      return result.response;
+    }
 
     // Mark account unavailable (auto-calculates cooldown with exponential backoff, or precise resetsAtMs)
     const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);

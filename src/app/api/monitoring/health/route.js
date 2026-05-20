@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getProviderConnections, getSettings, updateProviderConnection } from "@/lib/localDb";
 import { APP_CONFIG } from "@/shared/constants/config";
+import {
+  getAllBreakerStatuses,
+  resetAllBreakers,
+  resetProviderBreaker,
+} from "@/sse/services/providerBreaker.js";
 
 const MODEL_LOCK_PREFIX = "modelLock_";
 
@@ -144,6 +149,7 @@ async function buildHealthPayload() {
       observabilityEnabled: settings.observabilityEnabled !== false,
     },
     totals,
+    circuitBreakers: getAllBreakerStatuses(),
     providers,
     generatedAt: new Date().toISOString(),
   };
@@ -184,6 +190,7 @@ export async function GET() {
 export async function POST() {
   try {
     const connections = await getProviderConnections();
+    resetAllBreakers();
     await Promise.all(
       connections.map((connection) =>
         updateProviderConnection(connection.id, buildClearUpdate(connection)),
@@ -213,6 +220,7 @@ export async function DELETE(request) {
     }
 
     const connections = await getProviderConnections(provider ? { provider } : {});
+    if (provider) resetProviderBreaker(provider);
     const targets = connections.filter((connection) => !connectionId || connection.id === connectionId);
 
     await Promise.all(
