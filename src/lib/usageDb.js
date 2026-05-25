@@ -59,6 +59,64 @@ function getLocalDateKey(timestamp) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function toMs(ts) {
+  const n = new Date(ts).getTime();
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function isLikelyDuplicateUsageEntry(prev, next) {
+  if (!prev || !next) return false;
+
+  const prevTs = toMs(prev.timestamp);
+  const nextTs = toMs(next.timestamp);
+  if (!Number.isFinite(prevTs) || !Number.isFinite(nextTs)) return false;
+  if (Math.abs(nextTs - prevTs) > 1500) return false;
+
+  const prevTokens = prev.tokens || {};
+  const nextTokens = next.tokens || {};
+  const prevIn = Number(prevTokens.prompt_tokens || prevTokens.input_tokens || 0);
+  const prevOut = Number(prevTokens.completion_tokens || prevTokens.output_tokens || 0);
+  const nextIn = Number(nextTokens.prompt_tokens || nextTokens.input_tokens || 0);
+  const nextOut = Number(nextTokens.completion_tokens || nextTokens.output_tokens || 0);
+
+  return (prev.provider || "") === (next.provider || "")
+    && (prev.model || "") === (next.model || "")
+    && (prev.connectionId || "") === (next.connectionId || "")
+    && (prev.apiKey || "") === (next.apiKey || "")
+    && (prev.endpoint || "") === (next.endpoint || "")
+    && prevIn === nextIn
+    && prevOut === nextOut;
+}
+
+function dedupeRecentEntries(entries = []) {
+  const seen = new Map();
+  for (const item of entries) {
+    const sig = [
+      item.timestamp || "",
+      item.provider || "",
+      item.model || "",
+      Number(item.promptTokens || 0),
+      Number(item.completionTokens || 0),
+      Number(item.cost || 0),
+    ].join("|");
+
+    const existing = seen.get(sig);
+    if (!existing) {
+      seen.set(sig, item);
+      continue;
+    }
+
+    const existingDuration = Number(existing.durationMs);
+    const itemDuration = Number(item.durationMs);
+    const existingValid = Number.isFinite(existingDuration) && existingDuration > 0;
+    const itemValid = Number.isFinite(itemDuration) && itemDuration > 0;
+    if (!existingValid && itemValid) {
+      seen.set(sig, item);
+    }
+  }
+  return Array.from(seen.values());
+}
+
 function addToCounter(target, key, values) {
   if (!target[key]) target[key] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0 };
   target[key].requests += values.requests || 1;
@@ -320,7 +378,7 @@ export async function getActiveRequests() {
     })
   );
 
-  const recentRequests = recentRequestsRaw;
+  const recentRequests = dedupeRecentEntries(recentRequestsRaw);
 
   // Error provider (auto-clear after 10s)
   const errorProvider = (Date.now() - lastErrorProvider.ts < 10000) ? lastErrorProvider.provider : "";
@@ -467,6 +525,11 @@ export async function saveRequestUsage(entry) {
         const { invalidateApiKeyCostCache } = await import("@/lib/localDb.js");
         invalidateApiKeyCostCache(entry.apiKey, entryCost);
       } catch {}
+    }
+
+    const lastEntry = db.data.history.length > 0 ? db.data.history[db.data.history.length - 1] : null;
+    if (isLikelyDuplicateUsageEntry(lastEntry, entry)) {
+      return;
     }
 
     db.data.history.push(entry);
@@ -748,7 +811,7 @@ export async function getUsageStats(period = "all") {
     })
   );
 
-  const recentRequests = recentRequestsRaw;
+  const recentRequests = dedupeRecentEntries(recentRequestsRaw);
 
   const lifetimeTotalRequests = typeof db.data.totalRequestsLifetime === "number"
     ? db.data.totalRequestsLifetime
