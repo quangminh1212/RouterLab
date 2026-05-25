@@ -14,7 +14,7 @@ const OPENCLAW_COMPAT_TOKEN = "sk-6520dcd38ef3521c-liwdr1-9137175c";
 async function ensureInitialized() {
   if (initialized) return;
   if (!initializePromise) {
-    initializePromise = initTranslators()
+    initializePromise = Promise.resolve(initTranslators())
       .then(() => {
         initialized = true;
       })

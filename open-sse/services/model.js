@@ -224,7 +224,14 @@ export async function getModelInfoCore(modelStr, aliasesOrGetter, forcedMappings
       ? await aliasesOrGetter()
       : aliasesOrGetter;
 
-  // Forced mappings override aliases first`r`n  const forcedResolved = resolveModelAliasFromMap(parsed.model, forcedMappings);`r`n  if (forcedResolved) {`r`n    return forcedResolved;`r`n  }`r`n`r`n  // Resolve alias`r`n  const resolved = resolveModelAliasFromMap(parsed.model, aliases);
+  // Forced mappings override aliases first
+  const forcedResolved = resolveModelAliasFromMap(parsed.model, forcedMappings);
+  if (forcedResolved) {
+    return forcedResolved;
+  }
+
+  // Resolve alias
+  const resolved = resolveModelAliasFromMap(parsed.model, aliases);
   if (resolved) {
     return resolved;
   }
