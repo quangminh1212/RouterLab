@@ -1,4 +1,4 @@
-import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
+﻿import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
@@ -26,7 +26,7 @@ const OAUTH_TEST_CONFIG = {
     authHeader: "Authorization",
     authPrefix: "Bearer ",
     extraHeaders: { "Content-Type": "application/json", "originator": "codex-cli", "User-Agent": "codex-cli/1.0.18 (macOS; arm64)" },
-    // Minimal invalid body — triggers fast 400 without consuming quota
+    // Minimal invalid body â€” triggers fast 400 without consuming quota
     body: JSON.stringify({ model: "gpt-5.3-codex", input: [], stream: false, store: false }),
     // 400 (bad request) means auth succeeded; only 401/403 means token is bad
     acceptStatuses: [400],
@@ -71,7 +71,7 @@ const OAUTH_TEST_CONFIG = {
   },
   cline: { refreshable: true },
   gitlab: {
-    // Test by hitting the GitLab user API — requires api or read_user scope
+    // Test by hitting the GitLab user API â€” requires api or read_user scope
     url: "https://gitlab.com/api/v4/user",
     method: "GET",
     authHeader: "Authorization",
@@ -342,7 +342,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
     if (!modelsBase) return { valid: false, error: "Missing base URL" };
     try {
       const _testHeaders = { "Authorization": `Bearer ${connection.apiKey}` };
-      if (modelsBase.includes("cungcapai")) _testHeaders["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+      if (modelsBase.includes("cungcapai")) _testHeaders["x-machine-id"] = (process.env.XLABROUTER_MACHINE_ID || "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D");
       const res = await fetchWithConnectionProxy(`${modelsBase.replace(/\/$/, "")}/models`, {
         headers: _testHeaders,
       }, effectiveProxy);
@@ -597,7 +597,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         if (!res.ok) return { valid: false, error: "Invalid session cookie" };
         const data = await res.json().catch(() => null);
         const valid = !!(data && data.user);
-        return { valid, error: valid ? null : "Session expired — re-paste cookie" };
+        return { valid, error: valid ? null : "Session expired â€” re-paste cookie" };
       }
       default:
         return { valid: false, error: "Provider test not supported" };
@@ -658,3 +658,4 @@ export async function testSingleConnection(id) {
 
   return { valid: result.valid, error: result.error, latencyMs, testedAt: new Date().toISOString() };
 }
+

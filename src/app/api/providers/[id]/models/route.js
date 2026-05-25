@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
@@ -348,7 +348,7 @@ export async function GET(request, { params }) {
         "Authorization": `Bearer ${connection.apiKey}`,
       };
       if (baseUrl.includes("cungcapai")) {
-        headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+        headers["x-machine-id"] = (process.env.XLABROUTER_MACHINE_ID || "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D");
       }
       const response = await fetch(url, {
         method: "GET",
@@ -492,3 +492,4 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: "Failed to fetch models" }, { status: 500 });
   }
 }
+

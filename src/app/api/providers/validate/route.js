@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
@@ -80,7 +80,7 @@ async function probeMediaProvider(provider, apiKey) {
   const isMediaOnly = kinds.every((k) => MEDIA_KINDS.has(k));
   if (!isMediaOnly) return null;
   const cfg = p.ttsConfig || p.sttConfig || p.embeddingConfig || p.imageConfig || p.videoConfig || p.musicConfig;
-  // No probe config → best-effort accept (validate at usage time)
+  // No probe config â†’ best-effort accept (validate at usage time)
   if (!cfg) return true;
   if (p.noAuth || cfg.authType === "none") return true;
   // Skip auth schemes that need provider-specific data
@@ -134,7 +134,7 @@ export async function POST(request) {
         const modelsUrl = `${node.baseUrl?.replace(/\/$/, "")}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
         if ((node.baseUrl || "").includes("cungcapai")) {
-          headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+          headers["x-machine-id"] = (process.env.XLABROUTER_MACHINE_ID || "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D");
         }
         const res = await fetch(modelsUrl, {
           headers,
@@ -163,7 +163,7 @@ export async function POST(request) {
         if (modelsRes.status === 401 || modelsRes.status === 403) {
           return NextResponse.json({ valid: false, error: "Invalid API key" });
         }
-        // Fallback: probe /embeddings with a common test model — many providers lack /models
+        // Fallback: probe /embeddings with a common test model â€” many providers lack /models
         const embedRes = await fetch(`${baseUrl}/embeddings`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -495,7 +495,7 @@ export async function POST(request) {
             // Validate SA JSON has required fields
             isValid = !!(saJson.client_email && saJson.private_key && saJson.project_id);
           } else {
-            // Raw key: probe Vertex — 404 means key is valid (model just doesn't exist), 401 means invalid key
+            // Raw key: probe Vertex â€” 404 means key is valid (model just doesn't exist), 401 means invalid key
             const probeRes = await fetch(
               `https://aiplatform.googleapis.com/v1/publishers/google/models/__probe__:generateContent?key=${apiKey}`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
@@ -566,7 +566,7 @@ export async function POST(request) {
           // Cookie valid = any non-401/403 response (200, 400, 429 all mean cookie accepted)
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid SSO cookie — re-paste from grok.com DevTools → Cookies → sso";
+            error = "Invalid SSO cookie â€” re-paste from grok.com DevTools â†’ Cookies â†’ sso";
           } else {
             isValid = true;
           }
@@ -604,7 +604,7 @@ export async function POST(request) {
           });
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid session cookie — re-paste __Secure-next-auth.session-token from perplexity.ai";
+            error = "Invalid session cookie â€” re-paste __Secure-next-auth.session-token from perplexity.ai";
           } else {
             isValid = true;
           }
@@ -663,3 +663,4 @@ export async function POST(request) {
     return NextResponse.json({ error: "Validation failed" }, { status: 500 });
   }
 }
+
