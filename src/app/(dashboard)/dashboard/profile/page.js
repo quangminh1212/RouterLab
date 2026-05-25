@@ -16,6 +16,8 @@ const INITIAL_SECTION_LOADING = {
 
 const PROFILE_FAST_FETCH_TIMEOUT_MS = 20000;
 const PROFILE_RETRY_DELAY_MS = 600;
+const PROFILE_BOOTSTRAP_CACHE_TTL_MS = 10000;
+let profileBootstrapCache = { ts: 0, data: null, promise: null };
 
 const BASIC_CHAT_STORAGE_KEYS = {
   sessions: "basic-chat.sessions",
@@ -90,6 +92,31 @@ export default function ProfilePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
+    const loadBootstrapData = async () => {
+      const now = Date.now();
+      if (profileBootstrapCache.data && (now - profileBootstrapCache.ts) < PROFILE_BOOTSTRAP_CACHE_TTL_MS) {
+        return profileBootstrapCache.data;
+      }
+      if (profileBootstrapCache.promise) return profileBootstrapCache.promise;
+
+      const requestPromise = Promise.allSettled([
+        fetchJson("/api/settings", "Loading profile settings timed out", { retry: true }),
+        fetchJson("/api/auth/change-credentials", "Loading account settings timed out"),
+        fetchJson("/api/auth/oauth-qr", "Loading authenticator setup timed out"),
+        fetchJson(`/api/auth/google/status?t=${Date.now()}`, "Loading Google backup status timed out"),
+        fetchJson("/api/settings/gist-backup", "Loading Gist backup status timed out"),
+      ]).then((results) => {
+        profileBootstrapCache = { ts: Date.now(), data: results, promise: null };
+        return results;
+      }).catch((error) => {
+        profileBootstrapCache.promise = null;
+        throw error;
+      });
+
+      profileBootstrapCache.promise = requestPromise;
+      return requestPromise;
+    };
+
     const fetchJson = async (url, timeoutMessage, { retry = false } = {}) => {
       const attempt = () =>
         fetchWithTimeout(url, { cache: "no-store" }, PROFILE_FAST_FETCH_TIMEOUT_MS, timeoutMessage)
@@ -103,13 +130,7 @@ export default function ProfilePage() {
       }
     };
 
-    Promise.allSettled([
-      fetchJson("/api/settings", "Loading profile settings timed out", { retry: true }),
-      fetchJson("/api/auth/change-credentials", "Loading account settings timed out"),
-      fetchJson("/api/auth/oauth-qr", "Loading authenticator setup timed out"),
-      fetchJson(`/api/auth/google/status?t=${Date.now()}`, "Loading Google backup status timed out"),
-      fetchJson("/api/settings/gist-backup", "Loading Gist backup status timed out"),
-    ]).then(([settingsResult, accountResult, oauthResult, googleResult, gistResult]) => {
+    loadBootstrapData().then(([settingsResult, accountResult, oauthResult, googleResult, gistResult]) => {
       if (cancelled) return;
 
       if (settingsResult.status === "fulfilled" && settingsResult.value) {
@@ -153,6 +174,16 @@ export default function ProfilePage() {
 
       const gist = gistResult.status === "fulfilled" ? gistResult.value : null;
       if (gist) setGistConfig(gist);
+    }).catch((error) => {
+      if (cancelled) return;
+      console.warn("[profile] Failed to bootstrap profile:", error?.message || error);
+      setSectionLoading({
+        security: false,
+        routing: false,
+        network: false,
+        observability: false,
+      });
+      setSettingsLoadError(true);
     });
 
     return () => { cancelled = true; };
