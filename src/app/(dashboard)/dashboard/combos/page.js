@@ -278,6 +278,33 @@ export default function CombosPage() {
 }
 
 function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled, stickyLimit = 1, savingStrategy = false, onToggleRoundRobin, onStickyLimitChange }) {
+  const [showInModels, setShowInModels] = useState(combo.showInModelsEndpoint !== false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
+
+  useEffect(() => {
+    setShowInModels(combo.showInModelsEndpoint !== false);
+  }, [combo.showInModelsEndpoint]);
+
+  const handleToggleModelsVisibility = async (enabled) => {
+    const previous = showInModels;
+    setShowInModels(enabled);
+    setSavingVisibility(true);
+    try {
+      const res = await fetch(`/api/combos/${combo.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showInModelsEndpoint: enabled }),
+      });
+      if (!res.ok) {
+        setShowInModels(previous);
+      }
+    } catch {
+      setShowInModels(previous);
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
+
   return (
     <Card padding="sm" className="group">
       <div className="flex items-center justify-between gap-4">
@@ -306,6 +333,15 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
+            <span className="text-xs text-text-muted font-medium whitespace-nowrap">Show in /models</span>
+            <Toggle
+              size="sm"
+              checked={showInModels}
+              onChange={handleToggleModelsVisibility}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
             <span className="text-xs text-text-muted font-medium">Round Robin</span>
             <Toggle
               size="sm"
@@ -330,7 +366,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
             </div>
           )}
 
-          {savingStrategy && (
+          {(savingStrategy || savingVisibility) && (
             <span className="text-[11px] text-text-muted">Saving...</span>
           )}
 

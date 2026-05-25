@@ -355,6 +355,7 @@ function normalizeCombo(combo) {
     models: Array.isArray(combo.models)
       ? combo.models.filter((model) => typeof model === "string" && model.trim()).map((model) => model.trim())
       : [],
+    showInModelsEndpoint: combo.showInModelsEndpoint !== false,
   };
 
   const kind = inferComboKind(normalized);

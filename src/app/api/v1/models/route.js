@@ -119,6 +119,7 @@ export async function GET() {
 
     // Add combos first (they appear at the top)
     for (const combo of combos) {
+      if (combo?.showInModelsEndpoint === false) continue;
       models.push({
         id: combo.name,
         object: "model",
