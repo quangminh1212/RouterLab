@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
@@ -228,6 +228,22 @@ export default function ProvidersPage() {
     }
   };
 
+  const isTamMaoNode = (node) => {
+    const haystack = [
+      node?.id,
+      node?.name,
+      node?.prefix,
+      node?.baseUrl,
+      node?.providerSpecificData?.prefix,
+      node?.providerSpecificData?.baseUrl,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes("tammao") || haystack.includes("cungcapai");
+  };
+
   const compatibleProviders = providerNodes
     .filter((node) => node.type === "openai-compatible")
     .map((node) => ({
@@ -236,8 +252,27 @@ export default function ProvidersPage() {
       color: "#10A37F",
       textIcon: "OC",
       apiType: node.apiType,
+      prefix: node.prefix,
+      baseUrl: node.baseUrl,
     }))
     .filter((p) => matchSearch(p.name));
+
+  const tammaoFromCompatible = providerNodes
+    .filter((node) => node.type === "openai-compatible" && isTamMaoNode(node))
+    .map((node) => ({
+      id: node.id,
+      name: node.name || "TamMao",
+      color: "#10A37F",
+      textIcon: "OC",
+      apiType: node.apiType,
+      prefix: node.prefix,
+      baseUrl: node.baseUrl,
+    }))
+    .filter((p) => matchSearch(p.name));
+
+  const compatibleProvidersWithoutTamMao = compatibleProviders.filter(
+    (p) => !isTamMaoNode(p),
+  );
 
   const anthropicCompatibleProviders = providerNodes
     .filter((node) => node.type === "anthropic-compatible")
@@ -263,6 +298,19 @@ export default function ProvidersPage() {
       (info.serviceKinds ?? ["llm"]).includes("llm") && matchSearch(info.name),
   );
 
+  const mergedApiKeyLikeProviders = [
+    ...apikeyEntries.map(([key, info]) => ({
+      kind: "fixed",
+      key,
+      provider: info,
+    })),
+    ...tammaoFromCompatible.map((info) => ({
+      kind: "compatible",
+      key: info.id,
+      provider: info,
+    })),
+  ];
+
   if (loading) {
     return (
       <div className="flex flex-col gap-8">
@@ -276,7 +324,7 @@ export default function ProvidersPage() {
     oauthEntries.length > 0 ||
     freeEntries.length > 0 ||
     freeTierEntries.length > 0 ||
-    apikeyEntries.length > 0 ||
+    mergedApiKeyLikeProviders.length > 0 ||
     compatibleProviders.length > 0 ||
     anthropicCompatibleProviders.length > 0;
 
@@ -386,8 +434,8 @@ export default function ProvidersPage() {
       </div>
       )}
 
-      {/* API Key Providers — fixed list */}
-      {apikeyEntries.length > 0 && (
+      {/* API Key Providers â€” fixed list */}
+      {mergedApiKeyLikeProviders.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -413,21 +461,21 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {apikeyEntries.map(([key, info]) => (
+          {mergedApiKeyLikeProviders.map((entry) => (
             <ApiKeyProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "apikey")}
-              authType="apikey"
-              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
+              key={entry.key}
+              providerId={entry.key}
+              provider={entry.provider}
+              stats={getProviderStats(entry.key, "apikey")}
+              authType={entry.kind === "compatible" ? "compatible" : "apikey"}
+              onToggle={(active) => handleToggleProvider(entry.key, "apikey", active)}
             />
           ))}
         </div>
       </div>
       )}
 
-      {/* Web Cookie Providers — use browser subscription cookie instead of API key */}
+      {/* Web Cookie Providers â€” use browser subscription cookie instead of API key */}
       {/* <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -448,7 +496,7 @@ export default function ProvidersPage() {
         </div>
       </div> */}
 
-      {/* API Key Compatible Providers — dynamic (OpenAI/Anthropic compatible) */}
+      {/* API Key Compatible Providers â€” dynamic (OpenAI/Anthropic compatible) */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -490,7 +538,7 @@ export default function ProvidersPage() {
             </Button>
           </div>
         </div>
-        {compatibleProviders.length === 0 &&
+        {compatibleProvidersWithoutTamMao.length === 0 &&
         anthropicCompatibleProviders.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-border rounded-xl">
             <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
@@ -506,7 +554,7 @@ export default function ProvidersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {[...compatibleProviders, ...anthropicCompatibleProviders].map(
+            {[...compatibleProvidersWithoutTamMao, ...anthropicCompatibleProviders].map(
               (info) => (
                 <ApiKeyProviderCard
                   key={info.id}
@@ -1294,3 +1342,5 @@ ProviderTestResultsView.propTypes = {
     error: PropTypes.string,
   }).isRequired,
 };
+
+
