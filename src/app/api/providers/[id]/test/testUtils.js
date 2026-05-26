@@ -27,7 +27,7 @@ const OAUTH_TEST_CONFIG = {
     authHeader: "Authorization",
     authPrefix: "Bearer ",
     extraHeaders: { "Content-Type": "application/json", "originator": "codex-cli", "User-Agent": "codex-cli/1.0.18 (macOS; arm64)" },
-    // Minimal invalid body Ã¢â‚¬â€ triggers fast 400 without consuming quota
+    // Minimal invalid body ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â triggers fast 400 without consuming quota
     body: JSON.stringify({ model: "gpt-5.3-codex", input: [], stream: false, store: false }),
     // 400 (bad request) means auth succeeded; only 401/403 means token is bad
     acceptStatuses: [400],
@@ -72,7 +72,7 @@ const OAUTH_TEST_CONFIG = {
   },
   cline: { refreshable: true },
   gitlab: {
-    // Test by hitting the GitLab user API Ã¢â‚¬â€ requires api or read_user scope
+    // Test by hitting the GitLab user API ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â requires api or read_user scope
     url: "https://gitlab.com/api/v4/user",
     method: "GET",
     authHeader: "Authorization",
@@ -337,6 +337,30 @@ async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null
   });
 }
 
+function isTamMaoBaseUrl(baseUrl = "") {
+  return String(baseUrl || "").includes("cungcapai");
+}
+
+async function testTamMaoFallbackInference(connection, effectiveProxy = null) {
+  const baseUrl = String(connection.providerSpecificData?.baseUrl || "").replace(/\/$/, "");
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${connection.apiKey}`,
+    "x-machine-id": getProviderMachineId(connection.providerSpecificData),
+  };
+  const res = await fetchWithConnectionProxy(`${baseUrl}/responses`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "gpt-5.5",
+      input: [{ role: "user", content: [{ type: "input_text", text: "Reply exactly OK" }] }],
+      max_output_tokens: 16,
+      signal: undefined,
+    }),
+    signal: AbortSignal.timeout(15000),
+  }, effectiveProxy);
+  return { valid: res.ok, error: res.ok ? null : `TamMao fallback failed: ${res.status}` };
+}
 async function testApiKeyConnection(connection, effectiveProxy = null) {
   if (isOpenAICompatibleProvider(connection.provider)) {
     const modelsBase = connection.providerSpecificData?.baseUrl;
@@ -349,6 +373,9 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }, effectiveProxy);
       return { valid: res.ok, error: res.ok ? null : "Invalid API key or base URL" };
     } catch (err) {
+      if (isTamMaoBaseUrl(modelsBase)) {
+        return testTamMaoFallbackInference(connection, effectiveProxy);
+      }
       return { valid: false, error: err.message };
     }
   }
@@ -598,7 +625,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         if (!res.ok) return { valid: false, error: "Invalid session cookie" };
         const data = await res.json().catch(() => null);
         const valid = !!(data && data.user);
-        return { valid, error: valid ? null : "Session expired Ã¢â‚¬â€ re-paste cookie" };
+        return { valid, error: valid ? null : "Session expired ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â re-paste cookie" };
       }
       default:
         return { valid: false, error: "Provider test not supported" };

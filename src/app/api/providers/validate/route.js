@@ -81,7 +81,7 @@ async function probeMediaProvider(provider, apiKey) {
   const isMediaOnly = kinds.every((k) => MEDIA_KINDS.has(k));
   if (!isMediaOnly) return null;
   const cfg = p.ttsConfig || p.sttConfig || p.embeddingConfig || p.imageConfig || p.videoConfig || p.musicConfig;
-  // No probe config â†’ best-effort accept (validate at usage time)
+  // No probe config Ã¢â€ â€™ best-effort accept (validate at usage time)
   if (!cfg) return true;
   if (p.noAuth || cfg.authType === "none") return true;
   // Skip auth schemes that need provider-specific data
@@ -110,6 +110,39 @@ async function probeMediaProvider(provider, apiKey) {
   return res.status !== 401 && res.status !== 403;
 }
 
+function isTamMaoBaseUrl(baseUrl = "") {
+  return String(baseUrl || "").includes("cungcapai");
+}
+
+async function probeTamMaoOpenAICompatible(node, apiKey) {
+  const baseUrl = String(node?.baseUrl || "").replace(/\/$/, "");
+  if (!baseUrl) return { ok: false, reason: "missing_base_url" };
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`,
+    "x-machine-id": getProviderMachineId(node?.providerSpecificData),
+  };
+
+  const responsesUrl = `${baseUrl}/responses`;
+  const payload = {
+    model: "gpt-5.5",
+    input: [{ role: "user", content: [{ type: "input_text", text: "Reply exactly OK" }] }],
+    max_output_tokens: 16,
+  };
+
+  try {
+    const res = await fetch(responsesUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    return { ok: res.ok, status: res.status };
+  } catch (error) {
+    return { ok: false, reason: error?.name === "TimeoutError" ? "timeout" : (error?.message || "request_failed") };
+  }
+}
 // POST /api/providers/validate - Validate API key with provider
 export async function POST(request) {
   try {
@@ -137,9 +170,29 @@ export async function POST(request) {
         if ((node.baseUrl || "").includes("cungcapai")) {
           headers["x-machine-id"] = getProviderMachineId(node.providerSpecificData);
         }
-        const res = await fetch(modelsUrl, {
-          headers,
-        });
+        let res;
+        try {
+          res = await fetch(modelsUrl, {
+            headers,
+            signal: AbortSignal.timeout(8000),
+          });
+        } catch (error) {
+          if (!isTamMaoBaseUrl(node.baseUrl)) throw error;
+          const fallback = await probeTamMaoOpenAICompatible(node, apiKey);
+          return NextResponse.json({
+            valid: fallback.ok,
+            error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,
+            warning: "TamMao /models timeout, used inference fallback",
+          }, { status: fallback.ok ? 200 : 502 });
+        }
+        if (!res.ok && isTamMaoBaseUrl(node.baseUrl) && (res.status === 408 || res.status === 429 || res.status >= 500)) {
+          const fallback = await probeTamMaoOpenAICompatible(node, apiKey);
+          return NextResponse.json({
+            valid: fallback.ok,
+            error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,
+            warning: "TamMao /models unavailable, used inference fallback",
+          }, { status: fallback.ok ? 200 : 502 });
+        }
         isValid = res.ok;
         return NextResponse.json({
           valid: isValid,
@@ -164,7 +217,7 @@ export async function POST(request) {
         if (modelsRes.status === 401 || modelsRes.status === 403) {
           return NextResponse.json({ valid: false, error: "Invalid API key" });
         }
-        // Fallback: probe /embeddings with a common test model â€” many providers lack /models
+        // Fallback: probe /embeddings with a common test model Ã¢â‚¬â€ many providers lack /models
         const embedRes = await fetch(`${baseUrl}/embeddings`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -496,7 +549,7 @@ export async function POST(request) {
             // Validate SA JSON has required fields
             isValid = !!(saJson.client_email && saJson.private_key && saJson.project_id);
           } else {
-            // Raw key: probe Vertex â€” 404 means key is valid (model just doesn't exist), 401 means invalid key
+            // Raw key: probe Vertex Ã¢â‚¬â€ 404 means key is valid (model just doesn't exist), 401 means invalid key
             const probeRes = await fetch(
               `https://aiplatform.googleapis.com/v1/publishers/google/models/__probe__:generateContent?key=${apiKey}`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
@@ -567,7 +620,7 @@ export async function POST(request) {
           // Cookie valid = any non-401/403 response (200, 400, 429 all mean cookie accepted)
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid SSO cookie â€” re-paste from grok.com DevTools â†’ Cookies â†’ sso";
+            error = "Invalid SSO cookie Ã¢â‚¬â€ re-paste from grok.com DevTools Ã¢â€ â€™ Cookies Ã¢â€ â€™ sso";
           } else {
             isValid = true;
           }
@@ -605,7 +658,7 @@ export async function POST(request) {
           });
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid session cookie â€” re-paste __Secure-next-auth.session-token from perplexity.ai";
+            error = "Invalid session cookie Ã¢â‚¬â€ re-paste __Secure-next-auth.session-token from perplexity.ai";
           } else {
             isValid = true;
           }
