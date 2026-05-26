@@ -108,8 +108,6 @@ export default function MediaProviderKindPage() {
           .then((d) => setCustomNodes((d.nodes || []).filter((n) => n.type === "custom-embedding")))
           .catch(() => {}),
       );
-    } else {
-      setCustomNodes([]);
     }
 
     void Promise.all(requests);
