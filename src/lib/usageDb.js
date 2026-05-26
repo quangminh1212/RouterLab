@@ -88,33 +88,49 @@ function isLikelyDuplicateUsageEntry(prev, next) {
     && prevOut === nextOut;
 }
 
-function dedupeRecentEntries(entries = []) {
-  const seen = new Map();
-  for (const item of entries) {
-    const sig = [
-      item.timestamp || "",
-      item.provider || "",
-      item.model || "",
-      Number(item.promptTokens || 0),
-      Number(item.completionTokens || 0),
-      Number(item.cost || 0),
-    ].join("|");
+function hasValidDuration(item) {
+  const duration = Number(item?.durationMs);
+  return Number.isFinite(duration) && duration > 0;
+}
 
-    const existing = seen.get(sig);
-    if (!existing) {
-      seen.set(sig, item);
+function isSameRecentRequest(prev, next) {
+  if (!prev || !next) return false;
+
+  const prevTs = toMs(prev.timestamp);
+  const nextTs = toMs(next.timestamp);
+  if (!Number.isFinite(prevTs) || !Number.isFinite(nextTs)) return false;
+  if (Math.abs(nextTs - prevTs) > 120000) return false;
+
+  return (prev.provider || "") === (next.provider || "")
+    && (prev.model || "") === (next.model || "")
+    && Number(prev.promptTokens || 0) === Number(next.promptTokens || 0)
+    && Number(prev.completionTokens || 0) === Number(next.completionTokens || 0);
+}
+
+function pickBetterRecentRequest(prev, next) {
+  const prevHasDuration = hasValidDuration(prev);
+  const nextHasDuration = hasValidDuration(next);
+  if (prevHasDuration !== nextHasDuration) return nextHasDuration ? next : prev;
+
+  const prevCompression = Number(prev?.compression?.savedBytes || 0);
+  const nextCompression = Number(next?.compression?.savedBytes || 0);
+  if (prevCompression !== nextCompression) return nextCompression > prevCompression ? next : prev;
+
+  return toMs(next?.timestamp) > toMs(prev?.timestamp) ? next : prev;
+}
+
+function dedupeRecentEntries(entries = []) {
+  const deduped = [];
+  for (const item of entries) {
+    const existingIndex = deduped.findIndex((existing) => isSameRecentRequest(existing, item));
+    if (existingIndex === -1) {
+      deduped.push(item);
       continue;
     }
 
-    const existingDuration = Number(existing.durationMs);
-    const itemDuration = Number(item.durationMs);
-    const existingValid = Number.isFinite(existingDuration) && existingDuration > 0;
-    const itemValid = Number.isFinite(itemDuration) && itemDuration > 0;
-    if (!existingValid && itemValid) {
-      seen.set(sig, item);
-    }
+    deduped[existingIndex] = pickBetterRecentRequest(deduped[existingIndex], item);
   }
-  return Array.from(seen.values());
+  return deduped.sort((a, b) => toMs(b.timestamp) - toMs(a.timestamp));
 }
 
 function addToCounter(target, key, values) {
