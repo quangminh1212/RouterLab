@@ -245,7 +245,7 @@ export default function ProvidersPage() {
   };
 
   const compatibleProviders = providerNodes
-    .filter((node) => node.type === "openai-compatible")
+    .filter((node) => node.type === "openai-compatible" && !isTamMaoNode(node))
     .map((node) => ({
       id: node.id,
       name: node.name || "OpenAI Compatible",
@@ -1342,5 +1342,6 @@ ProviderTestResultsView.propTypes = {
     error: PropTypes.string,
   }).isRequired,
 };
+
 
 
