@@ -1,4 +1,4 @@
-import { PROVIDER_MODELS } from "@/shared/constants/models";
+import { getCombos } from "@/lib/localDb";
 
 /**
  * Handle CORS preflight
@@ -19,20 +19,19 @@ export async function OPTIONS() {
  */
 export async function GET() {
   try {
-    // Collect all models from all providers
     const models = [];
-    
-    for (const [provider, providerModels] of Object.entries(PROVIDER_MODELS)) {
-      for (const model of providerModels) {
-        models.push({
-          name: `models/${provider}/${model.id}`,
-          displayName: model.name || model.id,
-          description: `${provider} model: ${model.name || model.id}`,
-          supportedGenerationMethods: ["generateContent"],
-          inputTokenLimit: 128000,
-          outputTokenLimit: 8192,
-        });
-      }
+
+    const combos = await getCombos();
+    for (const combo of combos) {
+      if (combo?.showInModelsEndpoint === false) continue;
+      models.push({
+        name: `models/${combo.name}`,
+        displayName: combo.name,
+        description: `combo model: ${combo.name}`,
+        supportedGenerationMethods: ["generateContent"],
+        inputTokenLimit: 128000,
+        outputTokenLimit: 8192,
+      });
     }
 
     return Response.json({ models });

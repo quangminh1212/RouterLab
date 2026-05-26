@@ -1,35 +1,32 @@
 import { NextResponse } from "next/server";
 import { getModelAliases, setModelAlias } from "@/models";
-import { getDisabledModels } from "@/lib/disabledModelsDb";
-import { getSettings } from "@/lib/localDb";
-import { AI_MODELS } from "@/shared/constants/config";
-import { getProviderAlias } from "@/shared/constants/providers";
+import { getCombos, getSettings } from "@/lib/localDb";
 
 // GET /api/models - Get models with aliases
 export async function GET() {
   try {
+    const combos = await getCombos();
     const modelAliases = await getModelAliases();
-    const disabled = await getDisabledModels();
     const settings = await getSettings();
     const hiddenModels = settings.hiddenModels || [];
 
-    const models = AI_MODELS
-      .filter((m) => {
-        const alias = getProviderAlias(m.provider) || m.provider;
-        const list = disabled[alias] || disabled[m.provider] || [];
-        return !list.includes(m.model);
-      })
-      .filter((m) => !hiddenModels.includes(`${m.provider}/${m.model}`))
-      .map((m) => {
-        const fullModel = `${m.provider}/${m.model}`;
+    const comboModels = combos
+      .filter((combo) => combo?.showInModelsEndpoint !== false)
+      .map((combo) => {
+        const fullModel = combo.name;
         return {
-          ...m,
+          provider: "combo",
+          model: combo.name,
+          name: combo.name,
           fullModel,
-          alias: modelAliases[fullModel] || m.model,
+          alias: modelAliases[fullModel] || combo.name,
+          models: Array.isArray(combo.models) ? combo.models : [],
+          kind: combo.kind || null,
         };
-      });
+      })
+      .filter((combo) => !hiddenModels.includes(combo.fullModel));
 
-    return NextResponse.json({ models });
+    return NextResponse.json({ models: comboModels });
   } catch (error) {
     console.log("Error fetching models:", error);
     return NextResponse.json({ error: "Failed to fetch models" }, { status: 500 });
