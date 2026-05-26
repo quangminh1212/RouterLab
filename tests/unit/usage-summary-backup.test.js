@@ -7,6 +7,25 @@ let tempDir = "";
 
 async function loadUsageModule() {
   vi.resetModules();
+  vi.doMock("@/lib/localDb.js", () => {
+    const state = {
+      data: {
+        usageData: {
+          history: [],
+          totalRequestsLifetime: 0,
+          dailySummary: {},
+        },
+      },
+      async read() {},
+      async write() {},
+    };
+
+    return {
+      getDb: vi.fn().mockResolvedValue(state),
+      getPricingForModel: vi.fn().mockResolvedValue(null),
+      invalidateApiKeyCostCache: vi.fn(),
+    };
+  });
   return import("@/lib/usageDb");
 }
 
@@ -19,6 +38,7 @@ describe("usage summary-only backup", () => {
   afterEach(async () => {
     delete process.env.DATA_DIR;
     vi.resetModules();
+    vi.clearAllMocks();
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
