@@ -14,6 +14,8 @@
         "dev": "next dev --webpack --port 1212",
         "dev:turbo": "next dev --turbo --port 1212",
         "build": "next build --webpack",
+        "test": "vitest run --config tests/vitest.config.js",
+        "test:models": "vitest run --config tests/vitest.config.js tests/unit/models-endpoints-combo-only.test.js",
         "start": "node ./bin/xlab_router.js --web",
         "ddns:cloudflare": "node scripts/cloudflare-ddns.js",
         "dev:bun": "bun --bun next dev --webpack --port 1212",
