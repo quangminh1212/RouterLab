@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+import { fetchWithTimeout } from "@/shared/utils/fetch";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;

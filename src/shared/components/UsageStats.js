@@ -9,7 +9,7 @@ import OverviewCards from "@/app/(dashboard)/dashboard/usage/components/Overview
 import UsageTable, { fmt, fmtTime } from "@/app/(dashboard)/dashboard/usage/components/UsageTable";
 import ProviderTopology from "@/app/(dashboard)/dashboard/usage/components/ProviderTopology";
 import UsageChart from "@/app/(dashboard)/dashboard/usage/components/UsageChart";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+import { fetchWithTimeout } from "@/shared/utils/fetch";
 
 function fmtCost(value) {
   return `$${Number(value || 0).toFixed(4)}`;

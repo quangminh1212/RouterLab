@@ -6,7 +6,7 @@ import { CLI_TOOLS } from "@/shared/constants/cliTools";
 import { getModelsByProviderId, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, HermesToolCard, DefaultToolCard, OpenCodeToolCard, CoworkToolCard, MitmLinkCard } from "./components";
 import { MITM_TOOLS } from "@/shared/constants/cliTools";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+import { fetchWithTimeout } from "@/shared/utils/fetch";
 
 function normalizeCloudUrl(url) {
   if (typeof url !== "string") return "";

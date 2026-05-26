@@ -1,0 +1,269 @@
+import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
+import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
+import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
+import { killNgrok, isNgrokRunning } from "@/lib/tunnel/ngrok";
+import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks } from "@/mitm/manager";
+import { startGistSyncScheduler } from "@/shared/services/gistsync";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { existsSync } from "fs";
+
+import os from "os";
+
+// Inject correct paths and DB hooks into manager.js (CJS) from ESM context.
+// Must run before any MITM function is called.
+(function bootstrapMitm() {
+  // 1. Resolve server.js path from real ESM __filename (not bundled path)
+  if (!process.env.MITM_SERVER_PATH) {
+    try {
+      const thisFile = fileURLToPath(import.meta.url);
+      const appSrc = dirname(dirname(thisFile)); // src/
+      const candidate = join(appSrc, "mitm", "server.js");
+      if (existsSync(candidate)) {
+        process.env.MITM_SERVER_PATH = candidate;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 2. Inject DB functions so manager.js (CJS) can save/load settings
+  //    without dynamic import issues inside webpack bundles
+  try {
+    initDbHooks(getSettings, updateSettings);
+  } catch { /* ignore */ }
+})();
+
+// Multiple modules register SIGINT/SIGTERM handlers legitimately
+process.setMaxListeners(20);
+
+// Use global to survive Next.js hot reload â€” prevents duplicate intervals
+const g = global.__appSingleton ??= {
+  signalHandlersRegistered: false,
+  watchdogInterval: null,
+  networkMonitorInterval: null,
+  lastNetworkFingerprint: null,
+  lastWatchdogTick: Date.now(),
+  lastTunnelRestartAt: 0,
+  tunnelRestartInProgress: false,
+  mitmStartInProgress: false,
+};
+
+const WATCHDOG_INTERVAL_MS = 60000;
+const NETWORK_CHECK_INTERVAL_MS = 5000;
+const NETWORK_RESTART_COOLDOWN_MS = 30000;
+
+/**
+ * Initialize app on startup
+ * - Cleanup stale data
+ * - Auto-reconnect tunnel if previously enabled
+ * - Register shutdown handler to kill cloudflared
+ * - Start watchdog to recover tunnel after sleep/wake
+ */
+export async function initializeApp() {
+  try {
+    await cleanupProviderConnections();
+
+    const fastStartup = process.env.XLABROUTER_FAST_STARTUP === "1";
+
+    const settings = await getSettings();
+    if (settings.tunnelEnabled) {
+      console.log("[InitApp] Forcing tunnel off on startup until OAuth-verified manual enable");
+      await updateSettings({ tunnelEnabled: false, tunnelUrl: "", tunnelLease: null });
+    }
+    killCloudflared();
+    killNgrok();
+
+    // Kill cloudflared on process exit (register once only)
+    if (!g.signalHandlersRegistered) {
+      const cleanup = () => {
+        killCloudflared();
+        process.exit();
+      };
+      process.on("SIGINT", cleanup);
+      process.on("SIGTERM", cleanup);
+      g.signalHandlersRegistered = true;
+    }
+
+    // Pre-download cloudflared binary in background
+    ensureCloudflared().catch(() => {});
+
+    if (!fastStartup) {
+      // Watchdog: recover tunnel after process crash
+      startWatchdog();
+
+      // Network monitor: detect sleep/wake + network changes â†’ restart tunnel
+      startNetworkMonitor();
+    } else {
+      console.log("[InitApp] Fast startup enabled, skipping tunnel watchdog/network monitor");
+    }
+
+    // Auto-start MITM if it was enabled before restart
+    autoStartMitm();
+
+    // Auto-sync GitHub Gist backup every minute if connected
+    startGistSyncScheduler().catch((error) => {
+      console.log("[InitApp] Gist sync scheduler failed:", error.message);
+    });
+  } catch (error) {
+    console.error("[InitApp] Error:", error);
+  }
+}
+
+/** Auto-start MITM if it was enabled before restart */
+async function autoStartMitm() {
+  if (g.mitmStartInProgress) return;
+  g.mitmStartInProgress = true;
+  try {
+    const settings = await getSettings();
+    if (!settings.mitmEnabled) return;
+
+    const mitmStatus = await getMitmStatus();
+    if (mitmStatus.running) return;
+
+    const password = await loadEncryptedPassword();
+    if (!password && process.platform !== "win32") {
+      console.log("[InitApp] MITM was enabled but no saved password found, skipping auto-start");
+      return;
+    }
+
+    // Need an active API key
+    const keys = await getApiKeys();
+    const activeKey = keys.find(k => k.isActive !== false);
+
+    console.log("[InitApp] MITM was enabled, auto-starting...");
+    await startMitm(activeKey?.key || "sk_xlabrouter", password);
+    console.log("[InitApp] MITM auto-started");
+  } catch (err) {
+    console.log("[InitApp] MITM auto-start failed:", err.message);
+  } finally {
+    g.mitmStartInProgress = false;
+  }
+}
+
+/** Periodically check tunnel process health and reconnect if crashed */
+function startWatchdog() {
+  if (g.watchdogInterval) return;
+  g.watchdogInterval = setInterval(async () => {
+    try {
+      if (isTunnelManuallyDisabled()) return;
+      if (isTunnelReconnecting()) return;
+      if (g.tunnelRestartInProgress) return;
+      const settings = await getSettings();
+      if (!settings.tunnelEnabled) return;
+      const provider = settings.tunnelProvider || "cloudflare";
+      const tunnelRunning = provider === "ngrok" ? isNgrokRunning() : isCloudflaredRunning();
+      if (tunnelRunning) return;
+      console.log("[Watchdog] Tunnel process is down, attempting recovery...");
+      g.tunnelRestartInProgress = true;
+      try {
+        await enableTunnel(1212, provider);
+        console.log("[Watchdog] Tunnel recovered");
+      } finally {
+        g.tunnelRestartInProgress = false;
+      }
+    } catch (err) {
+      console.log("[Watchdog] Recovery failed:", err.message);
+    }
+  }, WATCHDOG_INTERVAL_MS);
+
+  if (g.watchdogInterval.unref) g.watchdogInterval.unref();
+}
+
+/** Get network fingerprint from active interfaces (IPv4 only) */
+function getNetworkFingerprint() {
+  const interfaces = os.networkInterfaces();
+  const active = [];
+  for (const [name, addrs] of Object.entries(interfaces)) {
+    if (!addrs) continue;
+    for (const addr of addrs) {
+      if (!addr.internal && addr.family === "IPv4") {
+        active.push(`${name}:${addr.address}`);
+      }
+    }
+  }
+  return active.sort().join("|");
+}
+
+/** Monitor network changes + sleep/wake â†’ kill and reconnect tunnel */
+function startNetworkMonitor() {
+  if (g.networkMonitorInterval) return;
+
+  g.lastNetworkFingerprint = getNetworkFingerprint();
+  g.lastWatchdogTick = Date.now();
+
+  g.networkMonitorInterval = setInterval(async () => {
+    try {
+      if (isTunnelManuallyDisabled()) return;
+      const settings = await getSettings();
+      if (!settings.tunnelEnabled) return;
+
+      const now = Date.now();
+      const elapsed = now - g.lastWatchdogTick;
+      g.lastWatchdogTick = now;
+
+      const currentFingerprint = getNetworkFingerprint();
+      const networkChanged = currentFingerprint !== g.lastNetworkFingerprint;
+      const wasSleep = elapsed > NETWORK_CHECK_INTERVAL_MS * 3;
+
+      if (networkChanged) g.lastNetworkFingerprint = currentFingerprint;
+
+      if (!networkChanged && !wasSleep) return;
+
+      // Skip if restart already in progress or restarted recently
+      if (g.tunnelRestartInProgress) return;
+      if (isTunnelReconnecting()) return;
+      if (now - g.lastTunnelRestartAt < NETWORK_RESTART_COOLDOWN_MS) return;
+
+      const reason = wasSleep && networkChanged ? "sleep/wake + network change"
+        : wasSleep ? "sleep/wake" : "network change";
+      console.log(`[NetworkMonitor] ${reason} detected, restarting tunnel...`);
+
+      g.tunnelRestartInProgress = true;
+      g.lastTunnelRestartAt = now;
+      try {
+        if ((settings.tunnelProvider || "cloudflare") === "ngrok") killNgrok();
+        else killCloudflared();
+        await new Promise(r => setTimeout(r, 2000));
+        const provider = settings.tunnelProvider || "cloudflare";
+        await enableTunnel(1212, provider);
+        console.log("[NetworkMonitor] Tunnel restarted");
+        g.lastNetworkFingerprint = getNetworkFingerprint();
+      } finally {
+        g.tunnelRestartInProgress = false;
+      }
+    } catch (err) {
+      console.log("[NetworkMonitor] Tunnel restart failed:", err.message);
+    }
+  }, NETWORK_CHECK_INTERVAL_MS);
+
+  if (g.networkMonitorInterval.unref) g.networkMonitorInterval.unref();
+}
+
+
+function startHeapGcTimer() {
+  if (typeof global.gc !== "function") return;
+  const g = globalThis;
+  if (g.__xlabHeapGcTimer) return;
+
+  const GC_INTERVAL_MS = 5 * 60 * 1000;
+  const HEAP_TRIGGER_RATIO = 0.7;
+
+  const tick = () => {
+    try {
+      const { heapUsed, heapTotal } = process.memoryUsage();
+      if (heapTotal === 0 || heapUsed / heapTotal < HEAP_TRIGGER_RATIO) return;
+      global.gc();
+      const after = process.memoryUsage().heapUsed;
+      const freedMB = Math.round((heapUsed - after) / 1024 / 1024);
+      if (freedMB > 10) {
+        console.log(`[GC] Freed ${freedMB}MB heap`);
+      }
+    } catch {}
+  };
+
+  g.__xlabHeapGcTimer = setInterval(tick, GC_INTERVAL_MS);
+  if (g.__xlabHeapGcTimer.unref) g.__xlabHeapGcTimer.unref();
+}
+
+startHeapGcTimer();
+
+export default initializeApp;

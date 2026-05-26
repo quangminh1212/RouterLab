@@ -1,4 +1,4 @@
-import initializeApp from "./shared/services/initializeApp.js";
+import initializeApp from "./shared/services/app.js";
 
 async function startServer() {
   console.log("Starting server...");

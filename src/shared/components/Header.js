@@ -10,7 +10,7 @@ import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+import { fetchWithTimeout } from "@/shared/utils/fetch";
 
 const HeaderMenu = dynamic(() => import("@/shared/components/HeaderMenu"), {
   ssr: false,

@@ -1,4 +1,4 @@
-import initializeApp from "@/shared/services/initializeApp";
+import initializeApp from "@/shared/services/app";
 import { logger } from "@/lib/logger";
 
 let initialized = false;

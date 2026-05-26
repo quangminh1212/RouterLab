@@ -6,7 +6,7 @@ import { Skeleton } from "@/shared/components/Loading";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
-import { fetchWithTimeout } from "@/shared/utils/fetchWithTimeout";
+import { fetchWithTimeout } from "@/shared/utils/fetch";
 const INITIAL_SECTION_LOADING = {
   security: true,
   routing: true,
