@@ -71,8 +71,12 @@ export function handleStreamingResponse({ providerResponse, provider, model, sou
  */
 export function buildOnStreamComplete({ provider, model, connectionId, apiKey, requestStartTime, body, stream, finalBody, translatedBody, clientRawRequest, rtkStats }) {
   const streamDetailId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  let didComplete = false;
 
   const onStreamComplete = (contentObj, usage, ttftAt) => {
+    if (didComplete) return;
+    didComplete = true;
+
     const latency = {
       ttft: ttftAt ? ttftAt - requestStartTime : Date.now() - requestStartTime,
       total: Date.now() - requestStartTime

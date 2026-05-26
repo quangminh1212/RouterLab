@@ -101,4 +101,35 @@ describe("usage summary-only backup", () => {
     expect(exported.dailySummary["2026-05-07"].requests).toBe(12);
     expect(runtimeHistory).toEqual([]);
   });
+
+  it("deduplicates repeated usage saves for the same request and keeps the richer entry", async () => {
+    const usageDb = await loadUsageModule();
+    const timestamp = new Date(Date.UTC(2026, 4, 27, 3, 15, 0)).toISOString();
+
+    await usageDb.saveRequestUsage({
+      provider: "openai",
+      model: "gpt-5.4",
+      connectionId: "conn-1",
+      endpoint: "/v1/chat/completions",
+      tokens: { prompt_tokens: 68564, completion_tokens: 377 },
+      cost: 0.0115,
+      timestamp,
+    });
+
+    await usageDb.saveRequestUsage({
+      provider: "openai",
+      model: "gpt-5.4",
+      connectionId: "conn-1",
+      endpoint: "/v1/chat/completions",
+      tokens: { prompt_tokens: 68564, completion_tokens: 377 },
+      cost: 0.0286,
+      durationMs: 6200,
+      timestamp: new Date(Date.parse(timestamp) + 800).toISOString(),
+    });
+
+    const runtimeHistory = await usageDb.getUsageHistory();
+
+    expect(runtimeHistory).toHaveLength(1);
+    expect(runtimeHistory[0].durationMs).toBe(6200);
+  });
 });

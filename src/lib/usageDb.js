@@ -88,6 +88,30 @@ function isLikelyDuplicateUsageEntry(prev, next) {
     && prevOut === nextOut;
 }
 
+function findDuplicateUsageEntryIndex(history, entry) {
+  if (!Array.isArray(history) || !entry) return -1;
+
+  for (let index = history.length - 1; index >= Math.max(0, history.length - 20); index--) {
+    if (isLikelyDuplicateUsageEntry(history[index], entry)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function pickBetterUsageEntry(prev, next) {
+  if (hasValidDuration(prev) !== hasValidDuration(next)) {
+    return hasValidDuration(next) ? next : prev;
+  }
+
+  const prevCost = Number(prev?.cost || 0);
+  const nextCost = Number(next?.cost || 0);
+  if (prevCost !== nextCost) return nextCost > prevCost ? next : prev;
+
+  return toMs(next?.timestamp) > toMs(prev?.timestamp) ? next : prev;
+}
+
 function hasValidDuration(item) {
   const duration = Number(item?.durationMs);
   return Number.isFinite(duration) && duration > 0;
@@ -543,8 +567,16 @@ export async function saveRequestUsage(entry) {
       } catch {}
     }
 
-    const lastEntry = db.data.history.length > 0 ? db.data.history[db.data.history.length - 1] : null;
-    if (isLikelyDuplicateUsageEntry(lastEntry, entry)) {
+    const duplicateIndex = findDuplicateUsageEntryIndex(db.data.history, entry);
+    if (duplicateIndex >= 0) {
+      const existingEntry = db.data.history[duplicateIndex];
+      const betterEntry = pickBetterUsageEntry(existingEntry, entry);
+
+      if (betterEntry !== existingEntry) {
+        db.data.history[duplicateIndex] = betterEntry;
+        await db.write();
+        statsEmitter.emit("update");
+      }
       return;
     }
 
