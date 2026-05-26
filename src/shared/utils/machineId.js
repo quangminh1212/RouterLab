@@ -1,4 +1,4 @@
-﻿import crypto from 'node:crypto';
+import crypto from 'node:crypto';
 import os from 'node:os';
 import { machineIdSync } from 'node-machine-id';
 
@@ -86,6 +86,19 @@ export async function getConsistentMachineId(salt = null) {
  */
 export async function getRawMachineId() {
   return Promise.resolve(getRawMachineIdFast());
+}
+
+export function getProviderMachineId(providerSpecificData = null) {
+  const configuredMachineId = providerSpecificData?.machineId;
+  if (typeof configuredMachineId === 'string' && configuredMachineId.trim()) {
+    return configuredMachineId.trim();
+  }
+
+  if (typeof process.env.XLABROUTER_MACHINE_ID === 'string' && process.env.XLABROUTER_MACHINE_ID.trim()) {
+    return process.env.XLABROUTER_MACHINE_ID.trim();
+  }
+
+  return 'D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D';
 }
 
 /**

@@ -5,6 +5,7 @@ import { buildClineHeaders } from "../../src/shared/utils/clineAuth.js";
 import { getCachedClaudeHeaders } from "../utils/claudeHeaderCache.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
+import { getProviderMachineId } from "../../src/shared/utils/machineId.js";
 
 export class DefaultExecutor extends BaseExecutor {
   constructor(provider) {
@@ -67,7 +68,7 @@ export class DefaultExecutor extends BaseExecutor {
         if (cached) {
           // Remove Title-Case static keys that conflict with incoming lowercase cached keys
           for (const lcKey of Object.keys(cached)) {
-            // Build the Title-Case equivalent: "anthropic-version" → "Anthropic-Version"
+            // Build the Title-Case equivalent: "anthropic-version" -> "Anthropic-Version"
             const titleKey = lcKey.replace(/(^|-)([a-z])/g, (_, sep, c) => sep + c.toUpperCase());
 
             // Special handling for Anthropic-Beta to preserve required flags like OAuth
@@ -130,7 +131,7 @@ export class DefaultExecutor extends BaseExecutor {
         } else {
           headers["Authorization"] = `Bearer ${credentials.apiKey || credentials.accessToken}`;
           if ((credentials?.providerSpecificData?.baseUrl || "").includes("cungcapai")) {
-            headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+            headers["x-machine-id"] = getProviderMachineId(credentials?.providerSpecificData);
           }
         }
     }
@@ -138,7 +139,7 @@ export class DefaultExecutor extends BaseExecutor {
     // Add machine-id for CungCapAI (both direct and openai-compatible)
     const _cungcapaiBase = credentials?.providerSpecificData?.baseUrl || this.config?.baseUrl || "";
     if (_cungcapaiBase.includes("cungcapai") || this.provider === "cungcapai") {
-      headers["x-machine-id"] = "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D";
+      headers["x-machine-id"] = getProviderMachineId(credentials?.providerSpecificData);
     }
     // Strip first-party Claude Code identity headers for non-Anthropic anthropic-compatible upstreams
     if (this.provider?.startsWith?.("anthropic-compatible-")) {

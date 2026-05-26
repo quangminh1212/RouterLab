@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getProviderMachineId } from "@/shared/utils/machineId";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
@@ -348,7 +349,7 @@ export async function GET(request, { params }) {
         "Authorization": `Bearer ${connection.apiKey}`,
       };
       if (baseUrl.includes("cungcapai")) {
-        headers["x-machine-id"] = (process.env.XLABROUTER_MACHINE_ID || "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D");
+        headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
       }
       const response = await fetch(url, {
         method: "GET",

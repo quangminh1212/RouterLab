@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getProviderMachineId } from "@/shared/utils/machineId";
 import { getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
@@ -134,7 +135,7 @@ export async function POST(request) {
         const modelsUrl = `${node.baseUrl?.replace(/\/$/, "")}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
         if ((node.baseUrl || "").includes("cungcapai")) {
-          headers["x-machine-id"] = (process.env.XLABROUTER_MACHINE_ID || "D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D");
+          headers["x-machine-id"] = getProviderMachineId(node.providerSpecificData);
         }
         const res = await fetch(modelsUrl, {
           headers,
