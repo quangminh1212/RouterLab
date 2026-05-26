@@ -257,13 +257,13 @@ export default function ProvidersPage() {
     }))
     .filter((p) => matchSearch(p.name));
 
-  const tammaoFromCompatible = providerNodes
+  const tammaoCompatibleProviders = providerNodes
     .filter((node) => node.type === "openai-compatible" && isTamMaoNode(node))
     .map((node) => ({
       id: node.id,
       name: node.name || "TamMao",
       color: "#10A37F",
-      textIcon: "OC",
+      textIcon: "TM",
       apiType: node.apiType,
       prefix: node.prefix,
       baseUrl: node.baseUrl,
@@ -299,12 +299,14 @@ export default function ProvidersPage() {
   );
 
   const mergedApiKeyLikeProviders = [
-    ...apikeyEntries.map(([key, info]) => ({
-      kind: "fixed",
-      key,
-      provider: info,
-    })),
-    ...tammaoFromCompatible.map((info) => ({
+    ...apikeyEntries
+      .filter(([key]) => key !== "cungcapai")
+      .map(([key, info]) => ({
+        kind: "fixed",
+        key,
+        provider: info,
+      })),
+    ...tammaoCompatibleProviders.map((info) => ({
       kind: "compatible",
       key: info.id,
       provider: info,
@@ -320,13 +322,17 @@ export default function ProvidersPage() {
     );
   }
 
+  const displayedCompatibleProviders = [
+    ...compatibleProvidersWithoutTamMao,
+    ...anthropicCompatibleProviders,
+  ].filter((info) => !isTamMaoNode(info));
+
   const hasAnyResult =
     oauthEntries.length > 0 ||
     freeEntries.length > 0 ||
     freeTierEntries.length > 0 ||
     mergedApiKeyLikeProviders.length > 0 ||
-    compatibleProviders.length > 0 ||
-    anthropicCompatibleProviders.length > 0;
+    displayedCompatibleProviders.length > 0;
 
   return (
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
@@ -538,8 +544,7 @@ export default function ProvidersPage() {
             </Button>
           </div>
         </div>
-        {compatibleProvidersWithoutTamMao.length === 0 &&
-        anthropicCompatibleProviders.length === 0 ? (
+        {displayedCompatibleProviders.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-border rounded-xl">
             <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
               extension
@@ -554,20 +559,18 @@ export default function ProvidersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {[...compatibleProvidersWithoutTamMao, ...anthropicCompatibleProviders].map(
-              (info) => (
-                <ApiKeyProviderCard
-                  key={info.id}
-                  providerId={info.id}
-                  provider={info}
-                  stats={getProviderStats(info.id, "apikey")}
-                  authType="compatible"
-                  onToggle={(active) =>
-                    handleToggleProvider(info.id, "apikey", active)
-                  }
-                />
-              ),
-            )}
+            {displayedCompatibleProviders.map((info) => (
+              <ApiKeyProviderCard
+                key={info.id}
+                providerId={info.id}
+                provider={info}
+                stats={getProviderStats(info.id, "apikey")}
+                authType="compatible"
+                onToggle={(active) =>
+                  handleToggleProvider(info.id, "apikey", active)
+                }
+              />
+            ))}
           </div>
         )}
       </div>
