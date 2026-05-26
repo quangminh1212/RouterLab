@@ -1,38 +1,30 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
-
-vi.mock("@/lib/localDb", () => ({
-  getCombos: vi.fn(),
-  getSettings: vi.fn(),
-}));
-
-vi.mock("@/models", () => ({
-  getModelAliases: vi.fn(),
-  setModelAlias: vi.fn(),
-}));
-
-vi.mock("@/lib/disabledModelsDb", () => ({
-  getDisabledModels: vi.fn(),
-}));
-
-const { getCombos, getSettings } = await import("@/lib/localDb");
-const { getModelAliases } = await import("@/models");
-const { getDisabledModels } = await import("@/lib/disabledModelsDb");
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const comboFixtures = [
   { name: "openclaw", models: ["kr/claude-haiku-4.5"] },
   { name: "hidden-combo", models: ["gemini/gemini-2.5-flash"], showInModelsEndpoint: false },
 ];
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  getCombos.mockResolvedValue(comboFixtures);
-  getSettings.mockResolvedValue({ hiddenModels: [] });
-  getModelAliases.mockResolvedValue({});
-  getDisabledModels.mockResolvedValue({});
-});
+async function mockModelDeps() {
+  vi.doMock("@/lib/localDb", () => ({
+    getCombos: vi.fn().mockResolvedValue(comboFixtures),
+    getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
+  }));
+
+  vi.doMock("@/models", () => ({
+    getModelAliases: vi.fn().mockResolvedValue({}),
+    setModelAlias: vi.fn(),
+  }));
+}
 
 describe("model endpoints return combos only", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
   it("GET /api/models returns visible combos only", async () => {
+    await mockModelDeps();
     const { GET } = await import("@/app/api/models/route");
     const response = await GET();
     const data = await response.json();
@@ -43,6 +35,7 @@ describe("model endpoints return combos only", () => {
   });
 
   it("GET /api/v1/models returns visible combos only", async () => {
+    await mockModelDeps();
     const { GET } = await import("@/app/api/v1/models/route");
     const response = await GET();
     const data = await response.json();
@@ -54,6 +47,7 @@ describe("model endpoints return combos only", () => {
   });
 
   it("GET /api/v1beta/models returns visible combos only", async () => {
+    await mockModelDeps();
     const { GET } = await import("@/app/api/v1beta/models/route");
     const response = await GET();
     const data = await response.json();
