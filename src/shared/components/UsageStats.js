@@ -61,16 +61,16 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
       {!sortedRequests.length ? (
         <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No requests yet.</div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-xs border-collapse">
+        <div className="flex-1 overflow-auto">
+          <table className="min-w-[680px] w-full text-xs border-collapse">
             <thead className="sticky top-0 bg-bg z-10">
               <tr className="border-b border-border">
                 <th className="py-1.5 text-left font-semibold text-text-muted w-2"></th>
                 <th className="py-1.5 text-left font-semibold text-text-muted">Model</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">In / Out</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">Cost</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">Duration</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted">When</th>
+                <th className="py-1.5 px-2 text-right font-semibold text-text-muted whitespace-nowrap">In / Out</th>
+                <th className="py-1.5 px-2 text-right font-semibold text-text-muted whitespace-nowrap">Cost</th>
+                <th className="py-1.5 px-2 text-right font-semibold text-text-muted whitespace-nowrap">Duration</th>
+                <th className="py-1.5 pl-2 text-right font-semibold text-text-muted whitespace-nowrap">When</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -81,8 +81,8 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
                     <td className="py-1.5">
                       <span className={`block w-1.5 h-1.5 rounded-full ${ok ? "bg-success" : "bg-error"}`} />
                     </td>
-                    <td className="py-1.5 font-mono truncate max-w-[120px]" title={r.model}>{r.model}</td>
-                    <td className="py-1.5 text-right whitespace-nowrap">
+                    <td className="py-1.5 pr-3 font-mono truncate max-w-[220px]" title={r.model}>{r.model}</td>
+                    <td className="py-1.5 px-2 text-right whitespace-nowrap">
                       <span className="text-primary">{fmt(r.promptTokens)}{"\u2191"}</span>
                       {" "}
                       <span className="text-success">{fmt(r.completionTokens)}{"\u2193"}</span>
@@ -92,13 +92,13 @@ const RecentRequests = memo(function RecentRequests({ requests = [] }) {
                         </span>
                       )}
                     </td>
-                    <td className="py-1.5 text-right whitespace-nowrap text-warning font-medium">
+                    <td className="py-1.5 px-2 text-right whitespace-nowrap text-warning font-medium">
                       {fmtCost(r.cost || r.totalCost)}
                     </td>
-                    <td className="py-1.5 text-right whitespace-nowrap text-text-muted">
+                    <td className="py-1.5 px-2 text-right whitespace-nowrap text-text-muted">
                       {fmtDuration(r.durationMs)}
                     </td>
-                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} now={now} /></td>
+                    <td className="py-1.5 pl-2 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} now={now} /></td>
                   </tr>
                 );
               })}
@@ -503,7 +503,7 @@ export default function UsageStats() {
           emptyMessage: "No usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -536,8 +536,8 @@ export default function UsageStats() {
           emptyMessage: "No account-specific usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -561,8 +561,8 @@ export default function UsageStats() {
           emptyMessage: "No API key usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -587,8 +587,8 @@ export default function UsageStats() {
           emptyMessage: "No endpoint usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
+              <td className="px-6 py-3 text-text-muted">Ã¢â‚¬â€</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
               <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
@@ -653,7 +653,7 @@ export default function UsageStats() {
 
       {/* Provider topology + Recent Requests */}
       {loading ? spinner : (
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(360px,1fr)_minmax(680px,1.25fr)] gap-2 items-stretch">
           <ProviderTopology
             providers={providers}
             activeRequests={activeRequests}
