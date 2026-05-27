@@ -228,13 +228,17 @@ export function createSSEStream(options = {}) {
 
         if (translated?.length > 0) {
           for (const item of translated) {
+            if (!item || typeof item !== "object") {
+              continue;
+            }
+
             // Filter empty chunks
             if (!hasValuableContent(item, sourceFormat)) {
               continue; // Skip this empty chunk
             }
 
             // Inject estimated usage if finish chunk has no valid usage
-            const isFinishChunk = item.type === "message_delta" || item.choices?.[0]?.finish_reason;
+            const isFinishChunk = item?.type === "message_delta" || item?.choices?.[0]?.finish_reason;
             if (state.finishReason && isFinishChunk && !hasValidUsage(item.usage) && totalContentLength > 0) {
               const estimated = estimateUsage(body, totalContentLength, sourceFormat);
               item.usage = filterUsageForFormat(estimated, sourceFormat); // Filter + already has buffer
