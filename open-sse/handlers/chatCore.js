@@ -19,6 +19,12 @@ import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.j
 import { injectCaveman } from "../rtk/caveman.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
 
+const INTERNAL_STREAM_ONLY_PROVIDERS = new Set(["openai", "codex", "cungcapai"]);
+
+export function isInternallyStreamOnlyProvider(provider) {
+  return INTERNAL_STREAM_ONLY_PROVIDERS.has(provider);
+}
+
 /**
  * Core chat handler - shared between SSE and Worker
  * @param {object} options.body - Request body
@@ -56,7 +62,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   }
 
   const clientRequestedStreaming = body.stream === true || sourceFormat === FORMATS.ANTIGRAVITY || sourceFormat === FORMATS.GEMINI || sourceFormat === FORMATS.GEMINI_CLI;
-  const providerRequiresStreaming = provider === "openai" || provider === "codex";
+  const providerRequiresStreaming = isInternallyStreamOnlyProvider(provider);
   let stream = providerRequiresStreaming ? true : (body.stream !== false);
 
   // Check client Accept header preference for non-streaming requests
@@ -64,7 +70,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   const acceptHeader = clientRawRequest?.headers?.accept || "";
   const clientPrefersJson = acceptHeader.includes("application/json");
   const clientPrefersSSE = acceptHeader.includes("text/event-stream");
-  if (clientPrefersJson && !clientPrefersSSE && body.stream !== true) {
+  if (clientPrefersJson && !clientPrefersSSE && body.stream !== true && !providerRequiresStreaming) {
     stream = false;
   }
 
