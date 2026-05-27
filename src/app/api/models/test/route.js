@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getApiKeys } from "@/lib/localDb";
+import { getApiKeys, getProviderNodes } from "@/lib/localDb";
+import { getModelInfo } from "@/sse/services/model";
 
 // POST /api/models/test - Ping a single model via internal completions or embeddings
 export async function POST(request) {
@@ -28,6 +29,39 @@ export async function POST(request) {
 
     const start = Date.now();
 
+    let resolvedModel = model;
+    let targetEndpoint = "/api/v1/chat/completions";
+    let requestBody = {
+      model: resolvedModel,
+      max_tokens: 1,
+      stream: false,
+      messages: [{ role: "user", content: "hi" }],
+    };
+
+    try {
+      const modelInfo = await getModelInfo(model);
+      if (modelInfo?.provider && modelInfo?.model) {
+        resolvedModel = `${modelInfo.provider}/${modelInfo.model}`;
+        requestBody = {
+          model: resolvedModel,
+          max_tokens: 1,
+          stream: false,
+          messages: [{ role: "user", content: "hi" }],
+        };
+        const providerNodes = await getProviderNodes();
+        const matchedNode = providerNodes.find((node) => node.id === modelInfo.provider);
+        if (matchedNode?.type === "openai-compatible" && matchedNode?.apiType === "responses") {
+          targetEndpoint = "/api/v1/responses";
+          requestBody = {
+            model: resolvedModel,
+            input: "hi",
+            max_output_tokens: 1,
+            stream: false,
+          };
+        }
+      }
+    } catch {}
+
     // Route to appropriate endpoint based on kind
     if (kind === "embedding") {
       const res = await fetch(`${baseUrl}/api/v1/embeddings`, {
@@ -52,16 +86,10 @@ export async function POST(request) {
       return NextResponse.json({ ok: true, latencyMs, error: null, status: res.status });
     }
 
-    // Default: chat completions
-    const res = await fetch(`${baseUrl}/api/v1/chat/completions`, {
+    const res = await fetch(`${baseUrl}${targetEndpoint}`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        model,
-        max_tokens: 1,
-        stream: false,
-        messages: [{ role: "user", content: "hi" }],
-      }),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(45000),
     });
     const latencyMs = Date.now() - start;
@@ -104,7 +132,7 @@ export async function POST(request) {
       });
     }
 
-    const hasChoices = (Array.isArray(parsed?.choices) && parsed.choices.length > 0) || (Array.isArray(parsed?.output) && parsed.output.length > 0) || parsed?.status === "completed";
+    const hasChoices = (Array.isArray(parsed?.choices) && parsed.choices.length > 0) || (Array.isArray(parsed?.output) && parsed.output.length > 0) || parsed?.status === "completed" || parsed?.object === "response";
     if (!hasChoices) {
       return NextResponse.json({
         ok: false,
@@ -119,3 +147,4 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
+
