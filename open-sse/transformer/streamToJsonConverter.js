@@ -20,15 +20,15 @@ function getDataPayloads(msg) {
 
 function ensureMessageItem(state, outputIndex = 0, itemId = null) {
   const existing = state.items.get(outputIndex);
-  if (existing?.type === "message") return existing;
-  const item = existing || {
+  const item = existing?.type === "message" ? existing : (existing || {
     id: itemId || `msg_${Date.now()}_${outputIndex}`,
     type: "message",
     status: "in_progress",
     role: "assistant",
     content: [{ type: "output_text", text: "", annotations: [] }]
-  };
+  });
   if (!Array.isArray(item.content)) item.content = [{ type: "output_text", text: "", annotations: [] }];
+  item.content = item.content.map((part) => part && typeof part === "object" ? part : { type: "output_text", text: "", annotations: [] });
   if (!item.content[0]) item.content[0] = { type: "output_text", text: "", annotations: [] };
   state.items.set(outputIndex, item);
   return item;
