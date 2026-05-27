@@ -1,4 +1,4 @@
-import { getCombos } from "@/lib/localDb";
+import { getCombos, getSettings } from "@/lib/localDb";
 import { getModelInfo } from "open-sse/config/models.js";
 
 function buildCorsHeaders() {
@@ -38,14 +38,18 @@ function toInfoModel(combo) {
 export async function GET() {
   try {
     let combos = [];
+    let hiddenModels = [];
     try {
-      combos = await getCombos();
+      const [comboList, settings] = await Promise.all([getCombos(), getSettings()]);
+      combos = comboList;
+      hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
     } catch {
       combos = [];
+      hiddenModels = [];
     }
 
     const data = combos
-      .filter((combo) => combo?.showInModelsEndpoint !== false)
+      .filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name))
       .map(toInfoModel);
 
     return Response.json({

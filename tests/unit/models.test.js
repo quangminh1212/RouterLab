@@ -1,14 +1,14 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const comboFixtures = [
   { name: "openclaw", models: ["kr/claude-haiku-4.5"] },
   { name: "hidden-combo", models: ["gemini/gemini-2.5-flash"], showInModelsEndpoint: false },
 ];
 
-async function mockModelDeps() {
+async function mockModelDeps(hiddenModels = []) {
   vi.doMock("@/lib/localDb", () => ({
     getCombos: vi.fn().mockResolvedValue(comboFixtures),
-    getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
+    getSettings: vi.fn().mockResolvedValue({ hiddenModels }),
   }));
 
   vi.doMock("@/models", () => ({
@@ -54,5 +54,23 @@ describe("model endpoints return combos only", () => {
 
     expect(data.models).toHaveLength(1);
     expect(data.models[0].name).toBe("models/openclaw");
+  });
+
+  it("filters hidden models from public model endpoints", async () => {
+    await mockModelDeps(["openclaw"]);
+
+    const [{ GET: getV1 }, { GET: getV1Beta }, { GET: getInfo }] = await Promise.all([
+      import("@/app/api/v1/models/route"),
+      import("@/app/api/v1beta/models/route"),
+      import("@/app/api/v1/models/info/route"),
+    ]);
+
+    const v1Data = await (await getV1()).json();
+    const v1betaData = await (await getV1Beta()).json();
+    const infoData = await (await getInfo()).json();
+
+    expect(v1Data.data).toEqual([]);
+    expect(v1betaData.models).toEqual([]);
+    expect(infoData.data).toEqual([]);
   });
 });

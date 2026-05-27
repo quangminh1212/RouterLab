@@ -1,4 +1,4 @@
-﻿import { getCombos } from "@/lib/localDb";
+﻿import { getCombos, getSettings } from "@/lib/localDb";
 
 /**
  * Handle CORS preflight
@@ -20,15 +20,18 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     let combos = [];
+    let hiddenModels = [];
     try {
-      combos = await getCombos();
-    } catch (e) {
+      const [comboList, settings] = await Promise.all([getCombos(), getSettings()]);
+      combos = comboList;
+      hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
+    } catch {
       console.log("Could not fetch combos");
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
     const models = combos
-      .filter((combo) => combo?.showInModelsEndpoint !== false)
+      .filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name))
       .map((combo) => ({
         id: combo.name,
         object: "model",

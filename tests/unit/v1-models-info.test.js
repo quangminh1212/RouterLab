@@ -12,6 +12,7 @@ describe("GET /api/v1/models/info", () => {
         { name: "xlabrouter/openclaw", kind: "chat", models: ["openclaw"], showInModelsEndpoint: true },
         { name: "hidden/combo", kind: "chat", models: ["hidden"], showInModelsEndpoint: false },
       ]),
+      getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
     }));
 
     vi.doMock("open-sse/config/models.js", () => ({
@@ -50,6 +51,7 @@ describe("GET /api/v1/models/info", () => {
   it("returns server error payload when combo loading fails", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getCombos: vi.fn().mockRejectedValue(new Error("db down")),
+      getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
     }));
 
     vi.doMock("open-sse/config/models.js", () => ({

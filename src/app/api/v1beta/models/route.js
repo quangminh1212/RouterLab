@@ -1,4 +1,4 @@
-import { getCombos } from "@/lib/localDb";
+import { getCombos, getSettings } from "@/lib/localDb";
 
 /**
  * Handle CORS preflight
@@ -21,9 +21,10 @@ export async function GET() {
   try {
     const models = [];
 
-    const combos = await getCombos();
+    const [combos, settings] = await Promise.all([getCombos(), getSettings()]);
+    const hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
     for (const combo of combos) {
-      if (combo?.showInModelsEndpoint === false) continue;
+      if (combo?.showInModelsEndpoint === false || hiddenModels.includes(combo?.name)) continue;
       models.push({
         name: `models/${combo.name}`,
         displayName: combo.name,
