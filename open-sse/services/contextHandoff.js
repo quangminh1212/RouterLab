@@ -11,6 +11,7 @@ function flattenContent(content) {
   return content
     .map((part) => {
       if (!part || typeof part !== "object") return "";
+      if (!part || typeof part !== "object") return "";
       if (typeof part.text === "string") return part.text;
       if (typeof part.content === "string") return part.content;
       if (part.type === "input_text" && typeof part.text === "string") return part.text;
