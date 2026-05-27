@@ -107,6 +107,29 @@ function processSSEMessage(msg, state) {
 
 const EMPTY_RESPONSE = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
 
+function summarizeResponsesSSEPreview(rawText) {
+  const preview = [];
+  for (const line of String(rawText || "").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("event:")) {
+      preview.push(trimmed.slice(6).trim());
+      continue;
+    }
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const parsed = JSON.parse(payload);
+      preview.push(parsed?.type || parsed?.object || "json");
+    } catch {
+      preview.push("invalid-json-data");
+    }
+    if (preview.length >= 6) break;
+  }
+  return preview;
+}
+
 /**
  * Convert Responses API SSE stream to single JSON response
  * @param {ReadableStream} stream - SSE stream from provider
@@ -120,6 +143,7 @@ export async function convertResponsesStreamToJson(stream) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let rawPreview = "";
 
   const state = {
     responseId: "",
@@ -149,6 +173,11 @@ export async function convertResponsesStreamToJson(stream) {
     }
   } finally {
     reader.releaseLock();
+  }
+
+  const previewKinds = summarizeResponsesSSEPreview(rawPreview);
+  if (previewKinds.length > 0) {
+    console.log(`[ResponsesSSE] parsed preview: ${previewKinds.join(", ")} | status=${state.status} | items=${state.items.size}`);
   }
 
   // Build output array from accumulated items (ordered by index)
