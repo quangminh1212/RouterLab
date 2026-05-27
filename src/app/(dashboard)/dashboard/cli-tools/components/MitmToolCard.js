@@ -34,12 +34,16 @@ export default function MitmToolCard({
   const [modelMappings, setModelMappings] = useState({});
   const [modalOpen, setModalOpen] = useState(false);
   const [currentEditingAlias, setCurrentEditingAlias] = useState(null);
+  const [forceModelMappingsEnabled, setForceModelMappingsEnabled] = useState(false);
 
   const mitmHosts = TOOL_HOSTS[tool.id] ?? [];
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
 
   useEffect(() => {
-    if (isExpanded) loadSavedMappings();
+    if (isExpanded) {
+      loadSavedMappings();
+      loadManagementMappings();
+    }
   }, [isExpanded]);
 
   const loadSavedMappings = async () => {
@@ -49,6 +53,15 @@ export default function MitmToolCard({
         const data = await res.json();
         if (Object.keys(data.aliases || {}).length > 0) setModelMappings(data.aliases);
       }
+    } catch { /* ignore */ }
+  };
+
+  const loadManagementMappings = async () => {
+    try {
+      const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      setForceModelMappingsEnabled(data.forceEnabled === true);
     } catch { /* ignore */ }
   };
 
@@ -62,8 +75,26 @@ export default function MitmToolCard({
     } catch { /* ignore */ }
   }, [tool.id]);
 
+  const saveForceMode = useCallback(async (nextMappings = modelMappings, nextForceEnabled = forceModelMappingsEnabled) => {
+    try {
+      const validMappings = Object.fromEntries(
+        Object.entries(nextMappings).filter(([, value]) => String(value || "").trim().includes("/"))
+      );
+      await fetch("/api/management/model-mappings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mappings: validMappings,
+          forceEnabled: nextForceEnabled,
+        }),
+      });
+    } catch { /* ignore */ }
+  }, [forceModelMappingsEnabled, modelMappings]);
+
   const handleMappingBlur = (alias, value) => {
-    saveMappings({ ...modelMappings, [alias]: value });
+    const nextMappings = { ...modelMappings, [alias]: value };
+    saveMappings(nextMappings);
+    saveForceMode(nextMappings);
   };
 
   const handleModelMappingChange = (alias, value) => {
@@ -80,6 +111,7 @@ export default function MitmToolCard({
     const updated = { ...modelMappings, [currentEditingAlias]: model.value };
     setModelMappings(updated);
     saveMappings(updated);
+    saveForceMode(updated);
   };
 
   const handleDnsToggle = () => {
@@ -190,6 +222,26 @@ export default function MitmToolCard({
             {/* Model Mappings */}
             {tool.defaultModels?.length > 0 && (
               <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-36 shrink-0 text-xs font-semibold text-text-main text-right">Force mappings</span>
+                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <label className="flex flex-1 items-center justify-between rounded border border-border bg-surface px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-text-main">{forceModelMappingsEnabled ? "On" : "Off"}</div>
+                      <div className="text-[11px] text-text-muted">Rewrite ca provider/model theo mapping da luu</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={forceModelMappingsEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForceModelMappingsEnabled(checked);
+                        saveForceMode(modelMappings, checked);
+                      }}
+                      className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                    />
+                  </label>
+                </div>
                 {tool.defaultModels.map((model) => (
                   <div key={model.alias} className="flex items-center gap-2">
                     <span className="w-36 shrink-0 text-xs font-semibold text-text-main text-right">{model.name}</span>
@@ -214,7 +266,9 @@ export default function MitmToolCard({
                       <button
                         onClick={() => {
                           handleModelMappingChange(model.alias, "");
-                          saveMappings({ ...modelMappings, [model.alias]: "" });
+                          const nextMappings = { ...modelMappings, [model.alias]: "" };
+                          saveMappings(nextMappings);
+                          saveForceMode(nextMappings);
                         }}
                         className="p-1 text-text-muted hover:text-red-500 rounded transition-colors"
                         title="Clear"

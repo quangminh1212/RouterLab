@@ -26,6 +26,7 @@ export default function AntigravityToolCard({
   const [modalOpen, setModalOpen] = useState(false);
   const [currentEditingAlias, setCurrentEditingAlias] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
+  const [forceModelMappingsEnabled, setForceModelMappingsEnabled] = useState(false);
 
   useEffect(() => {
     if (apiKeys?.length > 0 && !selectedApiKey) {
@@ -42,6 +43,7 @@ export default function AntigravityToolCard({
       fetchStatus();
       loadSavedMappings();
       fetchModelAliases();
+      loadManagementMappings();
     }
     if (isExpanded) {
       loadSavedMappings();
@@ -72,6 +74,17 @@ export default function AntigravityToolCard({
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
       console.log("Error fetching model aliases:", error);
+    }
+  };
+
+  const loadManagementMappings = async () => {
+    try {
+      const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      setForceModelMappingsEnabled(data.forceEnabled === true);
+    } catch (error) {
+      console.log("Error loading management model mappings:", error);
     }
   };
 
@@ -203,11 +216,32 @@ export default function AntigravityToolCard({
     }));
   };
 
+  const saveManagementMappings = async (forceEnabled = forceModelMappingsEnabled) => {
+    const validMappings = Object.fromEntries(
+      Object.entries(modelMappings).filter(([, value]) => String(value || "").trim().includes("/"))
+    );
+
+    const managementRes = await fetch("/api/management/model-mappings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mappings: validMappings,
+        forceEnabled,
+      }),
+    });
+    const managementData = await managementRes.json().catch(() => ({}));
+    if (!managementRes.ok) {
+      throw new Error(managementData.error || "Failed to save force mapping settings");
+    }
+  };
+
   const handleSaveMappings = async () => {
     setLoading(true);
     setMessage(null);
 
     try {
+      await saveManagementMappings();
+
       const res = await fetch("/api/cli-tools/antigravity-mitm/alias", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -338,6 +372,23 @@ export default function AntigravityToolCard({
                     {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_xlabrouter (default)"}
                   </span>
                 )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Force mappings</span>
+                <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                <label className="flex flex-1 items-center justify-between rounded border border-border bg-surface px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-text-main">{forceModelMappingsEnabled ? "On" : "Off"}</div>
+                    <div className="text-[11px] text-text-muted">Rewrite ca provider/model theo mapping da luu</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={forceModelMappingsEnabled}
+                    onChange={(e) => setForceModelMappingsEnabled(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                  />
+                </label>
               </div>
 
               {tool.defaultModels.map((model) => (

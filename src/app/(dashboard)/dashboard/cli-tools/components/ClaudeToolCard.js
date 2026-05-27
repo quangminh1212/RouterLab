@@ -155,6 +155,7 @@ export default function ClaudeToolCard({
   const [showManualConfigModal, setShowManualConfigModal] = useState(false);
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [ccFilterNaming, setCcFilterNaming] = useState(false);
+  const [forceModelMappingsEnabled, setForceModelMappingsEnabled] = useState(false);
   const [claudeDefaultMode, setClaudeDefaultMode] = useState(getInitialDefaultMode(initialStatus?.settings?.defaultMode));
 
   const [claudeEffortLevel, setClaudeEffortLevel] = useState(initialStatus?.settings?.effortLevel || "high");
@@ -222,8 +223,12 @@ export default function ClaudeToolCard({
     if (isExpanded && !claudeStatus) {
       checkClaudeStatus();
       fetchModelAliases();
+      loadManagementMappings();
     }
-    if (isExpanded) fetchModelAliases();
+    if (isExpanded) {
+      fetchModelAliases();
+      loadManagementMappings();
+    }
   }, [isExpanded]);
 
   useEffect(() => {
@@ -249,6 +254,23 @@ export default function ClaudeToolCard({
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
       console.log("Error fetching model aliases:", error);
+    }
+  };
+
+  const loadManagementMappings = async () => {
+    try {
+      const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+
+      setForceModelMappingsEnabled(data.forceEnabled === true);
+      const mappings = data.mappings || {};
+      tool.defaultModels.forEach((model) => {
+        const value = typeof mappings[model.alias] === "string" ? mappings[model.alias] : "";
+        onModelMappingChange(model.alias, value);
+      });
+    } catch (error) {
+      console.log("Error loading management model mappings:", error);
     }
   };
 
@@ -343,6 +365,25 @@ export default function ClaudeToolCard({
     setApplying(true);
     setMessage(null);
     try {
+      const managementMappings = Object.fromEntries(
+        tool.defaultModels
+          .map((model) => [model.alias, (modelMappings[model.alias] || "").trim()])
+          .filter(([, value]) => value && value.includes("/"))
+      );
+
+      const managementRes = await fetch("/api/management/model-mappings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mappings: managementMappings,
+          forceEnabled: forceModelMappingsEnabled,
+        }),
+      });
+      const managementData = await managementRes.json().catch(() => ({}));
+      if (!managementRes.ok) {
+        throw new Error(managementData.error || "Failed to save management model mappings");
+      }
+
       const payload = buildApplyPayload();
       const res = await fetch("/api/cli-tools/claude-settings", {
         method: "POST",
@@ -619,6 +660,21 @@ export default function ClaudeToolCard({
                 </div>
 
                 {/* Model Mappings */}
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Force mappings</span>
+                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <div className="flex flex-1 items-center justify-between rounded-xl border border-white/10 bg-[#1F1F1F] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-[#F5F5F5]">{forceModelMappingsEnabled ? "On" : "Off"}</div>
+                      <div className="mt-0.5 text-[11px] text-text-muted">Rewrite ca provider/model theo mapping da dat</div>
+                    </div>
+                    <ClaudeSettingsSwitch
+                      checked={forceModelMappingsEnabled}
+                      onChange={setForceModelMappingsEnabled}
+                    />
+                  </div>
+                </div>
+
                 {tool.defaultModels.map((model) => (
                   <div key={model.alias} className="flex items-center gap-2">
                     <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">{model.name}</span>
