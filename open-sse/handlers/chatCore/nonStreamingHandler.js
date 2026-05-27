@@ -24,6 +24,71 @@ function looksLikeSSE(text) {
   const raw = String(text || "").trim();
   return raw.startsWith("event:") || raw.startsWith("data:") || raw.includes("\nevent:") || raw.includes("\ndata:");
 }
+
+function looksLikeResponsesSSE(text) {
+  const raw = String(text || "");
+  return /(^|\n)event:\s*response\./i.test(raw)
+    || /(^|\n)data:\s*\{[^\n]*("object"\s*:\s*"response"|"response"\s*:)/i.test(raw);
+}
+
+function responsesBodyToOpenAIChatCompletion(responseBody, fallbackModel) {
+  const output = Array.isArray(responseBody?.output) ? responseBody.output : [];
+  const messageItems = output.filter((item) => item?.type === "message");
+  let textContent = "";
+
+  for (let i = messageItems.length - 1; i >= 0; i--) {
+    const content = Array.isArray(messageItems[i]?.content) ? messageItems[i].content : [];
+    const text = content
+      .map((part) => typeof part?.text === "string" ? part.text : "")
+      .filter(Boolean)
+      .join("");
+    if (text) {
+      textContent = text;
+      break;
+    }
+  }
+
+  const functionCalls = output.filter((item) => item?.type === "function_call");
+  const toolCalls = functionCalls.map((item, index) => ({
+    id: item.call_id || `call_${item.name || "tool"}_${Date.now()}_${index}`,
+    type: "function",
+    function: {
+      name: item.name || "tool",
+      arguments: typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments || {})
+    }
+  }));
+
+  const usage = responseBody?.usage || {};
+  const message = { role: "assistant", content: textContent || (toolCalls.length ? null : "") };
+  if (toolCalls.length) message.tool_calls = toolCalls;
+
+  return {
+    id: responseBody?.id || `chatcmpl-${Date.now()}`,
+    object: "chat.completion",
+    created: responseBody?.created_at || Math.floor(Date.now() / 1000),
+    model: responseBody?.model || fallbackModel || "unknown",
+    choices: [{
+      index: 0,
+      message,
+      finish_reason: toolCalls.length ? "tool_calls" : (responseBody?.status === "completed" ? "stop" : (responseBody?.status || "stop"))
+    }],
+    usage: {
+      prompt_tokens: usage.input_tokens || 0,
+      completion_tokens: usage.output_tokens || 0,
+      total_tokens: usage.total_tokens || ((usage.input_tokens || 0) + (usage.output_tokens || 0))
+    }
+  };
+}
+
+async function parseSSEForNonStreaming(rawText, sourceFormat, model) {
+  if (sourceFormat === FORMATS.OPENAI_RESPONSES || looksLikeResponsesSSE(rawText)) {
+    const responsesBody = await convertResponsesStreamToJson(streamFromText(rawText));
+    return sourceFormat === FORMATS.OPENAI_RESPONSES
+      ? responsesBody
+      : responsesBodyToOpenAIChatCompletion(responsesBody, model);
+  }
+  return parseSSEToOpenAIResponse(rawText, model);
+}
 /**
  * Translate non-streaming response body from provider format -> OpenAI format.
  */
@@ -150,11 +215,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
 
   if (contentType.includes("text/event-stream")) {
     const sseText = await providerResponse.text();
-    if (sourceFormat === FORMATS.OPENAI_RESPONSES) {
-      responseBody = await convertResponsesStreamToJson(streamFromText(sseText));
-    } else {
-      responseBody = parseSSEToOpenAIResponse(sseText, model);
-    }
+    responseBody = await parseSSEForNonStreaming(sseText, sourceFormat, model);
     if (!responseBody) {
       appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
       return createErrorResult(HTTP_STATUS.BAD_GATEWAY, "Invalid SSE response for non-streaming request");
@@ -166,9 +227,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     } catch (err) {
       if (looksLikeSSE(rawText)) {
         try {
-          responseBody = sourceFormat === FORMATS.OPENAI_RESPONSES
-            ? await convertResponsesStreamToJson(streamFromText(rawText))
-            : parseSSEToOpenAIResponse(rawText, model);
+          responseBody = await parseSSEForNonStreaming(rawText, sourceFormat, model);
         } catch {
           responseBody = null;
         }
