@@ -33,7 +33,7 @@ export async function GET() {
         name: `models/${combo.name}`,
         displayName: combo.name,
         description: `combo model: ${combo.name}`,
-        supportedGenerationMethods: ["generateContent"],
+        supportedGenerationMethods: ["generateContent", "countTokens"],
         inputTokenLimit: 128000,
         outputTokenLimit: 8192,
       });

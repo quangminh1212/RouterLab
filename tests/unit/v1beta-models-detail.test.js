@@ -30,7 +30,7 @@ describe("/api/v1beta/models/[...path] GET", () => {
     expect(data).toMatchObject({
       name: "models/gemini-pro",
       displayName: "gemini-pro",
-      supportedGenerationMethods: ["generateContent"],
+      supportedGenerationMethods: ["generateContent", "countTokens"],
     });
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });

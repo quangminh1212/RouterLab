@@ -22,6 +22,7 @@ describe("/api/v1beta/models root", () => {
     expect(response.status).toBe(200);
     expect(data.models).toHaveLength(1);
     expect(data.models[0].name).toBe("models/gemini-pro");
+    expect(data.models[0].supportedGenerationMethods).toEqual(["generateContent", "countTokens"]);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
