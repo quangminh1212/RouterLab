@@ -380,7 +380,7 @@ export default function AntigravityToolCard({
                 <label className="flex flex-1 items-center justify-between rounded border border-border bg-surface px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-xs font-medium text-text-main">{forceModelMappingsEnabled ? "On" : "Off"}</div>
-                    <div className="text-[11px] text-text-muted">Rewrite ca provider/model theo mapping da luu</div>
+                    <div className="text-[11px] text-text-muted">Rewrite explicit provider/model requests using the saved mappings</div>
                   </div>
                   <input
                     type="checkbox"

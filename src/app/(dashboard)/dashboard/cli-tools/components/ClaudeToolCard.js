@@ -666,7 +666,7 @@ export default function ClaudeToolCard({
                   <div className="flex flex-1 items-center justify-between rounded-xl border border-white/10 bg-[#1F1F1F] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-[#F5F5F5]">{forceModelMappingsEnabled ? "On" : "Off"}</div>
-                      <div className="mt-0.5 text-[11px] text-text-muted">Rewrite ca provider/model theo mapping da dat</div>
+                      <div className="mt-0.5 text-[11px] text-text-muted">Rewrite explicit provider/model requests using the saved mappings</div>
                     </div>
                     <ClaudeSettingsSwitch
                       checked={forceModelMappingsEnabled}
