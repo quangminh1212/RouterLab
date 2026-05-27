@@ -179,4 +179,75 @@ describe("management model mappings API", () => {
     expect(data.mappings).toEqual({ valid: "openai/gpt-5-mini" });
   });
 
+
+  it("PATCH keeps existing force toggle when forceEnabled is omitted", async () => {
+    const getSettings = vi.fn().mockResolvedValue({
+      forcedModelMappings: { opus: "anthropic/claude-opus-4" },
+      forceModelMappings: true,
+    });
+    const updateSettings = vi.fn().mockImplementation(async (payload) => ({
+      forcedModelMappings: payload.forcedModelMappings,
+      forceModelMappings: true,
+    }));
+
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings,
+      updateSettings,
+    }));
+
+    const { PATCH } = await import("@/app/api/management/model-mappings/route");
+    const response = await PATCH(new Request("http://localhost/api/management/model-mappings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", host: "localhost" },
+      body: JSON.stringify({
+        mappings: { sonnet: "anthropic/claude-sonnet-4.5" },
+      }),
+    }));
+    const data = await response.json();
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      forcedModelMappings: {
+        opus: "anthropic/claude-opus-4",
+        sonnet: "anthropic/claude-sonnet-4.5",
+      },
+    });
+    expect(data.forceEnabled).toBe(true);
+  });
+
+  it("DELETE keeps existing force toggle when forceEnabled is omitted", async () => {
+    const getSettings = vi.fn().mockResolvedValue({
+      forcedModelMappings: {
+        opus: "anthropic/claude-opus-4",
+        sonnet: "anthropic/claude-sonnet-4.5",
+      },
+      forceModelMappings: true,
+    });
+    const updateSettings = vi.fn().mockImplementation(async (payload) => ({
+      forcedModelMappings: payload.forcedModelMappings,
+      forceModelMappings: true,
+    }));
+
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings,
+      updateSettings,
+    }));
+
+    const { DELETE } = await import("@/app/api/management/model-mappings/route");
+    const response = await DELETE(new Request("http://localhost/api/management/model-mappings", {
+      method: "DELETE",
+      headers: { "content-type": "application/json", host: "localhost" },
+      body: JSON.stringify({
+        aliases: ["opus"],
+      }),
+    }));
+    const data = await response.json();
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      forcedModelMappings: {
+        sonnet: "anthropic/claude-sonnet-4.5",
+      },
+    });
+    expect(data.forceEnabled).toBe(true);
+  });
+
 });
