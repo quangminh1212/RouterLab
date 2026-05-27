@@ -250,4 +250,38 @@ describe("management model mappings API", () => {
     expect(data.forceEnabled).toBe(true);
   });
 
+
+  it("DELETE without aliases clears all mappings", async () => {
+    const getSettings = vi.fn().mockResolvedValue({
+      forcedModelMappings: {
+        opus: "anthropic/claude-opus-4",
+        sonnet: "anthropic/claude-sonnet-4.5",
+      },
+      forceModelMappings: true,
+    });
+    const updateSettings = vi.fn().mockImplementation(async (payload) => ({
+      forcedModelMappings: payload.forcedModelMappings,
+      forceModelMappings: true,
+    }));
+
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings,
+      updateSettings,
+    }));
+
+    const { DELETE } = await import("@/app/api/management/model-mappings/route");
+    const response = await DELETE(new Request("http://localhost/api/management/model-mappings", {
+      method: "DELETE",
+      headers: { "content-type": "application/json", host: "localhost" },
+      body: JSON.stringify({}),
+    }));
+    const data = await response.json();
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      forcedModelMappings: {},
+    });
+    expect(data.mappings).toEqual({});
+    expect(data.forceEnabled).toBe(true);
+  });
+
 });

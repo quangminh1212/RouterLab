@@ -90,8 +90,9 @@ export async function DELETE(request) {
   const aliases = Array.isArray(body?.aliases) ? body.aliases.map((item) => String(item || "").trim()).filter(Boolean) : [];
   const settings = await getSettings();
   const current = sanitizeMappings(settings.forcedModelMappings);
-  for (const alias of aliases) delete current[alias];
-  const nextSettings = { forcedModelMappings: current };
+  const nextMappings = aliases.length > 0 ? { ...current } : {};
+  for (const alias of aliases) delete nextMappings[alias];
+  const nextSettings = { forcedModelMappings: nextMappings };
   if (Object.prototype.hasOwnProperty.call(body || {}, "forceEnabled")) {
     nextSettings.forceModelMappings = normalizeForceEnabled(body.forceEnabled);
   }
