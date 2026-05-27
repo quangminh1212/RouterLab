@@ -1,15 +1,20 @@
-﻿import { getCombos, getSettings } from "@/lib/localDb";
+import { PUT as putModels } from "@/app/api/models/route";
+import { getCombos, getSettings } from "@/lib/localDb";
+
+function buildCorsHeaders(methods = "GET, PUT, OPTIONS") {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": methods,
+    "Access-Control-Allow-Headers": "*",
+  };
+}
 
 /**
  * Handle CORS preflight
  */
 export async function OPTIONS() {
   return new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-    },
+    headers: buildCorsHeaders(),
   });
 }
 
@@ -46,15 +51,23 @@ export async function GET() {
       object: "list",
       data: models,
     }, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: buildCorsHeaders(),
     });
   } catch (error) {
     console.log("Error fetching models:", error);
     return Response.json(
       { error: { message: error.message, type: "server_error" } },
-      { status: 500 }
+      { status: 500, headers: buildCorsHeaders() }
     );
   }
+}
+
+export async function PUT(request) {
+  const response = await putModels(request);
+  const payload = await response.json();
+
+  return Response.json(payload, {
+    status: response.status,
+    headers: buildCorsHeaders(),
+  });
 }
