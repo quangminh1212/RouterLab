@@ -1,3 +1,4 @@
+import { getCombos, getSettings } from "@/lib/localDb";
 import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
 import { logger } from "@/lib/logger";
@@ -26,6 +27,59 @@ export async function OPTIONS() {
       "Access-Control-Allow-Headers": "*"
     }
   });
+}
+
+function toGeminiModelCard(combo) {
+  return {
+    name: `models/${combo.name}`,
+    displayName: combo.name,
+    description: `combo model: ${combo.name}`,
+    supportedGenerationMethods: ["generateContent"],
+    inputTokenLimit: 128000,
+    outputTokenLimit: 8192,
+  };
+}
+
+export async function GET(_request, { params }) {
+  try {
+    const { path } = await params;
+    const requestedPath = Array.isArray(path) ? path : [];
+
+    let modelName;
+    if (requestedPath.length >= 2) {
+      modelName = `${requestedPath[0]}/${requestedPath[1]}`;
+    } else {
+      modelName = requestedPath[0] || "";
+    }
+
+    if (!modelName) {
+      return Response.json({ error: { message: "Model required" } }, {
+        status: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
+
+    const [combos, settings] = await Promise.all([getCombos(), getSettings()]);
+    const hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
+    const combo = combos.find((item) => item?.name === modelName && item?.showInModelsEndpoint !== false);
+
+    if (!combo || hiddenModels.includes(combo.name)) {
+      return Response.json({ error: { message: `Model not found: ${modelName}` } }, {
+        status: 404,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
+
+    return Response.json(toGeminiModelCard(combo), {
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  } catch (error) {
+    logger.error("SSE:GEMINI", "Error getting Gemini model detail", error);
+    return Response.json({ error: { message: error.message, code: 500 } }, {
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
 }
 
 /**
