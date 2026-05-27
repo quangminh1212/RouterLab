@@ -54,6 +54,7 @@ const DEFAULT_SETTINGS = {
   contextRelayEnabled: true,
   contextRelayMaxMessages: 16,
   forcedModelMappings: {},
+  forceModelMappings: false,
   requireApiKey: false,
   requireLogin: true,
   tunnelDashboardAccess: true,

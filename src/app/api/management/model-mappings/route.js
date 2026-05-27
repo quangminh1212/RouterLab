@@ -36,18 +36,33 @@ function sanitizeMappings(value) {
   return out;
 }
 
+function normalizeForceEnabled(value) {
+  return value === true;
+}
+
 export async function GET(request) {
   if (!isLocalRequest(request)) return deny();
   const settings = await getSettings();
-  return NextResponse.json({ mappings: sanitizeMappings(settings.forcedModelMappings) });
+  return NextResponse.json({
+    mappings: sanitizeMappings(settings.forcedModelMappings),
+    forceEnabled: normalizeForceEnabled(settings.forceModelMappings),
+  });
 }
 
 export async function PUT(request) {
   if (!isLocalRequest(request)) return deny();
   const body = await request.json();
   const mappings = sanitizeMappings(body?.mappings);
-  const settings = await updateSettings({ forcedModelMappings: mappings });
-  return NextResponse.json({ success: true, mappings: sanitizeMappings(settings.forcedModelMappings) });
+  const nextSettings = { forcedModelMappings: mappings };
+  if (Object.prototype.hasOwnProperty.call(body || {}, "forceEnabled")) {
+    nextSettings.forceModelMappings = normalizeForceEnabled(body.forceEnabled);
+  }
+  const settings = await updateSettings(nextSettings);
+  return NextResponse.json({
+    success: true,
+    mappings: sanitizeMappings(settings.forcedModelMappings),
+    forceEnabled: normalizeForceEnabled(settings.forceModelMappings),
+  });
 }
 
 export async function PATCH(request) {
@@ -57,8 +72,16 @@ export async function PATCH(request) {
   const current = sanitizeMappings(settings.forcedModelMappings);
   const patch = sanitizeMappings(body?.mappings);
   const next = { ...current, ...patch };
-  const updated = await updateSettings({ forcedModelMappings: next });
-  return NextResponse.json({ success: true, mappings: sanitizeMappings(updated.forcedModelMappings) });
+  const nextSettings = { forcedModelMappings: next };
+  if (Object.prototype.hasOwnProperty.call(body || {}, "forceEnabled")) {
+    nextSettings.forceModelMappings = normalizeForceEnabled(body.forceEnabled);
+  }
+  const updated = await updateSettings(nextSettings);
+  return NextResponse.json({
+    success: true,
+    mappings: sanitizeMappings(updated.forcedModelMappings),
+    forceEnabled: normalizeForceEnabled(updated.forceModelMappings),
+  });
 }
 
 export async function DELETE(request) {
@@ -68,6 +91,14 @@ export async function DELETE(request) {
   const settings = await getSettings();
   const current = sanitizeMappings(settings.forcedModelMappings);
   for (const alias of aliases) delete current[alias];
-  const updated = await updateSettings({ forcedModelMappings: current });
-  return NextResponse.json({ success: true, mappings: sanitizeMappings(updated.forcedModelMappings) });
+  const nextSettings = { forcedModelMappings: current };
+  if (Object.prototype.hasOwnProperty.call(body || {}, "forceEnabled")) {
+    nextSettings.forceModelMappings = normalizeForceEnabled(body.forceEnabled);
+  }
+  const updated = await updateSettings(nextSettings);
+  return NextResponse.json({
+    success: true,
+    mappings: sanitizeMappings(updated.forcedModelMappings),
+    forceEnabled: normalizeForceEnabled(updated.forceModelMappings),
+  });
 }

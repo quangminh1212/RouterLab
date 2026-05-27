@@ -16,6 +16,17 @@ export async function resolveModelAlias(alias) {
  * Get full model info (parse or resolve)
  */
 export async function getModelInfo(modelStr) {
+  const settings = await getSettings();
+  const forcedMappings = settings.forcedModelMappings || null;
+  const forceMappingsEnabled = settings.forceModelMappings === true;
+
+  if (forceMappingsEnabled) {
+    const forcedResolved = resolveModelAliasFromMap(modelStr, forcedMappings);
+    if (forcedResolved) {
+      return forcedResolved;
+    }
+  }
+
   const parsed = parseModel(modelStr);
 
   if (!parsed.isAlias) {
@@ -68,8 +79,6 @@ export async function getModelInfo(modelStr) {
     return { provider: null, model: parsed.model };
   }
 
-  const settings = await getSettings();
-  const forcedMappings = settings.forcedModelMappings || null;
   return getModelInfoCore(modelStr, getModelAliases, forcedMappings);
 }
 
