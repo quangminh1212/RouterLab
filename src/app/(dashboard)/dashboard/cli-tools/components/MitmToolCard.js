@@ -39,14 +39,8 @@ export default function MitmToolCard({
   const mitmHosts = TOOL_HOSTS[tool.id] ?? [];
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
 
-  useEffect(() => {
-    if (isExpanded) {
-      loadSavedMappings();
-      loadManagementMappings();
-    }
-  }, [isExpanded]);
 
-  const loadSavedMappings = async () => {
+  async function loadSavedMappings() {
     try {
       const res = await fetch(`/api/cli-tools/antigravity-mitm/alias?tool=${tool.id}`);
       if (res.ok) {
@@ -56,14 +50,22 @@ export default function MitmToolCard({
     } catch { /* ignore */ }
   };
 
-  const loadManagementMappings = async () => {
+  async function loadManagementMappings() {
     try {
       const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) return;
       setForceModelMappingsEnabled(data.forceEnabled === true);
     } catch { /* ignore */ }
-  };
+  }
+
+  useEffect(() => {
+    if (isExpanded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadSavedMappings();
+      loadManagementMappings();
+    }
+  }, [isExpanded]);
 
   const saveMappings = useCallback(async (mappings) => {
     try {

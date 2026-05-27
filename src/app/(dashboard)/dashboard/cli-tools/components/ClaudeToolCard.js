@@ -211,11 +211,13 @@ export default function ClaudeToolCard({
 
   useEffect(() => {
     if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedApiKey(apiKeys[0].key);
     }
   }, [apiKeys, selectedApiKey]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialStatus) setClaudeStatus(initialStatus);
   }, [initialStatus]);
 
@@ -247,7 +249,7 @@ export default function ClaudeToolCard({
     }).catch(() => {});
   };
 
-  const fetchModelAliases = async () => {
+  async function fetchModelAliases() {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -257,7 +259,7 @@ export default function ClaudeToolCard({
     }
   };
 
-  const loadManagementMappings = async () => {
+  async function loadManagementMappings() {
     try {
       const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
       const data = await res.json();
@@ -272,7 +274,7 @@ export default function ClaudeToolCard({
     } catch (error) {
       console.log("Error loading management model mappings:", error);
     }
-  };
+  }
 
   useEffect(() => {
     if (claudeStatus?.installed && !hasInitializedModels.current) {
@@ -291,6 +293,7 @@ export default function ClaudeToolCard({
       // Only set selectedApiKey if it exists in apiKeys list
       const tokenFromFile = env.ANTHROPIC_AUTH_TOKEN;
       if (tokenFromFile && apiKeys?.some(k => k.key === tokenFromFile)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedApiKey(tokenFromFile);
       }
       setClaudeDefaultMode(getInitialDefaultMode(claudeStatus.settings?.defaultMode));
@@ -304,7 +307,7 @@ export default function ClaudeToolCard({
   }, [claudeStatus, apiKeys, tool.defaultModels, onModelMappingChange]);
 
 
-  const checkClaudeStatus = async () => {
+  async function checkClaudeStatus() {
     setCheckingClaude(true);
     try {
       const res = await fetch("/api/cli-tools/claude-settings");
@@ -315,7 +318,7 @@ export default function ClaudeToolCard({
     } finally {
       setCheckingClaude(false);
     }
-  };
+  }
 
   const getEffectiveBaseUrl = () => {
     const url = customBaseUrl || baseUrl;

@@ -30,11 +30,13 @@ export default function AntigravityToolCard({
 
   useEffect(() => {
     if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedApiKey(apiKeys[0].key);
     }
   }, [apiKeys, selectedApiKey]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialStatus) setStatus(initialStatus);
   }, [initialStatus]);
 
@@ -51,7 +53,7 @@ export default function AntigravityToolCard({
     }
   }, [isExpanded]);
 
-  const loadSavedMappings = async () => {
+  async function loadSavedMappings() {
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm/alias?tool=antigravity");
       if (res.ok) {
@@ -67,7 +69,7 @@ export default function AntigravityToolCard({
     }
   };
 
-  const fetchModelAliases = async () => {
+  async function fetchModelAliases() {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -77,7 +79,7 @@ export default function AntigravityToolCard({
     }
   };
 
-  const loadManagementMappings = async () => {
+  async function loadManagementMappings() {
     try {
       const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
       const data = await res.json();
@@ -88,7 +90,7 @@ export default function AntigravityToolCard({
     }
   };
 
-  const fetchStatus = async () => {
+  async function fetchStatus() {
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm");
       if (res.ok) {
@@ -99,7 +101,7 @@ export default function AntigravityToolCard({
       console.log("Error fetching status:", error);
       setStatus({ running: false });
     }
-  };
+  }
 
   // Windows uses UAC dialog, no sudo needed
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
