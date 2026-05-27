@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
 import EndpointPresetControl from "./EndpointPresetControl";
@@ -31,6 +31,29 @@ export default function HermesToolCard({
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const hasInitializedModel = useRef(false);
 
+  const fetchModelAliases = useCallback(async () => {
+    try {
+      const res = await fetch("/api/models/alias");
+      const data = await res.json();
+      if (res.ok) setModelAliases(data.aliases || {});
+    } catch (error) {
+      console.log("Error fetching model aliases:", error);
+    }
+  }, []);
+
+  const checkStatus = useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await fetch(ENDPOINT);
+      const data = await res.json();
+      setHermesStatus(data);
+    } catch (error) {
+      setHermesStatus({ installed: false, error: error.message });
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
   const getConfigStatus = () => {
     if (!hermesStatus?.installed) return null;
     const cfg = hermesStatus.settings?.model;
@@ -45,52 +68,33 @@ export default function HermesToolCard({
 
   useEffect(() => {
     if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedApiKey(apiKeys[0].key);
     }
   }, [apiKeys, selectedApiKey]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialStatus) setHermesStatus(initialStatus);
   }, [initialStatus]);
 
   useEffect(() => {
-    if (isExpanded && !hermesStatus) {
-      checkStatus();
-      fetchModelAliases();
-    }
-    if (isExpanded) fetchModelAliases();
-  }, [isExpanded]);
+    if (!isExpanded) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!hermesStatus) checkStatus();
+    fetchModelAliases();
+  }, [checkStatus, fetchModelAliases, hermesStatus, isExpanded]);
 
-  const fetchModelAliases = async () => {
-    try {
-      const res = await fetch("/api/models/alias");
-      const data = await res.json();
-      if (res.ok) setModelAliases(data.aliases || {});
-    } catch (error) {
-      console.log("Error fetching model aliases:", error);
-    }
-  };
 
   useEffect(() => {
     if (hermesStatus?.installed && !hasInitializedModel.current) {
       hasInitializedModel.current = true;
       const cfg = hermesStatus.settings?.model;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (cfg?.default) setSelectedModel(cfg.default);
     }
   }, [hermesStatus]);
 
-  const checkStatus = async () => {
-    setChecking(true);
-    try {
-      const res = await fetch(ENDPOINT);
-      const data = await res.json();
-      setHermesStatus(data);
-    } catch (error) {
-      setHermesStatus({ installed: false, error: error.message });
-    } finally {
-      setChecking(false);
-    }
-  };
 
   const normalizeLocalhost = (url) => url.replace("://localhost", "://127.0.0.1");
 

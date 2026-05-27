@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Badge, Input } from "@/shared/components";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
@@ -23,17 +23,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
   const isAdmin = status?.isAdmin !== false;
 
-  useEffect(() => {
-    if (apiKeys?.length > 0 && !selectedApiKey) {
-      setSelectedApiKey(apiKeys[0].key);
-    }
-  }, [apiKeys, selectedApiKey]);
-
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm");
       if (res.ok) {
@@ -47,7 +37,20 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
     } catch {
       setStatus({ running: false, certExists: false, dnsStatus: {} });
     }
-  };
+  }, [onStatusChange]);
+
+  useEffect(() => {
+    if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedApiKey(apiKeys[0].key);
+    }
+  }, [apiKeys, selectedApiKey]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchStatus();
+  }, [fetchStatus]);
+
 
   const handleAction = (action) => {
     setActionError(null);

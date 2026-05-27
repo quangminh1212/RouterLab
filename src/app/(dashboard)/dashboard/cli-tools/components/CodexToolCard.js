@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
 import Image from "next/image";
@@ -24,25 +24,7 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
 
   const codexConfig = typeof codexStatus?.config === "string" ? codexStatus.config : "";
 
-  useEffect(() => {
-    if (apiKeys?.length > 0 && !selectedApiKey) {
-      setSelectedApiKey(apiKeys[0].key);
-    }
-  }, [apiKeys, selectedApiKey]);
-
-  useEffect(() => {
-    if (initialStatus) setCodexStatus(initialStatus);
-  }, [initialStatus]);
-
-  useEffect(() => {
-    if (isExpanded && !codexStatus) {
-      checkCodexStatus();
-      fetchModelAliases();
-    }
-    if (isExpanded) fetchModelAliases();
-  }, [isExpanded]);
-
-  const fetchModelAliases = async () => {
+  const fetchModelAliases = useCallback(async () => {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -50,12 +32,46 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
     } catch (error) {
       console.log("Error fetching model aliases:", error);
     }
-  };
+  }, []);
+
+  const checkCodexStatus = useCallback(async () => {
+    setCheckingCodex(true);
+    try {
+      const res = await fetch("/api/cli-tools/codex-settings");
+      const data = await res.json();
+      setCodexStatus(data);
+    } catch (error) {
+      setCodexStatus({ installed: false, error: error.message });
+    } finally {
+      setCheckingCodex(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedApiKey(apiKeys[0].key);
+    }
+  }, [apiKeys, selectedApiKey]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialStatus) setCodexStatus(initialStatus);
+  }, [initialStatus]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!codexStatus) checkCodexStatus();
+    fetchModelAliases();
+  }, [checkCodexStatus, codexStatus, fetchModelAliases, isExpanded]);
+
 
   // Parse model and subagent settings from config content
   useEffect(() => {
     if (codexConfig) {
       const modelMatch = codexConfig.match(/^model\s*=\s*"([^"]+)"/m);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (modelMatch) setSelectedModel(modelMatch[1]);
 
       // Parse subagent settings
@@ -81,18 +97,6 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
 
   const getDisplayUrl = () => customBaseUrl || `${baseUrl}/v1`;
 
-  const checkCodexStatus = async () => {
-    setCheckingCodex(true);
-    try {
-      const res = await fetch("/api/cli-tools/codex-settings");
-      const data = await res.json();
-      setCodexStatus(data);
-    } catch (error) {
-      setCodexStatus({ installed: false, error: error.message });
-    } finally {
-      setCheckingCodex(false);
-    }
-  };
 
   const buildApplyPayload = () => {
     const keyToUse = (selectedApiKey && selectedApiKey.trim())

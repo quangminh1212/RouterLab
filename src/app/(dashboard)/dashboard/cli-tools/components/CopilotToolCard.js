@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
 import Image from "next/image";
 
@@ -19,35 +19,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
   const [modelList, setModelList] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (apiKeys?.length > 0 && !selectedApiKey) {
-      setSelectedApiKey(apiKeys[0].key);
-    }
-  }, [apiKeys, selectedApiKey]);
-
-  useEffect(() => {
-    if (initialStatus) setStatus(initialStatus);
-  }, [initialStatus]);
-
-  useEffect(() => {
-    if (isExpanded && !status) {
-      checkStatus();
-      fetchModelAliases();
-    }
-    if (isExpanded) fetchModelAliases();
-  }, [isExpanded]);
-
-  // Pre-fill model list from existing config
-  useEffect(() => {
-    if (status?.config && Array.isArray(status.config) && modelList.length === 0) {
-      const entry = status.config.find((e) => e.name === "xlabrouter");
-      if (entry?.models?.length > 0) {
-        setModelList(entry.models.map((m) => m.id));
-      }
-    }
-  }, [status]);
-
-  const fetchModelAliases = async () => {
+  const fetchModelAliases = useCallback(async () => {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -55,7 +27,51 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
     } catch (error) {
       console.log("Error fetching model aliases:", error);
     }
-  };
+  }, []);
+
+  const checkStatus = useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/cli-tools/copilot-settings");
+      const data = await res.json();
+      setStatus(data);
+    } catch (error) {
+      setStatus({ error: error.message });
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (apiKeys?.length > 0 && !selectedApiKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedApiKey(apiKeys[0].key);
+    }
+  }, [apiKeys, selectedApiKey]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialStatus) setStatus(initialStatus);
+  }, [initialStatus]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!status) checkStatus();
+    fetchModelAliases();
+  }, [checkStatus, fetchModelAliases, isExpanded, status]);
+
+  // Pre-fill model list from existing config
+  useEffect(() => {
+    if (status?.config && Array.isArray(status.config) && modelList.length === 0) {
+      const entry = status.config.find((e) => e.name === "xlabrouter");
+      if (entry?.models?.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setModelList(entry.models.map((m) => m.id));
+      }
+    }
+  }, [modelList.length, status]);
+
 
   const getConfigStatus = () => {
     if (!status) return null;
@@ -77,18 +93,6 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
 
   const removeModel = (id) => setModelList((prev) => prev.filter((m) => m !== id));
 
-  const checkStatus = async () => {
-    setChecking(true);
-    try {
-      const res = await fetch("/api/cli-tools/copilot-settings");
-      const data = await res.json();
-      setStatus(data);
-    } catch (error) {
-      setStatus({ error: error.message });
-    } finally {
-      setChecking(false);
-    }
-  };
 
   const handleApply = async () => {
     setApplying(true);

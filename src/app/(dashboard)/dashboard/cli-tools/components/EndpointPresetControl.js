@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const STORAGE_KEY = "xlabrouter.cliToolEndpointPresets";
 
@@ -35,12 +35,9 @@ export default function EndpointPresetControl({
   onBaseUrlChange,
   onApiKeyChange,
 }) {
-  const [presets, setPresets] = useState([]);
+  const [presets, setPresets] = useState(() => readPresets());
   const [selectedName, setSelectedName] = useState("");
 
-  useEffect(() => {
-    setPresets(readPresets());
-  }, []);
 
   const selectedPreset = useMemo(
     () => presets.find((preset) => preset.name === selectedName) || null,
