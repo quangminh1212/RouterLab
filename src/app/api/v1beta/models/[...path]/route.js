@@ -103,7 +103,7 @@ export async function POST(request, { params }) {
     // path = ["provider", "model:action"] or ["model:action"]
 
     let model;
-    let action; // ":generateContent" | ":streamGenerateContent"
+    let action; // ":generateContent" | ":streamGenerateContent" | ":countTokens"
 
     if (path.length >= 2) {
       // Format: /v1beta/models/provider/model:generateContent
@@ -111,23 +111,43 @@ export async function POST(request, { params }) {
       const modelAction = path[1];
       action = modelAction.includes(":streamGenerateContent")
         ? ":streamGenerateContent"
-        : ":generateContent";
+        : modelAction.includes(":countTokens")
+          ? ":countTokens"
+          : ":generateContent";
       const modelName = modelAction
         .replace(":streamGenerateContent", "")
-        .replace(":generateContent", "");
+        .replace(":generateContent", "")
+        .replace(":countTokens", "");
       model = provider + "/" + modelName;
     } else {
       // Format: /v1beta/models/model:generateContent
       const modelAction = path[0];
       action = modelAction.includes(":streamGenerateContent")
         ? ":streamGenerateContent"
-        : ":generateContent";
+        : modelAction.includes(":countTokens")
+          ? ":countTokens"
+          : ":generateContent";
       model = modelAction
         .replace(":streamGenerateContent", "")
-        .replace(":generateContent", "");
+        .replace(":generateContent", "")
+        .replace(":countTokens", "");
     }
 
     const body = await request.json();
+
+    if (action === ":countTokens") {
+      const totalChars = (body?.contents || []).reduce((sum, content) => {
+        const text = (content?.parts || []).map((part) => part?.text || "").join("\n");
+        return sum + text.length;
+      }, 0);
+      const totalTokens = Math.ceil(totalChars / 4);
+
+      return Response.json({
+        totalTokens,
+      }, {
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
 
     // Streaming is determined by URL action suffix:
     //   :streamGenerateContent => stream: true  (SSE)
