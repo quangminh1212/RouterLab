@@ -28,7 +28,7 @@ function looksLikeSSE(text) {
 function looksLikeResponsesSSE(text) {
   const raw = String(text || "");
   return /(^|\n)event:\s*response\./i.test(raw)
-    || /(^|\n)data:\s*\{[^\n]*("object"\s*:\s*"response"|"response"\s*:)/i.test(raw);
+    || /(^|\n)data:\s*\{[^\n]*("type"\s*:\s*"response\.|"object"\s*:\s*"response"|"response"\s*:)/i.test(raw);
 }
 
 function responsesBodyToOpenAIChatCompletion(responseBody, fallbackModel) {
