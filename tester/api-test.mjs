@@ -1,4 +1,4 @@
-﻿const BASE_URL = process.env.API_BASE || 'http://157.66.100.194:1212/v1';
+const BASE_URL = process.env.API_BASE || 'http://157.66.100.194:1212/v1';
 const API_KEY  = process.env.API_KEY;
 const RPM      = 30;
 const DELAY_MS = Math.ceil(60000 / RPM);
@@ -30,8 +30,9 @@ async function testModel(model) {
       signal: AbortSignal.timeout(30000),
     });
     const latency = Date.now() - start;
+    const rawText = await res.text();
     let body;
-    try { body = await res.json(); } catch { body = { raw: await res.text() }; }
+    try { body = rawText ? JSON.parse(rawText) : {}; } catch { body = { raw: rawText }; }
     if (!res.ok) {
       const msg = body?.error?.message ?? body?.message ?? JSON.stringify(body);
       return { model, status: 'ERROR', code: res.status, latency, detail: String(msg).slice(0, 110) };
@@ -86,3 +87,4 @@ if (err.length)  { console.log('\n Error models:');    err.forEach((r) => consol
 if (fail.length) { console.log('\n Failed models:');   fail.forEach((r) => console.log('  - ' + r.model + ': ' + r.detail)); }
 console.log(' Finished: ' + new Date().toISOString());
 console.log(line('=') + '\n');
+
