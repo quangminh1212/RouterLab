@@ -5,10 +5,25 @@ import { addBufferToUsage, filterUsageForFormat } from "../../utils/usageTrackin
 import { createErrorResult } from "../../utils/error.js";
 import { HTTP_STATUS } from "../../config/runtimeConfig.js";
 import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
+import { convertResponsesStreamToJson } from "../../transformer/streamToJsonConverter.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
 
+function streamFromText(text) {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(String(text || "")));
+      controller.close();
+    },
+  });
+}
+
+function looksLikeSSE(text) {
+  const raw = String(text || "").trim();
+  return raw.startsWith("event:") || raw.startsWith("data:") || raw.includes("\nevent:") || raw.includes("\ndata:");
+}
 /**
  * Translate non-streaming response body from provider format -> OpenAI format.
  */
@@ -135,19 +150,34 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
 
   if (contentType.includes("text/event-stream")) {
     const sseText = await providerResponse.text();
-    const parsed = parseSSEToOpenAIResponse(sseText, model);
-    if (!parsed) {
+    if (sourceFormat === FORMATS.OPENAI_RESPONSES) {
+      responseBody = await convertResponsesStreamToJson(streamFromText(sseText));
+    } else {
+      responseBody = parseSSEToOpenAIResponse(sseText, model);
+    }
+    if (!responseBody) {
       appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
       return createErrorResult(HTTP_STATUS.BAD_GATEWAY, "Invalid SSE response for non-streaming request");
     }
-    responseBody = parsed;
   } else {
+    const rawText = await providerResponse.text();
     try {
-      responseBody = await providerResponse.json();
+      responseBody = rawText ? JSON.parse(rawText) : {};
     } catch (err) {
-      appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
-      console.error(`[ChatCore] Failed to parse JSON from ${provider}:`, err.message);
-      return createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`);
+      if (looksLikeSSE(rawText)) {
+        try {
+          responseBody = sourceFormat === FORMATS.OPENAI_RESPONSES
+            ? await convertResponsesStreamToJson(streamFromText(rawText))
+            : parseSSEToOpenAIResponse(rawText, model);
+        } catch {
+          responseBody = null;
+        }
+      }
+      if (!responseBody) {
+        appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
+        console.error(`[ChatCore] Failed to parse JSON from ${provider}:`, err.message);
+        return createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`);
+      }
     }
   }
 
