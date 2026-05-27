@@ -1,15 +1,19 @@
 import { getCombos, getSettings } from "@/lib/localDb";
 
+function buildCorsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "*"
+  };
+}
+
 /**
  * Handle CORS preflight
  */
 export async function OPTIONS() {
   return new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*"
-    }
+    headers: buildCorsHeaders()
   });
 }
 
@@ -35,10 +39,15 @@ export async function GET() {
       });
     }
 
-    return Response.json({ models });
+    return Response.json({ models }, {
+      headers: buildCorsHeaders(),
+    });
   } catch (error) {
     console.log("Error fetching models:", error);
-    return Response.json({ error: { message: error.message } }, { status: 500 });
+    return Response.json({ error: { message: error.message } }, {
+      status: 500,
+      headers: buildCorsHeaders(),
+    });
   }
 }
 
