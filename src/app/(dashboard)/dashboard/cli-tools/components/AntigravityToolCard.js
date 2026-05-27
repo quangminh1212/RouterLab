@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Badge, Modal, Input, ModelSelectModal } from "@/shared/components";
 import Image from "next/image";
 
@@ -40,20 +40,7 @@ export default function AntigravityToolCard({
     if (initialStatus) setStatus(initialStatus);
   }, [initialStatus]);
 
-  useEffect(() => {
-    if (isExpanded && !status) {
-      fetchStatus();
-      loadSavedMappings();
-      fetchModelAliases();
-      loadManagementMappings();
-    }
-    if (isExpanded) {
-      loadSavedMappings();
-      fetchModelAliases();
-    }
-  }, [isExpanded]);
-
-  async function loadSavedMappings() {
+  const loadSavedMappings = useCallback(async () => {
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm/alias?tool=antigravity");
       if (res.ok) {
@@ -67,9 +54,9 @@ export default function AntigravityToolCard({
     } catch (error) {
       console.log("Error loading saved mappings:", error);
     }
-  };
+  }, []);
 
-  async function fetchModelAliases() {
+  const fetchModelAliases = useCallback(async () => {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -77,9 +64,9 @@ export default function AntigravityToolCard({
     } catch (error) {
       console.log("Error fetching model aliases:", error);
     }
-  };
+  }, []);
 
-  async function loadManagementMappings() {
+  const loadManagementMappings = useCallback(async () => {
     try {
       const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
       const data = await res.json();
@@ -88,9 +75,9 @@ export default function AntigravityToolCard({
     } catch (error) {
       console.log("Error loading management model mappings:", error);
     }
-  };
+  }, []);
 
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm");
       if (res.ok) {
@@ -101,7 +88,16 @@ export default function AntigravityToolCard({
       console.log("Error fetching status:", error);
       setStatus({ running: false });
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!status) fetchStatus();
+    loadSavedMappings();
+    fetchModelAliases();
+    loadManagementMappings();
+  }, [fetchModelAliases, fetchStatus, isExpanded, loadManagementMappings, loadSavedMappings, status]);
 
   // Windows uses UAC dialog, no sudo needed
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");

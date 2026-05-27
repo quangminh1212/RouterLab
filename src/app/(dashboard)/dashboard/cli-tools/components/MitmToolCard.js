@@ -40,7 +40,7 @@ export default function MitmToolCard({
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
 
 
-  async function loadSavedMappings() {
+  const loadSavedMappings = useCallback(async () => {
     try {
       const res = await fetch(`/api/cli-tools/antigravity-mitm/alias?tool=${tool.id}`);
       if (res.ok) {
@@ -48,7 +48,7 @@ export default function MitmToolCard({
         if (Object.keys(data.aliases || {}).length > 0) setModelMappings(data.aliases);
       }
     } catch { /* ignore */ }
-  };
+  }, [tool.id]);
 
   async function loadManagementMappings() {
     try {
@@ -65,7 +65,7 @@ export default function MitmToolCard({
       loadSavedMappings();
       loadManagementMappings();
     }
-  }, [isExpanded]);
+  }, [isExpanded, loadSavedMappings]);
 
   const saveMappings = useCallback(async (mappings) => {
     try {

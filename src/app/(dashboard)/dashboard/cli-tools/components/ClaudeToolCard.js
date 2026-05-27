@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Button, ModelSelectModal, ManualConfigModal, Tooltip } from "@/shared/components";
 import { cn } from "@/shared/utils/cn";
 import { downloadCliApplyBat } from "@/lib/cliToolBat";
@@ -221,17 +221,6 @@ export default function ClaudeToolCard({
     if (initialStatus) setClaudeStatus(initialStatus);
   }, [initialStatus]);
 
-  useEffect(() => {
-    if (isExpanded && !claudeStatus) {
-      checkClaudeStatus();
-      fetchModelAliases();
-      loadManagementMappings();
-    }
-    if (isExpanded) {
-      fetchModelAliases();
-      loadManagementMappings();
-    }
-  }, [isExpanded]);
 
   useEffect(() => {
     fetch("/api/settings").then(r => r.json()).then(data => {
@@ -249,7 +238,7 @@ export default function ClaudeToolCard({
     }).catch(() => {});
   };
 
-  async function fetchModelAliases() {
+  const fetchModelAliases = useCallback(async () => {
     try {
       const res = await fetch("/api/models/alias");
       const data = await res.json();
@@ -257,9 +246,9 @@ export default function ClaudeToolCard({
     } catch (error) {
       console.log("Error fetching model aliases:", error);
     }
-  };
+  }, []);
 
-  async function loadManagementMappings() {
+  const loadManagementMappings = useCallback(async () => {
     try {
       const res = await fetch("/api/management/model-mappings", { cache: "no-store" });
       const data = await res.json();
@@ -274,7 +263,15 @@ export default function ClaudeToolCard({
     } catch (error) {
       console.log("Error loading management model mappings:", error);
     }
-  }
+  }, [onModelMappingChange, tool.defaultModels]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    if (!claudeStatus) checkClaudeStatus();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchModelAliases();
+    loadManagementMappings();
+  }, [claudeStatus, fetchModelAliases, isExpanded, loadManagementMappings]);
 
   useEffect(() => {
     if (claudeStatus?.installed && !hasInitializedModels.current) {
