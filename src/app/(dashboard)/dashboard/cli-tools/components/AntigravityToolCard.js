@@ -261,6 +261,37 @@ export default function AntigravityToolCard({
     }
   };
 
+  const handleClearAllMappings = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const managementRes = await fetch("/api/management/model-mappings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceEnabled: forceModelMappingsEnabled }),
+      });
+      const managementData = await managementRes.json().catch(() => ({}));
+      if (!managementRes.ok) throw new Error(managementData.error || "Failed to clear force mapping settings");
+
+      const res = await fetch("/api/cli-tools/antigravity-mitm/alias", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: "antigravity", mappings: {} }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to clear mappings");
+      }
+
+      setModelMappings({});
+      setMessage({ type: "success", text: "Mappings cleared!" });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isRunning = status?.running;
 
   return (
@@ -430,6 +461,15 @@ export default function AntigravityToolCard({
                 >
                   <span className="material-symbols-outlined text-[14px] mr-1">save</span>
                   Save Mappings
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearAllMappings}
+                  disabled={loading || Object.keys(modelMappings).length === 0}
+                >
+                  <span className="material-symbols-outlined text-[14px] mr-1">delete_sweep</span>
+                  Clear All
                 </Button>
               </div>
             </>

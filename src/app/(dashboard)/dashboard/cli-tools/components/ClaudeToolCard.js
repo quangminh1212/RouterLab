@@ -468,6 +468,27 @@ export default function ClaudeToolCard({
     if (currentEditingAlias) onModelMappingChange(currentEditingAlias, model.value);
   };
 
+  const handleClearAllMappings = async () => {
+    setApplying(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/management/model-mappings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceEnabled: forceModelMappingsEnabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to clear model mappings");
+
+      tool.defaultModels.forEach((model) => onModelMappingChange(model.alias, ""));
+      setMessage({ type: "success", text: "Model mappings cleared." });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setApplying(false);
+    }
+  };
+
   // Generate settings.json content for manual copy
   const getManualConfigs = () => {
     const keyToUse = (selectedApiKey && selectedApiKey.trim()) 
@@ -673,6 +694,19 @@ export default function ClaudeToolCard({
                       onChange={setForceModelMappingsEnabled}
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0" />
+                  <span className="material-symbols-outlined text-text-muted text-[14px] opacity-0">arrow_forward</span>
+                  <button
+                    type="button"
+                    onClick={handleClearAllMappings}
+                    disabled={applying || !Object.values(modelMappings).some(Boolean)}
+                    className="px-2 py-1.5 rounded border text-xs transition-colors bg-surface border-border text-text-muted hover:border-red-500 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Clear all mappings
+                  </button>
                 </div>
 
                 {tool.defaultModels.map((model) => (
