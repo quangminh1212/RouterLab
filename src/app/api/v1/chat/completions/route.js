@@ -273,10 +273,10 @@ function readChatContent(payload) {
 }
 
 function isOpenClawCompatRequest(request, requestBody) {
-  const auth = request?.headers?.get("authorization") || "";
   const model = String(requestBody?.model || "");
   const userAgent = request?.headers?.get("user-agent") || "";
-  return auth.includes(OPENCLAW_COMPAT_TOKEN) || /openclaw/i.test(model) || /openclaw/i.test(userAgent);
+  const hasOpenClawSignal = /openclaw/i.test(model) || /openclaw/i.test(userAgent);
+  return hasOpenClawSignal;
 }
 
 function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
