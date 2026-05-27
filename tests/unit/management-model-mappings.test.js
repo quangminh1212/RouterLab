@@ -127,4 +127,56 @@ describe("management model mappings API", () => {
     expect(data.forceEnabled).toBe(false);
   });
 
+
+  it("rejects non-localhost management requests", async () => {
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings: vi.fn(),
+      updateSettings: vi.fn(),
+    }));
+
+    const { GET } = await import("@/app/api/management/model-mappings/route");
+    const response = await GET(new Request("http://example.com/api/management/model-mappings", {
+      headers: { host: "example.com" },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toMatch(/restricted to localhost/i);
+  });
+
+  it("sanitizes invalid mappings before saving", async () => {
+    const updateSettings = vi.fn().mockImplementation(async (payload) => ({
+      forcedModelMappings: payload.forcedModelMappings,
+      forceModelMappings: payload.forceModelMappings,
+    }));
+
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings: vi.fn(),
+      updateSettings,
+    }));
+
+    const { PUT } = await import("@/app/api/management/model-mappings/route");
+    const response = await PUT(new Request("http://localhost/api/management/model-mappings", {
+      method: "PUT",
+      headers: { "content-type": "application/json", host: "localhost" },
+      body: JSON.stringify({
+        mappings: {
+          valid: "openai/gpt-5-mini",
+          empty: "",
+          malformed: "gpt-5-mini",
+          nested: { provider: "openai", model: "gpt-5-mini" },
+        },
+        forceEnabled: true,
+      }),
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(updateSettings).toHaveBeenCalledWith({
+      forcedModelMappings: { valid: "openai/gpt-5-mini" },
+      forceModelMappings: true,
+    });
+    expect(data.mappings).toEqual({ valid: "openai/gpt-5-mini" });
+  });
+
 });
