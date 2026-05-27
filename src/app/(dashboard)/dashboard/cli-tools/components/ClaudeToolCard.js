@@ -469,6 +469,7 @@ export default function ClaudeToolCard({
   };
 
   const handleClearAllMappings = async () => {
+    if (typeof window !== "undefined" && !window.confirm("Clear all model mappings?")) return;
     setApplying(true);
     setMessage(null);
     try {

@@ -115,6 +115,7 @@ export default function MitmToolCard({
   };
 
   const handleClearAllMappings = () => {
+    if (typeof window !== "undefined" && !window.confirm("Clear all model mappings?")) return;
     setModelMappings({});
     saveMappings({});
     saveForceMode({});
