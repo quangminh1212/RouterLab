@@ -1,4 +1,6 @@
-﻿import https from "https";
+import https from "https";
+import fs from "node:fs/promises";
+import path from "node:path";
 import pkg from "../../../../package.json" with { type: "json" };
 
 const NPM_PACKAGE_NAME = "xlabrouter";
@@ -27,6 +29,20 @@ function fetchLatestVersion() {
   });
 }
 
+async function readBuildId() {
+  const candidates = [
+    path.join(process.cwd(), '.next', 'BUILD_ID'),
+    path.join(process.cwd(), 'BUILD_ID'),
+    path.join(process.cwd(), '.next', 'standalone', '.next', 'BUILD_ID'),
+  ];
+  for (const file of candidates) {
+    try {
+      const value = (await fs.readFile(file, 'utf8')).trim();
+      if (value) return value;
+    } catch {}
+  }
+  return null;
+}
 function compareVersions(a, b) {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
@@ -43,7 +59,8 @@ async function refreshVersionCache() {
     const latestVersion = await fetchLatestVersion();
     const currentVersion = pkg.version;
     const hasUpdate = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
-    const payload = { currentVersion, latestVersion, hasUpdate };
+    const buildId = await readBuildId();
+    const payload = { currentVersion, latestVersion, hasUpdate, buildId, serverTime: new Date().toISOString() };
     versionCache = { ts: Date.now(), data: payload, promise: null };
     return payload;
   })();
@@ -59,7 +76,7 @@ export async function GET() {
   }
 
   // Return stale/fast response immediately, refresh in background.
-  const fallback = versionCache.data || { currentVersion: pkg.version, latestVersion: null, hasUpdate: false };
+  const fallback = versionCache.data || { currentVersion: pkg.version, latestVersion: null, hasUpdate: false, buildId: null, serverTime: new Date().toISOString() };
   refreshVersionCache().catch(() => {});
 
   return Response.json(fallback, {
