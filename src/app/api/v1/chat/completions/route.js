@@ -367,11 +367,19 @@ async function normalizeChatCompletionsJson(response, request = null, requestBod
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) return response;
 
+  const raw = await response.text();
   let payload;
   try {
-    payload = await response.json();
+    payload = raw ? JSON.parse(raw) : {};
   } catch {
-    return response;
+    return new Response(raw, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: {
+        "Content-Type": contentType || "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
   if (payload?.object === "chat.completion" && Array.isArray(payload?.choices) && payload.choices.length > 0) {
