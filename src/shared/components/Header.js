@@ -172,6 +172,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
   const pathname = usePathname();
   const router = useRouter();
   const [systemMetrics, setSystemMetrics] = useState(null);
+  const [versionInfo, setVersionInfo] = useState(null);
   const headerSearchVisible = useHeaderSearchStore((state) => state.visible);
   const headerSearchQuery = useHeaderSearchStore((state) => state.query);
   const headerSearchPlaceholder = useHeaderSearchStore((state) => state.placeholder);
@@ -276,6 +277,32 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchVersionInfo = async () => {
+      try {
+        const response = await fetchWithTimeout(
+          "/api/version",
+          { cache: "no-store" },
+          3000,
+          "Loading version info timed out"
+        );
+        if (!response.ok) throw new Error("Version fetch failed");
+        const data = await response.json();
+        if (mounted) setVersionInfo(data);
+      } catch {
+        if (mounted) setVersionInfo(null);
+      }
+    };
+
+    fetchVersionInfo();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
@@ -354,6 +381,19 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
                 {translate(title)}
               </h1>
             </div>
+            {versionInfo?.currentVersion && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-muted">
+                <span className="tabular-nums">v{versionInfo.currentVersion}</span>
+                {versionInfo.buildId && (
+                  <span className="tabular-nums">build {String(versionInfo.buildId).slice(0, 10)}</span>
+                )}
+                {versionInfo.serverTime && (
+                  <span className="tabular-nums">
+                    {new Date(versionInfo.serverTime).toLocaleString("vi-VN")}
+                  </span>
+                )}
+              </div>
+            )}
             {description && (
               <p className="text-sm text-text-muted">
                 {translate(description)}
@@ -398,7 +438,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
                 {typeof systemMetrics.cpuPercent === "number" ? `${systemMetrics.cpuPercent.toFixed(0)}%` : "--"}
               </span>
             </span>
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/25 dark:bg-sky-400/10" title={`Heap: ${formatMemoryGb(systemMetrics.heapUsedBytes || 0)} | RSS: ${formatMemoryGb(systemMetrics.processMemoryBytes || 0)} | Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}>
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 text-sky-600 shadow-sm shadow-sky-500/5 transition-colors dark:text-sky-300 dark:border-sky-400/25 dark:bg-sky-400/10" title={`Heap: ${formatMemoryGb(systemMetrics.heapUsedBytes || 0)} | RSS: ${formatMemoryGb(systemMetrics.processMemoryBytes || 0)} | Tổng RAM: ${formatMemoryGb(systemMetrics.totalMemoryBytes || 0)}`}> 
               <span className="material-symbols-outlined text-[14px] leading-none">memory</span>
               <span className="text-[9px] uppercase tracking-[0.12em] text-sky-700/70 dark:text-sky-200/70">RAM</span>
               <span className="tabular-nums text-text-main dark:text-white">
