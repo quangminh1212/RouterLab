@@ -1230,15 +1230,32 @@ export async function createProviderConnection(data) {
   return connection;
 }
 
+function valuesEqualForUpdate(currentValue, nextValue) {
+  if (Object.is(currentValue, nextValue)) return true;
+  const currentIsObj = currentValue && typeof currentValue === "object";
+  const nextIsObj = nextValue && typeof nextValue === "object";
+  if (!currentIsObj && !nextIsObj) return false;
+  try {
+    return JSON.stringify(currentValue) === JSON.stringify(nextValue);
+  } catch {
+    return false;
+  }
+}
+
 export async function updateProviderConnection(id, data) {
   const db = await getDb();
   const index = db.data.providerConnections.findIndex(c => c.id === id);
   if (index === -1) return null;
 
-  const providerId = db.data.providerConnections[index].provider;
+  const current = db.data.providerConnections[index];
+  const providerId = current.provider;
+  const hasMeaningfulChange = Object.keys(data || {}).some((key) => !valuesEqualForUpdate(current[key], data[key]));
+  if (!hasMeaningfulChange) {
+    return current;
+  }
 
   db.data.providerConnections[index] = {
-    ...db.data.providerConnections[index],
+    ...current,
     ...data,
     updatedAt: new Date().toISOString(),
   };

@@ -195,11 +195,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
  * @param {string|null} model - The specific model that triggered the error
  * @returns {{ shouldFallback: boolean, cooldownMs: number }}
  */
-export async function markAccountUnavailable(connectionId, status, errorText, provider = null, model = null, resetsAtMs = null) {
+export async function markAccountUnavailable(connectionId, status, errorText, provider = null, model = null, resetsAtMs = null, currentConnection = null) {
   if (!connectionId || connectionId === "noauth") return { shouldFallback: false, cooldownMs: 0 };
-  const connections = await getProviderConnections({ provider });
-  const conn = connections.find(c => c.id === connectionId);
-  const backoffLevel = conn?.backoffLevel || 0;
+  const conn = currentConnection?._connection || currentConnection || null;
+  const connections = conn ? null : await getProviderConnections({ provider });
+  const foundConn = connections ? connections.find(c => c.id === connectionId) : null;
+  const activeConn = conn || foundConn;
+  const backoffLevel = activeConn?.backoffLevel || 0;
 
   // Provider-specific precise cooldown (e.g. codex usage_limit_reached resets_at) overrides backoff
   let shouldFallback, cooldownMs, newBackoffLevel;
@@ -215,7 +217,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   const reason = typeof errorText === "string" ? errorText.slice(0, 100) : "Provider error";
   const lockUpdate = buildModelLockUpdate(model, cooldownMs);
 
-  await updateProviderConnection(connectionId, {
+  const updatedConn = await updateProviderConnection(connectionId, {
     ...lockUpdate,
     testStatus: "unavailable",
     lastError: reason,
@@ -223,9 +225,12 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     lastErrorAt: new Date().toISOString(),
     backoffLevel: newBackoffLevel ?? backoffLevel
   });
+  if (currentConnection && updatedConn) {
+    Object.assign(currentConnection._connection || currentConnection, updatedConn);
+  }
 
   const lockKey = Object.keys(lockUpdate)[0];
-  const connName = conn?.displayName || conn?.name || conn?.email || connectionId.slice(0, 8);
+  const connName = activeConn?.displayName || activeConn?.name || activeConn?.email || connectionId.slice(0, 8);
   log.warn("AUTH", `${connName} locked ${lockKey} for ${Math.round(cooldownMs / 1000)}s [${status}]`);
 
   if (provider && status && reason) {
@@ -276,7 +281,10 @@ export async function clearAccountError(connectionId, currentConnection, model =
     Object.assign(clearObj, { testStatus: "active", lastError: null, lastErrorAt: null, backoffLevel: 0 });
   }
 
-  await updateProviderConnection(connectionId, clearObj);
+  const updatedConn = await updateProviderConnection(connectionId, clearObj);
+  if (currentConnection && updatedConn) {
+    Object.assign(currentConnection._connection || currentConnection, updatedConn);
+  }
   const connName = conn?.displayName || conn?.name || conn?.email || connectionId.slice(0, 8);
   log.info("AUTH", `Account ${connName} cleared lock for model=${model || "__all"}`);
 }
