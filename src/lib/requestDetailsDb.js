@@ -3,7 +3,7 @@ import { JSONFile } from "lowdb/node";
 import path from "node:path";
 import fs from "node:fs";
 import { DATA_DIR } from "@/lib/dataDir.js";
-import { getDb as getMainDb } from "@/lib/localDb.js";
+
 
 const isCloud = typeof caches !== "undefined" && typeof caches === "object";
 
@@ -25,76 +25,19 @@ let dbInstance = null;
 async function getDb() {
   if (isCloud) return null;
   if (!dbInstance) {
-    dbInstance = {
-      _main: null,
-      async read() {
-        this._main = await getMainDb();
-        if (!this._main.data.requestDetailsData || typeof this._main.data.requestDetailsData !== "object") {
-          this._main.data.requestDetailsData = { records: [] };
-        }
+    if (DB_FILE && !fs.existsSync(DB_FILE)) {
+      fs.writeFileSync(DB_FILE, JSON.stringify({ records: [] }, null, 2));
+    }
 
-        // One-time migration from legacy request-details.json
-        const hasAnyRecords = Array.isArray(this._main.data.requestDetailsData.records)
-          ? this._main.data.requestDetailsData.records.length > 0
-          : false;
-        if (!hasAnyRecords && DB_FILE && fs.existsSync(DB_FILE)) {
-          try {
-            const legacyRaw = fs.readFileSync(DB_FILE, "utf8");
-            const legacy = JSON.parse(legacyRaw || "{}");
-            if (legacy?.records && Array.isArray(legacy.records)) {
-              this._main.data.requestDetailsData.records = legacy.records;
-            }
-          } catch {
-            // ignore legacy migration failure
-          }
-        }
-
-        if (!Array.isArray(this._main.data.requestDetailsData.records)) {
-          this._main.data.requestDetailsData.records = [];
-        }
-      },
-      async write() {
-        if (!this._main) return;
-
-        const maxAttempts = 3;
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          try {
-            await this._main.write();
-            return;
-          } catch (error) {
-            const isRenameTmpMissing =
-              error?.code === "ENOENT"
-              && typeof error?.path === "string"
-              && error.path.includes(".db.json.tmp");
-
-            if (!isRenameTmpMissing || attempt === maxAttempts) {
-              throw error;
-            }
-
-            try {
-              if (DATA_DIR && !fs.existsSync(DATA_DIR)) {
-                fs.mkdirSync(DATA_DIR, { recursive: true });
-              }
-            } catch {}
-
-            try {
-              await this._main.read();
-            } catch {}
-
-            await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
-          }
-        }
-      },
-      get data() {
-        return this._main?.data?.requestDetailsData;
-      },
-      set data(value) {
-        if (!this._main) return;
-        this._main.data.requestDetailsData = value;
-      },
-    };
-
+    const adapter = new JSONFile(DB_FILE);
+    dbInstance = new Low(adapter, { records: [] });
     await dbInstance.read();
+    if (!dbInstance.data || typeof dbInstance.data !== "object") {
+      dbInstance.data = { records: [] };
+    }
+    if (!Array.isArray(dbInstance.data.records)) {
+      dbInstance.data.records = [];
+    }
   }
   return dbInstance;
 }
