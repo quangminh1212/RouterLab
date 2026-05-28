@@ -40,7 +40,6 @@ function buildTransformStream({ provider, sourceFormat, targetFormat, userAgent,
  * Handle streaming response - pipe provider SSE through transform stream to client.
  */
 export function handleStreamingResponse({ providerResponse, provider, model, sourceFormat, targetFormat, userAgent, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, reqLogger, toolNameMap, streamController, onStreamComplete, rtkStats }) {
-  if (onRequestSuccess) onRequestSuccess();
 
   const transformStream = buildTransformStream({ provider, sourceFormat, targetFormat, userAgent, reqLogger, toolNameMap, model, connectionId, body, onStreamComplete, apiKey });
   const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController);
@@ -69,13 +68,17 @@ export function handleStreamingResponse({ providerResponse, provider, model, sou
 /**
  * Build onStreamComplete callback for streaming usage tracking.
  */
-export function buildOnStreamComplete({ provider, model, connectionId, apiKey, requestStartTime, body, stream, finalBody, translatedBody, clientRawRequest, rtkStats }) {
+export function buildOnStreamComplete({ provider, model, connectionId, apiKey, requestStartTime, body, stream, finalBody, translatedBody, clientRawRequest, rtkStats, onRequestSuccess }) {
   const streamDetailId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   let didComplete = false;
 
   const onStreamComplete = (contentObj, usage, ttftAt) => {
     if (didComplete) return;
     didComplete = true;
+
+    if (onRequestSuccess) {
+      Promise.resolve(onRequestSuccess()).catch(() => {});
+    }
 
     const latency = {
       ttft: ttftAt ? ttftAt - requestStartTime : Date.now() - requestStartTime,

@@ -11,6 +11,7 @@ import { normalizeResponsesInput } from "../helpers/responsesApiHelper.js";
 // Responses API enforces max 64 chars on call_id (#393)
 const MAX_CALL_ID_LEN = 64;
 const clampCallId = (id) => (typeof id === "string" && id.length > MAX_CALL_ID_LEN ? id.substring(0, MAX_CALL_ID_LEN) : id);
+const hasValidCallId = (id) => typeof id === "string" && id.trim() !== "";
 
 /**
  * Convert OpenAI Responses API request to OpenAI Chat Completions format
@@ -77,6 +78,8 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
       }
       // Skip items with empty/missing name — Codex/OpenAI reject nameless tool calls (#444)
       if (!item.name || typeof item.name !== "string" || item.name.trim() === "") continue;
+      // Skip malformed function_call without call_id ? avoids orphaned tool results later in pipeline
+      if (!hasValidCallId(item.call_id)) continue;
       currentAssistantMsg.tool_calls.push({
         id: item.call_id,
         type: "function",
@@ -87,6 +90,8 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
       });
     }
     else if (itemType === "function_call_output") {
+      // Skip malformed tool output without call_id ? prevents OpenAI 400: Missing required parameter input[n].call_id
+      if (!hasValidCallId(item.call_id)) continue;
       // Flush assistant message first if exists
       if (currentAssistantMsg) {
         result.messages.push(currentAssistantMsg);
