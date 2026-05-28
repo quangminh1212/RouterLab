@@ -81,11 +81,20 @@ function responsesBodyToOpenAIChatCompletion(responseBody, fallbackModel) {
 }
 
 async function parseSSEForNonStreaming(rawText, sourceFormat, model) {
-  if (sourceFormat === FORMATS.OPENAI_RESPONSES || looksLikeResponsesSSE(rawText)) {
+  try {
     const responsesBody = await convertResponsesStreamToJson(streamFromText(rawText));
-    return sourceFormat === FORMATS.OPENAI_RESPONSES
-      ? responsesBody
-      : responsesBodyToOpenAIChatCompletion(responsesBody, model);
+    const hasResponsesShape = responsesBody && (
+      responsesBody.object === "response"
+      || Array.isArray(responsesBody.output)
+      || typeof responsesBody.status === "string"
+    );
+    if (hasResponsesShape && (sourceFormat === FORMATS.OPENAI_RESPONSES || looksLikeResponsesSSE(rawText) || responsesBody.output?.length || responsesBody.usage)) {
+      return sourceFormat === FORMATS.OPENAI_RESPONSES
+        ? responsesBody
+        : responsesBodyToOpenAIChatCompletion(responsesBody, model);
+    }
+  } catch {
+    // Fall through to generic chat SSE parser
   }
   return parseSSEToOpenAIResponse(rawText, model);
 }
