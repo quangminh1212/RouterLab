@@ -284,6 +284,15 @@ function isOpenClawCompatRequest(request, requestBody) {
   return hasOpenClawSignal;
 }
 
+function shouldRetryEmptyChatAsStream(request, requestBody, payload) {
+  if (!request || !requestBody || requestBody?.stream === true) return false;
+  if (readChatContent(payload).trim()) return false;
+  if (payload?.object !== "chat.completion" || !Array.isArray(payload?.choices) || payload.choices.length === 0) {
+    return false;
+  }
+  return true;
+}
+
 function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
   const lines = String(raw || "").split(/\r?\n/);
   let text = "";
@@ -388,14 +397,7 @@ async function normalizeChatCompletionsJson(response, request = null, requestBod
   }
 
   if (payload?.object === "chat.completion" && Array.isArray(payload?.choices) && payload.choices.length > 0) {
-    const hasText = Boolean(readChatContent(payload).trim());
-    const shouldRetryAsStream = Boolean(
-      request
-      && requestBody
-      && requestBody?.stream !== true
-      && isOpenClawCompatRequest(request, requestBody)
-      && !hasText
-    );
+    const shouldRetryAsStream = shouldRetryEmptyChatAsStream(request, requestBody, payload);
 
     if (shouldRetryAsStream) {
       const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, payload);
@@ -431,3 +433,4 @@ export const POST = withRouteGuard(
   postHandler,
   { timeoutMs: CHAT_COMPLETIONS_TIMEOUT_MS },
 );
+
