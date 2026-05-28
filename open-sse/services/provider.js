@@ -100,17 +100,17 @@ export function detectFormat(body) {
         }
         // Check if image format is Claude (source.type) vs OpenAI (image_url.url)
         const hasClaudeImage = firstMsg.content.some(c => 
-          c.type === "image" && c.source?.type === "base64"
+          c && c.type === "image" && c.source?.type === "base64"
         );
         const hasOpenAIImage = firstMsg.content.some(c => 
-          c.type === "image_url" && c.image_url?.url
+          c && c.type === "image_url" && c.image_url?.url
         );
         if (hasClaudeImage) return "claude";
         if (hasOpenAIImage) return "openai";
         
         // If still unclear, check for tool format
         const hasClaudeTool = firstMsg.content.some(c => 
-          c.type === "tool_use" || c.type === "tool_result"
+          c && (c.type === "tool_use" || c.type === "tool_result")
         );
         if (hasClaudeTool) return "claude";
       }
