@@ -210,7 +210,12 @@ async function postHandler(request) {
 
   await ensureInitialized();
   const response = await handleChat(forwardedRequest);
-  return await normalizeChatCompletionsJson(response, forwardedRequest, requestBody);
+  try {
+    return await normalizeChatCompletionsJson(response.clone(), forwardedRequest, requestBody);
+  } catch (error) {
+    console.error("[v1/chat/completions] normalize fallback:", error?.message || error);
+    return response;
+  }
 }
 
 function extractResponseText(payload) {
