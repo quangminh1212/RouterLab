@@ -51,6 +51,18 @@ export function getRotatedModels(models, comboName, strategy, stickyLimit = 1) {
  * Reset in-memory rotation state when combo/settings change
  * @param {string} [comboName] - Combo name to reset; omit to clear all
  */
+
+function parseRetryAfterSecondsFromText(text) {
+  if (!text || typeof text !== "string") return null;
+  const match = text.match(/reset after (?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i);
+  if (!match) return null;
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  const seconds = Number(match[3] || 0);
+  const total = (hours * 3600) + (minutes * 60) + seconds;
+  return Number.isFinite(total) && total > 0 ? total : null;
+}
+
 export function resetComboRotation(comboName) {
   if (comboName) comboRotationState.delete(comboName);
   else comboRotationState.clear();
@@ -134,7 +146,7 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       const { shouldFallback, cooldownMs } = checkFallbackError(result.status, errorText);
 
       if (!shouldFallback) {
-        log.warn("COMBO", `Model ${modelStr} failed (no fallback)`, { status: result.status });
+        log.warn("COMBO", `Model ${modelStr} failed (no fallback)`, { status: result.status, reason: errorText });
         return result;
       }
 
@@ -150,12 +162,12 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       // Fallback to next model
       lastError = errorText || String(result.status);
       if (!lastStatus) lastStatus = result.status;
-      log.warn("COMBO", `Model ${modelStr} failed, trying next`, { status: result.status });
+      log.warn("COMBO", `Model ${modelStr} failed, trying next`, { status: result.status, reason: errorText, cooldownMs });
     } catch (error) {
       // Catch unexpected exceptions to ensure fallback continues
       lastError = error.message || String(error);
       if (!lastStatus) lastStatus = 500;
-      log.warn("COMBO", `Model ${modelStr} threw error, trying next`, { error: lastError });
+      log.warn("COMBO", `Model ${modelStr} threw error, trying next`, { error: lastError, reason: lastError });
     }
   }
 
@@ -173,9 +185,16 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
     return unavailableResponse(status, msg, earliestRetryAfter, retryHuman);
   }
 
+  const headers = { "Content-Type": "application/json" };
+  const errorPayload = { error: { message: msg } };
+  const retryAfterSeconds = parseRetryAfterSecondsFromText(lastError);
+  if (retryAfterSeconds) {
+    headers["Retry-After"] = String(retryAfterSeconds);
+  }
+
   log.warn("COMBO", `All models failed | ${msg}`);
   return new Response(
-    JSON.stringify({ error: { message: msg } }),
-    { status, headers: { "Content-Type": "application/json" } }
+    JSON.stringify(errorPayload),
+    { status, headers }
   );
 }
