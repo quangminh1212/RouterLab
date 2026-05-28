@@ -1347,7 +1347,12 @@ export async function getComboById(id) {
 
 export async function getComboByName(name) {
   const db = await getDb();
-  return (db.data.combos || []).find(c => c.name === name) || null;
+  const needle = typeof name === "string" ? name.trim().toLowerCase() : "";
+  if (!needle) return null;
+  return (db.data.combos || []).find((combo) => {
+    const comboName = typeof combo?.name === "string" ? combo.name.trim().toLowerCase() : "";
+    return comboName === needle;
+  }) || null;
 }
 
 export async function createCombo(data) {
