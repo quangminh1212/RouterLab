@@ -1,6 +1,11 @@
 import { withRouteGuard } from "@/lib/runtimeGuard";
+import { parseBearerToken } from "@/models";
 
-const CHAT_COMPLETIONS_URL = "http://127.0.0.1:1212/v1/chat/completions";
+const CHAT_COMPLETIONS_PATH = "/v1/chat/completions";
+
+function buildCompletionErrorBody(message, type = "server_error") {
+  return JSON.stringify({ error: { message, type } });
+}
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -15,6 +20,35 @@ export async function OPTIONS() {
 function normalizePrompt(prompt) {
   if (Array.isArray(prompt)) return prompt.map((item) => String(item || "")).join("\n");
   return String(prompt || "");
+}
+
+function hasControlChars(value) {
+  return /[\x00-\x1F\x7F]/.test(String(value || ""));
+}
+
+function normalizeStringField(value, fallback = "") {
+  const raw = String(value || "").trim();
+  if (!raw || hasControlChars(raw)) return fallback;
+  return raw;
+}
+
+function normalizePositiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeTemperature(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed < 0 || parsed > 2) return undefined;
+  return parsed;
+}
+
+function normalizeTopP(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed <= 0 || parsed > 1) return undefined;
+  return parsed;
 }
 
 function completionFromChat(payload) {
@@ -76,27 +110,30 @@ function extractTextFromSse(raw) {
 
 async function postHandler(request) {
   const body = await request.json().catch(() => ({}));
-  const model = String(body?.model || "openclaw");
+  const model = normalizeStringField(body?.model, "openclaw");
   const prompt = normalizePrompt(body?.prompt);
-  const maxTokens = Number(body?.max_tokens || 1024);
-  const temperature = typeof body?.temperature === "number" ? body.temperature : undefined;
-  const topP = typeof body?.top_p === "number" ? body.top_p : undefined;
+  const user = normalizeStringField(body?.user, "");
+  const maxTokens = normalizePositiveNumber(body?.max_tokens, 1024);
+  const temperature = normalizeTemperature(body?.temperature);
+  const topP = normalizeTopP(body?.top_p);
 
   const chatBody = {
     model,
     messages: [{ role: "user", content: prompt }],
     max_tokens: maxTokens,
     stream: true,
+    ...(user ? { user } : {}),
     ...(temperature !== undefined ? { temperature } : {}),
     ...(topP !== undefined ? { top_p: topP } : {}),
   };
 
-  const auth = request.headers.get("authorization") || "";
-  const response = await fetch(CHAT_COMPLETIONS_URL, {
+  const authToken = parseBearerToken(request.headers.get("authorization"));
+  const chatCompletionsUrl = new URL(CHAT_COMPLETIONS_PATH, request.url).toString();
+  const response = await fetch(chatCompletionsUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(auth ? { Authorization: auth } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     },
     body: JSON.stringify(chatBody),
   });
@@ -108,7 +145,7 @@ async function postHandler(request) {
   } catch {}
 
   if (!response.ok) {
-    return new Response(text || JSON.stringify({ error: { message: "Upstream completion error" } }), {
+    return new Response(text || buildCompletionErrorBody("Upstream completion error", "upstream_error"), {
       status: response.status,
       headers: {
         "Content-Type": response.headers.get("content-type") || "application/json",
@@ -133,3 +170,5 @@ export const POST = withRouteGuard(
   postHandler,
   { timeoutMs: 45000 },
 );
+
+
