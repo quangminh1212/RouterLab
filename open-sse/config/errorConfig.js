@@ -6,6 +6,7 @@ export const ERROR_TYPES = {
   403: { type: "permission_error", code: "insufficient_quota" },
   404: { type: "invalid_request_error", code: "model_not_found" },
   406: { type: "invalid_request_error", code: "model_not_supported" },
+  408: { type: "server_error", code: "request_timeout" },
   429: { type: "rate_limit_error", code: "rate_limit_exceeded" },
   500: { type: "server_error", code: "internal_server_error" },
   502: { type: "server_error", code: "bad_gateway" },
@@ -22,6 +23,7 @@ export const DEFAULT_ERROR_MESSAGES = {
   403: "You exceeded your current quota",
   404: "Model not found",
   406: "Model not supported",
+  408: "Upstream request timed out",
   429: "Rate limit exceeded",
   500: "Internal server error",
   502: "Bad gateway - upstream provider error",
@@ -77,6 +79,7 @@ export const ERROR_RULES = [
   { status: 402, cooldownMs: COOLDOWN.long },
   { status: 403, cooldownMs: COOLDOWN.long },
   { status: 404, cooldownMs: COOLDOWN.long },
+  { status: 408, cooldownMs: TRANSIENT_COOLDOWN_MS },
   { status: 429, backoff: true },
   { status: 529, backoff: true },
 ];
@@ -89,4 +92,7 @@ export const COOLDOWN_MS = {
   transient: TRANSIENT_COOLDOWN_MS,
   requestNotAllowed: COOLDOWN.short,
 };
+
+
+
 

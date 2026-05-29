@@ -112,9 +112,22 @@ describe("checkFallbackError", () => {
     expect(rateLimited.cooldownMs).toBeGreaterThan(0);
   });
 
+  it("falls back on upstream timeout 408", () => {
+    const result = checkFallbackError(408, "Request Timeout");
+    expect(result.shouldFallback).toBe(true);
+    expect(result.cooldownMs).toBeGreaterThan(0);
+  });
+
+  it("still does not fallback on unmatched 4xx", () => {
+    const result = checkFallbackError(418, "I\'m a teapot");
+    expect(result.shouldFallback).toBe(false);
+    expect(result.cooldownMs).toBe(0);
+  });
+
   it("falls back on unmatched upstream 5xx errors", () => {
     const result = checkFallbackError(500, "Unexpected upstream failure");
     expect(result.shouldFallback).toBe(true);
     expect(result.cooldownMs).toBeGreaterThan(0);
   });
 });
+
