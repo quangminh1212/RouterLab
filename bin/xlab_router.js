@@ -801,6 +801,12 @@ async function launchWebUIProcess(options = {}) {
     env: sharedEnv,
     windowsHide: true,
   });
+  global.serverChild = child;
+  child.on("exit", () => {
+    if (global.serverChild === child) {
+      global.serverChild = null;
+    }
+  });
 
   let warmupTriggered = false;
   let readyTriggered = false;

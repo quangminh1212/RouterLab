@@ -95,6 +95,7 @@ next-dev*.log
 # local packaging/temp artifacts
 .tmp-*/
 *.tgz
+.tmp*.json
 
 # RAM configuration
 .ram-config.json

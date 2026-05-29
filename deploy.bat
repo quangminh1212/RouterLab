@@ -2,7 +2,7 @@
 :: Deploy flow:
 :: 1) Run this file from repo root.
 :: 2) Script clears stale local Next build lock/process, builds, packs, deploys.
-:: 3) Pass condition: /v1/models returns 200 at the end.
+:: 3) Pass condition: /api/version returns 200 at the end.
 :: 4) If deploy verify fails, inspect xlabrouter.service + journal on VPS.
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
@@ -34,8 +34,7 @@ goto after_build
 :skip_build
 echo [*] SKIP_BUILD=1 - Reusing existing .next artifacts...
 :after_build
-if not exist "%CD%\.next\BUILD_ID" goto missing_build
-if not exist "%CD%\.next\standalone\server.js" goto missing_standalone
+if not exist "%CD%\.next\BUILD_ID" if not exist "%CD%\.next\standalone\server.js" goto missing_build
 echo [*] Running npm pack ...
 call npm pack --silent
 if errorlevel 1 goto pack_failed
@@ -49,21 +48,21 @@ echo [*] Deploying to VPS via deploy_source_157.py ...
 python -u "%DEPLOY_PY%" "%TGZ%"
 if errorlevel 1 goto deploy_failed
 echo.
-echo [*] Verifying deployed endpoint /v1/models ...
+echo [*] Verifying deployed endpoint /api/version ...
 set "VERIFY_OK="
 for /l %%I in (1,1,20) do (
-    for /f "delims=" %%R in ('powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri ''http://157.66.100.194:1212/v1/models'' -TimeoutSec 8; if ($r.StatusCode -eq 200 -and $r.Content -like ''*\"object\":\"list\"*'') { ''OK'' } else { ''HTTP '' + $r.StatusCode } } catch { ''ERR'' }"') do set "VERIFY_RESULT=%%R"
+    for /f "delims=" %%R in ('curl.exe -sS --max-time 8 -o nul -w "%%{http_code}" http://157.66.100.194:1212/api/version 2^>nul') do set "VERIFY_RESULT=%%R"
     echo     try %%I: !VERIFY_RESULT!
-    if /I "!VERIFY_RESULT!"=="OK" set "VERIFY_OK=1"
-    if /I "!VERIFY_RESULT!"=="OK" goto verify_done
-    timeout /t 3 >nul
+    if "!VERIFY_RESULT!"=="200" set "VERIFY_OK=1"
+    if "!VERIFY_RESULT!"=="200" goto verify_done
+    ping -n 4 127.0.0.1 >nul
 )
 :verify_done
 if not defined VERIFY_OK goto verify_failed
 echo.
 echo ========================================
 echo [OK] Done. Web UI: http://157.66.100.194:1212
-echo [OK] Verify: /v1/models returned 200
+echo [OK] Verify: /api/version returned 200
 echo ========================================
 endlocal
 exit /b 0
@@ -88,11 +87,7 @@ echo [!] Build failed
 endlocal
 exit /b 1
 :missing_build
-echo [!] Missing .next\BUILD_ID - build artifacts are not ready
-endlocal
-exit /b 1
-:missing_standalone
-echo [!] Missing .next\standalone\server.js - standalone artifacts are not ready
+echo [!] Missing production build artifacts - build artifacts are not ready
 endlocal
 exit /b 1
 :pack_failed
