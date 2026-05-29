@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getRotatedModels, resetComboRotation } from "../../open-sse/services/combo.js";
+import { getRotatedModels, handleComboChat, resetComboRotation } from "../../open-sse/services/combo.js";
 
 describe("combo round-robin rotation", () => {
   const models = ["openai/gpt-4o-mini", "anthropic/claude-sonnet", "gemini/gemini-2.5-flash"];
@@ -46,3 +46,66 @@ describe("combo round-robin rotation", () => {
     expect(getRotatedModels(models, "combo-b", "round-robin", 1)[0]).toBe("anthropic/claude-sonnet");
   });
 });
+
+describe("combo retry-after propagation", () => {
+  const log = { info: () => {}, warn: () => {} };
+
+  it("uses upstream Retry-After header when every combo model fails", async () => {
+    const response = await handleComboChat({
+      body: { model: "combo" },
+      models: ["provider/a", "provider/b"],
+      comboName: "retry-after-combo",
+      comboStrategy: "fallback",
+      log,
+      handleSingleModel: async () => new Response(
+        JSON.stringify({ error: { message: "Rate limit exceeded" } }),
+        {
+          status: 429,
+          statusText: "Too Many Requests",
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": "45",
+          },
+        },
+      ),
+    });
+
+    expect(response.status).toBe(429);
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThanOrEqual(44);
+    expect(retryAfter).toBeLessThanOrEqual(46);
+  });
+
+  it("uses earliest reset header across failed combo models", async () => {
+    const resetAtSec = Math.floor(Date.now() / 1000) + 30;
+    let attempts = 0;
+
+    const response = await handleComboChat({
+      body: { model: "combo" },
+      models: ["provider/a", "provider/b"],
+      comboName: "reset-header-combo",
+      comboStrategy: "fallback",
+      log,
+      handleSingleModel: async () => {
+        attempts += 1;
+        return new Response(
+          JSON.stringify({ error: { message: "Rate limit exceeded" } }),
+          {
+            status: 429,
+            statusText: "Too Many Requests",
+            headers: {
+              "Content-Type": "application/json",
+              "x-ratelimit-reset": String(attempts === 1 ? resetAtSec + 30 : resetAtSec),
+            },
+          },
+        );
+      },
+    });
+
+    expect(response.status).toBe(429);
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThanOrEqual(29);
+    expect(retryAfter).toBeLessThanOrEqual(31);
+  });
+});
+

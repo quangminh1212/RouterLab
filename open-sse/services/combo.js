@@ -147,6 +147,34 @@ function parseRetryAfterSecondsFromText(text) {
   return Number.isFinite(total) && total > 0 ? total : null;
 }
 
+function parseRetryAfterMsFromHeaders(headers, now = Date.now()) {
+  if (!headers?.get) return null;
+
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter) {
+    const raw = String(retryAfter).trim();
+    const seconds = Number(raw);
+    if (Number.isFinite(seconds)) return now + Math.max(0, seconds) * 1000;
+    const dateMs = Date.parse(raw);
+    if (Number.isFinite(dateMs) && dateMs > now) return dateMs;
+  }
+
+  for (const name of ["x-ratelimit-reset", "x-rate-limit-reset", "ratelimit-reset"]) {
+    const raw = headers.get(name);
+    if (!raw) continue;
+    const value = Number(String(raw).trim());
+    if (!Number.isFinite(value)) continue;
+    const millis = value > 10000000000 ? value : value * 1000;
+    if (millis > now) return millis;
+  }
+
+  return null;
+}
+
+function toRetryAfterIso(ms) {
+  return Number.isFinite(ms) && ms > Date.now() ? new Date(ms).toISOString() : null;
+}
+
 export function resetComboRotation(comboName) {
   if (comboName) comboRotationState.delete(comboName);
   else comboRotationState.clear();
@@ -269,6 +297,9 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
         // Ignore JSON parse errors
       }
 
+      const headerRetryAfter = toRetryAfterIso(parseRetryAfterMsFromHeaders(result.headers));
+      if (!retryAfter && headerRetryAfter) retryAfter = headerRetryAfter;
+
       // Track earliest retryAfter across all combo models
       if (retryAfter && (!earliestRetryAfter || new Date(retryAfter) < new Date(earliestRetryAfter))) {
         earliestRetryAfter = retryAfter;
@@ -338,3 +369,5 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
     { status, headers }
   );
 }
+
+
