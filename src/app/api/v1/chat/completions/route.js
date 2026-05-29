@@ -1,11 +1,12 @@
 ﻿import { handleChat } from "@/sse/handlers/chat.js";
 import { initTranslators } from "open-sse/translator/index.js";
 import { withRouteGuard } from "@/lib/runtimeGuard";
+import { parseBearerToken } from "@/models";
 
 let initialized = false;
 let initializePromise = null;
 
-const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 45000;
+const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 60000;
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
 const OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL || "https://api.xlabrnd.com/v1/chat/completions";
 const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS) || 30000;
@@ -27,6 +28,82 @@ async function ensureInitialized() {
 
 ensureInitialized().catch(() => {});
 
+function normalizePositiveNumber(value, fallback = undefined) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeTemperature(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed < 0 || parsed > 2) return undefined;
+  return parsed;
+}
+
+function normalizeTopP(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed <= 0 || parsed > 1) return undefined;
+  return parsed;
+}
+
+function hasControlChars(value) {
+  return /[\u0000-\u001F\u007F]/.test(String(value || ""));
+}
+
+function normalizeMessages(messages) {
+  if (!Array.isArray(messages)) return messages;
+  return messages
+    .map((message) => {
+      if (!message || typeof message !== "object" || Array.isArray(message)) return null;
+      const role = String(message.role || "").trim();
+      if (!role || hasControlChars(role)) return null;
+      const next = { ...message, role };
+      if (typeof next.content === "string") next.content = next.content;
+      return next;
+    })
+    .filter(Boolean);
+}
+
+function normalizeChatRequestBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return body;
+  const next = { ...body };
+  if ("model" in next) {
+    const model = String(next.model || "").trim();
+    if (!model || hasControlChars(model)) delete next.model;
+    else next.model = model;
+  }
+  if ("user" in next) {
+    const user = String(next.user || "").trim();
+    if (!user || hasControlChars(user)) delete next.user;
+    else next.user = user;
+  }
+  if ("messages" in next) {
+    next.messages = normalizeMessages(next.messages);
+  }
+  if ("max_tokens" in next) {
+    const normalized = normalizePositiveNumber(next.max_tokens);
+    if (normalized === undefined) delete next.max_tokens;
+    else next.max_tokens = normalized;
+  }
+  if ("max_completion_tokens" in next) {
+    const normalized = normalizePositiveNumber(next.max_completion_tokens);
+    if (normalized === undefined) delete next.max_completion_tokens;
+    else next.max_completion_tokens = normalized;
+  }
+  if ("temperature" in next) {
+    const normalized = normalizeTemperature(next.temperature);
+    if (normalized === undefined) delete next.temperature;
+    else next.temperature = normalized;
+  }
+  if ("top_p" in next) {
+    const normalized = normalizeTopP(next.top_p);
+    if (normalized === undefined) delete next.top_p;
+    else next.top_p = normalized;
+  }
+  return next;
+}
+
 export async function OPTIONS() {
   return new Response(null, {
     headers: {
@@ -43,6 +120,11 @@ function shouldSkipHeader(key) {
     "host",
     "content-length",
     "connection",
+    "cookie",
+    "proxy-authorization",
+    "referer",
+    "referrer",
+    "origin",
     "cf-connecting-ip",
     "cf-ipcountry",
     "cf-ray",
@@ -100,6 +182,11 @@ async function proxyOpenClawCapture(request) {
   const outboundHeaders = new Headers();
   for (const [key, value] of Object.entries(inboundHeaders)) {
     if (shouldSkipHeader(key)) continue;
+    if (String(key).toLowerCase() === "authorization") {
+      const token = parseBearerToken(value);
+      if (token) outboundHeaders.set("authorization", `Bearer ${token}`);
+      continue;
+    }
     outboundHeaders.set(key, value);
   }
 
@@ -173,17 +260,21 @@ async function postHandler(request) {
       requestBody = null;
     }
   }
+  const normalizedRequestBody = normalizeChatRequestBody(requestBody);
+  const forwardedBodyText = normalizedRequestBody && requestBody
+    ? JSON.stringify(normalizedRequestBody)
+    : bodyText;
   const forwardedRequest = new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body: bodyText,
+    body: forwardedBodyText,
   });
 
   if (process.env.OPENCLAW_DEBUG_CAPTURE === "true") {
     try {
       const [{ promises: fs }, path] = await Promise.all([import("fs"), import("path")]);
-      const auth = request.headers.get("authorization") || "";
-      if (auth.includes("sk-6520dcd38ef3521c-liwdr1-9137175c")) {
+      const authToken = parseBearerToken(request.headers.get("authorization"));
+      if (authToken === OPENCLAW_COMPAT_TOKEN) {
         const captureDir = "C:\\tmp\\openclaw-debug-capture";
         await fs.mkdir(captureDir, { recursive: true });
         await fs.writeFile(path.join(captureDir, "last-chat-request.json"), JSON.stringify({
@@ -211,7 +302,7 @@ async function postHandler(request) {
   await ensureInitialized();
   const response = await handleChat(forwardedRequest);
   try {
-    return await normalizeChatCompletionsJson(response.clone(), forwardedRequest, requestBody);
+    return await normalizeChatCompletionsJson(response.clone(), forwardedRequest, normalizedRequestBody);
   } catch (error) {
     console.error("[v1/chat/completions] normalize fallback:", error?.message || error);
     return response;
@@ -293,6 +384,19 @@ function shouldRetryEmptyChatAsStream(request, requestBody, payload) {
   return true;
 }
 
+function isMalformedGatewayResponse(status, raw) {
+  if (status !== 200) return false;
+  const text = String(raw || "").trim();
+  if (!text) return true;
+  return /empty\s+or\s+malformed\s+response|check\s+for\s+a\s+proxy\s+or\s+gateway|intercepting\s+the\s+request/i.test(text);
+}
+
+function isMalformedGatewayPayload(status, payload) {
+  if (status !== 200 || !payload || typeof payload !== "object") return false;
+  const message = payload?.error?.message || payload?.message || payload?.detail || payload?.error;
+  return isMalformedGatewayResponse(status, message);
+}
+
 function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
   const lines = String(raw || "").split(/\r?\n/);
   let text = "";
@@ -342,6 +446,11 @@ async function retryEmptyChatAsStream(request, requestBody, fallbackPayload) {
   const headers = new Headers();
   for (const [key, value] of request.headers.entries()) {
     if (shouldSkipHeader(key)) continue;
+    if (String(key).toLowerCase() === "authorization") {
+      const token = parseBearerToken(value);
+      if (token) headers.set("authorization", `Bearer ${token}`);
+      continue;
+    }
     headers.set(key, value);
   }
   if (!headers.has("content-type")) {
@@ -379,13 +488,41 @@ async function retryEmptyChatAsStream(request, requestBody, fallbackPayload) {
 
 async function normalizeChatCompletionsJson(response, request = null, requestBody = null) {
   const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) return response;
+  if (!contentType.includes("application/json")) {
+    if (request && requestBody && requestBody?.stream !== true) {
+      const raw = await response.text();
+      if (isMalformedGatewayResponse(response.status, raw)) {
+        const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, null);
+        if (readChatContent(recoveredPayload).trim()) {
+          return Response.json(recoveredPayload, {
+            status: response.status,
+            headers: { "Access-Control-Allow-Origin": "*" },
+          });
+        }
+      }
+      return new Response(raw, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+    return response;
+  }
 
   const raw = await response.text();
   let payload;
   try {
     payload = raw ? JSON.parse(raw) : {};
   } catch {
+    if (request && requestBody && requestBody?.stream !== true && isMalformedGatewayResponse(response.status, raw)) {
+      const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, null);
+      if (readChatContent(recoveredPayload).trim()) {
+        return Response.json(recoveredPayload, {
+          status: response.status,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        });
+      }
+    }
     return new Response(raw, {
       status: response.status,
       statusText: response.statusText,
@@ -422,6 +559,16 @@ async function normalizeChatCompletionsJson(response, request = null, requestBod
     });
   }
 
+  if (request && requestBody && requestBody?.stream !== true && isMalformedGatewayPayload(response.status, payload)) {
+    const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, null);
+    if (readChatContent(recoveredPayload).trim()) {
+      return Response.json(recoveredPayload, {
+        status: response.status,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
+  }
+
   return Response.json(payload, {
     status: response.status,
     headers: { "Access-Control-Allow-Origin": "*" },
@@ -433,4 +580,3 @@ export const POST = withRouteGuard(
   postHandler,
   { timeoutMs: CHAT_COMPLETIONS_TIMEOUT_MS },
 );
-
