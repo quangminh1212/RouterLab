@@ -129,11 +129,15 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       if (current && current.lastUsedAt && currentCount < stickyLimit) {
         // Stay with current account
         connection = current;
-        // Update lastUsedAt and increment count (await to ensure persistence)
-        await updateProviderConnection(connection.id, {
-          lastUsedAt: new Date().toISOString(),
-          consecutiveUseCount: (connection.consecutiveUseCount || 0) + 1
-        });
+        const now = Date.now();
+        const lastUsedAtMs = current.lastUsedAt ? new Date(current.lastUsedAt).getTime() : 0;
+        const shouldPersistUsage = !lastUsedAtMs || (now - lastUsedAtMs) >= 30000;
+        if (shouldPersistUsage) {
+          await updateProviderConnection(connection.id, {
+            lastUsedAt: new Date(now).toISOString(),
+            consecutiveUseCount: (connection.consecutiveUseCount || 0) + 1
+          });
+        }
       } else {
         // Pick the least recently used (excluding current if possible)
         const sortedByOldest = [...availableConnections].sort((a, b) => {
@@ -145,11 +149,15 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
 
         connection = sortedByOldest[0];
 
-        // Update lastUsedAt and reset count to 1 (await to ensure persistence)
-        await updateProviderConnection(connection.id, {
-          lastUsedAt: new Date().toISOString(),
-          consecutiveUseCount: 1
-        });
+        const now = Date.now();
+        const lastUsedAtMs = connection.lastUsedAt ? new Date(connection.lastUsedAt).getTime() : 0;
+        const shouldPersistUsage = !lastUsedAtMs || (now - lastUsedAtMs) >= 30000;
+        if (shouldPersistUsage) {
+          await updateProviderConnection(connection.id, {
+            lastUsedAt: new Date(now).toISOString(),
+            consecutiveUseCount: 1
+          });
+        }
       }
     } else {
       // Default: fill-first (already sorted by priority in getProviderConnections)

@@ -347,8 +347,6 @@ function setupFileLogging() {
     return originalStderrWrite(chunk, encoding, callback);
   };
 
-  process.on("SIGINT", () => process.exit(130));
-  process.on("SIGTERM", () => process.exit(143));
   process.on("exit", () => {
     try { logStream?.end(); } catch {}
   });

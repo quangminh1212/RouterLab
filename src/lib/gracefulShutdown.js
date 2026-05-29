@@ -1,4 +1,4 @@
-﻿// Graceful Shutdown Handler
+// Graceful Shutdown Handler
 let isShuttingDown = false;
 
 function gracefulShutdown(signal) {
@@ -16,17 +16,11 @@ function gracefulShutdown(signal) {
   }, 30000); // 30 seconds timeout
 
   Promise.all([
-    // Close database connections
-    new Promise((resolve) => {
-      try {
-        const { closeDb } = require("@/lib/localDb");
-        closeDb();
-        console.log("[SHUTDOWN] Database closed");
-        resolve();
-      } catch (err) {
-        console.error("[SHUTDOWN] Error closing database:", err);
-        resolve();
-      }
+    // Local DB resources are file-based and released on process exit.
+    // Avoid importing the ESM/alias-backed DB module here from this CJS path,
+    // because shutdown can run during partial teardown and create noisy false-positive errors.
+    Promise.resolve().then(() => {
+      console.log("[SHUTDOWN] Database close skipped (file-based resources release on exit)");
     }),
 
     // Close server connections
