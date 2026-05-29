@@ -23,11 +23,27 @@ function deny() {
   return NextResponse.json({ error: "Management API is restricted to localhost" }, { status: 403 });
 }
 
+function invalidUpstreamResponse() {
+  return NextResponse.json({ error: "Invalid upstream response" }, { status: 502 });
+}
+
+async function safeJsonFromResponse(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+
 export async function GET(request) {
   if (!isLocalRequest(request)) return deny();
 
   const response = await getAllStatuses(request);
-  const payload = await response.json();
+  const payload = await safeJsonFromResponse(response);
+  if (payload === null) {
+    return invalidUpstreamResponse();
+  }
 
   return NextResponse.json(payload, { status: response.status });
 }

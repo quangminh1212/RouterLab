@@ -9,13 +9,8 @@ const GITLAB_DEFAULT_BASE = "https://gitlab.com";
  */
 export async function POST(request) {
   try {
-    let body;
-    try {
-      body = await request.json();
-      if (!body || typeof body !== "object" || Array.isArray(body)) {
-        return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-      }
-    } catch {
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 

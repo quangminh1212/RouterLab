@@ -34,12 +34,7 @@ export async function OPTIONS() {
  * POST /v1/messages/count_tokens - Mock token count response
  */
 export async function POST(request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: { message: "Invalid JSON body", type: "invalid_request_error" } }, 400);
-  }
+  const body = await request.json().catch(() => null);
 
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return jsonResponse({ error: { message: "Invalid JSON body", type: "invalid_request_error" } }, 400);

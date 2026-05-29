@@ -97,13 +97,8 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { provider, action } = await params;
-    let body;
-    try {
-      body = await request.json();
-      if (!body || typeof body !== "object" || Array.isArray(body)) {
-        return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
-      }
-    } catch {
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
     }
 
