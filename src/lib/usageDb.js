@@ -9,6 +9,7 @@ import { getDb as getMainDb } from "@/lib/localDb.js";
 const isCloud = typeof caches !== 'undefined' || typeof caches === 'object';
 const DB_FILE = isCloud ? null : path.join(DATA_DIR, "usage.json");
 const LOG_FILE = isCloud ? null : path.join(DATA_DIR, "log.txt");
+const MAX_LOG_LINES = 200;
 
 // Ensure data directory exists
 if (!isCloud && fs && typeof fs.existsSync === "function") {
@@ -283,6 +284,12 @@ const pendingTimers = global._pendingTimers;
 
 const PENDING_TIMEOUT_MS = 60 * 1000; // 1 minute
 const PENDING_TIMERS_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+let appendLogQueue = Promise.resolve();
+let appendLogCountSinceTrim = 0;
+let cachedConnectionNames = null;
+let cachedConnectionNamesAt = 0;
+const CONNECTION_NAME_CACHE_TTL_MS = 15000;
+const LOG_TRIM_INTERVAL = 25;
 
 // Periodic cleanup for orphaned timers
 if (!global._pendingTimersCleanupInterval) {
@@ -351,6 +358,24 @@ export function trackPendingRequest(model, provider, connectionId, started, erro
   const t = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   console.log(`[${t}] [PENDING] ${started ? "START" : "END"}${error ? " (ERROR)" : ""} | provider=${provider} | model=${model}`);
   statsEmitter.emit("pending");
+}
+
+async function getConnectionName(connectionId) {
+  if (!connectionId) return "-";
+
+  if (cachedConnectionNames && (Date.now() - cachedConnectionNamesAt) < CONNECTION_NAME_CACHE_TTL_MS) {
+    return cachedConnectionNames.get(connectionId) || connectionId.slice(0, 8);
+  }
+
+  try {
+    const { getProviderConnections } = await import("@/lib/localDb.js");
+    const connections = await getProviderConnections();
+    cachedConnectionNames = new Map(connections.map((conn) => [conn.id, conn.name || conn.email || conn.id.slice(0, 8)]));
+    cachedConnectionNamesAt = Date.now();
+    return cachedConnectionNames.get(connectionId) || connectionId.slice(0, 8);
+  } catch {
+    return connectionId.slice(0, 8);
+  }
 }
 
 /**
@@ -648,38 +673,37 @@ function formatLogDate(date = new Date()) {
 export async function appendRequestLog({ model, provider, connectionId, tokens, status }) {
   if (isCloud) return; // Skip logging in Workers
 
-  try {
+  appendLogQueue = appendLogQueue.catch(() => {}).then(async () => {
+    try {
     const timestamp = formatLogDate();
     const p = provider?.toUpperCase() || "-";
     const m = model || "-";
 
     // Resolve account name
-    let account = connectionId ? connectionId.slice(0, 8) : "-";
-    try {
-      const { getProviderConnections } = await import("@/lib/localDb.js");
-      const connections = await getProviderConnections();
-      const conn = connections.find(c => c.id === connectionId);
-      if (conn) {
-        account = conn.name || conn.email || account;
-      }
-    } catch {}
+    const account = await getConnectionName(connectionId);
 
     const sent = tokens?.prompt_tokens !== undefined ? tokens.prompt_tokens : "-";
     const received = tokens?.completion_tokens !== undefined ? tokens.completion_tokens : "-";
 
     const line = `${timestamp} | ${m} | ${p} | ${account} | ${sent} | ${received} | ${status}\n`;
 
-    fs.appendFileSync(LOG_FILE, line);
+    await fs.promises.appendFile(LOG_FILE, line);
 
-    // Trim to keep only last 200 lines
-    const content = fs.readFileSync(LOG_FILE, "utf-8");
-    const lines = content.trim().split("\n");
-    if (lines.length > 200) {
-      fs.writeFileSync(LOG_FILE, lines.slice(-200).join("\n") + "\n");
+    appendLogCountSinceTrim += 1;
+    if (appendLogCountSinceTrim >= LOG_TRIM_INTERVAL) {
+      appendLogCountSinceTrim = 0;
+      const content = await fs.promises.readFile(LOG_FILE, "utf-8");
+      const lines = content.trim().split("\n");
+      if (lines.length > MAX_LOG_LINES + LOG_TRIM_INTERVAL) {
+        await fs.promises.writeFile(LOG_FILE, lines.slice(-MAX_LOG_LINES).join("\n") + "\n");
+      }
     }
   } catch (error) {
     console.error("Failed to append to log.txt:", error.message);
   }
+  });
+
+  return appendLogQueue;
 }
 
 /**

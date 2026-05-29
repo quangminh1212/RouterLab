@@ -4,7 +4,6 @@ import { homedir } from "os";
 import { join } from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import Database from "better-sqlite3";
 
 const execFileAsync = promisify(execFile);
 
@@ -77,7 +76,13 @@ const normalize = (value) => {
  * Extract tokens via better-sqlite3 (bundled dependency).
  * This is the preferred strategy — no external CLI required.
  */
-function extractTokensViaBetterSqlite(dbPath) {
+async function extractTokensViaBetterSqlite(dbPath) {
+  const packageName = "better" + "-sqlite3";
+  const mod = await import(packageName).catch(() => null);
+  if (!mod) {
+    throw new Error("better-sqlite3 unavailable");
+  }
+  const Database = mod.default || mod;
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
 
   const query = (key) => {
@@ -219,7 +224,7 @@ export async function GET() {
 
     // Strategy 1: better-sqlite3 (bundled — no external tools required)
     try {
-      const tokens = extractTokensViaBetterSqlite(dbPath);
+      const tokens = await extractTokensViaBetterSqlite(dbPath);
       if (tokens.accessToken && tokens.machineId) {
         return NextResponse.json({
           found: true,

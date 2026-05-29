@@ -9,6 +9,7 @@ function toPositiveNumber(value, fallback) {
 const CONFIG = {
   sampleIntervalMs: toPositiveNumber(process.env.RUNTIME_MONITOR_SAMPLE_MS, 5000),
   eventLoopLagDegradedMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_DEGRADED_MS, 400),
+  eventLoopLagDegradedSamples: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_DEGRADED_SAMPLES, 2))),
   eventLoopLagHardRejectMs: toPositiveNumber(process.env.RUNTIME_EVENT_LOOP_LAG_HARD_REJECT_MS, 2000),
   heapUsageDegradedRatio: Math.min(
     0.99,
@@ -19,7 +20,7 @@ const CONFIG = {
   overloadQueueWaitMs: toPositiveNumber(process.env.RUNTIME_OVERLOAD_QUEUE_WAIT_MS, 3000),
   timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 2))),
   circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 15000),
-  slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 1000),
+  slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 5000),
 };
 
 const runtimeState =
@@ -29,6 +30,7 @@ const runtimeState =
     monitor: null,
     sampler: null,
     lastEventLoopLagMs: 0,
+    degradedLagSamples: 0,
     inFlight: 0,
     routes: {},
   });
@@ -56,9 +58,13 @@ function sampleEventLoopLag() {
     runtimeState.lastEventLoopLagMs = Number.isFinite(percentile)
       ? Number((percentile / 1_000_000).toFixed(2))
       : 0;
+    runtimeState.degradedLagSamples = runtimeState.lastEventLoopLagMs >= CONFIG.eventLoopLagDegradedMs
+      ? runtimeState.degradedLagSamples + 1
+      : 0;
     runtimeState.monitor.reset();
   } catch {
     runtimeState.lastEventLoopLagMs = 0;
+    runtimeState.degradedLagSamples = 0;
   }
 }
 
@@ -76,6 +82,7 @@ function ensureRuntimeMonitor() {
     logger.info("RUNTIME_GUARD", "Runtime monitor initialized", {
       sampleIntervalMs: CONFIG.sampleIntervalMs,
       eventLoopLagDegradedMs: CONFIG.eventLoopLagDegradedMs,
+      eventLoopLagDegradedSamples: CONFIG.eventLoopLagDegradedSamples,
       eventLoopLagHardRejectMs: CONFIG.eventLoopLagHardRejectMs,
       heapUsageDegradedRatio: CONFIG.heapUsageDegradedRatio,
       maxInFlight: CONFIG.maxInFlight,
@@ -101,7 +108,7 @@ function getDegradedReasons() {
   const reasons = [];
   const { heapUsageRatio } = getMemorySnapshot();
 
-  if (runtimeState.lastEventLoopLagMs >= CONFIG.eventLoopLagDegradedMs) {
+  if (runtimeState.degradedLagSamples >= CONFIG.eventLoopLagDegradedSamples) {
     reasons.push(`event_loop_lag_${runtimeState.lastEventLoopLagMs}ms`);
   }
   if (heapUsageRatio >= CONFIG.heapUsageDegradedRatio) {
@@ -109,6 +116,14 @@ function getDegradedReasons() {
   }
 
   return reasons;
+}
+
+function getSlowRouteReason(durationMs, timeoutMs) {
+  const reasons = [];
+  if (durationMs >= timeoutMs * 0.8) reasons.push("near_timeout");
+  if (runtimeState.inFlight >= CONFIG.maxInFlightDegraded) reasons.push("high_inflight");
+  if (runtimeState.lastEventLoopLagMs >= CONFIG.eventLoopLagDegradedMs) reasons.push("event_loop_lag");
+  return reasons.length > 0 ? reasons.join(",") : "latency";
 }
 
 function isSystemDegraded() {
@@ -288,6 +303,7 @@ export function withRouteGuard(routeName, handler, options = {}) {
           timeoutMs,
           inFlight: runtimeState.inFlight,
           eventLoopLagMsP99: runtimeState.lastEventLoopLagMs,
+          reason: getSlowRouteReason(durationMs, timeoutMs),
         });
       }
       return response;

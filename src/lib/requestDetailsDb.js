@@ -7,13 +7,14 @@ import { DATA_DIR } from "@/lib/dataDir.js";
 
 const isCloud = typeof caches !== "undefined" && typeof caches === "object";
 
-const DEFAULT_MAX_RECORDS = 200;
+const DEFAULT_MAX_RECORDS = 80;
 const DEFAULT_BATCH_SIZE = 20;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
-const DEFAULT_MAX_JSON_SIZE = 5 * 1024; // 5KB default, configurable via settings
+const DEFAULT_MAX_JSON_SIZE = 2 * 1024; // 2KB default, configurable via settings
 const CONFIG_CACHE_TTL_MS = 5000;
-const MAX_TOTAL_DB_SIZE = 50 * 1024 * 1024; // 50MB hard limit for total DB file
+const MAX_TOTAL_DB_SIZE = 12 * 1024 * 1024; // 12MB hard limit for total DB file
 const MAX_BUFFER_SIZE = 200;
+const FLUSH_DEBOUNCE_MS = 250;
 const DB_FILE = isCloud ? null : path.join(DATA_DIR, "request-details.json");
 
 if (!isCloud && !fs.existsSync(DATA_DIR)) {
@@ -84,6 +85,7 @@ async function getObservabilityConfig() {
 let writeBuffer = [];
 let flushTimer = null;
 let isFlushing = false;
+let flushPromise = null;
 
 function safeJsonStringify(obj, maxSize) {
   try {
@@ -201,6 +203,22 @@ async function flushToDatabase() {
   }
 }
 
+function scheduleFlush(immediate = false) {
+  if (isCloud) return;
+  if (immediate) {
+    flushPromise = (flushPromise || Promise.resolve()).then(() => flushToDatabase()).catch(() => {});
+    return flushPromise;
+  }
+
+  if (flushTimer) return flushPromise || Promise.resolve();
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    flushPromise = (flushPromise || Promise.resolve()).then(() => flushToDatabase()).catch(() => {});
+  }, FLUSH_DEBOUNCE_MS);
+  if (flushTimer.unref) flushTimer.unref();
+  return flushPromise || Promise.resolve();
+}
+
 export async function saveRequestDetail(detail) {
   if (isCloud) return;
 
@@ -210,19 +228,21 @@ export async function saveRequestDetail(detail) {
   // Hard limit: force flush if buffer is full
   if (writeBuffer.length >= MAX_BUFFER_SIZE) {
     console.warn(`[requestDetailsDb] Buffer full (${writeBuffer.length}), forcing flush`);
-    await flushToDatabase();
+    await scheduleFlush(true);
   }
 
   writeBuffer.push(trimBufferedDetail(detail));
 
   if (writeBuffer.length >= config.batchSize) {
-    await flushToDatabase();
+    await scheduleFlush(true);
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   } else if (!flushTimer) {
+    const delay = Math.min(config.flushIntervalMs, FLUSH_DEBOUNCE_MS);
     flushTimer = setTimeout(() => {
-      flushToDatabase().catch(() => {});
       flushTimer = null;
-    }, config.flushIntervalMs);
+      flushPromise = (flushPromise || Promise.resolve()).then(() => flushToDatabase()).catch(() => {});
+    }, delay);
+    if (flushTimer.unref) flushTimer.unref();
   }
 }
 

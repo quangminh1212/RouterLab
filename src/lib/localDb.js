@@ -388,9 +388,6 @@ function cloneDefaultData() {
       totalRequestsLifetime: 0,
       dailySummary: {},
     },
-    requestDetailsData: {
-      records: [],
-    },
     basicChatData: {
       sessions: [],
       activeSessionId: "",
@@ -444,6 +441,11 @@ function ensureDbShape(data) {
   const defaults = cloneDefaultData();
   const next = data && typeof data === "object" ? data : {};
   let changed = false;
+
+  if (Object.prototype.hasOwnProperty.call(next, "requestDetailsData")) {
+    delete next.requestDetailsData;
+    changed = true;
+  }
 
   for (const [key, defaultValue] of Object.entries(defaults)) {
     if (next[key] === undefined || next[key] === null) {
@@ -673,6 +675,16 @@ let settingsCacheAt = 0;
 let settingsCachePromise = null;
 let settingsRefreshPromise = null;
 let dbRefreshPromise = null;
+let providerConnectionsCache = null;
+let providerConnectionsCacheAt = 0;
+let providerConnectionsCachePromise = null;
+const PROVIDER_CONNECTIONS_CACHE_TTL_MS = Math.max(1000, Number(process.env.PROVIDER_CONNECTIONS_CACHE_TTL_MS) || 15000);
+
+function invalidateProviderConnectionsCache() {
+  providerConnectionsCache = null;
+  providerConnectionsCacheAt = 0;
+  providerConnectionsCachePromise = null;
+}
 
 function getDbRefreshIntervalMs() {
   const raw = Number(process.env.DB_REFRESH_INTERVAL_MS);
@@ -956,7 +968,16 @@ export async function getDb() {
   }
 
   try {
-    await refreshDbSnapshot(dbInstance);
+    const canUseWarmSnapshot = dbHydrated && dbInstance.data;
+    if (canUseWarmSnapshot) {
+      refreshDbSnapshot(dbInstance).catch((error) => {
+        logger.debug("DB", "Background DB refresh skipped", {
+          message: error?.message || String(error),
+        });
+      });
+    } else {
+      await refreshDbSnapshot(dbInstance);
+    }
   } catch (error) {
     if (error instanceof SyntaxError) {
       const repaired = await tryRepairDbJsonFile(DB_FILE);
@@ -990,6 +1011,18 @@ export async function getDb() {
 }
 
 export async function getProviderConnections(filter = {}) {
+  const now = Date.now();
+  const useCache = !filter || Object.keys(filter).length === 0;
+
+  if (useCache && providerConnectionsCache && now - providerConnectionsCacheAt < PROVIDER_CONNECTIONS_CACHE_TTL_MS) {
+    return providerConnectionsCache.map((conn) => ({ ...conn }));
+  }
+
+  if (useCache && providerConnectionsCachePromise) {
+    const cached = await providerConnectionsCachePromise;
+    return cached.map((conn) => ({ ...conn }));
+  }
+
   const db = await getDb();
   let connections = db.data.providerConnections || [];
 
@@ -997,6 +1030,18 @@ export async function getProviderConnections(filter = {}) {
   if (filter.isActive !== undefined) connections = connections.filter(c => c.isActive === filter.isActive);
 
   connections.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+
+  if (useCache) {
+    providerConnectionsCachePromise = Promise.resolve(connections.map((conn) => ({ ...conn })));
+    try {
+      providerConnectionsCache = await providerConnectionsCachePromise;
+      providerConnectionsCacheAt = Date.now();
+      return providerConnectionsCache.map((conn) => ({ ...conn }));
+    } finally {
+      providerConnectionsCachePromise = null;
+    }
+  }
+
   return connections;
 }
 
@@ -1225,6 +1270,7 @@ export async function createProviderConnection(data) {
 
   db.data.providerConnections.push(connection);
   await safeWrite(db);
+  invalidateProviderConnectionsCache();
   await reorderProviderConnections(data.provider);
 
   return connection;
@@ -1261,6 +1307,7 @@ export async function updateProviderConnection(id, data) {
   };
 
   await safeWrite(db);
+  invalidateProviderConnectionsCache();
   if (data.priority !== undefined) await reorderProviderConnections(providerId);
 
   return db.data.providerConnections[index];
@@ -1274,6 +1321,7 @@ export async function deleteProviderConnection(id) {
   const providerId = db.data.providerConnections[index].provider;
   db.data.providerConnections.splice(index, 1);
   await safeWrite(db);
+  invalidateProviderConnectionsCache();
   await reorderProviderConnections(providerId);
 
   return true;
@@ -1296,23 +1344,63 @@ export async function reorderProviderConnections(providerId) {
   });
 
   await safeWrite(db);
+  invalidateProviderConnectionsCache();
 }
 
 export async function getModelAliases() {
   const db = await getDb();
-  return db.data.modelAliases || {};
+  const aliases = db.data.modelAliases || {};
+  return Object.fromEntries(
+    Object.entries(aliases)
+      .filter(([alias, model]) => normalizeAliasValue(alias) && normalizeModelValue(model))
+      .sort(([left], [right]) => String(left).localeCompare(String(right)))
+  );
 }
 
 export async function setModelAlias(alias, model) {
   const db = await getDb();
-  db.data.modelAliases[alias] = model;
+  const normalizedAlias = normalizeAliasValue(alias);
+  const normalizedModel = normalizeModelValue(model);
+  if (!normalizedAlias || !normalizedModel || normalizedAlias === normalizedModel) return false;
+  if (!db.data.modelAliases) db.data.modelAliases = {};
+  if (db.data.modelAliases[normalizedAlias] === normalizedModel) return true;
+  db.data.modelAliases[normalizedAlias] = normalizedModel;
   await safeWrite(db);
+  return true;
 }
 
 export async function deleteModelAlias(alias) {
   const db = await getDb();
-  delete db.data.modelAliases[alias];
+  const normalizedAlias = normalizeAliasValue(alias);
+  if (!normalizedAlias || !db.data.modelAliases?.[normalizedAlias]) return false;
+  delete db.data.modelAliases[normalizedAlias];
   await safeWrite(db);
+  return true;
+}
+
+function hasControlChars(value) {
+  return /[ -]/.test(value);
+}
+
+function normalizeAliasValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw || hasControlChars(raw)) return "";
+  return raw;
+}
+
+function normalizeModelValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw || hasControlChars(raw)) return "";
+  return raw;
+}
+
+export function parseBearerToken(authHeader) {
+  const raw = String(authHeader || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^Bearer\s+(.+)$/i);
+  if (!match) return "";
+  const token = String(match[1] || "").trim();
+  return token && !hasControlChars(token) ? token : "";
 }
 
 export async function getCustomModels() {

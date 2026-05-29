@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
-// Initialize graceful shutdown handlers
-require('../src/lib/gracefulShutdown');
+// Initialize graceful shutdown handlers when the packaged runtime includes them.
+try {
+  require('../src/lib/gracefulShutdown');
+} catch (error) {
+  if (error?.code !== "MODULE_NOT_FOUND") {
+    throw error;
+  }
+}
 
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
@@ -724,15 +730,16 @@ async function launchWebUIProcess(options = {}) {
     CLOUDFLARED_WINDOWS_SERVICE_MODE: process.platform === "win32" ? (process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE || "false") : process.env.CLOUDFLARED_WINDOWS_SERVICE_MODE,
   };
 
+  let prodLauncher = "standalone";
   if (runProd) {
     const buildIdPath = path.join(appRoot, ".next", "BUILD_ID");
-    if (!fs.existsSync(buildIdPath)) {
-      if (installedFromNpm) {
-        runProd = false;
-        modeLabel = "development";
-        console.log("[WARN] Published npm package has no production build artifacts. Falling back to development mode.");
-      } else {
-        console.log("[INFO] Production build not found. Running one-time build...");
+    const standaloneServerPath = path.join(appRoot, ".next", "standalone", "server.js");
+    let hasBuildId = fs.existsSync(buildIdPath);
+    let hasStandalone = fs.existsSync(standaloneServerPath);
+
+    if (!hasBuildId && !hasStandalone) {
+      console.log("[INFO] Production build artifacts missing or incomplete. Running one-time build...");
+      try {
         const build = spawn(process.execPath, [nextBin, "build", "--webpack"], {
           cwd: appRoot,
           stdio: "inherit",
@@ -747,10 +754,24 @@ async function launchWebUIProcess(options = {}) {
             else reject(new Error(`Build failed with exit code ${code || 1}`));
           });
         });
+      } catch (error) {
+        console.log(`[WARN] Production build failed: ${error.message}`);
       }
+
+      hasBuildId = fs.existsSync(buildIdPath);
+      hasStandalone = fs.existsSync(standaloneServerPath);
     }
 
-    if (runProd) {
+    if (!hasBuildId && !hasStandalone) {
+      runProd = false;
+      modeLabel = "development";
+      console.log("[WARN] Production build is unavailable. Falling back to development mode.");
+    } else if (!hasStandalone) {
+      prodLauncher = "next-start";
+      console.log("[WARN] Standalone artifacts are missing. Running production via next start.");
+    }
+
+    if (runProd && prodLauncher === "standalone") {
       copyDirectoryIfExists(
         path.join(appRoot, ".next", "static"),
         path.join(appRoot, ".next", "standalone", ".next", "static")
@@ -765,9 +786,12 @@ async function launchWebUIProcess(options = {}) {
   const runtimeNode = process.env.XLABROUTER_BACKGROUND === "1" ? getHiddenNodeExecutable() : process.execPath;
   let commandPath;
   let commandArgs;
-  if (runProd) {
+  if (runProd && prodLauncher === "standalone") {
     commandPath = runtimeNode;
     commandArgs = [path.join(appRoot, ".next", "standalone", "server.js")];
+  } else if (runProd) {
+    commandPath = runtimeNode;
+    commandArgs = [nextBin, "start", "--hostname", hostname, "--port", String(port)];
   } else {
     commandPath = runtimeNode;
     commandArgs = [nextBin, "dev", "--webpack", "--hostname", hostname, "--port", String(port)];
@@ -782,12 +806,37 @@ async function launchWebUIProcess(options = {}) {
 
   let warmupTriggered = false;
   let readyTriggered = false;
+  let fallbackTriggered = false;
+  const standaloneFailurePatterns = [
+    "client reference manifest for route",
+    "Failed to load static file for page: /500",
+    "Cannot find module './chunks/",
+  ];
+
+  const triggerDevFallback = (reason) => {
+    if (!runProd || fallbackTriggered) return;
+    fallbackTriggered = true;
+    console.log(`[WARN] Production standalone runtime is incomplete (${reason}). Falling back to development mode.`);
+    try {
+      child.removeAllListeners("exit");
+      child.kill();
+    } catch {}
+
+    launchWebUIProcess({
+      ...options,
+      suppressCtrlCMessage,
+    });
+  };
 
   if (child.stdout) {
     child.stdout.on("data", (chunk) => {
       process.stdout.write(chunk);
 
       const text = chunk.toString();
+      if (runProd && prodLauncher === "standalone" && standaloneFailurePatterns.some((pattern) => text.includes(pattern))) {
+        triggerDevFallback(text.trim().split(/\r?\n/).slice(-1)[0]);
+        return;
+      }
       if (!warmupTriggered && /ready in/i.test(text)) {
         warmupTriggered = true;
         readyTriggered = true;
@@ -803,6 +852,10 @@ async function launchWebUIProcess(options = {}) {
   if (child.stderr) {
     child.stderr.on("data", (chunk) => {
       process.stderr.write(chunk);
+      const text = chunk.toString();
+      if (runProd && prodLauncher === "standalone" && standaloneFailurePatterns.some((pattern) => text.includes(pattern))) {
+        triggerDevFallback(text.trim().split(/\r?\n/).slice(-1)[0]);
+      }
     });
   }
 
@@ -815,6 +868,9 @@ async function launchWebUIProcess(options = {}) {
   });
 
   child.on("exit", (code) => {
+    if (fallbackTriggered) {
+      return;
+    }
     if (!readyTriggered) {
       onReady?.({ child, repoRoot, appRoot, baseUrl: getDashboardUrl() });
       readyTriggered = true;
