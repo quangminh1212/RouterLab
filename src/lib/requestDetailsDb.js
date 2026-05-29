@@ -11,6 +11,8 @@ const DEFAULT_MAX_RECORDS = 80;
 const DEFAULT_BATCH_SIZE = 20;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 const DEFAULT_MAX_JSON_SIZE = 2 * 1024; // 2KB default, configurable via settings
+const HARD_MAX_RECORDS = 200;
+const HARD_MAX_JSON_SIZE = 64 * 1024;
 const CONFIG_CACHE_TTL_MS = 5000;
 const MAX_TOTAL_DB_SIZE = 12 * 1024 * 1024; // 12MB hard limit for total DB file
 const MAX_BUFFER_SIZE = 200;
@@ -60,12 +62,17 @@ async function getObservabilityConfig() {
       ? settings.enableObservability
       : envEnabled;
 
+    const configuredMaxRecords = toPositiveInt(settings.observabilityMaxRecords, toPositiveInt(process.env.OBSERVABILITY_MAX_RECORDS, DEFAULT_MAX_RECORDS));
+    const configuredBatchSize = toPositiveInt(settings.observabilityBatchSize, toPositiveInt(process.env.OBSERVABILITY_BATCH_SIZE, DEFAULT_BATCH_SIZE));
+    const configuredFlushIntervalMs = toPositiveInt(settings.observabilityFlushIntervalMs, toPositiveInt(process.env.OBSERVABILITY_FLUSH_INTERVAL_MS, DEFAULT_FLUSH_INTERVAL_MS));
+    const configuredMaxJsonSizeKb = toPositiveInt(settings.observabilityMaxJsonSize, toPositiveInt(process.env.OBSERVABILITY_MAX_JSON_SIZE, 5));
+
     cachedConfig = {
       enabled,
-      maxRecords: settings.observabilityMaxRecords || parseInt(process.env.OBSERVABILITY_MAX_RECORDS || String(DEFAULT_MAX_RECORDS), 10),
-      batchSize: settings.observabilityBatchSize || parseInt(process.env.OBSERVABILITY_BATCH_SIZE || String(DEFAULT_BATCH_SIZE), 10),
-      flushIntervalMs: settings.observabilityFlushIntervalMs || parseInt(process.env.OBSERVABILITY_FLUSH_INTERVAL_MS || String(DEFAULT_FLUSH_INTERVAL_MS), 10),
-      maxJsonSize: (settings.observabilityMaxJsonSize || parseInt(process.env.OBSERVABILITY_MAX_JSON_SIZE || "5", 10)) * 1024,
+      maxRecords: clamp(configuredMaxRecords, 1, HARD_MAX_RECORDS),
+      batchSize: clamp(configuredBatchSize, 1, DEFAULT_BATCH_SIZE),
+      flushIntervalMs: clamp(configuredFlushIntervalMs, 250, 30000),
+      maxJsonSize: clamp(configuredMaxJsonSizeKb * 1024, DEFAULT_MAX_JSON_SIZE, HARD_MAX_JSON_SIZE),
     };
   } catch {
     cachedConfig = {
@@ -86,6 +93,15 @@ let writeBuffer = [];
 let flushTimer = null;
 let isFlushing = false;
 let flushPromise = null;
+
+function toPositiveInt(value, fallback) {
+  const numeric = Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function safeJsonStringify(obj, maxSize) {
   try {
@@ -131,6 +147,31 @@ function trimBufferedDetail(detail) {
   };
 }
 
+function compactRecord(record, maxSize) {
+  const next = { ...record };
+  for (const field of ["request", "providerRequest", "providerResponse", "response"]) {
+    const serialized = safeJsonStringify(next[field], maxSize);
+    if (serialized.length > maxSize) {
+      next[field] = { _truncated: true, _originalSize: serialized.length, _preview: serialized.substring(0, 200) };
+    }
+  }
+  return next;
+}
+
+function compactRecords(records, config) {
+  let next = (Array.isArray(records) ? records : []).map((record) => compactRecord(record, config.maxJsonSize));
+  next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (next.length > config.maxRecords) {
+    next = next.slice(0, config.maxRecords);
+  }
+  while (next.length > 1) {
+    const totalSize = Buffer.byteLength(JSON.stringify({ records: next }), "utf8");
+    if (totalSize <= MAX_TOTAL_DB_SIZE) break;
+    next = next.slice(0, Math.floor(next.length / 2));
+  }
+  return next;
+}
+
 async function flushToDatabase() {
   if (isCloud || isFlushing || writeBuffer.length === 0) return;
 
@@ -164,36 +205,18 @@ async function flushToDatabase() {
         response: item.response || {},
       };
 
-      // Truncate oversized JSON fields
-      const maxSize = config.maxJsonSize;
-      for (const field of ["request", "providerRequest", "providerResponse", "response"]) {
-        const str = JSON.stringify(record[field]);
-        if (str.length > maxSize) {
-          record[field] = { _truncated: true, _originalSize: str.length, _preview: str.substring(0, 200) };
-        }
-      }
+      const compactedRecord = compactRecord(record, config.maxJsonSize);
 
       // Upsert: replace existing record with same id
-      const idx = db.data.records.findIndex(r => r.id === record.id);
+      const idx = db.data.records.findIndex(r => r.id === compactedRecord.id);
       if (idx !== -1) {
-        db.data.records[idx] = record;
+        db.data.records[idx] = compactedRecord;
       } else {
-        db.data.records.push(record);
+        db.data.records.push(compactedRecord);
       }
     }
 
-    // Keep only latest maxRecords (sorted by timestamp desc)
-    db.data.records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    if (db.data.records.length > config.maxRecords) {
-      db.data.records = db.data.records.slice(0, config.maxRecords);
-    }
-
-    // Shrink records until total serialized size is within safe limit
-    while (db.data.records.length > 1) {
-      const totalSize = Buffer.byteLength(JSON.stringify(db.data), "utf8");
-      if (totalSize <= MAX_TOTAL_DB_SIZE) break;
-      db.data.records = db.data.records.slice(0, Math.floor(db.data.records.length / 2));
-    }
+    db.data.records = compactRecords(db.data.records, config);
 
     await db.write();
   } catch (error) {
