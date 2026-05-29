@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS = {
   comboStrategy: "fallback",
   comboStrategies: {},
   comboStickyRoundRobinLimit: 1,
+  comboSlowModelCooldownEnabled: true,
   contextRelayEnabled: true,
   contextRelayMaxMessages: 16,
   forcedModelMappings: {},

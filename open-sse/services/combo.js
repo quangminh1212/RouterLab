@@ -10,6 +10,90 @@ import { unavailableResponse } from "../utils/error.js";
  * @type {Map<string, { index: number, requestCount: number }>}
  */
 const comboRotationState = new Map();
+const comboPerformanceState = new Map();
+const RECENT_FAILURE_WINDOW_MS = 2 * 60 * 1000;
+const FAILURE_PENALTY_MS = 2000;
+const LATENCY_WINDOW_SIZE = 20;
+const SLOW_MODEL_MIN_SAMPLES = Math.max(3, Number(process.env.COMBO_SLOW_MODEL_MIN_SAMPLES) || 6);
+const SLOW_MODEL_P95_MS = Math.max(5000, Number(process.env.COMBO_SLOW_MODEL_P95_MS) || 18000);
+const SLOW_MODEL_COOLDOWN_MS = Math.max(30000, Number(process.env.COMBO_SLOW_MODEL_COOLDOWN_MS) || 3 * 60 * 1000);
+
+function getComboPerf(comboName) {
+  if (!comboName) return null;
+  if (!comboPerformanceState.has(comboName)) comboPerformanceState.set(comboName, new Map());
+  return comboPerformanceState.get(comboName);
+}
+
+function getLatencyP95(samples) {
+  if (!Array.isArray(samples) || samples.length === 0) return null;
+  const sorted = [...samples].sort((a, b) => a - b);
+  return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)];
+}
+
+function getLatencyScore(perf) {
+  if (!perf) return 0;
+  return getLatencyP95(perf.latencyWindow) || perf.avgLatencyMs || 0;
+}
+
+function maybeApplySlowCooldown(current, enabled = true) {
+  if (!enabled) return;
+  if (!current || current.samples < SLOW_MODEL_MIN_SAMPLES) return;
+  const p95 = current.p95LatencyMs || getLatencyP95(current.latencyWindow) || 0;
+  if (p95 < SLOW_MODEL_P95_MS) return;
+
+  const now = Date.now();
+  if (current.slowCooldownUntil && current.slowCooldownUntil > now) return;
+  current.slowCooldownUntil = now + SLOW_MODEL_COOLDOWN_MS;
+}
+
+function recordComboResult(comboName, modelStr, durationMs, ok, slowCooldownEnabled = true) {
+  if (!comboName || !modelStr || !Number.isFinite(durationMs) || durationMs <= 0) return;
+  const perf = getComboPerf(comboName);
+  const current = perf.get(modelStr) || { avgLatencyMs: durationMs, samples: 0, failures: 0, lastFailureAt: 0, latencyWindow: [] };
+  if (!Array.isArray(current.latencyWindow)) current.latencyWindow = [];
+  current.latencyWindow.push(durationMs);
+  if (current.latencyWindow.length > LATENCY_WINDOW_SIZE) current.latencyWindow.shift();
+  current.p95LatencyMs = getLatencyP95(current.latencyWindow);
+  current.samples += 1;
+  current.avgLatencyMs = current.samples === 1
+    ? durationMs
+    : Number((((current.avgLatencyMs * (current.samples - 1)) + durationMs) / current.samples).toFixed(2));
+  current.lastLatencyMs = durationMs;
+  if (ok) maybeApplySlowCooldown(current, slowCooldownEnabled);
+  if (ok) {
+    current.failures = 0;
+    current.lastSuccessAt = Date.now();
+  } else {
+    current.failures += 1;
+    current.lastFailureAt = Date.now();
+  }
+  perf.set(modelStr, current);
+}
+
+function rankComboModels(models, comboName, strategy, slowCooldownEnabled = true) {
+  if (!comboName || !Array.isArray(models) || models.length <= 1 || strategy === "round-robin") {
+    return models;
+  }
+
+  const perf = getComboPerf(comboName);
+  return [...models].sort((left, right) => {
+    const leftPerf = perf?.get(left);
+    const rightPerf = perf?.get(right);
+    const now = Date.now();
+    const leftPenalty = leftPerf?.lastFailureAt && (now - leftPerf.lastFailureAt) < RECENT_FAILURE_WINDOW_MS
+      ? Math.min(FAILURE_PENALTY_MS * Math.max(1, leftPerf.failures || 1), 10000)
+      : 0;
+    const rightPenalty = rightPerf?.lastFailureAt && (now - rightPerf.lastFailureAt) < RECENT_FAILURE_WINDOW_MS
+      ? Math.min(FAILURE_PENALTY_MS * Math.max(1, rightPerf.failures || 1), 10000)
+      : 0;
+    const leftSlowPenalty = slowCooldownEnabled && leftPerf?.slowCooldownUntil && leftPerf.slowCooldownUntil > now ? 100000 : 0;
+    const rightSlowPenalty = slowCooldownEnabled && rightPerf?.slowCooldownUntil && rightPerf.slowCooldownUntil > now ? 100000 : 0;
+    const leftScore = getLatencyScore(leftPerf) + leftPenalty + leftSlowPenalty;
+    const rightScore = getLatencyScore(rightPerf) + rightPenalty + rightSlowPenalty;
+    if (leftScore !== rightScore) return leftScore - rightScore;
+    return models.indexOf(left) - models.indexOf(right);
+  });
+}
 
 /**
  * Get rotated model list based on strategy
@@ -68,6 +152,47 @@ export function resetComboRotation(comboName) {
   else comboRotationState.clear();
 }
 
+export function getComboPerformanceSnapshot() {
+  const combos = {};
+  for (const [comboName, modelMap] of comboPerformanceState.entries()) {
+    combos[comboName] = Array.from(modelMap.entries()).map(([model, perf]) => ({
+      model,
+      samples: perf.samples || 0,
+      avgLatencyMs: perf.avgLatencyMs || 0,
+      p95LatencyMs: perf.p95LatencyMs || getLatencyP95(perf.latencyWindow) || 0,
+      lastLatencyMs: perf.lastLatencyMs || 0,
+      failures: perf.failures || 0,
+      lastFailureAt: perf.lastFailureAt || null,
+      lastSuccessAt: perf.lastSuccessAt || null,
+      slowCooldownUntil: perf.slowCooldownUntil || null,
+    })).sort((a, b) => {
+      const aPenalty = a.lastFailureAt && (Date.now() - a.lastFailureAt) < RECENT_FAILURE_WINDOW_MS
+        ? Math.min(FAILURE_PENALTY_MS * Math.max(1, a.failures || 1), 10000)
+        : 0;
+      const bPenalty = b.lastFailureAt && (Date.now() - b.lastFailureAt) < RECENT_FAILURE_WINDOW_MS
+        ? Math.min(FAILURE_PENALTY_MS * Math.max(1, b.failures || 1), 10000)
+        : 0;
+      const now = Date.now();
+      const aSlowPenalty = a.slowCooldownUntil && a.slowCooldownUntil > now ? 100000 : 0;
+      const bSlowPenalty = b.slowCooldownUntil && b.slowCooldownUntil > now ? 100000 : 0;
+      return ((a.p95LatencyMs || a.avgLatencyMs || 0) + aPenalty + aSlowPenalty) - ((b.p95LatencyMs || b.avgLatencyMs || 0) + bPenalty + bSlowPenalty);
+    });
+  }
+
+  return {
+    combos,
+    config: {
+      latencyWindowSize: LATENCY_WINDOW_SIZE,
+      recentFailureWindowMs: RECENT_FAILURE_WINDOW_MS,
+      failurePenaltyMs: FAILURE_PENALTY_MS,
+      slowModelMinSamples: SLOW_MODEL_MIN_SAMPLES,
+      slowModelP95Ms: SLOW_MODEL_P95_MS,
+      slowModelCooldownMs: SLOW_MODEL_COOLDOWN_MS,
+    },
+    exportedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Get combo models from combos data
  * @param {string} modelStr - Model string to check
@@ -100,9 +225,18 @@ export function getComboModelsFromData(modelStr, combosData) {
  * @param {number} [options.comboStickyLimit=1] - Number of requests before rotating (sticky round-robin)
  * @returns {Promise<Response>}
  */
-export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1 }) {
+export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1, comboSlowModelCooldownEnabled = true }) {
   // Apply rotation strategy if enabled
-  const rotatedModels = getRotatedModels(models, comboName, comboStrategy, comboStickyLimit);
+  const rotatedModels = rankComboModels(
+    getRotatedModels(models, comboName, comboStrategy, comboStickyLimit),
+    comboName,
+    comboStrategy,
+    comboSlowModelCooldownEnabled,
+  );
+
+  if (comboName && rotatedModels.join("|") !== models.join("|")) {
+    log.info("COMBO", `Ranked combo order: ${rotatedModels.join(" -> ")}`);
+  }
   
   let lastError = null;
   let earliestRetryAfter = null;
@@ -113,10 +247,13 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
     log.info("COMBO", `Trying model ${i + 1}/${rotatedModels.length}: ${modelStr}`);
 
     try {
+      const startedAt = Date.now();
       const result = await handleSingleModel(body, modelStr);
+      const durationMs = Date.now() - startedAt;
       
       // Success (2xx) - return response
       if (result.ok) {
+        recordComboResult(comboName, modelStr, durationMs, true, comboSlowModelCooldownEnabled);
         log.info("COMBO", `Model ${modelStr} succeeded`);
         return result;
       }
@@ -146,6 +283,7 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       const { shouldFallback, cooldownMs } = checkFallbackError(result.status, errorText);
 
       if (!shouldFallback) {
+        recordComboResult(comboName, modelStr, durationMs, false, comboSlowModelCooldownEnabled);
         log.warn("COMBO", `Model ${modelStr} failed (no fallback)`, { status: result.status, reason: errorText });
         return result;
       }
@@ -153,13 +291,14 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       // For transient errors (503/502/504), wait for cooldown before falling through
       // so a briefly-overloaded provider gets a chance to recover rather than being
       // skipped immediately (fixes: combo falls through on transient 503)
-      if (cooldownMs && cooldownMs > 0 && cooldownMs <= 5000 &&
+      if (cooldownMs && cooldownMs > 0 && cooldownMs <= 1200 &&
           (result.status === 503 || result.status === 502 || result.status === 504)) {
         log.info("COMBO", `Model ${modelStr} transient ${result.status}, waiting ${cooldownMs}ms before next`);
         await new Promise(r => setTimeout(r, cooldownMs));
       }
 
       // Fallback to next model
+      recordComboResult(comboName, modelStr, durationMs, false, comboSlowModelCooldownEnabled);
       lastError = errorText || String(result.status);
       if (!lastStatus) lastStatus = result.status;
       log.warn("COMBO", `Model ${modelStr} failed, trying next`, { status: result.status, reason: errorText, cooldownMs });
@@ -167,6 +306,7 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       // Catch unexpected exceptions to ensure fallback continues
       lastError = error.message || String(error);
       if (!lastStatus) lastStatus = 500;
+      recordComboResult(comboName, modelStr, 1, false, comboSlowModelCooldownEnabled);
       log.warn("COMBO", `Model ${modelStr} threw error, trying next`, { error: lastError, reason: lastError });
     }
   }

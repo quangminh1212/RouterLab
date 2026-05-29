@@ -30,10 +30,13 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   // Detect if running on localhost (client-side only)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsLocalhost(
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      );
-      setPlaceholderUrl(`${window.location.origin}/callback?code=...`);
+      const timeoutId = setTimeout(() => {
+        setIsLocalhost(
+          window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        );
+        setPlaceholderUrl(`${window.location.origin}/callback?code=...`);
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
   }, []);
 
@@ -64,7 +67,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       setError(err.message);
       setStep("error");
     }
-  }, [authData, provider, onSuccess]);
+  }, [authData, provider, onSuccess, oauthMeta]);
 
   // Poll for device code token
   const startPolling = useCallback(async (deviceCode, codeVerifier, interval, extraData) => {
@@ -238,14 +241,16 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   // Reset state and start OAuth when modal opens
   useEffect(() => {
     if (isOpen && provider) {
-      setAuthData(null);
-      setCallbackUrl("");
-      setError(null);
-      setIsDeviceCode(false);
-      setDeviceData(null);
-      setPolling(false);
       pollingAbortRef.current = false;
-      startOAuthFlow();
+      setTimeout(() => {
+        setAuthData(null);
+        setCallbackUrl("");
+        setError(null);
+        setIsDeviceCode(false);
+        setDeviceData(null);
+        setPolling(false);
+        startOAuthFlow();
+      }, 0);
     } else if (!isOpen) {
       // Abort polling and cleanup proxy when modal closes
       pollingAbortRef.current = true;

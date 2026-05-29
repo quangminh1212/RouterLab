@@ -31,6 +31,31 @@ describe("management cli tool route", () => {
     expect(data.installed).toBe(true);
   });
 
+  it("returns 502 when upstream tool route returns non-json", async () => {
+    vi.doMock("@/app/api/cli-tools/claude-settings/route", () => ({
+      GET: vi.fn(async () => new Response("not-json", { status: 200, headers: { "content-type": "text/plain" } })),
+    }));
+    vi.doMock("@/app/api/cli-tools/codex-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/copilot-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/cowork-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/droid-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/hermes-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/antigravity-mitm/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/openclaw-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+    vi.doMock("@/app/api/cli-tools/opencode-settings/route", () => ({ GET: vi.fn(async () => Response.json({}, { status: 200 })) }));
+
+    const { GET } = await import("@/app/api/management/cli-tools/[tool]/route");
+    const response = await GET(new Request("http://localhost/api/management/cli-tools/claude", {
+      headers: { host: "localhost" },
+    }), {
+      params: Promise.resolve({ tool: "claude" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(data.error).toMatch(/invalid upstream response/i);
+  });
+
   it("rejects unknown tool names", async () => {
     vi.doMock("@/app/api/cli-tools/claude-settings/route", () => ({ GET: vi.fn() }));
     vi.doMock("@/app/api/cli-tools/codex-settings/route", () => ({ GET: vi.fn() }));

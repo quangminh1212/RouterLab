@@ -20,10 +20,6 @@ export default function CombosPage() {
   const [savingStrategy, setSavingStrategy] = useState({});
   const { copied, copy } = useCopyToClipboard();
 
-  useEffect(() => {
-    fetchData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const fetchData = async () => {
     try {
       const [combosRes, providersRes] = await Promise.all([
@@ -55,6 +51,13 @@ export default function CombosPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchData();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const handleCreate = async (data) => {
     try {
@@ -282,7 +285,10 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
   const [savingVisibility, setSavingVisibility] = useState(false);
 
   useEffect(() => {
-    setShowInModels(combo.showInModelsEndpoint !== false);
+    const timeoutId = setTimeout(() => {
+      setShowInModels(combo.showInModelsEndpoint !== false);
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [combo.showInModelsEndpoint]);
 
   const handleToggleModelsVisibility = async (enabled) => {
@@ -499,7 +505,12 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
   };
 
   useEffect(() => {
-    if (isOpen) fetchModalData();
+    if (isOpen) {
+      const timeoutId = setTimeout(() => {
+        fetchModalData();
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
   }, [isOpen]);
 
   const validateName = (value) => {

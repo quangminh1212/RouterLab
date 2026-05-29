@@ -28,6 +28,21 @@ describe("management cli tools status API", () => {
     expect(data.tools.claude.data.installed).toBe(true);
   });
 
+  it("returns 502 when all-statuses route returns non-json", async () => {
+    vi.doMock("@/app/api/cli-tools/all-statuses/route", () => ({
+      GET: vi.fn(async () => new Response("oops", { status: 200, headers: { "content-type": "text/plain" } })),
+    }));
+
+    const { GET } = await import("@/app/api/management/cli-tools/status/route");
+    const response = await GET(new Request("http://localhost/api/management/cli-tools/status", {
+      headers: { host: "localhost" },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(data.error).toMatch(/invalid upstream response/i);
+  });
+
   it("rejects non-localhost requests", async () => {
     vi.doMock("@/app/api/cli-tools/all-statuses/route", () => ({
       GET: vi.fn(),

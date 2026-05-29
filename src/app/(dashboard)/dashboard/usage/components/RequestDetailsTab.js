@@ -374,6 +374,12 @@ export default function RequestDetailsTab() {
                   {selectedDetail.tokens?.completion_tokens?.toLocaleString() || 0}
                 </span>
               </div>
+              {selectedDetail.tokens?.service_tier && (
+                <div>
+                  <span className="text-text-muted">Service Tier:</span>{" "}
+                  <span className="text-text-main font-mono">{selectedDetail.tokens.service_tier}</span>
+                </div>
+              )}
             </div>
             
             <div className="space-y-4">

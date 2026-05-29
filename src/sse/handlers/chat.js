@@ -267,7 +267,8 @@ export async function handleChat(request, clientRawRequest = null) {
       log,
       comboName: modelStr,
       comboStrategy,
-      comboStickyLimit
+      comboStickyLimit,
+      comboSlowModelCooldownEnabled: settings.comboSlowModelCooldownEnabled !== false,
     });
   }
 
@@ -308,7 +309,8 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         log,
         comboName,
         comboStrategy,
-        comboStickyLimit
+        comboStickyLimit,
+        comboSlowModelCooldownEnabled: chatSettings.comboSlowModelCooldownEnabled !== false,
       });
     }
     log.warn("CHAT", "Invalid model format", { model: modelStr });
@@ -487,7 +489,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     }
 
     // Mark account unavailable (auto-calculates cooldown with exponential backoff, or precise resetsAtMs)
-    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);
+    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs, credentials);
 
     if (shouldFallback) {
       if (chatSettings.contextRelayEnabled && sessionId && contextRelayKey) {

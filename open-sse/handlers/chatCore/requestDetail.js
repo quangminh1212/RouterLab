@@ -39,7 +39,8 @@ export function extractUsageFromResponse(responseBody) {
       prompt_tokens: responseBody.usage.prompt_tokens || 0,
       completion_tokens: responseBody.usage.completion_tokens || 0,
       cached_tokens: responseBody.usage.prompt_tokens_details?.cached_tokens,
-      reasoning_tokens: responseBody.usage.completion_tokens_details?.reasoning_tokens
+      reasoning_tokens: responseBody.usage.completion_tokens_details?.reasoning_tokens,
+      service_tier: responseBody.usage.service_tier || responseBody.service_tier || null
     };
   }
 
@@ -110,7 +111,8 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
   // Normalize to OpenAI token shape for storage
   const normalized = {
     prompt_tokens: tokens.prompt_tokens ?? tokens.input_tokens ?? 0,
-    completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0
+    completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0,
+    service_tier: tokens.service_tier || null
   };
 
   saveRequestUsage({

@@ -504,9 +504,11 @@ export default function BasicChatPageClient() {
         ? modelIndex.get(session.modelId)
         : savedModel;
       initializedRef.current = true;
-      setActiveSessionId(session.id);
-      setActiveProviderId(sessionModel?.providerId || savedProvider.providerId);
-      setActiveModelId(sessionModel?.id || savedModel.id);
+      setTimeout(() => {
+        setActiveSessionId(session.id);
+        setActiveProviderId(sessionModel?.providerId || savedProvider.providerId);
+        setActiveModelId(sessionModel?.id || savedModel.id);
+      }, 0);
       return;
     }
 
@@ -523,10 +525,12 @@ export default function BasicChatPageClient() {
     };
 
     initializedRef.current = true;
-    setSessions([session]);
-    setActiveSessionId(session.id);
-    setActiveProviderId(savedProvider.providerId);
-    setActiveModelId(savedModel.id);
+    setTimeout(() => {
+      setSessions([session]);
+      setActiveSessionId(session.id);
+      setActiveProviderId(savedProvider.providerId);
+      setActiveModelId(savedModel.id);
+    }, 0);
   }, [isHydrated, loadingData, providerGroups, modelIndex, sessions, activeSessionId, activeProviderId, activeModelId]);
 
   const updateSession = (sessionId, updater) => {

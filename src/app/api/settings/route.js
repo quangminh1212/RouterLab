@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
-import { resetComboRotation } from "open-sse/services/combo.js";
+import { getComboPerformanceSnapshot, resetComboRotation } from "open-sse/services/combo.js";
 
 function sanitizeSettings(settings) {
   const { password, adminAuth, ...safeSettings } = settings || {};
@@ -31,6 +31,7 @@ export async function GET() {
     
     return NextResponse.json({ 
       ...safeSettings, 
+      comboPerformance: getComboPerformanceSnapshot(),
       enableRequestLogs,
       enableTranslator,
       hasPassword: false
@@ -77,7 +78,8 @@ export async function PATCH(request) {
     // Invalidate combo rotation state when strategy settings change
     if (
       Object.prototype.hasOwnProperty.call(body, "comboStrategy") ||
-      Object.prototype.hasOwnProperty.call(body, "comboStrategies")
+      Object.prototype.hasOwnProperty.call(body, "comboStrategies") ||
+      Object.prototype.hasOwnProperty.call(body, "comboSlowModelCooldownEnabled")
     ) {
       resetComboRotation();
     }

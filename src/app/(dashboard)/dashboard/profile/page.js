@@ -34,6 +34,13 @@ function safeParseStorageJson(value, fallback) {
   }
 }
 
+function formatLatencyMs(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "-";
+  if (numeric >= 1000) return `${(numeric / 1000).toFixed(1)}s`;
+  return `${Math.round(numeric)}ms`;
+}
+
 export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [settings, setSettings] = useState({ fallbackStrategy: "fill-first" });
@@ -314,6 +321,13 @@ export default function ProfilePage() {
       await patchSettings({ comboStrategy: strategy });
     } catch (err) {
       console.error("Failed to update combo strategy:", err);
+    }
+  };
+  const updateComboSlowModelCooldown = async (enabled) => {
+    try {
+      await patchSettings({ comboSlowModelCooldownEnabled: enabled });
+    } catch (err) {
+      console.error("Failed to update combo slow model cooldown:", err);
     }
   };
   const updateStickyLimit = async (limit) => {
@@ -770,6 +784,10 @@ export default function ProfilePage() {
   const showSettingsFallbackNotice = settingsLoadError;
   const stickyRoundRobinLimit = settings.stickyRoundRobinLimit || 3;
   const comboRoundRobinEnabled = settings.comboStrategy === "round-robin";
+  const comboSlowModelCooldownEnabled = settings.comboSlowModelCooldownEnabled !== false;
+  const comboPerformanceRows = Object.entries(settings.comboPerformance?.combos || {}).flatMap(([comboName, models]) => (
+    Array.isArray(models) ? models.slice(0, 5).map((model) => ({ comboName, ...model })) : []
+  )).slice(0, 12);
   const renderFallbackNotice = () => (
     showSettingsFallbackNotice ? (
       <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -1267,6 +1285,61 @@ export default function ProfilePage() {
                   onChange={() => updateComboStrategy(comboRoundRobinEnabled ? "fallback" : "round-robin")}
                   disabled={disableRoutingControls}
                 />
+              </div>
+            )}
+            {!routingLoading && (
+              <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                <div>
+                  <p className="font-medium">Slow Model Cooldown</p>
+                  <p className="text-sm text-text-muted">
+                    Temporarily deprioritize combo models with very high recent p95 latency
+                  </p>
+                </div>
+                <Toggle
+                  checked={comboSlowModelCooldownEnabled}
+                  onChange={() => updateComboSlowModelCooldown(!comboSlowModelCooldownEnabled)}
+                  disabled={disableRoutingControls}
+                />
+              </div>
+            )}
+            {!routingLoading && comboPerformanceRows.length > 0 && (
+              <div className="pt-4 border-t border-border/50">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">Combo Performance</p>
+                    <p className="text-sm text-text-muted">Recent latency ranking used by combo routing</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={reloadSettings}>Refresh</Button>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-bg text-text-muted">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">Combo</th>
+                        <th className="px-3 py-2 font-medium">Model</th>
+                        <th className="px-3 py-2 font-medium">Avg</th>
+                        <th className="px-3 py-2 font-medium">P95</th>
+                        <th className="px-3 py-2 font-medium">Fails</th>
+                        <th className="px-3 py-2 font-medium">Cooldown</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comboPerformanceRows.map((row) => {
+                        const cooldownActive = row.slowCooldownUntil && row.slowCooldownUntil > Date.now();
+                        return (
+                          <tr key={`${row.comboName}:${row.model}`} className="border-t border-border/60">
+                            <td className="px-3 py-2 text-text-muted">{row.comboName}</td>
+                            <td className="px-3 py-2 font-mono">{row.model}</td>
+                            <td className="px-3 py-2">{formatLatencyMs(row.avgLatencyMs)}</td>
+                            <td className="px-3 py-2">{formatLatencyMs(row.p95LatencyMs)}</td>
+                            <td className="px-3 py-2">{row.failures || 0}</td>
+                            <td className={cn("px-3 py-2", cooldownActive ? "text-amber-500" : "text-text-muted")}>{cooldownActive ? "active" : "-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
             {!routingLoading && (
