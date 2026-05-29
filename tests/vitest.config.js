@@ -9,6 +9,8 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["**/*.test.js"],
+    maxWorkers: 1,
+    fileParallelism: false,
     // Suppress noisy console output from handlers under test
     silent: false,
   },
@@ -20,3 +22,4 @@ export default defineConfig({
     },
   },
 });
+
