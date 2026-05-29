@@ -66,11 +66,12 @@ function makeSessionTitle(text = "") {
   return normalized.length > 52 ? `${normalized.slice(0, 52).trimEnd()}…` : normalized;
 }
 
-function buildUserContent(message) {
+function buildUserContent(message, supportsImage) {
   const text = textValue(message.content).trim();
   const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
   if (attachments.length === 0) return text;
+  if (!supportsImage) return text ? `${text}\n\n[${attachments.length} image attachment(s) omitted: selected model does not support image input]` : "[image attachment(s) omitted: selected model does not support image input]";
 
   const content = [];
   if (text) content.push({ type: "text", text });
@@ -173,6 +174,17 @@ function normalizeLiveModel(model, connection) {
     requestModel = `${connection.provider}/${rawId}`;
   }
 
+  const inferredId = String(rawId).toLowerCase();
+  const modalities = Array.isArray(model?.input_modalities)
+    ? model.input_modalities
+    : Array.isArray(model?.modalities)
+      ? model.modalities
+      : [];
+  const modalitiesText = modalities.map((item) => String(item || "").toLowerCase());
+  const supportsImage = modalitiesText.includes("image")
+    || modalitiesText.includes("input_image")
+    || /\b(vision|vl|image|gpt-4o|gemini|claude-3|claude-4)\b/.test(inferredId);
+
   return {
     id: requestModel,
     requestModel,
@@ -180,6 +192,7 @@ function normalizeLiveModel(model, connection) {
     providerId: connection.provider,
     providerName: getProviderLabel(connection),
     source: "live",
+    supportsImage,
   };
 }
 
@@ -659,6 +672,11 @@ export default function BasicChatPageClient() {
       event.target.value = "";
       return;
     }
+    if (!activeModel?.supportsImage) {
+      setLoadError("Model hiện tại không hỗ trợ ảnh. Hãy chọn model vision để gửi image.");
+      event.target.value = "";
+      return;
+    }
 
     const converted = await Promise.all(images.map(async (file) => ({
       id: createId(),
@@ -751,7 +769,7 @@ export default function BasicChatPageClient() {
       .filter((message) => !(message.role === "assistant" && message.id === assistantMessageId))
       .map((message) => ({
         role: message.role,
-        content: message.role === "user" ? buildUserContent(message) : message.content,
+        content: message.role === "user" ? buildUserContent(message, model.supportsImage) : message.content,
       }));
 
     try {
