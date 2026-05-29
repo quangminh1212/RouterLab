@@ -78,7 +78,7 @@ export async function handleFetch(request) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid URL format");
   }
 
-  // Combo expansion: providerInput may be a combo name → run fallback/round-robin across providers
+  // Combo expansion: providerInput may be a combo name â†’ run fallback/round-robin across providers
   const combos = await getCombos();
   const comboModels = getComboModelsFromData(providerInput, combos);
   if (comboModels) {
@@ -117,7 +117,7 @@ async function handleSingleProviderFetch(body, providerInput, request, apiKey, s
   }
 
   if (providerInput !== providerId) {
-    log.info("ROUTING", `${providerInput} → ${providerId}`);
+    log.info("ROUTING", `${providerInput} â†’ ${providerId}`);
   } else {
     log.info("ROUTING", `Provider: ${providerId}`);
   }
@@ -196,7 +196,7 @@ async function handleSingleProviderFetch(body, providerInput, request, apiKey, s
       });
     }
 
-    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, providerId, null, null, credentials);
+    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, providerId, null, result.resetsAtMs, credentials);
 
     if (shouldFallback) {
       log.warn("AUTH", `Account ${credentials.connectionName} unavailable (${result.status}), trying fallback`);
