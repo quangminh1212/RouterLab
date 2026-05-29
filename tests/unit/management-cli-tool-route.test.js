@@ -54,6 +54,32 @@ describe("management cli tool route", () => {
     expect(data.error).toMatch(/unknown cli tool/i);
   });
 
+  it("rejects requests that only spoof x-forwarded-host", async () => {
+    vi.doMock("@/app/api/cli-tools/claude-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/codex-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/copilot-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/cowork-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/droid-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/hermes-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/antigravity-mitm/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/openclaw-settings/route", () => ({ GET: vi.fn() }));
+    vi.doMock("@/app/api/cli-tools/opencode-settings/route", () => ({ GET: vi.fn() }));
+
+    const { GET } = await import("@/app/api/management/cli-tools/[tool]/route");
+    const response = await GET(new Request("http://example.com/api/management/cli-tools/claude", {
+      headers: {
+        host: "example.com",
+        "x-forwarded-host": "localhost",
+      },
+    }), {
+      params: Promise.resolve({ tool: "claude" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toMatch(/restricted to localhost/i);
+  });
+
   it("rejects non-localhost requests", async () => {
     vi.doMock("@/app/api/cli-tools/claude-settings/route", () => ({ GET: vi.fn() }));
     vi.doMock("@/app/api/cli-tools/codex-settings/route", () => ({ GET: vi.fn() }));

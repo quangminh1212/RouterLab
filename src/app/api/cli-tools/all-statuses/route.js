@@ -21,10 +21,19 @@ const CLI_TOOL_GETTERS = {
   opencode: getOpenCodeStatus,
 };
 
+async function safeJsonFromResponse(response) {
+  const text = await response.text().catch(() => "");
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text || "Unknown response" };
+  }
+}
+
 async function runGetter(name, getter, request) {
   try {
     const response = await getter(request);
-    const payload = await response.json();
+    const payload = await safeJsonFromResponse(response);
     return {
       ok: response.ok,
       status: response.status,

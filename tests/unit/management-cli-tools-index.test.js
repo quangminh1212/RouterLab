@@ -22,6 +22,20 @@ describe("management cli tools index API", () => {
     });
   });
 
+  it("rejects requests that only spoof x-forwarded-host", async () => {
+    const { GET } = await import("@/app/api/management/cli-tools/route");
+    const response = await GET(new Request("http://example.com/api/management/cli-tools", {
+      headers: {
+        host: "example.com",
+        "x-forwarded-host": "localhost",
+      },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toMatch(/restricted to localhost/i);
+  });
+
   it("rejects non-localhost requests", async () => {
     const { GET } = await import("@/app/api/management/cli-tools/route");
     const response = await GET(new Request("http://example.com/api/management/cli-tools", {

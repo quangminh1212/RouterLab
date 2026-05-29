@@ -63,6 +63,29 @@ describe("management status API", () => {
     });
   });
 
+  it("rejects requests that only spoof x-forwarded-host", async () => {
+    vi.doMock("@/lib/localDb", () => ({
+      getSettings: vi.fn(),
+      getProviderConnections: vi.fn(),
+    }));
+
+    vi.doMock("@/lib/runtimeGuard", () => ({
+      getRuntimeHealth: vi.fn(),
+    }));
+
+    const { GET } = await import("@/app/api/management/status/route");
+    const response = await GET(new Request("http://example.com/api/management/status", {
+      headers: {
+        host: "example.com",
+        "x-forwarded-host": "localhost",
+      },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toMatch(/restricted to localhost/i);
+  });
+
   it("rejects non-localhost requests", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getSettings: vi.fn(),

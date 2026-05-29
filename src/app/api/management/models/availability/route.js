@@ -13,7 +13,6 @@ function isLocalRequest(request) {
   return [
     request.nextUrl?.hostname,
     request.headers.get("host"),
-    request.headers.get("x-forwarded-host"),
   ].some((value) => {
     const host = normalizeHost(value);
     return host === "localhost" || host === "127.0.0.1" || host === "::1";

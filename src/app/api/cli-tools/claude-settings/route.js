@@ -61,12 +61,18 @@ const checkClaudeInstalled = async () => {
   return isCliInstalled("claude", [getClaudeSettingsPath(), getClaudeLegacySettingsPath()]);
 };
 
+const parseJsonWithBom = (content) => {
+  const normalized = typeof content === "string" && content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content;
+  return JSON.parse(normalized);
+};
+
 // Read current settings
 export const readSettings = async () => {
+
   try {
     const settingsPath = getClaudeSettingsPath();
     const content = await fs.readFile(settingsPath, "utf-8");
-    const parsed = JSON.parse(content);
+    const parsed = parseJsonWithBom(content);
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -90,7 +96,7 @@ export const writeSettings = async (settings) => {
 const readLegacySettings = async () => {
   try {
     const content = await fs.readFile(getClaudeLegacySettingsPath(), "utf-8");
-    const parsed = JSON.parse(content);
+    const parsed = parseJsonWithBom(content);
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -248,7 +254,7 @@ export async function POST(request) {
     let currentSettings = {};
     try {
       const content = await fs.readFile(settingsPath, "utf-8");
-      currentSettings = JSON.parse(content);
+      currentSettings = parseJsonWithBom(content);
     } catch (error) {
       if (error.code !== "ENOENT") {
         throw error;
@@ -312,7 +318,7 @@ export async function DELETE() {
     let currentSettings = {};
     try {
       const content = await fs.readFile(settingsPath, "utf-8");
-      currentSettings = JSON.parse(content);
+      currentSettings = parseJsonWithBom(content);
     } catch (error) {
       if (error.code === "ENOENT") {
         return NextResponse.json({

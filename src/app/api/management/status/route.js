@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProviderConnections, getSettings } from "@/lib/localDb";
 import { getRuntimeHealth } from "@/lib/runtimeGuard";
 import { APP_CONFIG } from "@/shared/constants/config";
+import { getComboPerformanceSnapshot } from "open-sse/services/combo.js";
 
 function normalizeHost(value) {
   const raw = String(value || "").trim().toLowerCase();
@@ -15,7 +16,6 @@ function isLocalRequest(request) {
   return [
     request.nextUrl?.hostname,
     request.headers.get("host"),
-    request.headers.get("x-forwarded-host"),
   ].some((value) => {
     const host = normalizeHost(value);
     return host === "localhost" || host === "127.0.0.1" || host === "::1";
@@ -82,6 +82,7 @@ export async function GET(request) {
   ]);
 
   const runtime = getRuntimeHealth();
+  const comboPerformance = getComboPerformanceSnapshot();
   const summary = summarizeConnections(connections);
   const mappings = sanitizeMappings(settings.forcedModelMappings);
 
@@ -105,6 +106,7 @@ export async function GET(request) {
       stickyRoundRobinLimit: settings.stickyRoundRobinLimit || 0,
       forceModelMappings: settings.forceModelMappings === true,
       forcedModelMappingsCount: Object.keys(mappings).length,
+      comboPerformance,
     },
     observability: {
       enabled: settings.observabilityEnabled !== false,
