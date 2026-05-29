@@ -6,6 +6,14 @@ import { register } from "../index.js";
 import { FORMATS } from "../formats.js";
 import { v4 as uuidv4 } from "uuid";
 
+const KIRO_MAX_TOKENS_CAP = 32000;
+
+function resolveKiroMaxTokens(body) {
+  const requested = Number.parseInt(String(body?.max_completion_tokens ?? body?.max_tokens ?? ""), 10);
+  if (!Number.isFinite(requested) || requested <= 0) return undefined;
+  return Math.min(requested, KIRO_MAX_TOKENS_CAP);
+}
+
 /**
  * Convert OpenAI messages to Kiro format
  * Rules: system/tool/user -> user role, merge consecutive same roles
@@ -286,7 +294,7 @@ function convertMessages(messages, tools, model) {
 export function buildKiroPayload(model, body, stream, credentials) {
   const messages = body.messages || [];
   const tools = body.tools || [];
-  const maxTokens = 32000;
+  const maxTokens = resolveKiroMaxTokens(body);
   const temperature = body.temperature;
   const topP = body.top_p;
 
