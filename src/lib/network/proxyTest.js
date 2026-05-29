@@ -73,11 +73,17 @@ export async function testProxyUrl({ proxyUrl, testUrl, timeoutMs } = {}) {
         elapsedMs: Date.now() - startedAt,
       };
     } catch (err) {
+      const causeCode = err?.cause?.code || err?.code;
       const message =
         err?.name === "AbortError"
           ? "Proxy test timed out"
           : getErrorMessage(err);
-      return { ok: false, status: 500, error: message };
+      const status = err?.name === "AbortError"
+        ? 504
+        : causeCode === "ECONNREFUSED" || causeCode === "ENOTFOUND" || causeCode === "EHOSTUNREACH"
+          ? 502
+          : 500;
+      return { ok: false, status, error: message };
     } finally {
       clearTimeout(timer);
     }
