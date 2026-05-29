@@ -4,7 +4,12 @@ import path from "path";
 
 export async function POST(request) {
   try {
-    const { file, content } = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { file, content } = payload;
 
     if (!file || content === undefined) {
       return NextResponse.json({ success: false, error: "File and content required" }, { status: 400 });

@@ -6,6 +6,10 @@ import {
   updateProxyPool,
 } from "@/models";
 
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 function normalizeProxyPoolUpdate(body = {}) {
   const updates = {};
 
@@ -49,7 +53,6 @@ function countBoundConnections(connections = [], proxyPoolId) {
   return connections.filter((connection) => connection?.providerSpecificData?.proxyPoolId === proxyPoolId).length;
 }
 
-// GET /api/proxy-pools/[id] - Get proxy pool
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -66,7 +69,6 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT /api/proxy-pools/[id] - Update proxy pool
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
@@ -76,7 +78,10 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Proxy pool not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const normalized = normalizeProxyPoolUpdate(body);
 
     if (normalized.error) {
@@ -91,7 +96,6 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE /api/proxy-pools/[id] - Delete proxy pool
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;

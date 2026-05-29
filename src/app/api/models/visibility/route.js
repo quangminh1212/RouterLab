@@ -1,4 +1,4 @@
-﻿const { NextResponse } = require("next/server");
+const { NextResponse } = require("next/server");
 const { getSettings, updateSettings } = require("@/lib/localDb");
 
 /**
@@ -7,7 +7,10 @@ const { getSettings, updateSettings } = require("@/lib/localDb");
  */
 exports.PATCH = async function PATCH(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { modelId, visible } = body;
 
     if (!modelId || typeof visible !== "boolean") {

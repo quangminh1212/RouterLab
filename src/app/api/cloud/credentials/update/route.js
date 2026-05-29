@@ -1,26 +1,35 @@
 import { NextResponse } from "next/server";
-import { validateApiKey, getProviderConnections, updateProviderConnection } from "@/models";
+import { validateApiKey, getProviderConnections, updateProviderConnection, parseBearerToken } from "@/models";
+
+function cloudError(message, status = 400, type = "invalid_request_error") {
+  return NextResponse.json({ error: { message, type } }, { status });
+}
 
 // Update provider credentials (for cloud token refresh)
 export async function PUT(request) {
   try {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Missing API key" }, { status: 401 });
+    const apiKey = parseBearerToken(request.headers.get("Authorization"));
+    if (!apiKey) {
+      return cloudError("Missing API key", 401, "authentication_error");
     }
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return cloudError("Invalid JSON body");
+    }
+    const provider = String(body?.provider || "").trim();
+    if (/[^ -~]/.test(provider)) {
+      return cloudError("Invalid provider", 400, "invalid_request_error");
+    }
+    const credentials = body?.credentials;
 
-    const apiKey = authHeader.slice(7);
-    const body = await request.json();
-    const { provider, credentials } = body;
-
-    if (!provider || !credentials) {
-      return NextResponse.json({ error: "Provider and credentials required" }, { status: 400 });
+    if (!provider || !credentials || typeof credentials !== "object" || Array.isArray(credentials)) {
+      return cloudError("Provider and credentials required");
     }
 
     // Validate API key
     const isValid = await validateApiKey(apiKey);
     if (!isValid) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+      return cloudError("Invalid API key", 401, "authentication_error");
     }
 
     // Find active connection for provider
@@ -28,19 +37,23 @@ export async function PUT(request) {
     const connection = connections[0];
 
     if (!connection) {
-      return NextResponse.json({ error: `No active connection found for provider: ${provider}` }, { status: 404 });
+      return cloudError(`No active connection found for provider: ${provider}`, 404, "not_found");
     }
 
     // Update credentials
     const updateData = {};
-    if (credentials.accessToken) {
-      updateData.accessToken = credentials.accessToken;
+    if (typeof credentials.accessToken === "string" && credentials.accessToken.trim()) {
+      updateData.accessToken = credentials.accessToken.trim();
     }
-    if (credentials.refreshToken) {
-      updateData.refreshToken = credentials.refreshToken;
+    if (typeof credentials.refreshToken === "string" && credentials.refreshToken.trim()) {
+      updateData.refreshToken = credentials.refreshToken.trim();
     }
-    if (credentials.expiresIn) {
-      updateData.expiresAt = new Date(Date.now() + credentials.expiresIn * 1000).toISOString();
+    if (Number.isFinite(Number(credentials.expiresIn)) && Number(credentials.expiresIn) > 0) {
+      updateData.expiresAt = new Date(Date.now() + Number(credentials.expiresIn) * 1000).toISOString();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return cloudError("No valid credential fields provided");
     }
 
     await updateProviderConnection(connection.id, updateData);
@@ -52,6 +65,6 @@ export async function PUT(request) {
 
   } catch (error) {
     console.log("Update credentials error:", error);
-    return NextResponse.json({ error: "Failed to update credentials" }, { status: 500 });
+    return cloudError("Failed to update credentials", 500, "server_error");
   }
 }

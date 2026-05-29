@@ -12,7 +12,10 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const payload = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const state = await updateBasicChatData(payload);
     return NextResponse.json({ success: true, state });
   } catch (error) {

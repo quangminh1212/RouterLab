@@ -5,19 +5,14 @@ import { generateId } from "@/shared/utils";
 
 export const dynamic = "force-dynamic";
 
-const OPENAI_COMPATIBLE_DEFAULTS = {
-  baseUrl: "https://api.openai.com/v1",
-};
+const OPENAI_COMPATIBLE_DEFAULTS = { baseUrl: "https://api.openai.com/v1" };
+const ANTHROPIC_COMPATIBLE_DEFAULTS = { baseUrl: "https://api.anthropic.com/v1" };
+const CUSTOM_EMBEDDING_DEFAULTS = { baseUrl: "https://api.openai.com/v1" };
 
-const ANTHROPIC_COMPATIBLE_DEFAULTS = {
-  baseUrl: "https://api.anthropic.com/v1",
-};
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
 
-const CUSTOM_EMBEDDING_DEFAULTS = {
-  baseUrl: "https://api.openai.com/v1",
-};
-
-// GET /api/provider-nodes - List all provider nodes
 export async function GET() {
   try {
     const nodes = await getProviderNodes();
@@ -28,28 +23,23 @@ export async function GET() {
   }
 }
 
-// POST /api/provider-nodes - Create provider node
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const { name, prefix, apiType, baseUrl, type } = body;
 
-    if (!name?.trim()) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+    if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    if (!prefix?.trim()) return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
 
-    if (!prefix?.trim()) {
-      return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
-    }
-
-    // Determine type
     const nodeType = type || "openai-compatible";
 
     if (nodeType === "openai-compatible") {
       if (!apiType || !["chat", "responses"].includes(apiType)) {
         return NextResponse.json({ error: "Invalid OpenAI compatible API type" }, { status: 400 });
       }
-
       const node = await createProviderNode({
         id: `${OPENAI_COMPATIBLE_PREFIX}${apiType}-${generateId()}`,
         type: "openai-compatible",
@@ -62,12 +52,8 @@ export async function POST(request) {
     }
 
     if (nodeType === "custom-embedding") {
-      // Strip trailing slash and /embeddings if user pasted full endpoint
       let sanitizedBaseUrl = (baseUrl || CUSTOM_EMBEDDING_DEFAULTS.baseUrl).trim().replace(/\/$/, "");
-      if (sanitizedBaseUrl.endsWith("/embeddings")) {
-        sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -"/embeddings".length);
-      }
-
+      if (sanitizedBaseUrl.endsWith("/embeddings")) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -"/embeddings".length);
       const node = await createProviderNode({
         id: `${CUSTOM_EMBEDDING_PREFIX}${generateId()}`,
         type: "custom-embedding",
@@ -79,13 +65,8 @@ export async function POST(request) {
     }
 
     if (nodeType === "anthropic-compatible") {
-      // Sanitize Base URL: remove trailing slash, and remove trailing /messages if user added it
-      // This prevents double-appending /messages at runtime
       let sanitizedBaseUrl = (baseUrl || ANTHROPIC_COMPATIBLE_DEFAULTS.baseUrl).trim().replace(/\/$/, "");
-      if (sanitizedBaseUrl.endsWith("/messages")) {
-        sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -9); // remove /messages
-      }
-
+      if (sanitizedBaseUrl.endsWith("/messages")) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -9);
       const node = await createProviderNode({
         id: `${ANTHROPIC_COMPATIBLE_PREFIX}${generateId()}`,
         type: "anthropic-compatible",

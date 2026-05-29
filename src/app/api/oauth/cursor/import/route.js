@@ -12,7 +12,11 @@ import { createProviderConnection } from "@/models";
  */
 export async function POST(request) {
   try {
-    const { accessToken, machineId } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { accessToken, machineId } = body;
 
     if (!accessToken || typeof accessToken !== "string") {
       return NextResponse.json(

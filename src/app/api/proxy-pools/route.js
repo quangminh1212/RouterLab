@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createProxyPool, getProviderConnections, getProxyPools } from "@/models";
 
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 function toBoolean(value) {
   if (value === "true") return true;
   if (value === "false") return false;
@@ -41,7 +45,6 @@ function buildUsageMap(connections = []) {
   return usageMap;
 }
 
-// GET /api/proxy-pools - List proxy pools
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -74,10 +77,12 @@ export async function GET(request) {
   }
 }
 
-// POST /api/proxy-pools - Create proxy pool
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const normalized = normalizeProxyPoolInput(body);
 
     if (normalized.error) {

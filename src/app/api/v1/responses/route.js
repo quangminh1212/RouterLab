@@ -3,6 +3,65 @@ import { initTranslators } from "open-sse/translator/index.js";
 import { withRouteGuard } from "@/lib/runtimeGuard";
 
 let initialized = false;
+let initializePromise = null;
+
+function buildResponsesErrorBody(message, type = "server_error") {
+  return { error: { message, type } };
+}
+
+function hasControlChars(value) {
+  return /[\u0000-\u001F\u007F]/.test(String(value || ""));
+}
+
+function normalizePositiveNumber(value, fallback = undefined) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeTemperature(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed < 0 || parsed > 2) return undefined;
+  return parsed;
+}
+
+function normalizeTopP(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed <= 0 || parsed > 1) return undefined;
+  return parsed;
+}
+
+function normalizeResponsesRequestBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return body;
+  const next = { ...body };
+  if ("model" in next) {
+    const model = String(next.model || "").trim();
+    if (!model || hasControlChars(model)) delete next.model;
+    else next.model = model;
+  }
+  if ("user" in next) {
+    const user = String(next.user || "").trim();
+    if (!user || hasControlChars(user)) delete next.user;
+    else next.user = user;
+  }
+  if ("max_output_tokens" in next) {
+    const normalized = normalizePositiveNumber(next.max_output_tokens);
+    if (normalized === undefined) delete next.max_output_tokens;
+    else next.max_output_tokens = normalized;
+  }
+  if ("temperature" in next) {
+    const normalized = normalizeTemperature(next.temperature);
+    if (normalized === undefined) delete next.temperature;
+    else next.temperature = normalized;
+  }
+  if ("top_p" in next) {
+    const normalized = normalizeTopP(next.top_p);
+    if (normalized === undefined) delete next.top_p;
+    else next.top_p = normalized;
+  }
+  return next;
+}
 
 function chatCompletionToResponsesPayload(payload) {
   const content = payload?.choices?.[0]?.message?.content;
@@ -46,7 +105,7 @@ async function normalizeResponsesJson(response) {
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
   const isSse = /\btext\/event-stream\b/i.test(contentType);
-  if (!isJson && !isSse) return response;
+  if (!isJson && !isSse && response.ok) return response;
 
   const raw = await response.text();
 
@@ -61,23 +120,23 @@ async function normalizeResponsesJson(response) {
       try {
         payload = JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
       } catch {
-        return new Response(raw, {
-          status: response.status,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        });
+        payload = null;
       }
     } else {
-      return new Response(raw, {
-        status: response.status,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
+      payload = null;
     }
+  }
+
+  if (!payload) {
+    const fallbackMessage = response.ok
+      ? "Invalid upstream responses payload"
+      : (String(raw || "").trim() || "Upstream responses error");
+    return Response.json(buildResponsesErrorBody(fallbackMessage, response.ok ? "invalid_response" : "upstream_error"), {
+      status: response.status,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
   if (payload?.object === "chat.completion") {
@@ -98,11 +157,20 @@ async function normalizeResponsesJson(response) {
 }
 
 async function ensureInitialized() {
-  if (!initialized) {
-    await initTranslators();
-    initialized = true;
+  if (initialized) return;
+  if (!initializePromise) {
+    initializePromise = Promise.resolve(initTranslators())
+      .then(() => {
+        initialized = true;
+      })
+      .finally(() => {
+        initializePromise = null;
+      });
   }
+  await initializePromise;
 }
+
+ensureInitialized().catch(() => {});
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -120,7 +188,20 @@ export async function OPTIONS() {
  */
 async function postHandler(request) {
   await ensureInitialized();
-  const response = await handleChat(request);
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return Response.json(buildResponsesErrorBody("Invalid JSON body", "invalid_request_error"), {
+      status: 400,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
+  const normalizedBody = normalizeResponsesRequestBody(body);
+  const forwardedRequest = new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: JSON.stringify(normalizedBody),
+  });
+  const response = await handleChat(forwardedRequest);
   return await normalizeResponsesJson(response);
 }
 

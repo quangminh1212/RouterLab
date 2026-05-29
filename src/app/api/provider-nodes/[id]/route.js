@@ -1,65 +1,42 @@
 import { NextResponse } from "next/server";
 import { deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
 
-// PUT /api/provider-nodes/[id] - Update provider node
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const { name, prefix, apiType, baseUrl } = body;
     const node = await getProviderNodeById(id);
 
-    if (!node) {
-      return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
-    }
-
-    if (!name?.trim()) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-
-    if (!prefix?.trim()) {
-      return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
-    }
-
-    // Only validate apiType for OpenAI Compatible nodes
+    if (!node) return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
+    if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    if (!prefix?.trim()) return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
     if (node.type === "openai-compatible" && (!apiType || !["chat", "responses"].includes(apiType))) {
       return NextResponse.json({ error: "Invalid OpenAI compatible API type" }, { status: 400 });
     }
-
-    if (!baseUrl?.trim()) {
-      return NextResponse.json({ error: "Base URL is required" }, { status: 400 });
-    }
+    if (!baseUrl?.trim()) return NextResponse.json({ error: "Base URL is required" }, { status: 400 });
 
     let sanitizedBaseUrl = baseUrl.trim();
-    
-    // Sanitize Base URL for Anthropic Compatible
     if (node.type === "anthropic-compatible") {
       sanitizedBaseUrl = sanitizedBaseUrl.replace(/\/$/, "");
-      if (sanitizedBaseUrl.endsWith("/messages")) {
-        sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -9); // remove /messages
-      }
+      if (sanitizedBaseUrl.endsWith("/messages")) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -9);
     }
-
-    // Sanitize Base URL for Custom Embedding (strip trailing slash and /embeddings)
     if (node.type === "custom-embedding") {
       sanitizedBaseUrl = sanitizedBaseUrl.replace(/\/$/, "");
-      if (sanitizedBaseUrl.endsWith("/embeddings")) {
-        sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -"/embeddings".length);
-      }
+      if (sanitizedBaseUrl.endsWith("/embeddings")) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -"/embeddings".length);
     }
 
-    const updates = {
-      name: name.trim(),
-      prefix: prefix.trim(),
-      baseUrl: sanitizedBaseUrl,
-    };
-
-    if (node.type === "openai-compatible") {
-      updates.apiType = apiType;
-    }
+    const updates = { name: name.trim(), prefix: prefix.trim(), baseUrl: sanitizedBaseUrl };
+    if (node.type === "openai-compatible") updates.apiType = apiType;
 
     const updated = await updateProviderNode(id, updates);
-
     const connections = await getProviderConnections({ provider: id });
     await Promise.all(connections.map((connection) => (
       updateProviderConnection(connection.id, {
@@ -80,19 +57,13 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE /api/provider-nodes/[id] - Delete provider node and its connections
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
     const node = await getProviderNodeById(id);
-
-    if (!node) {
-      return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
-    }
-
+    if (!node) return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
     await deleteProviderConnectionsByProvider(id);
     await deleteProviderNode(id);
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.log("Error deleting provider node:", error);

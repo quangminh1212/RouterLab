@@ -59,7 +59,11 @@ export async function GET() {
 // POST - Apply xlabrouter config to chatLanguageModels.json
 export async function POST(request) {
   try {
-    const { baseUrl, apiKey, models } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { baseUrl, apiKey, models } = body;
 
     if (!baseUrl || !models?.length) {
       return NextResponse.json({ error: "baseUrl and models are required" }, { status: 400 });

@@ -13,7 +13,6 @@ function isLocalRequest(request) {
   return [
     request.nextUrl?.hostname,
     request.headers.get("host"),
-    request.headers.get("x-forwarded-host"),
   ].some((value) => {
     const host = normalizeHost(value);
     return host === "localhost" || host === "127.0.0.1" || host === "::1";
@@ -51,7 +50,10 @@ export async function GET(request) {
 
 export async function PUT(request) {
   if (!isLocalRequest(request)) return deny();
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const mappings = sanitizeMappings(body?.mappings);
   const nextSettings = { forcedModelMappings: mappings };
   if (Object.prototype.hasOwnProperty.call(body || {}, "forceEnabled")) {
@@ -67,7 +69,10 @@ export async function PUT(request) {
 
 export async function PATCH(request) {
   if (!isLocalRequest(request)) return deny();
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const settings = await getSettings();
   const current = sanitizeMappings(settings.forcedModelMappings);
   const patch = sanitizeMappings(body?.mappings);

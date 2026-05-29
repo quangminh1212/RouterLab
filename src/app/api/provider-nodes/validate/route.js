@@ -52,7 +52,10 @@ const getChatErrorMessage = (status) => {
 // POST /api/provider-nodes/validate - Validate API key against base URL
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { baseUrl, apiKey, type, modelId } = body;
 
     if (!baseUrl || !apiKey) {

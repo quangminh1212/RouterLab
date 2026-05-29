@@ -12,20 +12,17 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { text, config = {} } = body;
 
     if (!text || typeof text !== "string") {
-      return NextResponse.json(
-        { error: "Missing text" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
 
-    const rtkConfig = {
-      ...DEFAULT_CONFIG,
-      ...config,
-    };
+    const rtkConfig = { ...DEFAULT_CONFIG, ...config };
     const compressed = compressOutput(text, rtkConfig);
     const stats = calculateStats(text, compressed);
 
@@ -38,9 +35,6 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("[API] RTK compression error:", error);
-    return NextResponse.json(
-      { error: "RTK compression failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "RTK compression failed" }, { status: 500 });
   }
 }

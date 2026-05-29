@@ -46,9 +46,12 @@ async function buildSyncPayload() {
 
 export async function POST(request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => null);
+    if (body !== null && (typeof body !== "object" || Array.isArray(body))) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const settings = await getSettings();
-    const machineId = body.machineId || await getConsistentMachineId();
+    const machineId = body?.machineId || await getConsistentMachineId();
     const cloudBaseUrl = getCloudBaseUrl(settings);
 
     if (!cloudBaseUrl) {

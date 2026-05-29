@@ -146,7 +146,10 @@ async function probeTamMaoOpenAICompatible(node, apiKey) {
 // POST /api/providers/validate - Validate API key with provider
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const provider = normalizeProviderId(body.provider);
     const { apiKey, providerSpecificData } = body;
 

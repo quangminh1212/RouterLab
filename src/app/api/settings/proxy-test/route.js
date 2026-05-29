@@ -3,7 +3,10 @@ import { testProxyUrl } from "@/lib/network/proxyTest";
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
+    }
     const result = await testProxyUrl({
       proxyUrl: body?.proxyUrl,
       testUrl: body?.testUrl,

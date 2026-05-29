@@ -14,50 +14,31 @@ function buildHeaders(apiKey) {
 }
 
 function withJsonHeaders(apiKey) {
-  return {
-    ...buildHeaders(apiKey),
-    "Content-Type": "application/json",
-  };
+  return { ...buildHeaders(apiKey), "Content-Type": "application/json" };
 }
 
 function buildCandidateUrls(targetUrl) {
   const original = targetUrl.toString().replace(/\/$/, "");
   const pathname = targetUrl.pathname.replace(/\/$/, "");
-
   const candidates = [];
-  const push = (url, method, body = null, label = url) => {
-    if (!url) return;
-    const normalized = String(url).replace(/\/$/, "");
-    if (candidates.some((item) => item.url === normalized && item.method === method)) return;
-    candidates.push({ url: normalized, method, body, label });
-  };
-
-  if (/\/chat\/completions$/i.test(pathname)) {
-    push(original, "POST", { model: "gpt-4o-mini", messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }, "chat.completions");
-    push(`${original.replace(/\/chat\/completions$/i, "")}/models`, "GET", null, "models");
-    return candidates;
-  }
+  const push = (url, method, body, label) => candidates.push({ url, method, body, label });
 
   if (/\/responses$/i.test(pathname)) {
     push(original, "POST", { model: "gpt-4o-mini", input: "ping", max_output_tokens: 1, stream: false }, "responses");
     push(`${original.replace(/\/responses$/i, "")}/models`, "GET", null, "models");
     return candidates;
   }
-
-  if (/\/models$/i.test(pathname)) {
-    push(original, "GET", null, "models");
-    const base = original.replace(/\/models$/i, "");
-    push(`${base}/chat/completions`, "POST", { model: "gpt-4o-mini", messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }, "chat.completions");
+  if (/\/chat\/completions$/i.test(pathname)) {
+    push(original, "POST", { model: "gpt-4o-mini", messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }, "chat.completions");
+    push(`${original.replace(/\/chat\/completions$/i, "")}/models`, "GET", null, "models");
     return candidates;
   }
-
   if (/\/v1$/i.test(pathname)) {
     push(`${original}/models`, "GET", null, "models");
     push(`${original}/chat/completions`, "POST", { model: "gpt-4o-mini", messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }, "chat.completions");
     push(`${original}/responses`, "POST", { model: "gpt-4o-mini", input: "ping", max_output_tokens: 1, stream: false }, "responses");
     return candidates;
   }
-
   push(`${original}/models`, "GET", null, "models");
   push(`${original}/v1/models`, "GET", null, "v1/models");
   push(`${original}/chat/completions`, "POST", { model: "gpt-4o-mini", messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }, "chat.completions");
@@ -66,9 +47,7 @@ function buildCandidateUrls(targetUrl) {
 }
 
 async function runCandidate(candidate, apiKey, signal) {
-  const headers = candidate.method === "POST"
-    ? withJsonHeaders(apiKey)
-    : buildHeaders(apiKey);
+  const headers = candidate.method === "POST" ? withJsonHeaders(apiKey) : buildHeaders(apiKey);
   const response = await fetch(candidate.url, {
     method: candidate.method,
     headers,
@@ -76,34 +55,26 @@ async function runCandidate(candidate, apiKey, signal) {
     signal,
     cache: "no-store",
   });
-
   const authRejected = Boolean(apiKey) && (response.status === 401 || response.status === 403);
   const ok = response.ok && !authRejected;
-  return {
-    ok,
-    status: response.status,
-    statusText: response.statusText,
-    authRejected,
-  };
+  return { ok, status: response.status, statusText: response.statusText, authRejected };
 }
 
 export async function POST(request) {
   const startedAt = Date.now();
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
+    }
     const endpoint = normalizeEndpoint(body?.endpoint);
     const apiKey = typeof body?.apiKey === "string" ? body.apiKey.trim() : "";
 
-    if (!endpoint) {
-      return NextResponse.json({ ok: false, error: "Endpoint is required" }, { status: 400 });
-    }
+    if (!endpoint) return NextResponse.json({ ok: false, error: "Endpoint is required" }, { status: 400 });
 
     let targetUrl;
-    try {
-      targetUrl = new URL(endpoint);
-    } catch {
-      return NextResponse.json({ ok: false, error: "Endpoint URL is invalid" }, { status: 400 });
-    }
+    try { targetUrl = new URL(endpoint); }
+    catch { return NextResponse.json({ ok: false, error: "Endpoint URL is invalid" }, { status: 400 }); }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
@@ -111,68 +82,24 @@ export async function POST(request) {
     try {
       const candidates = buildCandidateUrls(targetUrl);
       const attempts = [];
-
       for (const candidate of candidates) {
         try {
           const result = await runCandidate(candidate, apiKey, controller.signal);
-          attempts.push({
-            endpoint: candidate.url,
-            method: candidate.method,
-            label: candidate.label,
-            status: result.status,
-            statusText: result.statusText,
-          });
-
+          attempts.push({ endpoint: candidate.url, method: candidate.method, label: candidate.label, status: result.status, statusText: result.statusText });
           if (result.ok) {
-            return NextResponse.json({
-              ok: true,
-              status: result.status,
-              statusText: result.statusText,
-              endpoint: candidate.url,
-              method: candidate.method,
-              attempts,
-              error: null,
-              elapsedMs: Date.now() - startedAt,
-            }, { status: 200 });
+            return NextResponse.json({ ok: true, status: result.status, statusText: result.statusText, endpoint: candidate.url, method: candidate.method, attempts, error: null, elapsedMs: Date.now() - startedAt }, { status: 200 });
           }
-
           if (result.authRejected) {
-            return NextResponse.json({
-              ok: false,
-              status: result.status,
-              statusText: result.statusText,
-              endpoint: candidate.url,
-              method: candidate.method,
-              attempts,
-              error: "Authentication rejected",
-              elapsedMs: Date.now() - startedAt,
-            }, { status: 502 });
+            return NextResponse.json({ ok: false, status: result.status, statusText: result.statusText, endpoint: candidate.url, method: candidate.method, attempts, error: "Authentication rejected", elapsedMs: Date.now() - startedAt }, { status: 502 });
           }
         } catch (candidateError) {
-          attempts.push({
-            endpoint: candidate.url,
-            method: candidate.method,
-            label: candidate.label,
-            error: candidateError?.name === "AbortError" ? "Connection timed out" : (candidateError?.message || "Connection failed"),
-          });
+          attempts.push({ endpoint: candidate.url, method: candidate.method, label: candidate.label, error: candidateError?.name === "AbortError" ? "Connection timed out" : (candidateError?.message || "Connection failed") });
         }
       }
 
       const lastAttempt = attempts[attempts.length - 1] || null;
-      const error = lastAttempt?.status
-        ? `Endpoint returned ${lastAttempt.status}`
-        : (lastAttempt?.error || "Connection failed");
-
-      return NextResponse.json({
-        ok: false,
-        status: lastAttempt?.status || 0,
-        statusText: lastAttempt?.statusText || "",
-        endpoint: lastAttempt?.endpoint || endpoint,
-        method: lastAttempt?.method || "GET",
-        attempts,
-        error,
-        elapsedMs: Date.now() - startedAt,
-      }, { status: 502 });
+      const error = lastAttempt?.status ? `Endpoint returned ${lastAttempt.status}` : (lastAttempt?.error || "Connection failed");
+      return NextResponse.json({ ok: false, status: lastAttempt?.status || 0, statusText: lastAttempt?.statusText || "", endpoint: lastAttempt?.endpoint || endpoint, method: lastAttempt?.method || "GET", attempts, error, elapsedMs: Date.now() - startedAt }, { status: 502 });
     } finally {
       clearTimeout(timeout);
     }
@@ -181,4 +108,3 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

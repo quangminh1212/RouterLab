@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { getCombos, createCombo, getComboByName } from "@/lib/localDb";
 
 export const dynamic = "force-dynamic";
-
-// Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
 
-// GET /api/combos - Get all combos
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 export async function GET() {
   try {
     const combos = await getCombos();
@@ -17,29 +18,25 @@ export async function GET() {
   }
 }
 
-// POST /api/combos - Create new combo
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const { name, models, kind } = body;
 
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-
-    // Validate name format
+    if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
     if (!VALID_NAME_REGEX.test(name)) {
       return NextResponse.json({ error: "Name can only contain letters, numbers, -, _ and ." }, { status: 400 });
     }
 
-    // Check if name already exists
     const existing = await getComboByName(name);
     if (existing) {
       return NextResponse.json({ error: "Combo name already exists" }, { status: 400 });
     }
 
     const combo = await createCombo({ name, models: models || [], kind: kind || null });
-
     return NextResponse.json(combo, { status: 201 });
   } catch (error) {
     console.log("Error creating combo:", error);

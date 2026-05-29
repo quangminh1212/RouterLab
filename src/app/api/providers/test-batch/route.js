@@ -74,7 +74,10 @@ function isCompatibleProvider(providerId) {
 // POST /api/providers/test-batch - Test multiple connections by group
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { mode, providerId } = body;
 
     if (!mode) {

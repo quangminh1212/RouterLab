@@ -8,7 +8,11 @@ import { createProviderConnection } from "@/models";
  */
 export async function POST(request) {
   try {
-    const { cookie } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { cookie } = body;
 
     if (!cookie || typeof cookie !== "string") {
       return NextResponse.json({ error: "Cookie is required" }, { status: 400 });

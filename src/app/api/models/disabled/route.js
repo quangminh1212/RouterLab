@@ -20,7 +20,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { providerAlias, ids } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { providerAlias, ids } = body;
     if (!providerAlias || !Array.isArray(ids)) {
       return NextResponse.json({ error: "providerAlias and ids[] required" }, { status: 400 });
     }

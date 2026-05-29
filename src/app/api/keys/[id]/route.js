@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
 
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 function sanitizeAllowedModels(value) {
   if (value === null) return null;
   if (!Array.isArray(value)) return null;
@@ -17,7 +21,6 @@ function sanitizeRpmLimit(value) {
   return Math.floor(rpm);
 }
 
-// GET /api/keys/[id] - Get single key
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -32,11 +35,13 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT /api/keys/[id] - Update key
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const { isActive, name, hasCostLimit, costLimit, allowedModels, rpmLimit } = body;
 
     const existing = await getApiKeyById(id);
@@ -86,7 +91,6 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateApiKey(id, updateData);
-
     return NextResponse.json({ key: updated });
   } catch (error) {
     console.log("Error updating key:", error);
@@ -94,16 +98,13 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE /api/keys/[id] - Delete API key
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-
     const deleted = await deleteApiKey(id);
     if (!deleted) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
-
     return NextResponse.json({ message: "Key deleted successfully" });
   } catch (error) {
     console.log("Error deleting key:", error);

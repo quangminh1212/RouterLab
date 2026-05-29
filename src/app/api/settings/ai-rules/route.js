@@ -4,23 +4,18 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 function normalizePriority(rawPriority) {
   if (typeof rawPriority === "string") {
     const normalized = rawPriority.trim().toLowerCase();
-    if (normalized === "high" || normalized === "medium" || normalized === "low") {
-      return normalized;
-    }
-
+    if (normalized === "high" || normalized === "medium" || normalized === "low") return normalized;
     const numeric = Number(normalized);
     if (Number.isFinite(numeric)) {
       if (numeric <= 1) return "high";
       if (numeric >= 3) return "low";
     }
   }
-
   const numeric = Number(rawPriority);
   if (Number.isFinite(numeric)) {
     if (numeric <= 1) return "high";
     if (numeric >= 3) return "low";
   }
-
   return "medium";
 }
 
@@ -33,11 +28,9 @@ function getPriorityRank(priority) {
 function normalizeRule(raw, index) {
   return {
     id: typeof raw?.id === "string" && raw.id.trim() ? raw.id.trim() : `rule-${Date.now()}-${index}`,
-    name: typeof raw?.name === "string" ? raw.name.trim() : "Rule mới",
+    name: typeof raw?.name === "string" ? raw.name.trim() : "Rule m?i",
     enabled: raw?.enabled !== false,
-    content: typeof raw?.content === "string"
-      ? raw.content
-      : (typeof raw?.actionValue === "string" ? raw.actionValue : ""),
+    content: typeof raw?.content === "string" ? raw.content : (typeof raw?.actionValue === "string" ? raw.actionValue : ""),
     priority: normalizePriority(raw?.priority),
     applyType: typeof raw?.applyType === "string" ? raw.applyType : "always",
     applyValue: typeof raw?.applyValue === "string" ? raw.applyValue : "",
@@ -57,7 +50,10 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const incoming = Array.isArray(body?.rules) ? body.rules : [];
     const rules = incoming
       .map((item, index) => normalizeRule(item, index))

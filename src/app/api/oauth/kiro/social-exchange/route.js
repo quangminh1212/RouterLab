@@ -9,7 +9,11 @@ import { createProviderConnection } from "@/models";
  */
 export async function POST(request) {
   try {
-    const { code, codeVerifier, provider } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { code, codeVerifier, provider } = body;
 
     if (!code || !codeVerifier) {
       return NextResponse.json(

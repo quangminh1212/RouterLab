@@ -8,7 +8,12 @@ import { getExecutor } from "open-sse/executors/index.js";
 
 export async function POST(request) {
   try {
-    const { step, body } = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { step, body } = payload;
 
     if (!step || !body) {
       return NextResponse.json({ success: false, error: "Step and body required" }, { status: 400 });

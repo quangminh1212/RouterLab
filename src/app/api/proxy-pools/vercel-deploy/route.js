@@ -58,7 +58,10 @@ async function pollDeployment(deploymentId, token, maxMs = 120000) {
 // POST /api/proxy-pools/vercel-deploy
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const vercelToken = body.vercelToken;
     const projectName = body.projectName?.trim() || `relay-${Date.now().toString(36)}`;
 

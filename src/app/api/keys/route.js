@@ -4,6 +4,10 @@ import { getConsistentMachineId } from "@/shared/utils/machineId";
 
 export const dynamic = "force-dynamic";
 
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 function sanitizeAllowedModels(value) {
   if (value === undefined || value === null) return null;
   if (!Array.isArray(value)) return null;
@@ -20,7 +24,6 @@ function sanitizeRpmLimit(value) {
   return Math.floor(rpm);
 }
 
-// GET /api/keys - List API keys
 export async function GET() {
   try {
     const keys = await getApiKeys();
@@ -37,10 +40,12 @@ export async function GET() {
   }
 }
 
-// POST /api/keys - Create new API key
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return invalidJsonResponse();
+    }
     const { name, hasCostLimit, costLimit, allowedModels, rpmLimit } = body;
 
     if (!name) {
@@ -71,7 +76,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "RPM limit must be a positive number" }, { status: 400 });
     }
 
-    // Always get machineId from server
     const machineId = await getConsistentMachineId();
     const apiKey = await createApiKey(
       name,

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { exportUsageDb, importUsageDb } from "@/lib/usageDb";
 import { logger } from "@/lib/logger";
 
+function invalidJsonResponse() {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
 export async function GET() {
   try {
     logger.info("API:USAGE", "Exporting usage database");
@@ -16,7 +20,10 @@ export async function GET() {
 export async function POST(request) {
   try {
     logger.info("API:USAGE", "Importing usage database");
-    const payload = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return invalidJsonResponse();
+    }
     await importUsageDb(payload);
     logger.info("API:USAGE", "Usage database imported successfully");
     return NextResponse.json({ success: true });

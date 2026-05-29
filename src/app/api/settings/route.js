@@ -54,7 +54,10 @@ export async function GET() {
 
 export async function PATCH(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
     if (Object.prototype.hasOwnProperty.call(body, "newPassword") || Object.prototype.hasOwnProperty.call(body, "currentPassword") || Object.prototype.hasOwnProperty.call(body, "password")) {
       return NextResponse.json({ error: "Password auth has been removed. Use OAuth QR login." }, { status: 410 });

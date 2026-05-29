@@ -36,11 +36,18 @@ export async function GET() {
 // PUT /api/models - Update model alias
 export async function PUT(request) {
   try {
-    const body = await request.json();
-    const { model, alias } = body;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const model = String(body?.model || "").trim();
+    const alias = String(body?.alias || "").trim();
 
     if (!model || !alias) {
       return NextResponse.json({ error: "Model and alias required" }, { status: 400 });
+    }
+    if (model === alias) {
+      return NextResponse.json({ error: "Model and alias must be different" }, { status: 400 });
     }
 
     const modelAliases = await getModelAliases();

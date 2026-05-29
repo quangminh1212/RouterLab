@@ -4,17 +4,27 @@ import { initTranslators } from "open-sse/translator/index.js";
 import { logger } from "@/lib/logger";
 
 let initialized = false;
+let initializePromise = null;
 
 /**
  * Initialize translators once
  */
 async function ensureInitialized() {
-  if (!initialized) {
-    await initTranslators();
-    initialized = true;
-    logger.info("SSE:GEMINI", "Translators initialized for /v1beta/models");
+  if (initialized) return;
+  if (!initializePromise) {
+    initializePromise = Promise.resolve(initTranslators())
+      .then(() => {
+        initialized = true;
+        logger.info("SSE:GEMINI", "Translators initialized for /v1beta/models");
+      })
+      .finally(() => {
+        initializePromise = null;
+      });
   }
+  await initializePromise;
 }
+
+ensureInitialized().catch(() => {});
 
 /**
  * Handle CORS preflight
@@ -133,7 +143,14 @@ export async function POST(request, { params }) {
         .replace(":countTokens", "");
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return Response.json({ error: { message: "Invalid JSON body", type: "invalid_request_error" } }, {
+        status: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
 
     if (action === ":countTokens") {
       const totalChars = (body?.contents || []).reduce((sum, content) => {

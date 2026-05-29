@@ -1,11 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createBackupBundle, restoreBackupBundle } from "@/lib/backupBundle";
 
 export async function GET() {
   try {
     const payload = await createBackupBundle({ includeUsage: true, includeRequestDetails: false });
 
-    // Ensure request details are not exported.
     if (payload && typeof payload === "object") {
       delete payload.requestDetails;
       if (payload.metadata && typeof payload.metadata === "object") {
@@ -22,7 +21,10 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const payload = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
     if (payload?.format === "xlabrouter-gist-backup") {
       return NextResponse.json(
@@ -31,7 +33,6 @@ export async function POST(request) {
       );
     }
 
-    // Enforce lightweight restore: never import heavy per-request logs.
     if (payload && typeof payload === "object") {
       if (payload.database && typeof payload.database === "object") {
         if (payload.database.requestDetailsData && typeof payload.database.requestDetailsData === "object") {
@@ -52,4 +53,3 @@ export async function POST(request) {
     );
   }
 }
-

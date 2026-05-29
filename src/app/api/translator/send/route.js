@@ -3,7 +3,12 @@ import { getExecutor, refreshTokenByProvider } from "open-sse/index.js";
 
 export async function POST(request) {
   try {
-    const { provider, model, body } = await request.json();
+    const payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return Response.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { provider, model, body } = payload;
 
     if (!provider || !model || !body) {
       return Response.json({ success: false, error: "provider, model, and body required" }, { status: 400 });

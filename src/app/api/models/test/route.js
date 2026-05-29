@@ -5,7 +5,11 @@ import { getModelInfo } from "@/sse/services/model";
 // POST /api/models/test - Ping a single model via internal completions or embeddings
 export async function POST(request) {
   try {
-    const { model, kind } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { model, kind } = body;
     if (!model) return NextResponse.json({ error: "Model required" }, { status: 400 });
 
     const configured = process.env.INTERNAL_BASE_URL || process.env.XLABROUTER_INTERNAL_BASE_URL;

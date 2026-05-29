@@ -65,7 +65,11 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { action, provider, model } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { action, provider, model } = body;
 
     if (action !== "clearCooldown" || !provider || !model) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
