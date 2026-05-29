@@ -12,6 +12,7 @@ describe("/api/v1beta/models root", () => {
         { name: "gemini-pro", showInModelsEndpoint: true },
         { name: "hidden-pro", showInModelsEndpoint: true },
       ]),
+      getModelAliases: vi.fn(async () => ({})),
       getSettings: vi.fn(async () => ({ hiddenModels: ["hidden-pro"] })),
     }));
 
@@ -31,6 +32,7 @@ describe("/api/v1beta/models root", () => {
       getCombos: vi.fn(async () => {
         throw new Error("boom");
       }),
+      getModelAliases: vi.fn(async () => ({})),
       getSettings: vi.fn(async () => ({ hiddenModels: [] })),
     }));
 
@@ -46,6 +48,7 @@ describe("/api/v1beta/models root", () => {
   it("handles CORS preflight", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getCombos: vi.fn(),
+      getModelAliases: vi.fn(),
       getSettings: vi.fn(),
     }));
 

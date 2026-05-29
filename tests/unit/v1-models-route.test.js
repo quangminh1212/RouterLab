@@ -6,13 +6,20 @@ describe("/api/v1/models", () => {
     vi.clearAllMocks();
   });
 
-  it("returns visible OpenAI-compatible models with CORS headers", async () => {
+  it("returns visible combos and combo-backed aliases with CORS headers", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getCombos: vi.fn(async () => [
         { name: "visible-combo", showInModelsEndpoint: true },
         { name: "hidden-combo", showInModelsEndpoint: true },
         { name: "private-combo", showInModelsEndpoint: false },
       ]),
+      getModelAliases: vi.fn(async () => ({
+        smart: "visible-combo",
+        "visible-combo": "hidden-combo",
+        hiddenAlias: "hidden-combo",
+        privateAlias: "private-combo",
+        danglingAlias: "missing-combo",
+      })),
       getSettings: vi.fn(async () => ({ hiddenModels: ["hidden-combo"] })),
     }));
     vi.doMock("@/app/api/models/route", () => ({ PUT: vi.fn() }));
@@ -22,7 +29,9 @@ describe("/api/v1/models", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.data.map((model) => model.id)).toEqual(["visible-combo"]);
+    expect(data.data.map((model) => model.id)).toEqual(["smart", "visible-combo"]);
+    expect(data.data.find((model) => model.id === "visible-combo").owned_by).toBe("combo");
+    expect(data.data[0]).toMatchObject({ root: "visible-combo", parent: "visible-combo", owned_by: "alias" });
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 

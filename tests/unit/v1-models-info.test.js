@@ -12,6 +12,7 @@ describe("GET /api/v1/models/info", () => {
         { name: "xlabrouter/openclaw", kind: "chat", models: ["openclaw"], showInModelsEndpoint: true },
         { name: "hidden/combo", kind: "chat", models: ["hidden"], showInModelsEndpoint: false },
       ]),
+      getModelAliases: vi.fn().mockResolvedValue({ smart: "xlabrouter/openclaw", "xlabrouter/openclaw": "hidden/combo" }),
       getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
     }));
 
@@ -29,6 +30,24 @@ describe("GET /api/v1/models/info", () => {
     expect(data.object).toBe("list");
     expect(data.data).toEqual([
       {
+        id: "smart",
+        name: "smart",
+        provider: "alias",
+        kind: "chat",
+        type: ["chat", "image"],
+        contextWindow: 123456,
+        supports: {
+          reasoning: true,
+          image: true,
+          embedding: false,
+          audio: false,
+          video: false,
+        },
+        root: "xlabrouter/openclaw",
+        parent: "xlabrouter/openclaw",
+        models: ["openclaw"],
+      },
+      {
         id: "xlabrouter/openclaw",
         name: "xlabrouter/openclaw",
         provider: "combo",
@@ -42,6 +61,8 @@ describe("GET /api/v1/models/info", () => {
           audio: false,
           video: false,
         },
+        root: "xlabrouter/openclaw",
+        parent: null,
         models: ["openclaw"],
       },
     ]);

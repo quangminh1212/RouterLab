@@ -1,4 +1,4 @@
-import { getCombos, getSettings } from "@/lib/localDb";
+import { getCombos, getModelAliases, getSettings } from "@/lib/localDb";
 
 function buildCorsHeaders() {
   return {
@@ -25,19 +25,42 @@ export async function GET() {
   try {
     const models = [];
 
-    const [combos, settings] = await Promise.all([getCombos(), getSettings()]);
+    const [combos, aliases, settings] = await Promise.all([getCombos(), getModelAliases(), getSettings()]);
     const hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
-    for (const combo of combos) {
-      if (combo?.showInModelsEndpoint === false || hiddenModels.includes(combo?.name)) continue;
+    const visibleComboNames = combos
+      .filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name))
+      .map((combo) => combo.name);
+    const visibleComboNameSet = new Set(visibleComboNames);
+
+    for (const comboName of visibleComboNames) {
       models.push({
-        name: `models/${combo.name}`,
-        displayName: combo.name,
-        description: `combo model: ${combo.name}`,
+        name: `models/${comboName}`,
+        displayName: comboName,
+        description: `combo model: ${comboName}`,
         supportedGenerationMethods: ["generateContent", "countTokens"],
         inputTokenLimit: 128000,
         outputTokenLimit: 8192,
       });
     }
+
+    const seenAliasNames = new Set();
+    for (const [alias, fullModel] of Object.entries(aliases || {})) {
+      const normalizedAlias = String(alias || "").trim();
+      if (!normalizedAlias || visibleComboNameSet.has(normalizedAlias) || seenAliasNames.has(normalizedAlias)) continue;
+      const combo = combos.find((item) => item?.name === fullModel);
+      if (!combo || combo.showInModelsEndpoint === false || hiddenModels.includes(combo.name)) continue;
+      seenAliasNames.add(normalizedAlias);
+      models.push({
+        name: `models/${normalizedAlias}`,
+        displayName: normalizedAlias,
+        description: `alias for combo: ${combo.name}`,
+        supportedGenerationMethods: ["generateContent", "countTokens"],
+        inputTokenLimit: 128000,
+        outputTokenLimit: 8192,
+      });
+    }
+
+    models.sort((left, right) => String(left.name).localeCompare(String(right.name)));
 
     return Response.json({ models }, {
       headers: buildCorsHeaders(),

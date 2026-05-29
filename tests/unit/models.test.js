@@ -8,6 +8,7 @@ const comboFixtures = [
 async function mockModelDeps(hiddenModels = []) {
   vi.doMock("@/lib/localDb", () => ({
     getCombos: vi.fn().mockResolvedValue(comboFixtures),
+    getModelAliases: vi.fn().mockResolvedValue({}),
     getSettings: vi.fn().mockResolvedValue({ hiddenModels }),
   }));
 
@@ -46,14 +47,19 @@ describe("model endpoints return combos only", () => {
     expect(data.data[0].owned_by).toBe("combo");
   });
 
-  it("GET /api/v1beta/models returns visible combos only", async () => {
-    await mockModelDeps();
+  it("GET /api/v1beta/models returns visible combos and aliases", async () => {
+    vi.doMock("@/lib/localDb", () => ({
+      getCombos: vi.fn().mockResolvedValue(comboFixtures),
+      getModelAliases: vi.fn().mockResolvedValue({ smart: "openclaw" }),
+      getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
+    }));
+
     const { GET } = await import("@/app/api/v1beta/models/route");
     const response = await GET();
     const data = await response.json();
 
-    expect(data.models).toHaveLength(1);
-    expect(data.models[0].name).toBe("models/openclaw");
+    expect(data.models).toHaveLength(2);
+    expect(data.models.map((model) => model.name)).toEqual(["models/openclaw", "models/smart"]);
   });
 
   it("filters hidden models from public model endpoints", async () => {

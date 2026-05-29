@@ -1,4 +1,4 @@
-import { getCombos, getSettings } from "@/lib/localDb";
+import { getCombos, getModelAliases, getSettings } from "@/lib/localDb";
 import { getModelInfo } from "open-sse/config/models.js";
 
 function buildCorsHeaders() {
@@ -15,12 +15,13 @@ export async function OPTIONS() {
   });
 }
 
-function toInfoModel(combo) {
+function toInfoModel(combo, alias = null) {
   const modelInfo = getModelInfo(combo.name);
+  const resolvedId = alias || combo.name;
   return {
-    id: combo.name,
-    name: combo.name,
-    provider: "combo",
+    id: resolvedId,
+    name: resolvedId,
+    provider: alias ? "alias" : "combo",
     kind: combo.kind || null,
     type: Array.isArray(modelInfo.type) ? modelInfo.type : ["chat"],
     contextWindow: Number.isFinite(modelInfo.contextWindow) ? modelInfo.contextWindow : null,
@@ -31,6 +32,8 @@ function toInfoModel(combo) {
       audio: modelInfo.type?.includes("audio") || false,
       video: modelInfo.type?.includes("video") || false,
     },
+    root: combo.name,
+    parent: alias ? combo.name : null,
     models: Array.isArray(combo.models) ? combo.models : [],
   };
 }
@@ -39,18 +42,35 @@ export async function GET() {
   try {
     let combos = [];
     let hiddenModels = [];
+    let modelAliases = {};
     try {
-      const [comboList, settings] = await Promise.all([getCombos(), getSettings()]);
+      const [comboList, aliases, settings] = await Promise.all([getCombos(), getModelAliases(), getSettings()]);
       combos = comboList;
+      modelAliases = aliases || {};
       hiddenModels = Array.isArray(settings?.hiddenModels) ? settings.hiddenModels : [];
     } catch {
       combos = [];
+      modelAliases = {};
       hiddenModels = [];
     }
 
-    const data = combos
-      .filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name))
-      .map(toInfoModel);
+    const visibleCombos = combos.filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name));
+    const visibleComboNameSet = new Set(visibleCombos.map((combo) => combo.name));
+    const comboInfo = visibleCombos.map((combo) => toInfoModel(combo));
+
+    const seenAliasIds = new Set();
+    const aliasInfo = Object.entries(modelAliases)
+      .map(([alias, fullModel]) => {
+        const normalizedAlias = String(alias || "").trim();
+        if (!normalizedAlias || visibleComboNameSet.has(normalizedAlias) || seenAliasIds.has(normalizedAlias)) return null;
+        const combo = visibleCombos.find((item) => item?.name === fullModel);
+        if (!combo) return null;
+        seenAliasIds.add(normalizedAlias);
+        return toInfoModel(combo, normalizedAlias);
+      })
+      .filter(Boolean);
+
+    const data = [...comboInfo, ...aliasInfo].sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
     return Response.json({
       object: "list",

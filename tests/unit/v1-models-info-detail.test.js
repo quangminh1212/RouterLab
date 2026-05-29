@@ -11,6 +11,7 @@ describe("GET /api/v1/models/info/[id]", () => {
       getCombos: vi.fn().mockResolvedValue([
         { name: "xlabrouter/openclaw", kind: "chat", models: ["openclaw"], showInModelsEndpoint: true },
       ]),
+      getModelAliases: vi.fn().mockResolvedValue({ smart: "xlabrouter/openclaw" }),
       getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
     }));
 
@@ -27,6 +28,10 @@ describe("GET /api/v1/models/info/[id]", () => {
     expect(response.status).toBe(200);
     expect(data).toMatchObject({
       id: "xlabrouter/openclaw",
+      name: "xlabrouter/openclaw",
+      provider: "combo",
+      root: "xlabrouter/openclaw",
+      parent: null,
       type: ["chat", "image"],
       supports: {
         reasoning: true,
@@ -44,6 +49,7 @@ describe("GET /api/v1/models/info/[id]", () => {
       getCombos: vi.fn().mockResolvedValue([
         { name: "hidden/model", kind: "chat", models: ["hidden"], showInModelsEndpoint: true },
       ]),
+      getModelAliases: vi.fn().mockResolvedValue({ smart: "hidden/model" }),
       getSettings: vi.fn().mockResolvedValue({ hiddenModels: ["hidden/model"] }),
     }));
 
