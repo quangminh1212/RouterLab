@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
@@ -122,7 +122,7 @@ async function writeSkipApprovals(managedServers) {
   return { written: Object.keys(skip).length };
 }
 
-// Candidate user-data roots â€” Cowork can run from either Claude-3p (3p mode) or Claude (1p mode w/ cowork features)
+// Candidate user-data roots — Cowork can run from either Claude-3p (3p mode) or Claude (1p mode w/ cowork features)
 const getCandidateRoots = () => {
   if (os.platform() === "darwin") {
     const base = path.join(os.homedir(), "Library", "Application Support");
@@ -144,7 +144,7 @@ const getCandidateRoots = () => {
   ];
 };
 
-// Claude.app/exe install paths â€” fallback detect when no user-data folder yet
+// Claude.app/exe install paths — fallback detect when no user-data folder yet
 const getAppInstallPaths = () => {
   if (os.platform() === "darwin") {
     return ["/Applications/Claude.app", path.join(os.homedir(), "Applications", "Claude.app")];
@@ -319,7 +319,11 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { baseUrl, apiKey, models, plugins, allowInsecureHttp } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { baseUrl, apiKey, models, plugins, allowInsecureHttp } = body;
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
     const normalizedApiKey = (apiKey || "").trim();
 

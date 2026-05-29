@@ -20,7 +20,11 @@ export async function GET(request) {
 // PUT - Save MITM aliases for a specific tool
 export async function PUT(request) {
   try {
-    const { tool, mappings } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { tool, mappings } = body;
 
     if (!tool || !mappings || typeof mappings !== "object") {
       return NextResponse.json({ error: "tool and mappings required" }, { status: 400 });

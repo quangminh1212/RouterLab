@@ -100,6 +100,9 @@ export async function POST(request, { params }) {
     let body;
     try {
       body = await request.json();
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+      }
     } catch {
       return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
     }

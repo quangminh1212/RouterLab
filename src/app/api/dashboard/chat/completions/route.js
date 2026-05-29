@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getApiKeys } from "@/lib/localDb";
 import { INTERNAL_REQUEST_HEADER } from "open-sse/config/appConstants.js";
 
@@ -15,7 +15,10 @@ function getInternalBaseUrl(request) {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const baseUrl = getInternalBaseUrl(request);
 
     let apiKey = null;

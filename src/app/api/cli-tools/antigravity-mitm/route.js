@@ -79,7 +79,11 @@ export async function GET() {
 // POST - Start MITM server (cert + server, no DNS)
 export async function POST(request) {
   try {
-    const { apiKey, sudoPassword, mitmRouterBaseUrl } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { apiKey, sudoPassword, mitmRouterBaseUrl } = body;
     const pwd = getPassword(sudoPassword) || await loadEncryptedPassword() || "";
 
     if (!apiKey || (!isWin && !pwd)) {
@@ -135,7 +139,11 @@ export async function DELETE(request) {
 // PATCH - Toggle DNS for a specific tool (enable/disable)
 export async function PATCH(request) {
   try {
-    const { tool, action, sudoPassword } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { tool, action, sudoPassword } = body;
     const pwd = getPassword(sudoPassword) || await loadEncryptedPassword() || "";
 
     if (!tool || !action) {
