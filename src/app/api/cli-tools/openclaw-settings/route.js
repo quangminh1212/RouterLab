@@ -140,7 +140,11 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
 export async function POST(request) {
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
-    const { baseUrl, apiKey, model, agentModels = {} } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { baseUrl, apiKey, model, agentModels = {} } = body;
     
     if (!baseUrl || !model) {
       return NextResponse.json({ error: "baseUrl and model are required" }, { status: 400 });

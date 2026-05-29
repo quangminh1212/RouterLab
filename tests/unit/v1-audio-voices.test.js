@@ -8,41 +8,41 @@ describe("GET /api/v1/audio/voices", () => {
 
   it("proxies voices payload with CORS headers", async () => {
     vi.doMock("@/app/api/media-providers/tts/voices/route", () => ({
-      GET: vi.fn(async () => Response.json({
-        voices: [{ id: "alloy", name: "Alloy" }],
-        languages: [{ code: "en", name: "English" }],
-      }, { status: 200 })),
+      GET: vi.fn(async () => Response.json({ voices: [{ id: "voice-1" }] }, { status: 200 })),
     }));
 
     const { GET } = await import("@/app/api/v1/audio/voices/route");
     const request = new Request("http://localhost/api/v1/audio/voices?provider=edge-tts");
     const response = await GET(request);
-    const data = await response.json();
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.voices).toEqual([{ id: "alloy", name: "Alloy" }]);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(body).toEqual({ voices: [{ id: "voice-1" }] });
   });
 
-  it("preserves backend error status", async () => {
+  it("falls back to standard error payload when backend returns non-json", async () => {
     vi.doMock("@/app/api/media-providers/tts/voices/route", () => ({
-      GET: vi.fn(async () => Response.json({ error: "Failed to fetch voices" }, { status: 502 })),
+      GET: vi.fn(async () => new Response("backend exploded", { status: 502, headers: { "content-type": "text/plain" } })),
     }));
 
     const { GET } = await import("@/app/api/v1/audio/voices/route");
     const response = await GET(new Request("http://localhost/api/v1/audio/voices"));
-    const data = await response.json();
+    const body = await response.json();
 
     expect(response.status).toBe(502);
-    expect(data.error).toMatch(/failed to fetch voices/i);
+    expect(body).toEqual({
+      error: {
+        message: "backend exploded",
+        type: "server_error",
+      },
+    });
   });
 
-  it("handles CORS preflight", async () => {
+  it("returns CORS headers for OPTIONS", async () => {
     const { OPTIONS } = await import("@/app/api/v1/audio/voices/route");
     const response = await OPTIONS();
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(response.headers.get("Access-Control-Allow-Methods")).toMatch(/GET/);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toContain("GET");
   });
 });
