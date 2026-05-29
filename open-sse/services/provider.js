@@ -19,8 +19,17 @@ function isAnthropicCompatible(provider) {
   return typeof provider === "string" && provider.startsWith(ANTHROPIC_COMPATIBLE_PREFIX);
 }
 
-function getOpenAICompatibleType(provider, options = {}) {
+function shouldForceOpenAICompatibleChat(options = {}) {
+  const providerSpecificData = options?.providerSpecificData || {};
+  const baseUrl = String(options?.baseUrl || providerSpecificData?.baseUrl || "").toLowerCase();
+  const prefix = String(options?.prefix || providerSpecificData?.prefix || "").toLowerCase();
+  const nodeName = String(options?.nodeName || providerSpecificData?.nodeName || "").toLowerCase();
+  return baseUrl.includes("cungcapai") || prefix.includes("tammao") || nodeName.includes("tammao");
+}
+
+export function getOpenAICompatibleType(provider, options = {}) {
   if (!isOpenAICompatible(provider)) return "chat";
+  if (shouldForceOpenAICompatibleChat(options)) return "chat";
   const explicitType = options?.apiType || options?.providerSpecificData?.apiType;
   if (explicitType === "responses") return "responses";
   return provider.includes("responses") ? "responses" : "chat";

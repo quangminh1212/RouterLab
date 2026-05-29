@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { getOpenAICompatibleType } from "open-sse/services/provider.js";
 
 const originalFetch = global.fetch;
 
@@ -17,6 +18,20 @@ vi.mock("@/models", () => ({
 }));
 
 describe("TamMao fallback", () => {
+  it("forces chat api for TamMao-compatible responses nodes", () => {
+    expect(getOpenAICompatibleType("openai-compatible-responses-tammao", {
+      apiType: "responses",
+      baseUrl: "https://api.cungcapai.io.vn/v1",
+      prefix: "tammao",
+      nodeName: "TamMao",
+    })).toBe("chat");
+
+    expect(getOpenAICompatibleType("openai-compatible-responses-generic", {
+      apiType: "responses",
+      baseUrl: "https://example.com/v1",
+    })).toBe("responses");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

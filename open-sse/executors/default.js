@@ -5,6 +5,7 @@ import { buildClineHeaders } from "../../src/shared/utils/clineAuth.js";
 import { getCachedClaudeHeaders } from "../utils/claudeHeaderCache.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
+import { getOpenAICompatibleType } from "../services/provider.js";
 import { getProviderMachineId } from "../../src/shared/utils/machineId.js";
 
 export class DefaultExecutor extends BaseExecutor {
@@ -20,9 +21,7 @@ export class DefaultExecutor extends BaseExecutor {
     if (this.provider?.startsWith?.("openai-compatible-")) {
       const baseUrl = credentials?.providerSpecificData?.baseUrl || "https://api.openai.com/v1";
       const normalized = baseUrl.replace(/\/$/, "");
-      const apiType = credentials?.providerSpecificData?.apiType === "responses"
-        ? "responses"
-        : (this.provider.includes("responses") ? "responses" : "chat");
+      const apiType = getOpenAICompatibleType(this.provider, credentials?.providerSpecificData || {});
       const path = apiType === "responses" ? "/responses" : "/chat/completions";
       return `${normalized}${path}`;
     }
