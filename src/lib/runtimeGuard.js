@@ -21,6 +21,7 @@ const CONFIG = {
   timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 2))),
   circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 15000),
   slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 5000),
+  slowRouteWarnCooldownMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_COOLDOWN_MS, 30000),
 };
 
 const runtimeState =
@@ -46,6 +47,7 @@ function getRouteState(routeName) {
       circuitOpenUntil: 0,
       lastErrorAt: 0,
       lastTimeoutAt: 0,
+      lastSlowWarnAt: 0,
     };
   }
   return runtimeState.routes[routeName];
@@ -296,7 +298,10 @@ export function withRouteGuard(routeName, handler, options = {}) {
       routeState.circuitOpenUntil = 0;
       const durationMs = Date.now() - startedAt;
       updateLatency(routeState, durationMs);
-      if (durationMs >= CONFIG.slowRouteWarnMs) {
+      const shouldLogSlowRoute = durationMs >= CONFIG.slowRouteWarnMs
+        && Date.now() - routeState.lastSlowWarnAt >= CONFIG.slowRouteWarnCooldownMs;
+      if (shouldLogSlowRoute) {
+        routeState.lastSlowWarnAt = Date.now();
         logger.warn("RUNTIME_GUARD", "Slow route detected", {
           route: routeName,
           durationMs,
