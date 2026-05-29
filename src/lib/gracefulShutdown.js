@@ -35,6 +35,31 @@ function gracefulShutdown(signal) {
       }
     }),
 
+    // Ensure spawned Next child also exits so systemd stop does not hang.
+    new Promise((resolve) => {
+      const child = global.serverChild;
+      if (!child || child.killed || child.exitCode !== null) {
+        resolve();
+        return;
+      }
+
+      const done = () => resolve();
+      child.once("exit", done);
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        child.removeListener("exit", done);
+        resolve();
+        return;
+      }
+
+      setTimeout(() => {
+        if (child.exitCode === null && !child.killed) {
+          try { child.kill("SIGKILL"); } catch {}
+        }
+      }, 5000);
+    }),
+
     // Cleanup temporary files
     new Promise((resolve) => {
       console.log("[SHUTDOWN] Cleanup completed");
