@@ -1,7 +1,38 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getOpenAICompatibleType } from "open-sse/services/provider.js";
+import { getProviderCredentials } from "@/sse/services/auth";
 
 const originalFetch = global.fetch;
+vi.mock("@/lib/localDb", () => ({
+  getProviderConnections: vi.fn(async () => ([{
+    id: "conn-tammao",
+    provider: "openai-compatible-tammao",
+    apiKey: "tm-key",
+    isActive: true,
+    providerSpecificData: { baseUrl: "http://36.50.26.247:20128/v1", machineId: "tm-machine-id" },
+  }])),
+  getProviderNodeById: vi.fn(async () => ({
+    id: "openai-compatible-tammao",
+    baseUrl: "http://36.50.26.247:20128/v1",
+    prefix: "tammao",
+    nodeName: "TamMao",
+    apiType: "responses",
+    providerSpecificData: { machineId: "tm-machine-id" },
+  })),
+  validateApiKey: vi.fn(),
+  updateProviderConnection: vi.fn(async (_id, patch) => patch),
+  getSettings: vi.fn(async () => ({ providerStrategies: {} })),
+}));
+
+vi.mock("@/lib/network/connectionProxy", () => ({
+  resolveConnectionProxyConfig: vi.fn(async () => ({
+    connectionProxyEnabled: false,
+    connectionProxyUrl: "",
+    connectionNoProxy: "",
+    proxyPoolId: null,
+    vercelRelayUrl: "",
+  })),
+}));
 
 vi.mock("@/models", () => ({
   getProviderNodeById: vi.fn(async () => ({
@@ -15,6 +46,13 @@ vi.mock("@/models", () => ({
     apiKey: "tm-key",
     providerSpecificData: { baseUrl: "https://api.cungcapai.io.vn/v1", machineId: "tm-machine-id" },
   })),
+  getProviderConnections: vi.fn(async () => ([{
+    id: "conn-tammao",
+    provider: "openai-compatible-tammao",
+    apiKey: "tm-key",
+    isActive: true,
+    providerSpecificData: { baseUrl: "http://36.50.26.247:20128/v1", machineId: "tm-machine-id" },
+  }])),
 }));
 
 describe("TamMao fallback", () => {
@@ -63,6 +101,18 @@ describe("TamMao fallback", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/responses");
   });
 
+
+  it("merges compatible node metadata into selected credentials", async () => {
+    const credentials = await getProviderCredentials("openai-compatible-tammao");
+
+    expect(credentials.providerSpecificData).toMatchObject({
+      baseUrl: "http://36.50.26.247:20128/v1",
+      machineId: "tm-machine-id",
+      prefix: "tammao",
+      nodeName: "TamMao",
+    });
+    expect(getOpenAICompatibleType("openai-compatible-responses-tammao", credentials.providerSpecificData)).toBe("chat");
+  });
   it("models route returns fallback catalog when /models times out", async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new DOMException("timeout", "TimeoutError"))

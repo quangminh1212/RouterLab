@@ -1,4 +1,4 @@
-import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings } from "@/lib/localDb";
+import { getProviderConnections, getProviderNodeById, validateApiKey, updateProviderConnection, getSettings } from "@/lib/localDb";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
@@ -7,6 +7,33 @@ import * as log from "../utils/logger.js";
 
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
+
+async function buildResolvedProviderSpecificData(providerId, connection) {
+  const providerSpecificData = {
+    ...(connection?.providerSpecificData || {}),
+  };
+
+  const isCompatibleNode = typeof providerId === "string"
+    && (providerId.startsWith("openai-compatible-") || providerId.startsWith("anthropic-compatible-"));
+
+  if (!isCompatibleNode) return providerSpecificData;
+  if (providerSpecificData.prefix && providerSpecificData.nodeName && providerSpecificData.apiType) return providerSpecificData;
+
+  try {
+    const node = await getProviderNodeById(providerId);
+    if (!node) return providerSpecificData;
+
+    return {
+      ...providerSpecificData,
+      ...(providerSpecificData.baseUrl ? {} : (node.baseUrl ? { baseUrl: node.baseUrl } : {})),
+      ...(providerSpecificData.prefix ? {} : (node.prefix ? { prefix: node.prefix } : {})),
+      ...(providerSpecificData.nodeName ? {} : (node.nodeName ? { nodeName: node.nodeName } : {})),
+      ...(providerSpecificData.apiType ? {} : (node.apiType ? { apiType: node.apiType } : {})),
+    };
+  } catch {
+    return providerSpecificData;
+  }
+}
 
 /**
  * Get provider credentials from localDb
@@ -164,7 +191,8 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       connection = availableConnections[0];
     }
 
-    const resolvedProxy = await resolveConnectionProxyConfig(connection.providerSpecificData || {});
+    const providerSpecificData = await buildResolvedProviderSpecificData(providerId, connection);
+    const resolvedProxy = await resolveConnectionProxyConfig(providerSpecificData);
 
     return {
       apiKey: connection.apiKey,
@@ -174,7 +202,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       connectionName: connection.displayName || connection.name || connection.email || connection.id,
       copilotToken: connection.providerSpecificData?.copilotToken,
       providerSpecificData: {
-        ...(connection.providerSpecificData || {}),
+        ...providerSpecificData,
         connectionProxyEnabled: resolvedProxy.connectionProxyEnabled,
         connectionProxyUrl: resolvedProxy.connectionProxyUrl,
         connectionNoProxy: resolvedProxy.connectionNoProxy,
