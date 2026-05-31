@@ -250,17 +250,17 @@ firecrawl · jina-reader (fetch)
 | qwen | tất cả | ✓ | ✅ |
 | iflow | tất cả | ✓ | ✅ |
 | kiro | Omni/9r | ✓ | ✅ |
-| kimi-coding | Omni | 🟡 (backend có) | 🟡 |
-| qoder | Omni | ⬜ | ⬜ |
-| agy (Antigravity CLI) | Omni | ⬜ | ⬜ |
-| amazon-q | Omni | ⬜ | ⬜ |
-| gitlab-duo | Omni/CLIProxy | 🟡 (backend gitlab) | 🟡 |
-| zed | Omni | ⬜ | ⬜ |
-| trae | Omni | ⬜ | ⬜ |
-| windsurf (Devin CLI) | Omni | ⬜ | ⬜ |
-| devin-cli | Omni | ⬜ | ⬜ |
-| xai-oauth (Grok Build) | CLIProxy | 🟡 (có xai apikey) | 🟡 |
-| aistudio (AI Studio Build, WS) | CLIProxy | ⬜ | ⬜ |
+| kimi-coding | Omni | ✅ (Đợt 3 — surface UI, backend device-code đã có) | ✅ |
+| qoder | Omni | ✅ (Đợt 3 — surface UI, backend auth-code đã có) | ✅ |
+| amazon-q | Omni | ✅ (Đợt 3 — tái dùng Kiro AWS Builder ID device-code + KiroExecutor; cần AWS Builder ID thật để verify e2e) | ✅ |
+| gitlab-duo | Omni/CLIProxy | ✅ (Đợt 3 — surface UI, backend gitlab PAT/OAuth đã có) | ✅ |
+| codebuddy (Tencent) | Omni | ✅ (Đợt 3 — surface UI, backend browser-poll đã có) | ✅ |
+| zed | Omni | ⬜ (import creds từ OS keychain — desktop only, không phù hợp server-side) | ⬜ |
+| trae | Omni | ⬜ (paste Cloud-IDE-JWT — cần xác minh endpoint backend) | ⬜ |
+| windsurf (Devin CLI) | Omni | ⬜ (device-code/token paste — cần executor riêng) | ⬜ |
+| devin-cli | Omni | ⬜ (cần Devin CLI binary + WINDSURF_API_KEY) | ⬜ |
+| xai-oauth (Grok Build) | CLIProxy | 🟡 (có xai apikey; OAuth PKCE flow chưa thêm) | 🟡 |
+| aistudio (AI Studio Build, WS) | CLIProxy | ⬜ (cần WebSocket gateway — Đợt 5) | ⬜ |
 
 ---
 
