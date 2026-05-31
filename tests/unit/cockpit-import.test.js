@@ -2,6 +2,61 @@ import { describe, expect, it } from "vitest";
 import { parseCockpitExport, summarizeEntries, toDateKey } from "@/lib/usage/cockpitImport";
 
 describe("parseCockpitExport", () => {
+  it("parses the Antigravity Cockpit Tools data-transfer export (Shape 0)", () => {
+    const exportData = {
+      schema: "cockpit-tools.data-transfer",
+      version: 1,
+      exported_at: "2026-05-31T17:19:34.238Z",
+      accounts: {
+        platforms: {
+          kiro: {
+            account_count: 2,
+            exported_data: [
+              { email: "a@x.com", plan_name: "KIRO FREE", credits_used: 50, bonus_used: 500 },
+              { email: "b@x.com", plan_name: "KIRO FREE", credits_used: 12, bonus_used: 0 },
+            ],
+          },
+          "github-copilot": {
+            account_count: 1,
+            exported_data: [
+              {
+                github_login: "octocat",
+                copilot_plan: "enterprise",
+                copilot_quota_snapshots: {
+                  premium_interactions: { entitlement: 1000, quota_remaining: 300, unlimited: false },
+                  chat: { entitlement: 0, quota_remaining: 0, unlimited: true },
+                },
+              },
+            ],
+          },
+          codex: {
+            account_count: 1,
+            // Only a percentage -> not derivable -> skipped.
+            exported_data: [{ email: "c@x.com", plan_type: "team", quota: { hourly_percentage: 100, weekly_percentage: 98 } }],
+          },
+        },
+      },
+    };
+    const { entries, shape } = parseCockpitExport(exportData);
+    expect(shape).toBe("cockpit-tools");
+    // 2 kiro accounts + 1 copilot account; codex skipped.
+    expect(entries).toHaveLength(3);
+
+    const kiroA = entries.find((e) => e.account === "a@x.com");
+    // dateKey is derived in local time from exported_at, so compute the expectation the same way.
+    const expectedDateKey = (() => {
+      const d = new Date("2026-05-31T17:19:34.238Z");
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
+    expect(kiroA).toMatchObject({ provider: "kiro", requests: 550, dateKey: expectedDateKey });
+
+    const copilot = entries.find((e) => e.provider === "github-copilot");
+    expect(copilot.requests).toBe(700); // 1000 - 300, unlimited chat ignored
+    expect(copilot.account).toBe("octocat");
+
+    expect(entries.some((e) => e.provider === "codex")).toBe(false);
+  });
+
   it("parses a record/event array (Shape A)", () => {
     const exportData = {
       exportedAt: "2026-05-20T10:00:00Z",

@@ -142,6 +142,85 @@ function normalizeRecord(rec, fallbackDate) {
 }
 
 /**
+ * Adapter for the Antigravity "Cockpit Tools" data-transfer export
+ * (schema: "cockpit-tools.data-transfer").
+ *
+ * Shape:
+ *   {
+ *     schema: "cockpit-tools.data-transfer",
+ *     exported_at, version,
+ *     accounts: { platforms: { <platform>: { account_count, exported_data: [ <account>, ... ] } } }
+ *   }
+ *
+ * Each account carries a point-in-time quota/credit snapshot rather than a
+ * per-day request history. We extract a "requests used" count per account so
+ * it can be folded into the usage totals. One usage entry per account (tagged
+ * by the account email) on the export date.
+ */
+function extractCockpitToolsEntries(root, fallbackDate) {
+  const platforms = root?.accounts?.platforms;
+  if (!isObject(platforms)) return [];
+
+  const exportDateKey = toDateKey(
+    root.exported_at || root.exportedAt || root.accounts?.exported_at,
+    fallbackDate
+  );
+  const entries = [];
+
+  for (const [platform, node] of Object.entries(platforms)) {
+    const list = Array.isArray(node?.exported_data) ? node.exported_data : [];
+    for (const acc of list) {
+      if (!isObject(acc)) continue;
+      const used = extractAccountUsedCount(platform, acc);
+      if (used <= 0) continue;
+      entries.push({
+        dateKey: exportDateKey,
+        provider: platform,
+        model: pickString(acc, ["plan_name", "plan_type", "copilot_plan", "plan_tier"], "plan"),
+        account: pickString(acc, ["email", "github_login", "github_email", "account_name", "user_id", "id"], ""),
+        requests: Math.round(used),
+        promptTokens: 0,
+        completionTokens: 0,
+        cost: 0,
+      });
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Derive a "consumed units" count from a Cockpit Tools account snapshot.
+ * Returns 0 when no absolute count can be derived (e.g. codex only exposes a
+ * percentage, which cannot be converted to an absolute request count).
+ */
+function extractAccountUsedCount(platform, acc) {
+  // Kiro: explicit consumed credits (+ bonus credits).
+  const creditsUsed = pickNumber(acc, ["credits_used"], 0) + pickNumber(acc, ["bonus_used"], 0);
+  if (creditsUsed > 0) return creditsUsed;
+
+  // GitHub Copilot: entitlement - remaining, summed across metered quotas.
+  const snapshots = acc.copilot_quota_snapshots;
+  if (isObject(snapshots)) {
+    let usedTotal = 0;
+    for (const snap of Object.values(snapshots)) {
+      if (!isObject(snap) || snap.unlimited) continue;
+      const entitlement = pickNumber(snap, ["entitlement"], 0);
+      const remaining = pickNumber(snap, ["quota_remaining", "remaining"], entitlement);
+      const used = entitlement - remaining;
+      if (used > 0) usedTotal += used;
+    }
+    if (usedTotal > 0) return usedTotal;
+  }
+
+  // Generic used/total style fields on the account itself.
+  const directUsed = pickNumber(acc, ["used", "usedCount", "requestsUsed", "usage_count"], 0);
+  if (directUsed > 0) return directUsed;
+
+  return 0;
+}
+
+/**
  * Parse a Cockpit export payload into normalized usage entries.
  *
  * @param {object|Array|string} input - parsed JSON object/array, or raw JSON string.
@@ -165,6 +244,21 @@ export function parseCockpitExport(input) {
   const fallbackDate = exportedAtRaw && !Number.isNaN(new Date(exportedAtRaw).getTime())
     ? new Date(exportedAtRaw)
     : new Date();
+
+  // Shape 0 (highest priority): Antigravity "Cockpit Tools" data-transfer export.
+  const looksLikeCockpitTools =
+    (typeof root.schema === "string" && root.schema.includes("cockpit")) ||
+    isObject(root?.accounts?.platforms);
+  if (looksLikeCockpitTools) {
+    const entries = extractCockpitToolsEntries(root, fallbackDate);
+    if (entries.length) {
+      return { entries, shape: "cockpit-tools", exportedAt: exportedAtRaw || null, warnings };
+    }
+    warnings.push(
+      "Cockpit Tools export detected but no account exposed an absolute usage count " +
+        "(e.g. Codex only reports a percentage). Nothing to merge."
+    );
+  }
 
   // Shape A: explicit record/event array.
   const { records } = findRecordArray(root);

@@ -250,9 +250,15 @@ function aggregateCockpitEntryToDailySummary(dailySummary, entry) {
 
   addToCounter(day.byProvider, provider, vals);
   addToCounter(day.byModel, `${model}|${provider}`, { ...vals, meta: { rawModel: model, provider, source: "cockpit" } });
-  // Group all Cockpit-imported usage under a synthetic account bucket so it is
-  // visible in the by-account breakdown without colliding with real accounts.
-  addToCounter(day.byAccount, `cockpit:${provider}`, { ...vals, meta: { rawModel: model, provider, source: "cockpit" } });
+  // Group Cockpit-imported usage under an account bucket. Prefer the real
+  // account identifier (email) when the export provides one, else a synthetic
+  // per-provider bucket, so it shows in the by-account breakdown without
+  // colliding with locally-tracked accounts.
+  const accountKey = entry.account ? `cockpit:${provider}:${entry.account}` : `cockpit:${provider}`;
+  addToCounter(day.byAccount, accountKey, {
+    ...vals,
+    meta: { rawModel: model, provider, source: "cockpit", account: entry.account || null },
+  });
 
   return { requests };
 }

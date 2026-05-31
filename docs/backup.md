@@ -144,3 +144,38 @@ Lưu ý an toàn:
 - Luôn tạo bản `*.bak-<timestamp>` trước khi sửa file live.
 - Xóa snapshot cũ cần cờ riêng `--prune-backups`.
 - Nên dừng tiến trình XLab Router trước khi chạy `--apply` để tránh tranh chấp ghi file.
+
+## Nhập usage từ Cockpit (Antigravity Cockpit Tools)
+
+Với các tài khoản mà XLab Router chỉ giữ token để chat (không có quyền đọc quota API của nhà cung cấp), panel **Antigravity Cockpit** là nơi duy nhất thấy được usage. Có thể export từ Cockpit rồi nhập vào XLab Router để cộng dồn vào tổng usage.
+
+### Định dạng file export được hỗ trợ
+
+Parser nhận diện nhiều dạng, ưu tiên cao nhất là **Cockpit Tools data-transfer** (`schema: "cockpit-tools.data-transfer"`):
+
+```
+{
+  "schema": "cockpit-tools.data-transfer",
+  "exported_at": "2026-05-31T...Z",
+  "accounts": { "platforms": { "<platform>": { "exported_data": [ <account>, ... ] } } }
+}
+```
+
+Đây là **snapshot quota/credit theo từng account** (không phải lịch sử request theo ngày). XLab Router suy ra số "đơn vị đã dùng" cho mỗi account:
+
+- **kiro**: `credits_used` + `bonus_used`.
+- **github-copilot / windsurf**: tổng `entitlement - quota_remaining` qua các quota có giới hạn (bỏ qua quota `unlimited`).
+- **codex**: chỉ có `%` đã dùng (`hourly_percentage`/`weekly_percentage`) → không suy ra được số tuyệt đối → **bỏ qua** (không đoán).
+
+Các dạng khác cũng được hỗ trợ: mảng record/event theo ngày, map quota theo model, và chính file `dailySummary` của XLab Router (re-import).
+
+### API
+
+```
+POST /api/usage/cockpit-import
+```
+
+- Body `{ "preview": true, "export": <file> }` → tính tổng và trả về (dry-run), KHÔNG ghi.
+- Body `{ "export": <file> }` → cộng dồn vào `dailySummary` + `totalRequestsLifetime`.
+
+Usage nhập vào được gắn nhãn `source: "cockpit"` và gom theo bucket account `cockpit:<platform>:<email>` để không lẫn với account theo dõi nội bộ. Thao tác **idempotent**: import lại đúng file (hash trùng) sẽ không cộng đôi.
