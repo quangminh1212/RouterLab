@@ -162,7 +162,7 @@ Chinese LLMs: baidu ✅ · tencent ✅ · iflytek ✅ · baichuan ✅ · yi ✅ 
 
 ### 5.4 Enterprise / Cloud (Đợt 1 ✅ — OpenAI-compatible surface + providerSpecificData)
 azure-ai ✅ · watsonx ✅ · oci ✅ · sap ✅ · databricks ✅ · datarobot ✅ · clarifai ✅ · snowflake ✅ · heroku ✅
-- 🟡 bedrock — cần SigV4 ký request (chưa thêm; sẽ làm Đợt 2 với executor riêng)
+- ✅ bedrock (Đợt 2) — dùng Bedrock API key (Bearer) trên endpoint OpenAI-compatible `bedrock-runtime.{region}.amazonaws.com/openai/v1` (không cần SigV4). Executor riêng `open-sse/executors/bedrock.js` resolve region từ providerSpecificData.
 
 ---
 
@@ -192,8 +192,14 @@ voyage-ai · jina-ai · huggingface (embedding)
 tavily · brave-search · serper · exa · searxng · google-pse · linkup · searchapi · youcom (search)
 firecrawl · jina-reader (fetch)
 
-### OmniRoute — cần thêm ⬜
-- ⬜ ideogram (image) · leonardo (image/video) · haiper (video) · suno (music) · udio (music)
+### OmniRoute — đã thêm (Đợt 2 ✅)
+- ✅ ideogram (image) — adapter `imageProviders/ideogram.js` (sync v3 generate)
+- ✅ leonardo (image/video) — adapter `imageProviders/leonardo.js` (async polling)
+- ✅ haiper (video) — adapter `imageProviders/haiper.js` (async polling)
+- ✅ recraft / aimlapi / novita — đã wire adapter image (OpenAI-style)
+
+### OmniRoute — còn lại ⬜
+- ⬜ suno (music) · udio (music) — dùng cookie/session auth (Clerk/Supabase) → xếp vào Đợt 4 (web/cookie), cần handler `/v1/audio/music` riêng
 - ⬜ Search dạng riêng: perplexity-search · serper-search · exa-search · tavily-search · google-pse-search · linkup-search · searchapi-search · youcom-search · searxng-search · ollama-search (OmniRoute tách riêng — XLab gộp vào provider chính, coi như tương đương ✅)
 
 ---
