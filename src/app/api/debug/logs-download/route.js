@@ -6,12 +6,15 @@ import { execSync } from "node:child_process";
 import { getConsoleLogs } from "@/lib/consoleLogBuffer";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { DATA_DIR } from "@/lib/dataDir";
+import { jwtVerify } from "jose";
+import { getAuthSecret } from "@/lib/auth/sessionSecret";
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_FILES = 120;
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
+const SECRET = getAuthSecret();
 let cachedCliToken = null;
 
 async function getCliToken() {
@@ -30,6 +33,16 @@ async function hasValidCliToken(request) {
   return token === await getCliToken();
 }
 
+async function hasValidToken(request) {
+  const token = request.cookies.get("auth_token")?.value;
+  if (!token) return false;
+  try {
+    await jwtVerify(token, SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function safeReadTextFile(filePath) {
   try {
@@ -80,7 +93,7 @@ function getGitInfo() {
 
 export async function GET(request) {
   try {
-    if (!isLocalhostRequest(request) && !(await hasValidCliToken(request))) {
+    if (!isLocalhostRequest(request) && !(await hasValidCliToken(request)) && !(await hasValidToken(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const cwd = process.cwd();
