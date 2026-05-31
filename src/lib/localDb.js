@@ -372,6 +372,53 @@ function normalizeCombos(combos) {
   return combos.map(normalizeCombo).filter(Boolean);
 }
 
+function isTamMaoCompatibleConfig(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const providerSpecificData = data.providerSpecificData && typeof data.providerSpecificData === "object" && !Array.isArray(data.providerSpecificData)
+    ? data.providerSpecificData
+    : {};
+  const haystack = [
+    data.name,
+    data.prefix,
+    data.nodeName,
+    data.baseUrl,
+    data.provider,
+    data.id,
+    providerSpecificData.name,
+    providerSpecificData.prefix,
+    providerSpecificData.nodeName,
+    providerSpecificData.baseUrl,
+  ].map((value) => String(value || "").toLowerCase()).join(" ");
+  return haystack.includes("tammao") || haystack.includes("cungcapai");
+}
+
+function normalizeTamMaoCompatibleApiType(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const normalized = { ...data };
+  if (isTamMaoCompatibleConfig(normalized)) {
+    if (normalized.apiType === "responses") normalized.apiType = "chat";
+    if (normalized.providerSpecificData && typeof normalized.providerSpecificData === "object" && !Array.isArray(normalized.providerSpecificData)) {
+      normalized.providerSpecificData = { ...normalized.providerSpecificData };
+      if (normalized.providerSpecificData.apiType === "responses") normalized.providerSpecificData.apiType = "chat";
+    }
+  }
+  return normalized;
+}
+
+function normalizeProviderNodes(nodes) {
+  if (!Array.isArray(nodes)) return [];
+  return nodes
+    .filter((node) => node && typeof node === "object" && !Array.isArray(node))
+    .map(normalizeTamMaoCompatibleApiType);
+}
+
+function normalizeProviderConnections(connections) {
+  if (!Array.isArray(connections)) return [];
+  return connections
+    .filter((connection) => connection && typeof connection === "object" && !Array.isArray(connection))
+    .map(normalizeTamMaoCompatibleApiType);
+}
+
 function cloneDefaultData() {
   return {
     providerConnections: [],
@@ -585,6 +632,22 @@ function ensureDbShape(data) {
       const normalizedCloudUrl = normalizeCloudUrl(next.settings.cloudUrl);
       if ((next.settings.cloudUrl || "") !== normalizedCloudUrl) {
         next.settings.cloudUrl = normalizedCloudUrl;
+        changed = true;
+      }
+    }
+
+    if (key === "providerNodes") {
+      const normalizedProviderNodes = normalizeProviderNodes(next.providerNodes);
+      if (JSON.stringify(normalizedProviderNodes) !== JSON.stringify(next.providerNodes)) {
+        next.providerNodes = normalizedProviderNodes;
+        changed = true;
+      }
+    }
+
+    if (key === "providerConnections") {
+      const normalizedProviderConnections = normalizeProviderConnections(next.providerConnections);
+      if (JSON.stringify(normalizedProviderConnections) !== JSON.stringify(next.providerConnections)) {
+        next.providerConnections = normalizedProviderConnections;
         changed = true;
       }
     }
@@ -1063,13 +1126,14 @@ export async function createProviderNode(data) {
   if (!db.data.providerNodes) db.data.providerNodes = [];
 
   const now = new Date().toISOString();
+  const normalizedData = normalizeTamMaoCompatibleApiType(data);
   const node = {
-    id: data.id || uuidv4(),
-    type: data.type,
-    name: data.name,
-    prefix: data.prefix,
-    apiType: data.apiType,
-    baseUrl: data.baseUrl,
+    id: normalizedData.id || uuidv4(),
+    type: normalizedData.type,
+    name: normalizedData.name,
+    prefix: normalizedData.prefix,
+    apiType: normalizedData.apiType,
+    baseUrl: normalizedData.baseUrl,
     createdAt: now,
     updatedAt: now,
   };
@@ -1086,9 +1150,13 @@ export async function updateProviderNode(id, data) {
   const index = db.data.providerNodes.findIndex((node) => node.id === id);
   if (index === -1) return null;
 
-  db.data.providerNodes[index] = {
+  const normalizedData = normalizeTamMaoCompatibleApiType({
     ...db.data.providerNodes[index],
     ...data,
+  });
+
+  db.data.providerNodes[index] = {
+    ...normalizedData,
     updatedAt: new Date().toISOString(),
   };
 
@@ -1195,6 +1263,7 @@ export async function getProviderConnectionById(id) {
 
 export async function createProviderConnection(data) {
   const db = await getDb();
+  data = normalizeTamMaoCompatibleApiType(data);
   const now = new Date().toISOString();
 
   // Upsert: check existing by provider + email (oauth) or provider + name (apikey)
@@ -1210,11 +1279,11 @@ export async function createProviderConnection(data) {
   }
 
   if (existingIndex !== -1) {
-    db.data.providerConnections[existingIndex] = {
+    db.data.providerConnections[existingIndex] = normalizeTamMaoCompatibleApiType({
       ...db.data.providerConnections[existingIndex],
       ...data,
       updatedAt: now,
-    };
+    });
     await safeWrite(db);
     return db.data.providerConnections[existingIndex];
   }
@@ -1296,16 +1365,17 @@ export async function updateProviderConnection(id, data) {
 
   const current = db.data.providerConnections[index];
   const providerId = current.provider;
+  data = normalizeTamMaoCompatibleApiType({ ...current, ...(data || {}) });
   const hasMeaningfulChange = Object.keys(data || {}).some((key) => !valuesEqualForUpdate(current[key], data[key]));
   if (!hasMeaningfulChange) {
     return current;
   }
 
-  db.data.providerConnections[index] = {
+  db.data.providerConnections[index] = normalizeTamMaoCompatibleApiType({
     ...current,
     ...data,
     updatedAt: new Date().toISOString(),
-  };
+  });
 
   await safeWrite(db);
   invalidateProviderConnectionsCache();
