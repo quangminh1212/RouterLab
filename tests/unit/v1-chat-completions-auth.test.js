@@ -4,6 +4,7 @@ describe("/api/v1/chat/completions auth forwarding", () => {
   const originalEnv = {
     OPENCLAW_CAPTURE_PROXY: process.env.OPENCLAW_CAPTURE_PROXY,
     OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL: process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL,
+    OPENCLAW_CAPTURE_PROXY_TOKENS: process.env.OPENCLAW_CAPTURE_PROXY_TOKENS,
   };
 
   beforeEach(() => {
@@ -11,6 +12,7 @@ describe("/api/v1/chat/completions auth forwarding", () => {
     vi.clearAllMocks();
     process.env.OPENCLAW_CAPTURE_PROXY = "true";
     process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = "https://example.com/v1/chat/completions";
+    process.env.OPENCLAW_CAPTURE_PROXY_TOKENS = "token-1";
     global.fetch = vi.fn().mockResolvedValue(new Response("{}", {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -20,10 +22,12 @@ describe("/api/v1/chat/completions auth forwarding", () => {
   afterEach(() => {
     process.env.OPENCLAW_CAPTURE_PROXY = originalEnv.OPENCLAW_CAPTURE_PROXY;
     process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = originalEnv.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL;
+    process.env.OPENCLAW_CAPTURE_PROXY_TOKENS = originalEnv.OPENCLAW_CAPTURE_PROXY_TOKENS;
   });
 
-  it("does not forward invalid authorization headers to capture proxy", async () => {
-    vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
+  it("does not send invalid authorization headers through capture proxy", async () => {
+    const handleChat = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
     vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
@@ -38,8 +42,8 @@ describe("/api/v1/chat/completions auth forwarding", () => {
       body: JSON.stringify({ model: "openclaw", messages: [{ role: "user", content: "hi" }] }),
     }));
 
-    const [, init] = global.fetch.mock.calls[0];
-    expect(init.headers.get("authorization")).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(handleChat).toHaveBeenCalledTimes(1);
   });
 
   it("forwards normalized bearer authorization to capture proxy", async () => {

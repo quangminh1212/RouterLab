@@ -69,6 +69,32 @@ describe("GET /api/v1/models/info", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
+  it("includes TamMao passthrough model info for chained router imports", async () => {
+    vi.doMock("@/lib/localDb", () => ({
+      getCombos: vi.fn().mockResolvedValue([
+        { name: "gpt-5.5", kind: "chat", models: ["tammao/gpt-5.5"], showInModelsEndpoint: true },
+      ]),
+      getModelAliases: vi.fn().mockResolvedValue({}),
+      getSettings: vi.fn().mockResolvedValue({ hiddenModels: [] }),
+    }));
+
+    vi.doMock("open-sse/config/models.js", () => ({
+      getModelInfo: vi.fn(() => ({ type: ["chat"], contextWindow: 200000 })),
+    }));
+
+    const { GET } = await import("@/app/api/v1/models/info/route");
+    const response = await GET();
+    const data = await response.json();
+
+    expect(data.data.map((model) => model.id)).toEqual(["gpt-5.5", "tammao/gpt-5.5"]);
+    expect(data.data.find((model) => model.id === "tammao/gpt-5.5")).toMatchObject({
+      provider: "tammao",
+      root: "gpt-5.5",
+      parent: "gpt-5.5",
+      models: ["tammao/gpt-5.5"],
+    });
+  });
+
   it("returns server error payload when combo loading fails", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getCombos: vi.fn().mockRejectedValue(new Error("db down")),

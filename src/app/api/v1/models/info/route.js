@@ -38,6 +38,32 @@ function toInfoModel(combo, alias = null) {
   };
 }
 
+function isTamMaoPassthroughModel(modelId) {
+  const value = String(modelId || "").trim().toLowerCase();
+  return value === "tammao" || value.startsWith("tammao/");
+}
+
+function toPassthroughInfoModel(combo, modelId) {
+  return {
+    id: modelId,
+    name: modelId,
+    provider: "tammao",
+    kind: combo.kind || null,
+    type: ["chat"],
+    contextWindow: null,
+    supports: {
+      reasoning: true,
+      image: false,
+      embedding: false,
+      audio: false,
+      video: false,
+    },
+    root: combo.name,
+    parent: combo.name,
+    models: Array.isArray(combo.models) ? combo.models : [],
+  };
+}
+
 export async function GET() {
   try {
     let combos = [];
@@ -70,7 +96,22 @@ export async function GET() {
       })
       .filter(Boolean);
 
-    const data = [...comboInfo, ...aliasInfo].sort((left, right) => String(left.id).localeCompare(String(right.id)));
+    const seenIds = new Set([...comboInfo, ...aliasInfo].map((model) => String(model.id)));
+    const passthroughInfo = combos
+      .filter((combo) => combo?.showInModelsEndpoint !== false && !hiddenModels.includes(combo?.name))
+      .flatMap((combo) => {
+        const upstreamModels = Array.isArray(combo.models) ? combo.models : [];
+        return upstreamModels
+          .map((modelId) => String(modelId || "").trim())
+          .filter((modelId) => isTamMaoPassthroughModel(modelId) && !seenIds.has(modelId))
+          .map((modelId) => {
+            seenIds.add(modelId);
+            return toPassthroughInfoModel(combo, modelId);
+          });
+      });
+
+    const data = [...comboInfo, ...aliasInfo, ...passthroughInfo]
+      .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
     return Response.json({
       object: "list",

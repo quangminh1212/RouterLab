@@ -1,9 +1,10 @@
-﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("/api/v1/chat/completions input normalization", () => {
   const originalEnv = {
     OPENCLAW_CAPTURE_PROXY: process.env.OPENCLAW_CAPTURE_PROXY,
     OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL: process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL,
+    OPENCLAW_CAPTURE_PROXY_TOKENS: process.env.OPENCLAW_CAPTURE_PROXY_TOKENS,
   };
 
   beforeEach(() => {
@@ -11,22 +12,24 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.clearAllMocks();
     process.env.OPENCLAW_CAPTURE_PROXY = "true";
     process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = "https://example.com/v1/chat/completions";
-    global.fetch = vi.fn().mockResolvedValue(new Response("{}", {
+    process.env.OPENCLAW_CAPTURE_PROXY_TOKENS = "token-1";
+    global.fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response("{}", {
       status: 200,
       headers: { "content-type": "application/json" },
-    }));
+    })));
   });
 
   afterEach(() => {
     process.env.OPENCLAW_CAPTURE_PROXY = originalEnv.OPENCLAW_CAPTURE_PROXY;
     process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = originalEnv.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL;
+    process.env.OPENCLAW_CAPTURE_PROXY_TOKENS = originalEnv.OPENCLAW_CAPTURE_PROXY_TOKENS;
   });
 
   it("normalizes invalid numeric fields before forwarding", async () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -54,7 +57,7 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -82,7 +85,7 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -113,7 +116,7 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -140,7 +143,7 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat: vi.fn() }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -162,12 +165,12 @@ describe("/api/v1/chat/completions input normalization", () => {
   it("retries malformed HTTP 200 proxy responses as stream", async () => {
     process.env.OPENCLAW_CAPTURE_PROXY = "false";
     const handleChat = vi.fn()
-      .mockResolvedValueOnce(new Response("API Error: API returned an empty or malformed response (HTTP 200) â€” check for a proxy or gateway cÃ³ response nhÆ° nÃ y thÃ¬ khÃ´ng tráº£ vá» qua api mÃ  thá»­ láº¡i request khÃ¡c nhÃ©intercepting the request", {
+      .mockResolvedValueOnce(new Response("API Error: API returned an empty or malformed response (HTTP 200) - check for a proxy or gateway intercepting the request", {
         status: 200,
         headers: { "content-type": "text/plain" },
       }))
       .mockResolvedValueOnce(new Response([
-        'data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1,"model":"openclaw","choices":[{"index":0,"delta":{"content":"Xin chÃ o"},"finish_reason":null}]}',
+        'data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1,"model":"openclaw","choices":[{"index":0,"delta":{"content":"Xin ch?o"},"finish_reason":null}]}',
         'data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1,"model":"openclaw","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
         "data: [DONE]",
         "",
@@ -178,7 +181,7 @@ describe("/api/v1/chat/completions input normalization", () => {
     vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat }));
     vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
     vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "") }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
 
     const { POST } = await import("@/app/api/v1/chat/completions/route");
     const response = await POST(new Request("http://localhost/api/v1/chat/completions", {
@@ -192,9 +195,50 @@ describe("/api/v1/chat/completions input normalization", () => {
     expect(retryBody.stream).toBe(true);
     await expect(response.json()).resolves.toMatchObject({
       object: "chat.completion",
-      choices: [{ message: { role: "assistant", content: "Xin chÃ o" } }],
+      choices: [{ message: { role: "assistant", content: "Xin ch?o" } }],
+    });
+  });
+
+  it("normalizes loose Responses API JSON with SSE done suffix", async () => {
+    process.env.OPENCLAW_CAPTURE_PROXY = "false";
+    const handleChat = vi.fn().mockResolvedValue(new Response([
+      JSON.stringify({
+        id: "resp_tammao_1",
+        object: "response",
+        created_at: 1780135409,
+        status: "completed",
+        model: "tammao/gpt-5.5",
+        output: [{
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: "RESPONSES_OK", annotations: [] }],
+        }],
+        usage: { input_tokens: 1, output_tokens: 2, total_tokens: 3 },
+      }),
+      "data: [DONE]",
+      "",
+    ].join("\n"), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat }));
+    vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
+    vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
+    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
+
+    const { POST } = await import("@/app/api/v1/chat/completions/route");
+    const response = await POST(new Request("http://localhost/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "tammao/gpt-5.5", messages: [{ role: "user", content: "hi" }] }),
+    }));
+
+    await expect(response.json()).resolves.toMatchObject({
+      object: "chat.completion",
+      model: "tammao/gpt-5.5",
+      choices: [{ message: { role: "assistant", content: "RESPONSES_OK" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
     });
   });
 
 });
-
