@@ -15,6 +15,9 @@ import { GrokWebExecutor } from "./grok-web.js";
 import { PerplexityWebExecutor } from "./perplexity-web.js";
 import { BedrockExecutor } from "./bedrock.js";
 import { AmazonQExecutor } from "./amazon-q.js";
+import { DuckDuckGoWebExecutor } from "./webChat/duckduckgo.js";
+import { GenericWebExecutor } from "./webChat/genericWeb.js";
+import { WEB_CHAT_PROVIDER_IDS } from "./webChat/registry.js";
 import { DefaultExecutor } from "./default.js";
 
 const executors = {
@@ -37,7 +40,13 @@ const executors = {
   "perplexity-web": new PerplexityWebExecutor(),
   bedrock: new BedrockExecutor(),
   "amazon-q": new AmazonQExecutor(),
+  "duckduckgo-web": new DuckDuckGoWebExecutor(),
 };
+
+// Register config-driven web-cookie chat providers (GenericWebExecutor).
+for (const id of WEB_CHAT_PROVIDER_IDS) {
+  if (!executors[id]) executors[id] = new GenericWebExecutor(id);
+}
 
 const defaultCache = new Map();
 
@@ -70,3 +79,5 @@ export { GrokWebExecutor } from "./grok-web.js";
 export { PerplexityWebExecutor } from "./perplexity-web.js";
 export { BedrockExecutor } from "./bedrock.js";
 export { AmazonQExecutor } from "./amazon-q.js";
+export { DuckDuckGoWebExecutor } from "./webChat/duckduckgo.js";
+export { GenericWebExecutor } from "./webChat/genericWeb.js";

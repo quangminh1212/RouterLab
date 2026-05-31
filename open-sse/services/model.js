@@ -228,6 +228,35 @@ const ALIAS_TO_PROVIDER_ID = {
   haiper: "haiper", hp: "haiper",
   // Amazon Bedrock
   bedrock: "bedrock", br: "bedrock",
+  // Web-cookie chat providers (Đợt 4)
+  "duckduckgo-web": "duckduckgo-web", ddgw: "duckduckgo-web",
+  "chatgpt-web": "chatgpt-web", "cgpt-web": "chatgpt-web",
+  "gemini-web": "gemini-web", gweb: "gemini-web",
+  "claude-web": "claude-web", cw: "claude-web",
+  "deepseek-web": "deepseek-web", "ds-web": "deepseek-web",
+  "copilot-web": "copilot-web", copilot: "copilot-web",
+  "blackbox-web": "blackbox-web", "bb-web": "blackbox-web",
+  "muse-spark-web": "muse-spark-web", "ms-web": "muse-spark-web",
+  "t3-web": "t3-web", t3chat: "t3-web",
+  "inner-ai": "inner-ai", "in-ai": "inner-ai",
+  "adapta-web": "adapta-web", "adp-web": "adapta-web",
+  huggingchat: "huggingchat", hgc: "huggingchat",
+  phind: "phind", ph: "phind",
+  "poe-web": "poe-web",
+  "venice-web": "venice-web", ven: "venice-web",
+  "v0-vercel-web": "v0-vercel-web", v0: "v0-vercel-web",
+  "kimi-web": "kimi-web",
+  "doubao-web": "doubao-web", db: "doubao-web",
+  "veoaifree-web": "veoaifree-web", "veo-free": "veoaifree-web",
+  // Upstream proxy meta-providers
+  cliproxyapi: "cliproxyapi", cpa: "cliproxyapi",
+  "9router": "9router", nr: "9router",
+  // Cloud agents + music (registered for parity)
+  jules: "jules",
+  devin: "devin",
+  "codex-cloud": "codex-cloud",
+  suno: "suno",
+  udio: "udio",
 };
 
 /**

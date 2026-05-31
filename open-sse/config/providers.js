@@ -390,6 +390,37 @@ export const PROVIDERS = {
     format: "perplexity-web",
     authType: "cookie"
   },
+  // === Web-cookie chat providers (Đợt 4) — executors build URLs internally ===
+  "duckduckgo-web": { baseUrl: "https://duckduckgo.com/duckchat/v1/chat", format: "openai", authType: "none", noAuth: true },
+  "chatgpt-web": { baseUrl: "https://chatgpt.com/backend-api/conversation", format: "openai", authType: "cookie" },
+  "gemini-web": { baseUrl: "https://gemini.google.com", format: "openai", authType: "cookie" },
+  "claude-web": { baseUrl: "https://claude.ai/api", format: "openai", authType: "cookie" },
+  "deepseek-web": { baseUrl: "https://chat.deepseek.com/api/v0/chat/completion", format: "openai", authType: "cookie" },
+  "copilot-web": { baseUrl: "https://copilot.microsoft.com", format: "openai", authType: "cookie" },
+  "blackbox-web": { baseUrl: "https://www.blackbox.ai/api/chat", format: "openai", authType: "cookie" },
+  "muse-spark-web": { baseUrl: "https://www.meta.ai/api/graphql", format: "openai", authType: "cookie" },
+  "t3-web": { baseUrl: "https://t3.chat/api/chat", format: "openai", authType: "cookie" },
+  "inner-ai": { baseUrl: "https://app.innerai.com/api", format: "openai", authType: "cookie" },
+  "adapta-web": { baseUrl: "https://agent.adapta.one/api", format: "openai", authType: "cookie" },
+  huggingchat: { baseUrl: "https://huggingface.co/chat/conversation", format: "openai", authType: "cookie" },
+  phind: { baseUrl: "https://https.api.phind.com/agent/", format: "openai", authType: "cookie" },
+  "poe-web": { baseUrl: "https://poe.com/api/gql_POST", format: "openai", authType: "cookie" },
+  "venice-web": { baseUrl: "https://venice.ai/api/inference/chat", format: "openai", authType: "cookie" },
+  "v0-vercel-web": { baseUrl: "https://v0.dev/chat/api/send", format: "openai", authType: "cookie" },
+  "kimi-web": { baseUrl: "https://kimi.moonshot.cn/api/chat", format: "openai", authType: "cookie" },
+  "doubao-web": { baseUrl: "https://www.doubao.com/samantha/chat/completion", format: "openai", authType: "cookie" },
+  "veoaifree-web": { baseUrl: "https://veoaifree.com/api/generate", format: "openai", authType: "none", noAuth: true },
+  // === Upstream proxy meta-providers (chain to another router) ===
+  // baseUrl resolved per-connection from providerSpecificData.baseUrl by DefaultExecutor.
+  cliproxyapi: { baseUrl: "http://localhost:8317/v1/chat/completions", format: "openai" },
+  "9router": { baseUrl: "http://localhost:20130/v1/chat/completions", format: "openai" },
+  // === Cloud-agent providers (task-based; registered for parity) ===
+  jules: { baseUrl: "https://jules.googleapis.com/v1alpha/sessions", format: "openai" },
+  devin: { baseUrl: "https://api.devin.ai/v1/sessions", format: "openai" },
+  "codex-cloud": { baseUrl: "https://chatgpt.com/backend-api/codex/responses", format: "openai-responses" },
+  // === Music providers (task-based; see /v1/audio/music) ===
+  suno: { baseUrl: "https://studio-api.suno.ai/api/generate/v2/", format: "openai", authType: "cookie" },
+  udio: { baseUrl: "https://www.udio.com/api/generate-proxy", format: "openai", authType: "cookie" },
   azure: {
     baseUrl: "",
     format: "openai",
