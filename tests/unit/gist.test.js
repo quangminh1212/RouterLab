@@ -66,4 +66,20 @@ describe("gist backup timeouts", () => {
       passphrases: ["test-token"],
     })).rejects.toThrow("Downloading full Gist backup timed out");
   });
+
+
+  it("explains GitHub Bad credentials instead of exposing raw API text", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({ message: "Bad credentials" }),
+    });
+
+    const { backupToGist } = await import("@/lib/gistBackup");
+
+    await expect(backupToGist({
+      token: "bad-token",
+      payload: { database: { settings: {} } },
+    })).rejects.toThrow("GitHub access token is invalid, expired, or missing gist scope");
+  });
 });

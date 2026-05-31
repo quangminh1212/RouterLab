@@ -48,8 +48,33 @@ function isLikelyDatabasePayload(payload) {
   return knownKeys.some((key) => Object.prototype.hasOwnProperty.call(payload, key));
 }
 
+function stripSecretsFromGistBackup(gistBackup) {
+  if (!gistBackup || typeof gistBackup !== "object" || Array.isArray(gistBackup)) return gistBackup;
+
+  return {
+    ...gistBackup,
+    token: "",
+    refreshToken: "",
+  };
+}
+
+function stripSecretsFromDatabase(database) {
+  if (!database || typeof database !== "object" || Array.isArray(database)) return database;
+
+  if (database.settings && typeof database.settings === "object" && !Array.isArray(database.settings)) {
+    database.settings = {
+      ...database.settings,
+      gistBackup: stripSecretsFromGistBackup(database.settings.gistBackup),
+    };
+  }
+
+  return database;
+}
+
 function stripRequestDataFromDatabase(database) {
   if (!database || typeof database !== "object" || Array.isArray(database)) return database;
+
+  stripSecretsFromDatabase(database);
 
   if (database.requestDetailsData && typeof database.requestDetailsData === "object" && !Array.isArray(database.requestDetailsData)) {
     database.requestDetailsData.records = [];

@@ -84,6 +84,34 @@ function decryptLegacyPayloadWithFallback(envelope, passphrases) {
   throw lastError || new Error("Cannot decrypt legacy Gist backup");
 }
 
+function normalizeGitHubGistErrorMessage({ status, message, details }) {
+  const rawMessage = String(message || "").trim();
+  const normalized = rawMessage.toLowerCase();
+
+  if (status === 401 || normalized.includes("bad credentials") || normalized.includes("requires authentication")) {
+    return "GitHub access token is invalid, expired, or missing gist scope. Enter a valid token with gist scope and try again.";
+  }
+
+  if (status === 403) {
+    if (normalized.includes("rate limit")) {
+      return "GitHub API rate limit reached. Wait a few minutes and try again.";
+    }
+    return "GitHub rejected this request (403). Verify token permissions and account access, then try again.";
+  }
+
+  if (status === 404) {
+    return "GitHub Gist not found or inaccessible. Check gist ID and token permissions.";
+  }
+
+  if (status === 422) {
+    return "GitHub rejected the Gist payload (422). Verify gist ID and backup data format, then try again.";
+  }
+
+  const base = rawMessage || "GitHub Gist request failed";
+  return details ? `${base}: ${details}` : base;
+}
+
+
 async function githubRequest(token, url, options = {}) {
   if (!token || typeof token !== "string") throw new Error("GitHub token is required");
 
@@ -113,8 +141,16 @@ async function githubRequest(token, url, options = {}) {
     const details = Array.isArray(data?.errors)
       ? data.errors.map((item) => [item.resource, item.field, item.code].filter(Boolean).join(".")).filter(Boolean).join(", ")
       : "";
-    const message = [data?.message || "GitHub Gist request failed", details].filter(Boolean).join(": ");
-    throw new Error(message);
+    const message = normalizeGitHubGistErrorMessage({
+      status: response.status,
+      message: data?.message || "GitHub Gist request failed",
+      details,
+    });
+    const error = new Error(message);
+    error.status = response.status;
+    error.response = data;
+    error.details = details;
+    throw error;
   }
 
   return data;

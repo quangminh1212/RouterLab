@@ -6,6 +6,7 @@ import { backupToGist, restoreFromGist } from "@/lib/gistBackup";
 
 const execFileAsync = promisify(execFile);
 const GITHUB_USER_CHECK_TIMEOUT_MS = Number(process.env.XLAB_GIST_AUTH_TIMEOUT_MS || 12000);
+const GITHUB_GISTS_URL = "https://api.github.com/gists";
 
 function createTimeoutError(message) {
   const error = new Error(message);
@@ -37,36 +38,60 @@ function toPublicConfig(settings) {
   return {
     enabled: gistBackup.enabled === true,
     hasToken: !!gistBackup.token,
-    hasRefreshToken: !!gistBackup.refreshToken,
     gistId: gistBackup.gistId || "",
     htmlUrl: gistBackup.htmlUrl || "",
     updatedAt: gistBackup.updatedAt || "",
     fileName: gistBackup.fileName || "xlabrouter.backup.json",
     tokenSource: gistBackup.tokenSource || "",
     githubLogin: gistBackup.githubLogin || "",
+    tokenCommand: "gh auth refresh --hostname github.com --scopes gist,repo,read:org && gh auth token",
+  };
+}
+
+function getManualTokenTypeError(token) {
+  const value = String(token || "").trim();
+  if (!value) return "";
+  if (value.startsWith("gho_")) {
+    return "Token prefix gho_ is an OAuth token, not a Personal Access Token for manual Gist Backup. Use a PAT with prefix ghp_ or github_pat_ that has gist access.";
+  }
+  return "";
+}
+
+function buildGitHubHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "XLab-Router",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
 }
 
 async function validateGitHubToken(token) {
-  const res = await fetchWithTimeout("https://api.github.com/user", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "XLab-Router",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
+  const userRes = await fetchWithTimeout("https://api.github.com/user", {
+    headers: buildGitHubHeaders(token),
     cache: "no-store",
   }, GITHUB_USER_CHECK_TIMEOUT_MS, "GitHub auth check timed out");
 
-  if (!res.ok) {
+  if (!userRes.ok) {
     const err = new Error("GitHub token is invalid or missing required access");
-    err.status = res.status;
+    err.status = userRes.status;
     throw err;
   }
 
-  const data = await res.json().catch(() => ({}));
+  const user = await userRes.json().catch(() => ({}));
+  const gistRes = await fetchWithTimeout(`${GITHUB_GISTS_URL}?per_page=1`, {
+    headers: buildGitHubHeaders(token),
+    cache: "no-store",
+  }, GITHUB_USER_CHECK_TIMEOUT_MS, "GitHub Gist permission check timed out");
+
+  if (!gistRes.ok) {
+    const err = new Error("GitHub token is invalid or missing gist scope");
+    err.status = gistRes.status;
+    throw err;
+  }
+
   return {
-    login: typeof data?.login === "string" ? data.login : "",
+    login: typeof user?.login === "string" ? user.login : "",
   };
 }
 
@@ -165,16 +190,25 @@ async function resolveGitHubCliIdentity(token, fallbackLogin = "") {
 async function getValidatedGitHubCliAuth(fallbackLogin = "") {
   let token = await getGitHubCliToken();
   try {
-    return await resolveGitHubCliIdentity(token, fallbackLogin);
+    const resolved = await resolveGitHubCliIdentity(token, fallbackLogin);
+    return {
+      ...resolved,
+      tokenSource: "gh-cli",
+    };
   } catch (error) {
     if (isGitHubAuthError(error)) {
       try {
         await refreshGitHubCliAuth();
         token = await getGitHubCliToken();
-        return await resolveGitHubCliIdentity(token, fallbackLogin);
+        const resolved = await resolveGitHubCliIdentity(token, fallbackLogin);
+        return {
+          ...resolved,
+          tokenSource: "gh-cli",
+        };
       } catch (refreshError) {
         const err = new Error("GitHub CLI token is invalid and automatic refresh failed. Run gh auth login first.");
         err.cause = refreshError;
+        err.status = 401;
         throw err;
       }
     }
@@ -210,36 +244,56 @@ async function ensureCliAuth(current) {
   const storedLogin = String(current?.githubLogin || "").trim();
   const tokenSource = String(current?.tokenSource || "").trim().toLowerCase();
 
-  // V?i gh-cli: lu?n ?u ti?n l?y token m?i nh?t t? GitHub CLI
-  // ?? CLI t? refresh access token b?ng refresh token n?i b?.
-  const preferGhCli = tokenSource === "gh-cli" || !storedToken;
-  if (preferGhCli) {
-    try {
-      return await getValidatedGitHubCliAuth(storedLogin);
-    } catch (error) {
-      if (!storedToken) throw error;
+  if (storedToken && tokenSource !== "gh-cli") {
+    const manualTokenTypeError = getManualTokenTypeError(storedToken);
+    if (manualTokenTypeError) {
+      const err = new Error(manualTokenTypeError);
+      err.status = 400;
+      throw err;
     }
-  }
-
-  // Fallback token ?? l?u (v? d? PAT) khi gh CLI kh?ng s?n s?ng.
-  if (storedToken) {
     try {
       const user = await validateGitHubToken(storedToken);
       return {
         token: storedToken,
         githubLogin: user.login || storedLogin,
+        tokenSource: "access-token",
       };
     } catch (error) {
-      if (!isGitHubAuthError(error)) {
-        return {
-          token: storedToken,
-          githubLogin: storedLogin,
-        };
-      }
+      const err = new Error("Stored GitHub access token is invalid or missing gist scope. Enter a valid GitHub access token, then try again.");
+      err.cause = error;
+      err.status = Number(error?.status || 401);
+      throw err;
     }
   }
 
-  // Cu?i c?ng th? l?i gh CLI l?n n?a tr??c khi b?o l?i login.
+  if (storedToken) {
+    try {
+      return await getValidatedGitHubCliAuth(storedLogin);
+    } catch (error) {
+      try {
+        const user = await validateGitHubToken(storedToken);
+        return {
+          token: storedToken,
+          githubLogin: user.login || storedLogin,
+          tokenSource: "gh-cli",
+        };
+      } catch (storedTokenError) {
+        if (!isGitHubAuthError(storedTokenError)) {
+          return {
+            token: storedToken,
+            githubLogin: storedLogin,
+            tokenSource: "gh-cli",
+          };
+        }
+      }
+
+      const err = new Error("GitHub CLI token is unavailable and the cached token is no longer valid. Run gh auth login/refresh, then try again.");
+      err.cause = error;
+      err.status = 401;
+      throw err;
+    }
+  }
+
   return await getValidatedGitHubCliAuth(storedLogin);
 }
 
@@ -309,6 +363,21 @@ export async function POST(request) {
       }
     }
 
+    if (action === "import-gho") {
+      const auth = await getValidatedGitHubCliAuth(current.githubLogin || "");
+      const nextConfig = {
+        ...current,
+        enabled: true,
+        token: auth.token,
+        refreshToken: "",
+        tokenSource: "access-token",
+        githubLogin: auth.githubLogin,
+        fileName: current.fileName || "xlabrouter.backup.json",
+      };
+      await updateSettings({ gistBackup: nextConfig });
+      return NextResponse.json({ success: true, action, tokenPrefix: auth.token.slice(0, 4), config: toPublicConfig({ gistBackup: nextConfig }) });
+    }
+
     if (action === "disconnect") {
       const nextConfig = {
         enabled: false,
@@ -327,29 +396,41 @@ export async function POST(request) {
 
     if (action === "set-token") {
       const token = String(body?.token || "").trim();
-      const refreshToken = String(body?.refreshToken || "").trim();
-      if (!token && !refreshToken) {
-        return NextResponse.json({ error: "GitHub token or refresh token is required" }, { status: 400 });
+      if (!token) {
+        return NextResponse.json({ error: "GitHub access token is required" }, { status: 400 });
       }
 
-      const resolvedToken = token || String(current?.token || "").trim();
+      const manualTokenTypeError = getManualTokenTypeError(token);
+      if (manualTokenTypeError) {
+        return NextResponse.json({ error: manualTokenTypeError }, { status: 400 });
+      }
+
       let githubLogin = current.githubLogin || "";
-      if (resolvedToken) {
-        const user = await validateGitHubToken(resolvedToken);
+      try {
+        const user = await validateGitHubToken(token);
         githubLogin = user.login || githubLogin;
+      } catch (error) {
+        const err = new Error("GitHub access token is invalid or missing gist scope. Create a token with gist scope, then try again.");
+        err.cause = error;
+        err.status = Number(error?.status || 401);
+        throw err;
       }
 
       const nextConfig = {
         ...current,
         enabled: true,
-        token: resolvedToken,
-        refreshToken: refreshToken || String(current?.refreshToken || "").trim(),
-        tokenSource: resolvedToken ? "manual" : (current.tokenSource || "manual"),
+        token,
+        refreshToken: "",
+        tokenSource: "access-token",
         githubLogin,
         fileName: current.fileName || "xlabrouter.backup.json",
       };
       await updateSettings({ gistBackup: nextConfig });
-      return NextResponse.json({ success: true, action, config: toPublicConfig({ gistBackup: nextConfig }) });
+      return NextResponse.json({
+        success: true,
+        action,
+        config: toPublicConfig({ gistBackup: nextConfig }),
+      });
     }
 
     if (action === "backup") {
@@ -360,7 +441,7 @@ export async function POST(request) {
         ...current,
         enabled: true,
         token: auth.token,
-        tokenSource: "gh-cli",
+        tokenSource: auth.tokenSource || current.tokenSource || "access-token",
         githubLogin: auth.githubLogin || current.githubLogin || "",
         gistId: backup.gistId,
         htmlUrl: backup.htmlUrl,
@@ -382,7 +463,7 @@ export async function POST(request) {
         ...current,
         enabled: true,
         token: auth.token,
-        tokenSource: "gh-cli",
+        tokenSource: auth.tokenSource || current.tokenSource || "access-token",
         githubLogin: auth.githubLogin || current.githubLogin || "",
         gistId: restored.gistId,
         htmlUrl: restored.htmlUrl,
@@ -418,7 +499,7 @@ export async function POST(request) {
           ...current,
           enabled: true,
           token: auth.token,
-          tokenSource: "gh-cli",
+          tokenSource: auth.tokenSource || current.tokenSource || "access-token",
           githubLogin: auth.githubLogin || current.githubLogin || "",
           gistId: backup.gistId,
           htmlUrl: backup.htmlUrl,
@@ -438,7 +519,7 @@ export async function POST(request) {
         ...current,
         enabled: true,
         token: auth.token,
-        tokenSource: "gh-cli",
+        tokenSource: auth.tokenSource || current.tokenSource || "access-token",
         githubLogin: auth.githubLogin || current.githubLogin || "",
         gistId: pulled.gistId,
         htmlUrl: pulled.htmlUrl,
