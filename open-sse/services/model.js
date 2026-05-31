@@ -14,6 +14,11 @@ const ALIAS_TO_PROVIDER_ID = {
   cl: "cline",
   oc: "opencode",
   ocg: "opencode-go",
+  // OAuth/CLI vendor providers (Đợt 3)
+  qoder: "qoder", qd: "qoder",
+  gitlab: "gitlab", gl: "gitlab", "gitlab-duo": "gitlab",
+  codebuddy: "codebuddy", cb: "codebuddy",
+  "amazon-q": "amazon-q", aq: "amazon-q",
   // TTS providers
   el: "elevenlabs",
   // API Key providers

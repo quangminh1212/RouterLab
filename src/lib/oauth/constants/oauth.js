@@ -176,6 +176,24 @@ export const KIRO_CONFIG = {
   authMethods: ["builder-id", "idc", "google", "github", "import"],
 };
 
+// Amazon Q Developer — reuses Kiro's AWS Builder ID / IdC device-code flow
+// (same AWS SSO OIDC + CodeWhisperer backend), kept as a separate provider so
+// Amazon Q connections are tracked independently from Kiro.
+export const AMAZON_Q_CONFIG = {
+  ssoOidcEndpoint: "https://oidc.us-east-1.amazonaws.com",
+  registerClientUrl: "https://oidc.us-east-1.amazonaws.com/client/register",
+  deviceAuthUrl: "https://oidc.us-east-1.amazonaws.com/device_authorization",
+  tokenUrl: "https://oidc.us-east-1.amazonaws.com/token",
+  startUrl: "https://view.awsapps.com/start",
+  clientName: "amazon-q-oauth-client",
+  clientType: "public",
+  scopes: ["codewhisperer:completions", "codewhisperer:analysis", "codewhisperer:conversations"],
+  grantTypes: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+  issuerUrl: "https://identitycenter.amazonaws.com/ssoins-722374e8c3c8e6c6",
+  socialRefreshUrl: "https://prod.us-east-1.auth.desktop.kiro.dev/refreshToken",
+  authMethods: ["builder-id", "idc", "import"],
+};
+
 // Cursor OAuth Configuration (Import Token from Cursor IDE)
 // Cursor stores credentials in SQLite database: state.vscdb
 // Keys: cursorAuth/accessToken, storage.serviceMachineId
@@ -273,4 +291,5 @@ export const PROVIDERS = {
   CLINE: "cline",
   GITLAB: "gitlab",
   CODEBUDDY: "codebuddy",
+  AMAZON_Q: "amazon-q",
 };

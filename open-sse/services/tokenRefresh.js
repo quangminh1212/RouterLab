@@ -507,6 +507,13 @@ export async function getAccessToken(provider, credentials, log) {
         log
       );
 
+    case "amazon-q":
+      return await refreshKiroToken(
+        credentials.refreshToken,
+        credentials.providerSpecificData,
+        log
+      );
+
     case "vertex":
     case "vertex-partner": {
       const saJson = parseVertexSaJson(credentials.apiKey);
@@ -546,6 +553,12 @@ export async function refreshTokenByProvider(provider, credentials, log) {
     case "github":
       return refreshGitHubToken(credentials.refreshToken, log);
     case "kiro":
+      return refreshKiroToken(
+        credentials.refreshToken,
+        credentials.providerSpecificData,
+        log
+      );
+    case "amazon-q":
       return refreshKiroToken(
         credentials.refreshToken,
         credentials.providerSpecificData,

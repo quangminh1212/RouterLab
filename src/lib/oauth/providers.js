@@ -23,6 +23,7 @@ import {
   CLINE_CONFIG,
   GITLAB_CONFIG,
   CODEBUDDY_CONFIG,
+  AMAZON_Q_CONFIG,
 } from "./constants/oauth";
 
 const BASE64_BLOCK_SIZE = 4;
@@ -886,6 +887,126 @@ const PROVIDERS = {
           region: tokens._region || "us-east-1",
           authMethod: tokens._authMethod || "builder-id",
           startUrl: tokens._startUrl || KIRO_CONFIG.startUrl,
+        },
+      }, identity);
+    },
+  },
+
+  // Amazon Q Developer — same AWS Builder ID / IdC device-code flow as Kiro
+  // (AWS SSO OIDC register → device authorization → poll token), tracked as a
+  // separate provider so Amazon Q connections stay distinct from Kiro.
+  "amazon-q": {
+    config: AMAZON_Q_CONFIG,
+    flowType: "device_code",
+    requestDeviceCode: async (config, codeChallenge, options = {}) => {
+      const trimmedRegion = typeof options.region === "string" ? options.region.trim() : "";
+      const region = trimmedRegion || "us-east-1";
+      const trimmedStartUrl = typeof options.startUrl === "string" ? options.startUrl.trim() : "";
+      const startUrl = trimmedStartUrl || config.startUrl;
+      const authMethod = options.authMethod === "idc" ? "idc" : "builder-id";
+      const registerClientUrl = `https://oidc.${region}.amazonaws.com/client/register`;
+      const deviceAuthUrl = `https://oidc.${region}.amazonaws.com/device_authorization`;
+
+      const registerRes = await fetch(registerClientUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          clientName: config.clientName,
+          clientType: config.clientType,
+          scopes: config.scopes,
+          grantTypes: config.grantTypes,
+          issuerUrl: config.issuerUrl,
+        }),
+      });
+      if (!registerRes.ok) {
+        throw new Error(`Client registration failed: ${await registerRes.text()}`);
+      }
+      const clientInfo = await registerRes.json();
+
+      const deviceRes = await fetch(deviceAuthUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          clientId: clientInfo.clientId,
+          clientSecret: clientInfo.clientSecret,
+          startUrl,
+        }),
+      });
+      if (!deviceRes.ok) {
+        throw new Error(`Device authorization failed: ${await deviceRes.text()}`);
+      }
+      const deviceData = await deviceRes.json();
+
+      return {
+        device_code: deviceData.deviceCode,
+        user_code: deviceData.userCode,
+        verification_uri: deviceData.verificationUri,
+        verification_uri_complete: deviceData.verificationUriComplete,
+        expires_in: deviceData.expiresIn,
+        interval: deviceData.interval || 5,
+        _clientId: clientInfo.clientId,
+        _clientSecret: clientInfo.clientSecret,
+        _region: region,
+        _authMethod: authMethod,
+        _startUrl: startUrl,
+      };
+    },
+    pollToken: async (config, deviceCode, codeVerifier, extraData) => {
+      const region = extraData?._region || "us-east-1";
+      const tokenUrl = `https://oidc.${region}.amazonaws.com/token`;
+      const response = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          clientId: extraData?._clientId,
+          clientSecret: extraData?._clientSecret,
+          deviceCode: deviceCode,
+          grantType: "urn:ietf:params:oauth:grant-type:device_code",
+        }),
+      });
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: "invalid_response", error_description: await response.text() };
+      }
+      if (data.accessToken) {
+        return {
+          ok: true,
+          data: {
+            access_token: data.accessToken,
+            refresh_token: data.refreshToken,
+            expires_in: data.expiresIn,
+            profile_arn: data?.profileArn || null,
+            _clientId: extraData?._clientId,
+            _clientSecret: extraData?._clientSecret,
+            _region: extraData?._region,
+            _authMethod: extraData?._authMethod,
+            _startUrl: extraData?._startUrl,
+          },
+        };
+      }
+      return {
+        ok: false,
+        data: {
+          error: data.error || "authorization_pending",
+          error_description: data.error_description || data.message,
+        },
+      };
+    },
+    mapTokens: (tokens) => {
+      const identity = extractIdentity({ accessToken: tokens.access_token, fallbackDisplayName: tokens?.profile_arn });
+      return withIdentity({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        providerSpecificData: {
+          profileArn: tokens?.profile_arn || null,
+          clientId: tokens._clientId,
+          clientSecret: tokens._clientSecret,
+          region: tokens._region || "us-east-1",
+          authMethod: tokens._authMethod || "builder-id",
+          startUrl: tokens._startUrl || AMAZON_Q_CONFIG.startUrl,
         },
       }, identity);
     },
