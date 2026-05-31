@@ -54,6 +54,7 @@ source/*
 docs/*
 !docs/ARCHITECTURE.md
 !docs/backup.md
+!docs/FEATURE-PARITY-CHECKLIST.md
 test/*
 bin/*
 open-sse/test/*
