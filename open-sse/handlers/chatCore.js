@@ -18,6 +18,7 @@ import { handleStreamingResponse, buildOnStreamComplete } from "./chatCore/strea
 import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.js";
 import { injectCaveman } from "../rtk/caveman.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
+import { applyPayloadRules } from "../services/payloadRules.js";
 
 const INTERNAL_STREAM_ONLY_PROVIDERS = new Set(["openai", "codex", "cungcapai"]);
 
@@ -32,7 +33,7 @@ export function isInternallyStreamOnlyProvider(provider) {
  * @param {object} options.credentials - Provider credentials
  * @param {string} options.sourceFormatOverride - Override detected source format (e.g. "openai-responses")
  */
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, cavemanEnabled, cavemanLevel, sourceFormatOverride, providerThinking }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, cavemanEnabled, cavemanLevel, sourceFormatOverride, providerThinking, payloadRules }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
 
@@ -113,6 +114,16 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   if (cavemanEnabled && cavemanLevel) {
     injectCaveman(translatedBody, finalFormat, cavemanLevel);
     log?.debug?.("CAVEMAN", `${cavemanLevel} | ${finalFormat}`);
+  }
+
+  // Payload rules engine: declarative body edits (set/default/delete/rename)
+  if (Array.isArray(payloadRules) && payloadRules.length > 0) {
+    try {
+      const { applied } = applyPayloadRules(translatedBody, payloadRules, { provider, model, format: finalFormat });
+      if (applied > 0) log?.debug?.("PAYLOAD_RULES", `applied ${applied} rule(s) | ${provider}/${model}`);
+    } catch (e) {
+      log?.warn?.("PAYLOAD_RULES", `skipped: ${e?.message || e}`);
+    }
   }
 
   const executor = getExecutor(provider);

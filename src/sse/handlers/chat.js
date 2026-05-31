@@ -10,6 +10,7 @@ import {
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
 import { getModelInfo, getComboModels } from "../services/model.js";
+import { isAutoModel, resolveAutoModel } from "../services/autoRoute.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
 import { handleComboChat } from "open-sse/services/combo.js";
@@ -246,27 +247,39 @@ export async function handleChat(request, clientRawRequest = null) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
   }
 
+  // "auto" zero-config routing: resolve to the best connected provider/model.
+  let effectiveModelStr = modelStr;
+  if (isAutoModel(modelStr)) {
+    const resolved = await resolveAutoModel(modelStr);
+    if (!resolved) {
+      return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "auto: no connected provider available");
+    }
+    log.info("CHAT", `auto -> ${resolved}`);
+    effectiveModelStr = resolved;
+    body = { ...body, model: resolved };
+  }
+
   // Bypass naming/warmup requests before combo rotation to avoid wasting rotation slots
   const userAgent = request?.headers?.get("user-agent") || "";
-  const bypassResponse = handleBypassRequest(body, modelStr, userAgent, !!settings.ccFilterNaming);
+  const bypassResponse = handleBypassRequest(body, effectiveModelStr, userAgent, !!settings.ccFilterNaming);
   if (bypassResponse) return bypassResponse.response || bypassResponse;
 
   // Check if model is a combo (has multiple models with fallback)
-  const comboModels = await getComboModels(modelStr);
+  const comboModels = await getComboModels(effectiveModelStr);
   if (comboModels) {
     // Check for combo-specific strategy first, fallback to global
     const comboStrategies = settings.comboStrategies || {};
-    const comboSpecificStrategy = comboStrategies[modelStr]?.fallbackStrategy;
+    const comboSpecificStrategy = comboStrategies[effectiveModelStr]?.fallbackStrategy;
     const comboStrategy = comboSpecificStrategy || settings.comboStrategy || "fallback";
-    const comboStickyLimit = Math.max(1, Number(comboStrategies[modelStr]?.stickyRoundRobinLimit || settings.comboStickyRoundRobinLimit || 1));
-    
-    log.info("CHAT", `Combo "${modelStr}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
+    const comboStickyLimit = Math.max(1, Number(comboStrategies[effectiveModelStr]?.stickyRoundRobinLimit || settings.comboStickyRoundRobinLimit || 1));
+
+    log.info("CHAT", `Combo "${effectiveModelStr}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
     return handleComboChat({
       body,
       models: comboModels,
-      handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { comboName: modelStr, openClawTunnelCompat }),
+      handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, { comboName: effectiveModelStr, openClawTunnelCompat }),
       log,
-      comboName: modelStr,
+      comboName: effectiveModelStr,
       comboStrategy,
       comboStickyLimit,
       comboSlowModelCooldownEnabled: settings.comboSlowModelCooldownEnabled !== false,
@@ -276,7 +289,7 @@ export async function handleChat(request, clientRawRequest = null) {
   // Single model request
   return handleSingleModelChat(
     body,
-    modelStr,
+    effectiveModelStr,
     clientRawRequest,
     request,
     apiKey,
@@ -414,6 +427,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       rtkEnabled: !!chatSettings.rtkEnabled,
       cavemanEnabled: !!chatSettings.cavemanEnabled,
       cavemanLevel: chatSettings.cavemanLevel || "full",
+      payloadRules: Array.isArray(chatSettings.payloadRules) ? chatSettings.payloadRules : undefined,
       providerThinking,
       // Detect source format by endpoint + body
       sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, nextRequestBody) : null,

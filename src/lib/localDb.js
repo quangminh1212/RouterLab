@@ -68,6 +68,9 @@ const DEFAULT_SETTINGS = {
   outboundProxyUrl: "",
   outboundNoProxy: "",
   aiRules: [],
+  payloadRules: [],
+  ampModelMappings: [],
+  ampForceModelMappings: false,
   gistBackup: {
     enabled: false,
     token: "",
