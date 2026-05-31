@@ -51,6 +51,7 @@ function ensureUsageDataShape(value) {
   }
   if (typeof data.totalRequestsLifetime !== "number") data.totalRequestsLifetime = data.history.length;
   if (!data.dailySummary || typeof data.dailySummary !== "object" || Array.isArray(data.dailySummary)) data.dailySummary = {};
+  if (!Array.isArray(data.cockpitImports)) data.cockpitImports = [];
 
   return data;
 }
@@ -214,6 +215,115 @@ function aggregateEntryToDailySummary(dailySummary, entry) {
 function getDailySummaryRequestCount(dailySummary) {
   if (!dailySummary || typeof dailySummary !== "object" || Array.isArray(dailySummary)) return 0;
   return Object.values(dailySummary).reduce((sum, day) => sum + Number(day?.requests || 0), 0);
+}
+
+/**
+ * Aggregate a single normalized Cockpit entry into dailySummary.
+ *
+ * Unlike aggregateEntryToDailySummary (which assumes one request per entry and
+ * derives tokens from an OpenAI-shaped object), Cockpit entries are already
+ * day-level aggregates carrying explicit requests/token counts. We add those
+ * counts directly and tag the source so imported usage is distinguishable.
+ */
+function aggregateCockpitEntryToDailySummary(dailySummary, entry) {
+  const dateKey = entry.dateKey;
+  if (!dailySummary[dateKey]) {
+    dailySummary[dateKey] = {
+      requests: 0, promptTokens: 0, completionTokens: 0, cost: 0,
+      compressionSavedBytes: 0, compressionHits: 0,
+      byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
+    };
+  }
+  const day = dailySummary[dateKey];
+  const requests = Math.max(0, Number(entry.requests || 0));
+  const promptTokens = Math.max(0, Number(entry.promptTokens || 0));
+  const completionTokens = Math.max(0, Number(entry.completionTokens || 0));
+  const cost = Math.max(0, Number(entry.cost || 0));
+  const provider = entry.provider || "cockpit";
+  const model = entry.model || "unknown";
+  const vals = { requests, promptTokens, completionTokens, cost };
+
+  day.requests += requests;
+  day.promptTokens += promptTokens;
+  day.completionTokens += completionTokens;
+  day.cost += cost;
+
+  addToCounter(day.byProvider, provider, vals);
+  addToCounter(day.byModel, `${model}|${provider}`, { ...vals, meta: { rawModel: model, provider, source: "cockpit" } });
+  // Group all Cockpit-imported usage under a synthetic account bucket so it is
+  // visible in the by-account breakdown without colliding with real accounts.
+  addToCounter(day.byAccount, `cockpit:${provider}`, { ...vals, meta: { rawModel: model, provider, source: "cockpit" } });
+
+  return { requests };
+}
+
+/**
+ * Merge Cockpit-exported usage into the existing summary, additively and
+ * idempotently. Re-importing the same file (same importKey) is a no-op.
+ *
+ * @param {Array} entries - normalized entries from parseCockpitExport().
+ * @param {object} [options]
+ * @param {string} [options.importKey] - stable id (e.g. file hash) for dedupe.
+ * @param {string} [options.label] - human label stored with the import record.
+ * @returns {Promise<{ imported: boolean, alreadyImported?: boolean, addedRequests: number, days: number, importKey: string|null }>}
+ */
+export async function mergeCockpitUsage(entries, options = {}) {
+  if (isCloud) {
+    return { imported: false, addedRequests: 0, days: 0, importKey: options.importKey || null };
+  }
+  const list = Array.isArray(entries) ? entries.filter((e) => e && e.dateKey) : [];
+  if (!list.length) {
+    return { imported: false, addedRequests: 0, days: 0, importKey: options.importKey || null };
+  }
+
+  const db = await getUsageDb();
+  if (typeof db.read === "function") await db.read();
+
+  const data = ensureUsageDataShape(db.data);
+  if (!Array.isArray(data.cockpitImports)) data.cockpitImports = [];
+
+  // Idempotency guard: skip files we've already merged.
+  const importKey = options.importKey || null;
+  if (importKey && data.cockpitImports.some((rec) => rec && rec.importKey === importKey)) {
+    db.data = data;
+    return { imported: false, alreadyImported: true, addedRequests: 0, days: 0, importKey };
+  }
+
+  if (!data.dailySummary || typeof data.dailySummary !== "object" || Array.isArray(data.dailySummary)) {
+    data.dailySummary = {};
+  }
+
+  let addedRequests = 0;
+  const touchedDays = new Set();
+  for (const entry of list) {
+    const { requests } = aggregateCockpitEntryToDailySummary(data.dailySummary, entry);
+    addedRequests += requests;
+    touchedDays.add(entry.dateKey);
+  }
+
+  data.totalRequestsLifetime = Math.max(
+    Number(data.totalRequestsLifetime || 0) + addedRequests,
+    getDailySummaryRequestCount(data.dailySummary)
+  );
+
+  data.cockpitImports.push({
+    importKey,
+    label: options.label || "cockpit-export",
+    importedAt: new Date().toISOString(),
+    addedRequests,
+    days: touchedDays.size,
+    entryCount: list.length,
+  });
+  // Keep the import ledger bounded.
+  if (data.cockpitImports.length > 100) {
+    data.cockpitImports = data.cockpitImports.slice(-100);
+  }
+
+  db.data = data;
+  await db.write();
+  statsEmitter.emit("update");
+
+  return { imported: true, addedRequests, days: touchedDays.size, importKey };
 }
 
 function migrateHistoryToDailySummary(db) {
