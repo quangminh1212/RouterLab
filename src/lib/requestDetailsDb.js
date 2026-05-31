@@ -41,6 +41,24 @@ async function getDb() {
     if (!Array.isArray(dbInstance.data.records)) {
       dbInstance.data.records = [];
     }
+
+    // Self-heal: older builds (or imported data) may contain oversized records
+    // that bypassed the size guards. Re-compact once on first load and persist
+    // so the on-disk file shrinks back under the configured limits.
+    try {
+      const config = await getObservabilityConfig();
+      const before = dbInstance.data.records;
+      const healed = compactRecords(before, config);
+      const shrank =
+        healed.length !== before.length ||
+        Buffer.byteLength(JSON.stringify(healed)) !== Buffer.byteLength(JSON.stringify(before));
+      if (shrank) {
+        dbInstance.data.records = healed;
+        await dbInstance.write();
+      }
+    } catch (error) {
+      console.warn("[requestDetailsDb] Self-heal compaction skipped:", error?.message || error);
+    }
   }
   return dbInstance;
 }
@@ -103,16 +121,19 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function safeJsonStringify(obj, maxSize) {
+/**
+ * Build a compact placeholder for an oversized field.
+ * Keeps just enough context (size + short preview) for debugging while
+ * guaranteeing the stored value stays well under maxSize.
+ */
+function makeTruncatedField(value, originalSize) {
+  let preview = "";
   try {
-    const str = JSON.stringify(obj);
-    if (str.length > maxSize) {
-      return JSON.stringify({ _truncated: true, _originalSize: str.length, _preview: str.substring(0, 200) });
-    }
-    return str;
+    preview = (typeof value === "string" ? value : JSON.stringify(value) || "").substring(0, 200);
   } catch {
-    return "{}";
+    preview = "";
   }
+  return { _truncated: true, _originalSize: originalSize, _preview: preview };
 }
 
 function sanitizeHeaders(headers) {
@@ -150,9 +171,22 @@ function trimBufferedDetail(detail) {
 function compactRecord(record, maxSize) {
   const next = { ...record };
   for (const field of ["request", "providerRequest", "providerResponse", "response"]) {
-    const serialized = safeJsonStringify(next[field], maxSize);
-    if (serialized.length > maxSize) {
-      next[field] = { _truncated: true, _originalSize: serialized.length, _preview: serialized.substring(0, 200) };
+    const value = next[field];
+    if (value == null) continue;
+
+    // Measure the RAW serialized size (not the pre-truncated helper output),
+    // otherwise oversized fields are never detected and the file grows unbounded.
+    let rawSize = 0;
+    try {
+      rawSize = Buffer.byteLength(JSON.stringify(value) || "", "utf8");
+    } catch {
+      // Unserializable (circular, BigInt, etc.) — replace with a safe marker.
+      next[field] = { _truncated: true, _originalSize: -1, _preview: "" };
+      continue;
+    }
+
+    if (rawSize > maxSize) {
+      next[field] = makeTruncatedField(value, rawSize);
     }
   }
   return next;
