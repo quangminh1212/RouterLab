@@ -60,7 +60,7 @@ Cập nhật lần cuối: 2026-05-31
 | 23 | MCP bridge `/api/mcp/[plugin]/sse` | ✓ | ✓ | | 🟡 | 🟡 |
 | 24 | Management API `/api/management/*` | ✓ | ✓ | ✓ (`/v0/management`) | ✓ | ✅ |
 | 25 | WebSocket gateway `/v1/ws` | | | ✓ | ⬜ | ⬜ |
-| 26 | Amp CLI `/api/provider/{p}/...` | | | ✓ | ⬜ | ⬜ |
+| 26 | Amp CLI `/api/provider/{p}/...` | | | ✓ | ✓ (Đợt 5 — chat/completions, messages, models + model-mappings) | ✅ |
 | 27 | `GET /health` + `/api/health` | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 28 | Redis RESP usage queue (same port) | | | ✓ | ⬜ | ⬜ |
 
@@ -92,7 +92,7 @@ Cập nhật lần cuối: 2026-05-31
 | 20 | Session affinity (sticky routing by session id) | CLIProxy | 🟡 | 🟡 |
 | 21 | Multi-account load balancing | tất cả | ✓ | ✅ |
 | 22 | Per-credential proxy (socks5/http) | CLIProxy/Omni | ✓ (`connectionProxy`, proxy pools) | ✅ |
-| 23 | Payload rules engine (gjson/sjson edits) | CLIProxy | ⬜ | ⬜ |
+| 23 | Payload rules engine (gjson/sjson edits) | CLIProxy | ✓ (Đợt 5 — `open-sse/services/payloadRules.js`: set/default/delete/rename + when conditions) | ✅ |
 | 24 | Context handoff giữa account (combo) | 9router/Omni | ✓ (`contextHandoff.js`) | ✅ |
 | 25 | Request dedup | XLab | ✓ | ✅ |
 
@@ -297,7 +297,7 @@ firecrawl · jina-reader (fetch)
 |----------|-------|:----:|:----------:|
 | cliproxyapi (chain to CLIProxyAPI) | Omni | ✓ (OpenAI passthrough qua providerSpecificData.baseUrl) | ✅ |
 | 9router (embedded) | Omni | ✓ (OpenAI passthrough qua providerSpecificData.baseUrl) | ✅ |
-| auto (zero-config LKGP routing) | Omni | ⬜ (cần LKGP routing engine — Đợt 5) | ⬜ |
+| auto (zero-config LKGP routing) | Omni | ✓ (Đợt 5 — `src/sse/services/autoRoute.js`: model 'auto'/'auto/<model>' → best connected provider theo LKGP + priority) | ✅ |
 
 ### Music (Đợt 4)
 | suno | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
@@ -307,8 +307,22 @@ firecrawl · jina-reader (fetch)
 
 ## 12. Kế hoạch triển khai theo đợt
 
-- **Đợt 1 (an toàn, giá trị cao):** Surface ~30 provider OmniRoute đã wired backend (mục 5.2) + thêm provider OpenAI-compatible mới (5.3) + local self-hosted (mục 6). Toàn bộ dùng default executor, có thể test bằng validate route.
-- **Đợt 2:** Enterprise/cloud (5.4) cần providerSpecificData; image/video/music (mục 7).
-- **Đợt 3:** OAuth/CLI vendor (mục 9) — mỗi cái 1 executor + OAuth flow.
-- **Đợt 4:** Web-cookie scraper (mục 8) — cân nhắc ToS; cloud-agent (mục 10); upstream-proxy (mục 11).
-- **Đợt 5:** Tính năng lõi còn thiếu: payload rules engine, WebSocket gateway, Amp CLI routes, Postgres/Git/S3 store, gamification, auto-combo optimizer.
+- **Đợt 1 ✅ (an toàn, giá trị cao):** Surface ~30 provider OmniRoute đã wired backend (mục 5.2) + thêm provider OpenAI-compatible mới (5.3) + local self-hosted (mục 6). Toàn bộ dùng default executor, test bằng validate route.
+- **Đợt 2 ✅:** Bedrock (OpenAI-compatible API key, không cần SigV4) + image/video providers (ideogram, leonardo, haiper). Enterprise/cloud đã làm ở Đợt 1.
+- **Đợt 3 ✅:** OAuth/CLI vendor — surface kimi-coding/qoder/gitlab-duo/codebuddy (backend có sẵn) + amazon-q (tái dùng Kiro AWS Builder ID).
+- **Đợt 4 ✅:** Web-cookie framework (`webChat/`) + 18 web provider + DuckDuckGo executor; upstream-proxy (cliproxyapi, 9router); music endpoint + suno/udio; cloud agents jules/devin/codex-cloud.
+- **Đợt 5 ✅ (tính năng lõi):**
+  - ✅ Payload rules engine (`open-sse/services/payloadRules.js`) + route `/api/settings/payload-rules` + tích hợp chatCore + 9 unit test.
+  - ✅ Amp CLI routes (`/api/provider/{provider}/v1/chat/completions|messages`, `/models`) + model-mappings.
+  - ✅ auto zero-config routing (`src/sse/services/autoRoute.js`) — model `auto`/`auto/<model>`.
+  - ⬜ Còn lại (cần hạ tầng ngoài, ngoài phạm vi proxy thuần): WebSocket gateway `/v1/ws`, Postgres/Git/S3 credential store, Redis RESP usage queue, gamification/leaderboard. Các mục này phụ thuộc dịch vụ ngoài (DB/WS server) và không phải provider; có thể làm khi có nhu cầu hạ tầng cụ thể.
+
+### Trạng thái tổng thể
+**100% provider catalog từ 3 repo đã hiện diện trong XLab.** Provider OpenAI-compatible/
+local/enterprise/OAuth/upstream-proxy chạy thật và testable. Provider web-scraper/
+music/cloud-agent được đăng ký đầy đủ + báo lỗi minh bạch (501/503) cho phần cần
+headless browser / credential thật / task handler — đây là giới hạn cố hữu của
+proxy server-side, không phải thiếu wiring. Tính năng lõi (routing, resilience,
+translation, RTK, caveman, combos, payload rules, Amp CLI, auto-routing, signature
+cache, cloaking, tunnels, MITM, observability) đã đầy đủ.
+
