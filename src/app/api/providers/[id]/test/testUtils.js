@@ -27,7 +27,7 @@ const OAUTH_TEST_CONFIG = {
     authHeader: "Authorization",
     authPrefix: "Bearer ",
     extraHeaders: { "Content-Type": "application/json", "originator": "codex-cli", "User-Agent": "codex-cli/1.0.18 (macOS; arm64)" },
-    // Minimal invalid body ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â triggers fast 400 without consuming quota
+    // Minimal invalid body - triggers fast 400 without consuming quota
     body: JSON.stringify({ model: "gpt-5.3-codex", input: [], stream: false, store: false }),
     // 400 (bad request) means auth succeeded; only 401/403 means token is bad
     acceptStatuses: [400],
@@ -72,7 +72,7 @@ const OAUTH_TEST_CONFIG = {
   },
   cline: { refreshable: true },
   gitlab: {
-    // Test by hitting the GitLab user API ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â requires api or read_user scope
+    // Test by hitting the GitLab user API - requires api or read_user scope
     url: "https://gitlab.com/api/v4/user",
     method: "GET",
     authHeader: "Authorization",
@@ -625,7 +625,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         if (!res.ok) return { valid: false, error: "Invalid session cookie" };
         const data = await res.json().catch(() => null);
         const valid = !!(data && data.user);
-        return { valid, error: valid ? null : "Session expired ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â re-paste cookie" };
+        return { valid, error: valid ? null : "Session expired - re-paste cookie" };
       }
       default:
         return { valid: false, error: "Provider test not supported" };

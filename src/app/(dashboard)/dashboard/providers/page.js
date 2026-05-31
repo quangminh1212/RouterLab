@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
@@ -440,7 +440,7 @@ export default function ProvidersPage() {
       </div>
       )}
 
-      {/* API Key Providers â€” fixed list */}
+      {/* API Key Providers - fixed list */}
       {mergedApiKeyLikeProviders.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -481,7 +481,7 @@ export default function ProvidersPage() {
       </div>
       )}
 
-      {/* Web Cookie Providers â€” use browser subscription cookie instead of API key */}
+      {/* Web Cookie Providers - use browser subscription cookie instead of API key */}
       {/* <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -502,7 +502,7 @@ export default function ProvidersPage() {
         </div>
       </div> */}
 
-      {/* API Key Compatible Providers â€” dynamic (OpenAI/Anthropic compatible) */}
+      {/* API Key Compatible Providers - dynamic (OpenAI/Anthropic compatible) */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, react-hooks/immutability */
 
 import { useState, useEffect } from "react";
@@ -251,7 +251,7 @@ export default function CoworkToolCard({
                 <span className="material-symbols-outlined text-yellow-500">warning</span>
                 <div className="flex-1">
                   <p className="font-medium text-yellow-600 dark:text-yellow-400">Claude Desktop (Cowork mode) not detected</p>
-                  <p className="text-sm text-text-muted">Open Claude Desktop â†’ Help â†’ Troubleshooting â†’ Enable Developer mode â†’ Configure third-party inference, then return here.</p>
+            <p className="text-sm text-text-muted">Open Claude Desktop -&gt; Help -&gt; Troubleshooting -&gt; Enable Developer mode -&gt; Configure third-party inference, then return here.</p>
                 </div>
               </div>
               <div className="pl-9">

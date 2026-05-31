@@ -35,7 +35,7 @@ import os from "os";
 // Multiple modules register SIGINT/SIGTERM handlers legitimately
 process.setMaxListeners(20);
 
-// Use global to survive Next.js hot reload â€” prevents duplicate intervals
+// Use global to survive Next.js hot reload - prevents duplicate intervals
 const g = global.__appSingleton ??= {
   signalHandlersRegistered: false,
   watchdogInterval: null,
@@ -90,7 +90,7 @@ export async function initializeApp() {
       // Watchdog: recover tunnel after process crash
       startWatchdog();
 
-      // Network monitor: detect sleep/wake + network changes â†’ restart tunnel
+      // Network monitor: detect sleep/wake + network changes -> restart tunnel
       startNetworkMonitor();
     } else {
       console.log("[InitApp] Fast startup enabled, skipping tunnel watchdog/network monitor");
@@ -183,7 +183,7 @@ function getNetworkFingerprint() {
   return active.sort().join("|");
 }
 
-/** Monitor network changes + sleep/wake â†’ kill and reconnect tunnel */
+/** Monitor network changes + sleep/wake -> kill and reconnect tunnel */
 function startNetworkMonitor() {
   if (g.networkMonitorInterval) return;
 

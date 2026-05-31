@@ -111,13 +111,11 @@ export default function EndpointApiKeysCard({
                         ? `$${Number(key.usedCost || 0).toFixed(2)} / $${Number(key.costLimit).toFixed(2)}`
                         : `$${Number(key.usedCost || 0).toFixed(2)} / Unlimited`}
                     </span>
-                    <span>?</span>
                     <span>
                       RPM: {Number.isFinite(Number(key.rpmLimit)) && Number(key.rpmLimit) > 0
                         ? Math.floor(Number(key.rpmLimit))
                         : "Unlimited"}
                     </span>
-                    <span>?</span>
                     <span>
                       Models: {Array.isArray(key.allowedModels) && key.allowedModels.length > 0
                         ? `${key.allowedModels.length} model${key.allowedModels.length > 1 ? "s" : ""}`

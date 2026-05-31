@@ -56,13 +56,13 @@ vi.mock("@/models", () => ({
 }));
 
 describe("TamMao fallback", () => {
-  it("forces chat api for TamMao-compatible responses nodes", () => {
+  it("forces responses api for TamMao-compatible nodes", () => {
     expect(getOpenAICompatibleType("openai-compatible-responses-tammao", {
       apiType: "responses",
       baseUrl: "https://api.cungcapai.io.vn/v1",
       prefix: "tammao",
       nodeName: "TamMao",
-    })).toBe("chat");
+    })).toBe("responses");
 
     expect(getOpenAICompatibleType("openai-compatible-responses-generic", {
       apiType: "responses",
@@ -111,7 +111,7 @@ describe("TamMao fallback", () => {
       prefix: "tammao",
       nodeName: "TamMao",
     });
-    expect(getOpenAICompatibleType("openai-compatible-responses-tammao", credentials.providerSpecificData)).toBe("chat");
+    expect(getOpenAICompatibleType("openai-compatible-responses-tammao", credentials.providerSpecificData)).toBe("responses");
   });
   it("models route returns fallback catalog when /models times out", async () => {
     const fetchMock = vi.fn()

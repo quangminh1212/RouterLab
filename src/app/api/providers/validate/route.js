@@ -81,7 +81,7 @@ async function probeMediaProvider(provider, apiKey) {
   const isMediaOnly = kinds.every((k) => MEDIA_KINDS.has(k));
   if (!isMediaOnly) return null;
   const cfg = p.ttsConfig || p.sttConfig || p.embeddingConfig || p.imageConfig || p.videoConfig || p.musicConfig;
-  // No probe config Ã¢â€ â€™ best-effort accept (validate at usage time)
+  // No probe config -> best-effort accept (validate at usage time)
   if (!cfg) return true;
   if (p.noAuth || cfg.authType === "none") return true;
   // Skip auth schemes that need provider-specific data
@@ -220,7 +220,7 @@ export async function POST(request) {
         if (modelsRes.status === 401 || modelsRes.status === 403) {
           return NextResponse.json({ valid: false, error: "Invalid API key" });
         }
-        // Fallback: probe /embeddings with a common test model Ã¢â‚¬â€ many providers lack /models
+        // Fallback: probe /embeddings with a common test model - many providers lack /models
         const embedRes = await fetch(`${baseUrl}/embeddings`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -552,7 +552,7 @@ export async function POST(request) {
             // Validate SA JSON has required fields
             isValid = !!(saJson.client_email && saJson.private_key && saJson.project_id);
           } else {
-            // Raw key: probe Vertex Ã¢â‚¬â€ 404 means key is valid (model just doesn't exist), 401 means invalid key
+            // Raw key: probe Vertex - 404 means key is valid (model just doesn't exist), 401 means invalid key
             const probeRes = await fetch(
               `https://aiplatform.googleapis.com/v1/publishers/google/models/__probe__:generateContent?key=${apiKey}`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
@@ -623,7 +623,7 @@ export async function POST(request) {
           // Cookie valid = any non-401/403 response (200, 400, 429 all mean cookie accepted)
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid SSO cookie Ã¢â‚¬â€ re-paste from grok.com DevTools Ã¢â€ â€™ Cookies Ã¢â€ â€™ sso";
+            error = "Invalid SSO cookie - re-paste from grok.com DevTools -> Cookies -> sso";
           } else {
             isValid = true;
           }
@@ -661,7 +661,7 @@ export async function POST(request) {
           });
           if (res.status === 401 || res.status === 403) {
             isValid = false;
-            error = "Invalid session cookie Ã¢â‚¬â€ re-paste __Secure-next-auth.session-token from perplexity.ai";
+            error = "Invalid session cookie - re-paste __Secure-next-auth.session-token from perplexity.ai";
           } else {
             isValid = true;
           }

@@ -638,12 +638,12 @@ export default function ProviderDetailPage() {
       );
     }
     // Combine hardcoded models with Kilo free models (deduplicated)
-    // Exclude non-llm models (embedding, tts, etc.) Ã¢â‚¬â€ they have dedicated pages under media-providers
+    // Exclude non-llm models (embedding, tts, etc.) - they have dedicated pages under media-providers
     const displayModels = [
       ...models,
       ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
     ].filter((m) => !m.type || m.type === "llm");
-    // Custom models added by user (stored as aliases: modelId Ã¢â€ â€™ providerAlias/modelId)
+    // Custom models added by user (stored as aliases: modelId -> providerAlias/modelId)
     const customModels = Object.entries(modelAliases)
       .filter(([alias, fullModel]) => {
         const prefix = `${providerStorageAlias}/`;
@@ -705,7 +705,7 @@ export default function ProviderDetailPage() {
           />
         ))}
 
-        {/* Add model button Ã¢â‚¬â€ inline, same style as model chips */}
+        {/* Add model button - inline, same style as model chips */}
         <button
           onClick={() => setShowAddCustomModel(true)}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-black/15 dark:border-white/15 text-xs text-text-muted hover:text-primary hover:border-primary/40 transition-colors"
@@ -723,7 +723,7 @@ export default function ProviderDetailPage() {
           {importingModels ? "Importing..." : "Import from /models"}
         </button>
 
-        {/* Suggested models from provider API Ã¢â‚¬â€ show only models not yet added */}
+        {/* Suggested models from provider API - show only models not yet added */}
         {suggestedModels.length > 0 && (() => {
           const addedFullModels = new Set(Object.values(modelAliases));
           const hardcodedIds = new Set(models.map((m) => m.id));
@@ -733,7 +733,7 @@ export default function ProviderDetailPage() {
           if (notAdded.length === 0) return null;
           return (
             <div className="w-full mt-2">
-              <p className="text-xs text-text-muted mb-2">Suggested free models (Ã¢â€°Â¥200k context):</p>
+              <p className="text-xs text-text-muted mb-2">Suggested free models (&gt;=200k context):</p>
               <div className="flex flex-wrap gap-2">
                 {notAdded.map((m) => (
                   <button
@@ -743,7 +743,7 @@ export default function ProviderDetailPage() {
                       await handleSetAlias(m.id, alias, providerStorageAlias);
                     }}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                    title={`${m.name} Ã‚Â· ${(m.contextLength / 1000).toFixed(0)}k ctx`}
+                    title={`${m.name} - ${(m.contextLength / 1000).toFixed(0)}k ctx`}
                   >
                     <span className="material-symbols-outlined text-[13px]">add</span>
                     {m.id.split("/").pop()}
@@ -847,7 +847,7 @@ export default function ProviderDetailPage() {
               rel="noopener noreferrer"
               className="text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 px-2 py-0.5 rounded shrink-0 transition-colors"
             >
-              Get API Key Ã¢â€ â€™
+              Get API Key -&gt;
             </a>
           )}
         </div>
@@ -859,7 +859,7 @@ export default function ProviderDetailPage() {
             <div>
               <h2 className="text-lg font-semibold">{isAnthropicCompatible ? "Anthropic Compatible Details" : "OpenAI Compatible Details"}</h2>
               <p className="text-sm text-text-muted">
-                {isAnthropicCompatible ? "Messages API" : (providerNode.apiType === "responses" ? "Responses API" : "Chat Completions")} Ã‚Â· {(providerNode.baseUrl || "").replace(/\/$/, "")}/
+                {isAnthropicCompatible ? "Messages API" : (providerNode.apiType === "responses" ? "Responses API" : "Chat Completions")} - {(providerNode.baseUrl || "").replace(/\/$/, "")}/
                 {isAnthropicCompatible ? "messages" : (providerNode.apiType === "responses" ? "responses" : "chat/completions")}
               </p>
             </div>

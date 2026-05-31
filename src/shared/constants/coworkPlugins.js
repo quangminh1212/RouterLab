@@ -1,4 +1,4 @@
-﻿// Cowork plugins extracted from anthropics/knowledge-work-plugins marketplace.
+// Cowork plugins extracted from anthropics/knowledge-work-plugins marketplace.
 // Used to inject managedMcpServers into Claude Cowork (3p mode) configLibrary entries.
 
 export const COWORK_PLUGINS = [
@@ -112,7 +112,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "cockroachdb",
-    "description": "CockroachDB plugin for Claude Code â€” explore schemas, write optimized SQL, debug queries, and manage distributed database clusters directly from your AI coding agent.",
+    "description": "CockroachDB plugin for Claude Code - explore schemas, write optimized SQL, debug queries, and manage distributed database clusters directly from your AI coding agent.",
     "servers": [
       {
         "key": "cockroachdb-toolbox-http",
@@ -242,7 +242,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "operations",
-    "description": "Optimize business operations â€” vendor management, process documentation, change management, capacity planning, and compliance tracking. Keep your organization running efficiently.",
+    "description": "Optimize business operations - vendor management, process documentation, change management, capacity planning, and compliance tracking. Keep your organization running efficiently.",
     "servers": [
       {
         "key": "slack",
@@ -319,7 +319,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "human-resources",
-    "description": "Streamline people operations â€” recruiting, onboarding, performance reviews, compensation analysis, and policy guidance. Maintain compliance and keep your team running smoothly.",
+    "description": "Streamline people operations - recruiting, onboarding, performance reviews, compensation analysis, and policy guidance. Maintain compliance and keep your team running smoothly.",
     "servers": [
       {
         "key": "slack",
@@ -345,7 +345,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "design",
-    "description": "Accelerate design workflows â€” critique, design system management, UX writing, accessibility audits, research synthesis, and dev handoff. From exploration to pixel-perfect specs.",
+    "description": "Accelerate design workflows - critique, design system management, UX writing, accessibility audits, research synthesis, and dev handoff. From exploration to pixel-perfect specs.",
     "servers": [
       {
         "key": "slack",
@@ -386,7 +386,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "engineering",
-    "description": "Streamline engineering workflows â€” standups, code review, architecture decisions, incident response, and technical documentation. Works with your existing tools or standalone.",
+    "description": "Streamline engineering workflows - standups, code review, architecture decisions, incident response, and technical documentation. Works with your existing tools or standalone.",
     "servers": [
       {
         "key": "slack",
@@ -443,7 +443,7 @@ export const COWORK_PLUGINS = [
   },
   {
     "name": "apollo",
-    "description": "Prospect, enrich leads, and load outreach sequences with Apollo.io â€” one-click MCP server integration for Claude Code and Cowork.",
+    "description": "Prospect, enrich leads, and load outreach sequences with Apollo.io - one-click MCP server integration for Claude Code and Cowork.",
     "servers": [
       {
         "key": "apollo",
@@ -937,7 +937,7 @@ export const COWORK_PLUGINS = [
 
 // Build managedMcpServers ARRAY (Anthropic schema) from selected plugin names.
 // Schema: [{name, url, transport: "http"|"sse", oauth?: true}]
-// Most enterprise SaaS MCPs require OAuth â†’ enable PKCE auto-flow.
+// Most enterprise SaaS MCPs require OAuth -> enable PKCE auto-flow.
 export function buildManagedMcpServers(selectedPluginNames) {
   const set = new Set(selectedPluginNames || []);
   const out = [];

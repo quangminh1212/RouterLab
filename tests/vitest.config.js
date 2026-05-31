@@ -11,8 +11,34 @@ export default defineConfig({
     include: ["**/*.test.js"],
     maxWorkers: 1,
     fileParallelism: false,
-    // Suppress noisy console output from handlers under test
     silent: false,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary"],
+      include: [
+        "src/app/api/v1/api/chat/route.js",
+        "src/app/api/v1/audio/speech/route.js",
+        "src/app/api/v1/audio/transcriptions/route.js",
+        "src/app/api/v1/messages/route.js",
+        "src/app/api/v1/messages/count_tokens/route.js",
+        "src/app/api/v1/models/route.js",
+        "src/app/api/v1/models/info/route.js",
+        "src/app/api/v1/moderations/route.js",
+        "src/app/api/v1/rerank/route.js",
+        "src/app/api/v1/responses/compact/route.js",
+        "src/app/api/v1beta/models/route.js",
+        "src/app/health/route.js",
+        "src/sse/services/requestDedup.js",
+        "open-sse/handlers/embeddingsCore.js",
+        "open-sse/utils/claudeHeaderCache.js",
+      ],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
+      },
+    },
   },
   resolve: {
     alias: {

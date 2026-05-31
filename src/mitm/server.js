@@ -14,10 +14,6 @@ const LOCAL_PORT = 443;
 const IS_WIN = process.platform === "win32";
 const ENABLE_FILE_LOG = true;
 const INTERNAL_REQUEST_HEADER = { name: "x-request-source", value: "local" };
-const HOST_REWRITE = {
-  "cloudcode-pa.googleapis.com": "daily-cloudcode-pa.googleapis.com",
-};
-
 // Host rewrite for upstream forward: PROD cloudcode-pa is rate-limited (429),
 // daily-cloudcode-pa (dev endpoint) accepts same body+token. Same trick as open-sse.
 const HOST_REWRITE = {
