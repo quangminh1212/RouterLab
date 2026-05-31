@@ -217,6 +217,12 @@ const ALIAS_TO_PROVIDER_ID = {
   "docker-model-runner": "docker-model-runner", dmr: "docker-model-runner",
   xinference: "xinference",
   oobabooga: "oobabooga", ooba: "oobabooga",
+  // Media image/video providers
+  ideogram: "ideogram", ideo: "ideogram",
+  leonardo: "leonardo", leo: "leonardo",
+  haiper: "haiper", hp: "haiper",
+  // Amazon Bedrock
+  bedrock: "bedrock", br: "bedrock",
 };
 
 /**

@@ -13,6 +13,7 @@ import { OpenCodeExecutor } from "./opencode.js";
 import { OpenCodeGoExecutor } from "./opencode-go.js";
 import { GrokWebExecutor } from "./grok-web.js";
 import { PerplexityWebExecutor } from "./perplexity-web.js";
+import { BedrockExecutor } from "./bedrock.js";
 import { DefaultExecutor } from "./default.js";
 
 const executors = {
@@ -33,6 +34,7 @@ const executors = {
   "opencode-go": new OpenCodeGoExecutor(),
   "grok-web": new GrokWebExecutor(),
   "perplexity-web": new PerplexityWebExecutor(),
+  bedrock: new BedrockExecutor(),
 };
 
 const defaultCache = new Map();
@@ -64,3 +66,4 @@ export { OpenCodeExecutor } from "./opencode.js";
 export { OpenCodeGoExecutor } from "./opencode-go.js";
 export { GrokWebExecutor } from "./grok-web.js";
 export { PerplexityWebExecutor } from "./perplexity-web.js";
+export { BedrockExecutor } from "./bedrock.js";

@@ -10,12 +10,17 @@ import falAi from "./falAi.js";
 import stabilityAi from "./stabilityAi.js";
 import blackForestLabs from "./blackForestLabs.js";
 import runwayml from "./runwayml.js";
+import ideogram from "./ideogram.js";
+import leonardo from "./leonardo.js";
+import haiper from "./haiper.js";
 
 const ADAPTERS = {
   openai: createOpenAIAdapter("openai"),
   minimax: createOpenAIAdapter("minimax"),
   openrouter: createOpenAIAdapter("openrouter"),
   recraft: createOpenAIAdapter("recraft"),
+  aimlapi: createOpenAIAdapter("aimlapi"),
+  novita: createOpenAIAdapter("novita"),
   gemini,
   codex,
   sdwebui,
@@ -26,6 +31,9 @@ const ADAPTERS = {
   "stability-ai": stabilityAi,
   "black-forest-labs": blackForestLabs,
   runwayml,
+  ideogram,
+  leonardo,
+  haiper,
 };
 
 export function getImageAdapter(provider) {

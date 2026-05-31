@@ -522,6 +522,15 @@ export const PROVIDERS = {
   "docker-model-runner": { baseUrl: "http://localhost:12434/v1/chat/completions", format: "openai", noAuth: true },
   xinference: { baseUrl: "http://localhost:9997/v1/chat/completions", format: "openai", noAuth: true },
   oobabooga: { baseUrl: "http://localhost:5000/v1/chat/completions", format: "openai", noAuth: true },
+
+  // === Media: image/video providers (handled via imageProviders adapters) ===
+  ideogram: { baseUrl: "https://api.ideogram.ai/v1/ideogram-v3/generate", format: "openai" },
+  leonardo: { baseUrl: "https://cloud.leonardo.ai/api/rest/v1/generations", format: "openai" },
+  haiper: { baseUrl: "https://api.haiper.ai/v1/video/generation", format: "openai" },
+
+  // === Amazon Bedrock (OpenAI-compatible Chat Completions w/ Bedrock API key) ===
+  // baseUrl is resolved per-region by BedrockExecutor from providerSpecificData.region.
+  bedrock: { baseUrl: "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/chat/completions", format: "openai" },
 };
 
 export const OLLAMA_LOCAL_DEFAULT_HOST = "http://localhost:11434";
