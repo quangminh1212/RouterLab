@@ -68,7 +68,7 @@ export async function handleSearch(request) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing required field: query");
   }
 
-  // Combo expansion: providerInput may be a combo name â†’ run fallback/round-robin across providers
+  // Combo expansion: providerInput may be a combo name -> run fallback/round-robin across providers
   const combos = await getCombos();
   const comboModels = getComboModelsFromData(providerInput, combos);
   if (comboModels) {
@@ -107,7 +107,7 @@ async function handleSingleProviderSearch(body, providerInput, request, apiKey, 
   }
 
   if (providerInput !== providerId) {
-    log.info("ROUTING", `${providerInput} â†’ ${providerId}`);
+    log.info("ROUTING", `${providerInput} -> ${providerId}`);
   } else {
     log.info("ROUTING", `Provider: ${providerId}`);
   }

@@ -49,7 +49,7 @@ export async function handleImageGeneration(request) {
 
   const { provider, model } = modelInfo;
 
-  // noAuth providers â€” no credential needed
+  // noAuth providers - no credential needed
   if (NO_AUTH_PROVIDERS.has(provider)) {
     const result = await handleImageGenerationCore({
       body,
@@ -61,7 +61,7 @@ export async function handleImageGeneration(request) {
     return errorResponse(result.status || HTTP_STATUS.BAD_GATEWAY, result.error || "Image generation failed");
   }
 
-  // Credentialed providers â€” fallback loop
+  // Credentialed providers - fallback loop
   const excludeConnectionIds = new Set();
   let lastError = null;
   let lastStatus = null;

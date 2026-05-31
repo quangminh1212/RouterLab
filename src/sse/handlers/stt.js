@@ -66,7 +66,7 @@ export async function handleStt(request) {
   const { provider, model } = modelInfo;
 
   if (modelStr !== `${provider}/${model}`) {
-    log.info("ROUTING", `${modelStr} â†’ ${provider}/${model}`);
+    log.info("ROUTING", `${modelStr} -> ${provider}/${model}`);
   } else {
     log.info("ROUTING", `Provider: ${provider}, Model: ${model}`);
   }
