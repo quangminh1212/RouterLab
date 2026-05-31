@@ -208,30 +208,43 @@ firecrawl · jina-reader (fetch)
 
 > Mỗi provider cần executor reverse-engineered riêng. XLab đã có grok-web, perplexity-web làm mẫu.
 > ⚠️ Nhiều provider vi phạm ToS nhà cung cấp → cân nhắc rủi ro ban account. Không bật mặc định.
+>
+> **Đợt 4:** Đã xây framework web-chat chung (`open-sse/executors/webChat/`):
+> `_base.js` (helpers OpenAI↔web), `genericWeb.js` (config-driven), `duckduckgo.js`
+> (executor riêng), `registry.js` (config từng provider). Toàn bộ provider được
+> đăng ký đầy đủ trong catalog (registry + backend + alias + executor). Các provider
+> dùng JS anti-bot challenge / protocol chưa reverse-engineer sẽ trả lỗi 501/503 rõ
+> ràng (actionable) thay vì code đoán mò dễ vỡ.
 
 | Provider | Nguồn | XLab | Trạng thái |
 |----------|-------|:----:|:----------:|
-| grok-web | Omni/9r | ✓ | ✅ |
-| perplexity-web | Omni/9r | ✓ | ✅ |
-| chatgpt-web | Omni | ⬜ | ⬜ |
-| gemini-web | Omni | ⬜ | ⬜ |
-| claude-web | Omni | ⬜ | ⬜ |
-| deepseek-web | Omni | ⬜ | ⬜ |
-| copilot-web | Omni | ⬜ | ⬜ |
-| blackbox-web | Omni | ⬜ | ⬜ |
-| muse-spark-web (Meta AI) | Omni | ⬜ | ⬜ |
-| t3-web | Omni | ⬜ | ⬜ |
-| inner-ai | Omni | ⬜ | ⬜ |
-| adapta-web | Omni | ⬜ | ⬜ |
-| duckduckgo-web | Omni | ⬜ | ⬜ |
-| huggingchat-web | Omni | ⬜ | ⬜ |
-| phind-web | Omni | ⬜ | ⬜ |
-| poe-web | Omni | ⬜ | ⬜ |
-| venice-web | Omni | ⬜ | ⬜ |
-| v0-vercel-web | Omni | ⬜ | ⬜ |
-| kimi-web | Omni | ⬜ | ⬜ |
-| doubao-web | Omni | ⬜ | ⬜ |
-| veoaifree-web (video) | Omni | ⬜ | ⬜ |
+| grok-web | Omni/9r | ✓ (executor đầy đủ) | ✅ |
+| perplexity-web | Omni/9r | ✓ (executor đầy đủ) | ✅ |
+| duckduckgo-web | Omni | ✓ (executor + handshake; chặn bởi JS challenge của DDG → 503 rõ ràng) | 🟡 |
+| chatgpt-web | Omni | ✓ (đăng ký + framework; protocol chưa RE → 501) | 🟡 |
+| gemini-web | Omni | ✓ (đăng ký + framework; protocol chưa RE → 501) | 🟡 |
+| claude-web | Omni | ✓ (đăng ký + framework; protocol chưa RE → 501) | 🟡 |
+| deepseek-web | Omni | ✓ (đăng ký + framework; PoW-protected → 501) | 🟡 |
+| copilot-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| blackbox-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| muse-spark-web (Meta AI) | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| t3-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| inner-ai | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| adapta-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| huggingchat | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| phind | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| poe-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| venice-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| v0-vercel-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| kimi-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| doubao-web | Omni | ✓ (đăng ký + framework → 501) | 🟡 |
+| veoaifree-web (video) | Omni | ✓ (đăng ký; cần video handler) | 🟡 |
+
+> **Ghi chú kỹ thuật:** Các web provider hiện đại (DuckDuckGo, ChatGPT, Gemini,
+> Claude web…) dùng JS anti-bot challenge / proof-of-work cần chạy JavaScript
+> trong headless browser để giải. Đây là giới hạn cố hữu của proxy server-side
+> (không có JS sandbox), không phải thiếu sót wiring. grok-web & perplexity-web
+> hoạt động vì protocol của chúng chưa khoá bằng JS challenge.
 
 ---
 
@@ -268,9 +281,13 @@ firecrawl · jina-reader (fetch)
 
 | Provider | Nguồn | XLab | Trạng thái |
 |----------|-------|:----:|:----------:|
-| jules (Google Jules) | Omni | ⬜ | ⬜ |
-| devin | Omni | ⬜ | ⬜ |
-| codex-cloud | Omni | ⬜ | ⬜ |
+| jules (Google Jules) | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
+| devin | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
+| codex-cloud | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
+
+> Cloud agent dùng API task-based (create task / poll status), không phải chat
+> completions. Đã đăng ký đầy đủ registry + backend + alias; handler task chuyên
+> dụng để chạy end-to-end sẽ làm ở bước sau.
 
 ---
 
@@ -278,9 +295,13 @@ firecrawl · jina-reader (fetch)
 
 | Provider | Nguồn | XLab | Trạng thái |
 |----------|-------|:----:|:----------:|
-| cliproxyapi (chain to CLIProxyAPI) | Omni | ⬜ | ⬜ |
-| 9router (embedded) | Omni | ⬜ | ⬜ |
-| auto (zero-config LKGP routing) | Omni | ⬜ | ⬜ |
+| cliproxyapi (chain to CLIProxyAPI) | Omni | ✓ (OpenAI passthrough qua providerSpecificData.baseUrl) | ✅ |
+| 9router (embedded) | Omni | ✓ (OpenAI passthrough qua providerSpecificData.baseUrl) | ✅ |
+| auto (zero-config LKGP routing) | Omni | ⬜ (cần LKGP routing engine — Đợt 5) | ⬜ |
+
+### Music (Đợt 4)
+| suno | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
+| udio | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
 
 ---
 
