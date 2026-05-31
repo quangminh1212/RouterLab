@@ -13,7 +13,7 @@ Hoặc chạy local:
 
 ```bash
 npm install
-npm run build
+npm run quality:gate
 npm start
 ```
 
@@ -58,6 +58,22 @@ docker run --rm \
   xlabrouter
 ```
 
+## Quality gates
+
+Trước khi merge hoặc deploy, chạy:
+
+```bash
+npm run quality:gate
+```
+
+Coverage gate cho module lõi:
+
+```bash
+npm run quality:gate:coverage
+```
+
+Coverage threshold hiện tại: 70% cho lines/functions/branches/statements trên core tuyến ổn định (chat/audio/messages/models/info/moderations/rerank/responses-compact/v1beta-models, health, requestDedup, embeddings core, claude header cache).
+
 ## Performance notes
 
 Các tối ưu chính hiện có:
@@ -74,9 +90,30 @@ Repo hiện dùng `deploy.bat` để build + pack + deploy lên VPS `157.66.100.
 
 Nếu cần sync cả data, cần upload thêm từ local `%APPDATA%\\xlabrouter` lên VPS `~/.xlabrouter` rồi restart service.
 
+## API nâng cao
+
+### Batch API (OpenAI-compatible)
+- `POST /v1/files` (multipart) — upload file JSONL (`purpose=batch`)
+- `POST /v1/batches` — tạo batch (`input_file_id`, `endpoint`, `completion_window=24h`)
+- `GET /v1/batches/:id` — xem trạng thái (validating → in_progress → finalizing → completed)
+- `GET /v1/batches` — liệt kê batch
+- `POST /v1/batches/:id/cancel` — hủy batch
+- `GET /v1/files/:id` + `GET /v1/files/:id/content` — tải file kết quả (output/errors JSONL)
+- Hỗ trợ endpoint: `/v1/chat/completions`, `/v1/embeddings`, `/v1/completions`
+
+### A2A Protocol (Agent-to-Agent)
+- `GET /.well-known/agent.json` — agent card (discovery)
+- `POST /a2a` — JSON-RPC: `message/send`, `message/stream` (SSE), `tasks/get`, `tasks/cancel`
+- `GET /api/a2a/status` — trạng thái protocol + thống kê task
+- `GET /api/a2a/tasks`, `GET /api/a2a/tasks/:id`, `POST /api/a2a/tasks/:id/cancel`
+
+Cả hai nhóm endpoint tuân theo `requireApiKey` trong settings.
+
 ## Changelog ngắn
 
 ### 2026-05
+- Thêm OpenAI-compatible Batch API + Files API (`/v1/batches`, `/v1/files`)
+- Thêm A2A (Agent-to-Agent) Protocol (`/.well-known/agent.json`, `/a2a`, `/api/a2a/*`)
 - Thêm TamMao / CungCapAI provider và `x-machine-id`
 - Sửa test model chậm cho CungCapAI
 - Sửa lỗi reload form do button submit mặc định

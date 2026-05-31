@@ -104,3 +104,43 @@ Backup phải đảm bảo:
 - `Details` không được lưu request/response chi tiết.
 - File backup không chứa từng usage request riêng lẻ.
 - Gist backup lần đầu được tạo mới nếu chưa có, sau đó luôn update cùng Gist để giữ history.
+
+## Tối ưu lưu trữ (Storage compaction)
+
+Dữ liệu runtime được lưu trong thư mục data của ứng dụng (`%APPDATA%\xlabrouter` trên Windows, `~/.xlabrouter` trên macOS/Linux).
+
+### Giới hạn dung lượng
+
+`request-details.json` (tab `Details`) được giới hạn cứng để file không phình to:
+
+- Tối đa `200` records (mặc định cấu hình `80`).
+- Tối đa `64KB` cho mỗi field lớn (`request`, `providerRequest`, `providerResponse`, `response`); field vượt ngưỡng bị thay bằng marker `{ _truncated: true, _originalSize, _preview }`.
+- Tối đa `12MB` cho toàn bộ file; nếu vượt, số records bị cắt giảm dần.
+
+`db.json` chỉ giữ cấu hình + usage summary. Khối `requestDetailsData` cũ (nếu còn sót từ bản cũ hoặc do import/sync) sẽ bị xóa tự động khi DB được nạp.
+
+### Tự phục hồi (self-heal)
+
+Khi nạp lần đầu trong mỗi tiến trình, `request-details.json` được nén lại theo các giới hạn trên rồi ghi đè. File cũ quá khổ (từ bản cũ hoặc dữ liệu import) sẽ tự co lại ở lần chạy kế tiếp mà không cần thao tác thủ công.
+
+### Script dọn dẹp thủ công
+
+Khi cần thu hồi dung lượng ngay (ví dụ file đã phình tới hàng chục–hàng trăm MB từ bản cũ), dùng:
+
+```bash
+# Báo cáo (dry-run, không ghi gì)
+npm run usage:compact
+
+# Áp dụng: nén request-details.json + xóa blob requestDetailsData khỏi db.json
+npm run usage:compact:apply
+
+# Áp dụng và xóa luôn các file snapshot cũ (db.backup-*, db.vps-latest.json, ...)
+node scripts/compact-usage-store.mjs --apply --prune-backups
+```
+
+Lưu ý an toàn:
+
+- Mặc định là dry-run; chỉ ghi khi có `--apply`.
+- Luôn tạo bản `*.bak-<timestamp>` trước khi sửa file live.
+- Xóa snapshot cũ cần cờ riêng `--prune-backups`.
+- Nên dừng tiến trình XLab Router trước khi chạy `--apply` để tránh tranh chấp ghi file.
