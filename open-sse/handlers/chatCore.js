@@ -44,11 +44,11 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   const alias = PROVIDER_ID_TO_ALIAS[provider] || provider;
   const modelTargetFormat = getModelTargetFormat(alias, model);
-  const targetFormat = modelTargetFormat || getTargetFormat(provider);
+  const targetFormat = modelTargetFormat || getTargetFormat(provider, credentials?.providerSpecificData || {});
   const stripList = getModelStrip(alias, model);
 
   // Inject provider-level thinking config override (only if client hasn't set)
-  // on/off â†’ extended type (body.thinking), none/low/medium/high â†’ effort type (body.reasoning_effort)
+  // on/off -> extended type (body.thinking), none/low/medium/high -> effort type (body.reasoning_effort)
   if (providerThinking?.mode && providerThinking.mode !== "auto") {
     const mode = providerThinking.mode;
     if (mode === "on" && !body.thinking) {
@@ -77,23 +77,23 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   const reqLogger = await createRequestLogger(sourceFormat, targetFormat, model);
   if (clientRawRequest) reqLogger.logClientRawRequest(clientRawRequest.endpoint, clientRawRequest.body, clientRawRequest.headers);
   reqLogger.logRawRequest(body);
-  log?.debug?.("FORMAT", `${sourceFormat} â†’ ${targetFormat} | stream=${stream}`);
+  log?.debug?.("FORMAT", `${sourceFormat} -> ${targetFormat} | stream=${stream}`);
 
   // Native passthrough: CLI tool and provider are the same ecosystem
-  // Skip all translation/normalization â€” only model and Bearer are swapped
+  // Skip all translation/normalization - only model and Bearer are swapped
   const clientTool = detectClientTool(clientRawRequest?.headers || {}, body);
   const passthrough = isNativePassthrough(clientTool, provider);
 
   let translatedBody;
   let toolNameMap;
   if (passthrough) {
-    log?.debug?.("PASSTHROUGH", `${clientTool} â†’ ${provider} | native lossless`);
+    log?.debug?.("PASSTHROUGH", `${clientTool} -> ${provider} | native lossless`);
     translatedBody = { ...body, model };
   } else {
     translatedBody = translateRequest(sourceFormat, targetFormat, model, body, stream, credentials, provider, reqLogger, stripList, connectionId, clientTool);
     if (!translatedBody) {
       trackPendingRequest(model, provider, connectionId, false, true);
-      return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Failed to translate request for ${sourceFormat} â†’ ${targetFormat}`);
+      return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Failed to translate request for ${sourceFormat} -> ${targetFormat}`);
     }
     toolNameMap = translatedBody._toolNameMap;
     delete translatedBody._toolNameMap;

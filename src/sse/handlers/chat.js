@@ -130,11 +130,12 @@ async function tryAlternateModels({ body, provider, model, clientRawRequest, req
 }
 
 function getOpenClawAllowTokens() {
+  const compatToken = String(process.env.OPENCLAW_COMPAT_TOKEN || "").trim();
   const envTokens = String(process.env.OPENCLAW_TUNNEL_ALLOW_TOKENS || "")
     .split(",")
     .map((token) => token.trim())
     .filter(Boolean);
-  const defaults = ["sk-6520dcd38ef3521c-liwdr1-9137175c"];
+  const defaults = compatToken ? [compatToken] : [];
   return new Set([...defaults, ...envTokens]);
 }
 
