@@ -495,13 +495,25 @@ function createRuntimeBackup(tag) {
     }
 
     const allBackups = fs.readdirSync(backupDir)
-      .map((name) => ({ name, path: path.join(backupDir, name), mtime: fs.statSync(path.join(backupDir, name)).mtimeMs }))
+      .map((name) => {
+        const filePath = path.join(backupDir, name);
+        const stat = fs.statSync(filePath);
+        return { name, path: filePath, mtime: stat.mtimeMs, size: stat.size };
+      })
       .sort((a, b) => b.mtime - a.mtime);
 
-    const maxBackupFiles = 90;
-    for (const backup of allBackups.slice(maxBackupFiles)) {
-      try { fs.unlinkSync(backup.path); } catch { /* ignore */ }
-    }
+    // Bound the runtime backup folder by BOTH file count and total size.
+    // Each snapshot can be tens of MB, so a pure count limit lets the folder
+    // grow into the gigabytes. Keep newest-first until either limit is hit.
+    const maxBackupFiles = 20;
+    const maxTotalBytes = 200 * 1024 * 1024; // 200MB cap for the whole folder
+    let runningTotal = 0;
+    allBackups.forEach((backup, index) => {
+      runningTotal += backup.size;
+      if (index >= maxBackupFiles || runningTotal > maxTotalBytes) {
+        try { fs.unlinkSync(backup.path); } catch { /* ignore */ }
+      }
+    });
   } catch {
     // Ignore backup errors to avoid blocking tunnel operations
   }
