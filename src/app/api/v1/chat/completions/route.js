@@ -10,7 +10,10 @@ const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
 const OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL || "https://api.xlabrnd.com/v1/chat/completions";
 const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS) || 30000;
-const OPENCLAW_COMPAT_TOKEN = "sk-6520dcd38ef3521c-liwdr1-9137175c";
+const OPENCLAW_CAPTURE_PROXY_TOKENS = String(process.env.OPENCLAW_CAPTURE_PROXY_TOKENS || "")
+  .split(",")
+  .map((token) => token.trim())
+  .filter(Boolean);
 
 async function ensureInitialized() {
   if (initialized) return;
@@ -148,6 +151,13 @@ function isCaptureSelfLoop(request) {
   }
 }
 
+function shouldUseOpenClawCaptureProxy(request) {
+  if (!OPENCLAW_CAPTURE_PROXY_ENABLED || isCaptureSelfLoop(request)) return false;
+  if (OPENCLAW_CAPTURE_PROXY_TOKENS.length === 0) return false;
+  const token = parseBearerToken(request.headers.get("authorization"));
+  return !!token && OPENCLAW_CAPTURE_PROXY_TOKENS.includes(token);
+}
+
 async function writeOpenClawCapture(stage, payload) {
   if (!OPENCLAW_CAPTURE_PROXY_ENABLED) return;
   const [{ promises: fs }, path, os] = await Promise.all([
@@ -274,7 +284,7 @@ async function postHandler(request) {
     try {
       const [{ promises: fs }, path] = await Promise.all([import("fs"), import("path")]);
       const authToken = parseBearerToken(request.headers.get("authorization"));
-      if (authToken === OPENCLAW_COMPAT_TOKEN) {
+      if (OPENCLAW_CAPTURE_PROXY_TOKENS.includes(authToken)) {
         const captureDir = "C:\\tmp\\openclaw-debug-capture";
         await fs.mkdir(captureDir, { recursive: true });
         await fs.writeFile(path.join(captureDir, "last-chat-request.json"), JSON.stringify({
@@ -287,7 +297,7 @@ async function postHandler(request) {
     } catch {}
   }
 
-  if (OPENCLAW_CAPTURE_PROXY_ENABLED && !isCaptureSelfLoop(forwardedRequest)) {
+  if (shouldUseOpenClawCaptureProxy(forwardedRequest)) {
     return proxyOpenClawCapture(forwardedRequest);
   }
 
@@ -441,6 +451,25 @@ function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
   };
 }
 
+function parseLooseJsonPayload(raw) {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const trimmed = String(raw || "").trim();
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 async function retryEmptyChatAsStream(request, requestBody, fallbackPayload) {
   const streamBody = { ...(requestBody || {}), stream: true };
   const headers = new Headers();
@@ -510,10 +539,8 @@ async function normalizeChatCompletionsJson(response, request = null, requestBod
   }
 
   const raw = await response.text();
-  let payload;
-  try {
-    payload = raw ? JSON.parse(raw) : {};
-  } catch {
+  const payload = parseLooseJsonPayload(raw);
+  if (!payload) {
     if (request && requestBody && requestBody?.stream !== true && isMalformedGatewayResponse(response.status, raw)) {
       const recoveredPayload = await retryEmptyChatAsStream(request, requestBody, null);
       if (readChatContent(recoveredPayload).trim()) {
