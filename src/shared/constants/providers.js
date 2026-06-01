@@ -60,7 +60,7 @@ export const OAUTH_PROVIDERS = {
   "amazon-q": { id: "amazon-q", alias: "aq", name: "Amazon Q", icon: "cloud", color: "#FF9900", textIcon: "AQ", deprecated: true, deprecationNotice: RISK_NOTICE, website: "https://aws.amazon.com/q/developer/", notice: { signupUrl: "https://aws.amazon.com/q/developer/" } },
   cursor: { id: "cursor", alias: "cu", name: "Cursor IDE", icon: "edit_note", color: "#00D4AA", website: "https://cursor.com", notice: { signupUrl: "https://cursor.com" } },
   "kimi-coding": { id: "kimi-coding", alias: "kmc", name: "Kimi Coding", icon: "psychology", color: "#1E40AF", textIcon: "KC", deprecated: true, deprecationNotice: RISK_NOTICE, website: "https://www.kimi.com/code", notice: { signupUrl: "https://www.kimi.com/code" } },
-  kilocode: { id: "kilocode", alias: "kc", name: "Kilo Code", icon: "code", color: "#FF6B35", textIcon: "KC", website: "https://kilocode.ai", notice: { signupUrl: "https://kilocode.ai" } },
+  kilocode: { id: "kilocode", alias: "kc", name: "Kilo Code", icon: "code", color: "#FF6B35", textIcon: "KC", website: "https://kilo.ai", notice: { signupUrl: "https://kilo.ai" } },
   cline: { id: "cline", alias: "cl", name: "Cline", icon: "smart_toy", color: "#5B9BD5", textIcon: "CL", website: "https://cline.bot", notice: { signupUrl: "https://cline.bot" } },
   gitlab: { id: "gitlab", alias: "gl", name: "GitLab Duo", icon: "hub", color: "#FC6D26", textIcon: "GL", website: "https://docs.gitlab.com/user/duo_agent_platform/code_suggestions/", notice: { signupUrl: "https://gitlab.com" } },
   codebuddy: { id: "codebuddy", alias: "cb", name: "CodeBuddy", icon: "smart_toy", color: "#006EFF", textIcon: "CB", website: "https://copilot.tencent.com", notice: { signupUrl: "https://copilot.tencent.com" } },
@@ -380,6 +380,7 @@ const providerIconPathOverrides = {
   "google-pse": "/providers/google-pse.svg",
   haiper: "/providers/haiper.svg",
   inclusionai: "/providers/inclusionai.svg",
+  kilocode: "/providers/kilocode.svg",
   lepton: "/providers/lepton.svg",
   llamagate: "/providers/llamagate.svg",
   monsterapi: "/providers/monsterapi.svg",
@@ -391,6 +392,10 @@ const providerIconPathOverrides = {
   "volcengine-ark": "/providers/volcengine-ark.svg",
   "xiaomi-mimo": "/providers/xiaomi-mimo.ico",
 };
+
+const providerReadableLocalIconIds = new Set([
+  "kilocode",
+]);
 
 const curatedProviderIconIds = new Set([
   "ai21",
@@ -520,6 +525,8 @@ const providerDomainIconMatches = [
   ["models.github.ai", "github-models"],
   ["githubcopilot.com", "github"],
   ["github.com", "github"],
+  ["kilo.ai", "kilocode"],
+  ["kilocode.ai", "kilocode"],
   ["api.together.xyz", "together"],
   ["together.ai", "together"],
   ["api.mistral.ai", "mistral"],
@@ -710,6 +717,9 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
   const faviconUrls = getProviderFaviconUrlsFromConfig(providerConfig);
 
   if (!hasExplicitBaseUrl) {
+    if (providerReadableLocalIconIds.has(providerId)) {
+      return [...new Set([knownProviderIconPath || fallbackIconPath, ...faviconUrls].filter(Boolean))];
+    }
     return [...new Set([...faviconUrls, knownProviderIconPath || fallbackIconPath].filter(Boolean))];
   }
 
