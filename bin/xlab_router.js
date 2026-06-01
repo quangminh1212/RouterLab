@@ -381,6 +381,9 @@ if (command === "--help" || command === "-h") {
   console.log("  npx xlabrouter              Run without global install");
   console.log("  npm install xlabrouter      Local install; run with npx xlabrouter");
   console.log("");
+  console.log("Compatibility aliases:");
+  console.log("  omniroute, 9router, cliproxyapi, xrouter");
+  console.log("");
   console.log("Environment:");
   console.log("  PORT=<port>          Override default port");
   console.log("  HOSTNAME=<host>      Override bind host (default: 0.0.0.0)");

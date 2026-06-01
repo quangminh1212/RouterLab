@@ -8,6 +8,38 @@ import * as log from "../utils/logger.js";
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
 
+const TAMMAO_ROUND_ROBIN_BASE_URLS = [
+  "https://api.cungcapai.io.vn/v1",
+  "https://api.electroai.io.vn/v1",
+];
+
+function isTamMaoModel(providerId, model) {
+  const providerValue = String(providerId || "").toLowerCase();
+  const modelValue = String(model || "").toLowerCase();
+  return providerValue.includes("tammao") || providerValue === "cungcapai" || modelValue === "tammao" || modelValue.startsWith("tammao/");
+}
+
+function normalizeBaseUrl(baseUrl = "") {
+  return String(baseUrl || "").trim().replace(/\/+$/, "");
+}
+
+function resolveTamMaoBaseUrl(connection, providerSpecificData) {
+  const currentBaseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl);
+  const currentIndex = TAMMAO_ROUND_ROBIN_BASE_URLS.findIndex((baseUrl) => normalizeBaseUrl(baseUrl) === currentBaseUrl);
+  const lastIndex = Number(connection?.providerSpecificData?.tamMaoRoundRobinIndex);
+
+  if (currentIndex < 0 && !Number.isInteger(lastIndex)) {
+    return null;
+  }
+
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % TAMMAO_ROUND_ROBIN_BASE_URLS.length : 0;
+  const fallbackIndex = Number.isInteger(lastIndex) ? (lastIndex + 1) % TAMMAO_ROUND_ROBIN_BASE_URLS.length : nextIndex;
+  return {
+    baseUrl: TAMMAO_ROUND_ROBIN_BASE_URLS[fallbackIndex],
+    index: fallbackIndex,
+  };
+}
+
 async function buildResolvedProviderSpecificData(providerId, connection) {
   const providerSpecificData = {
     ...(connection?.providerSpecificData || {}),
@@ -191,7 +223,24 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       connection = availableConnections[0];
     }
 
-    const providerSpecificData = await buildResolvedProviderSpecificData(providerId, connection);
+    let providerSpecificData = await buildResolvedProviderSpecificData(providerId, connection);
+
+    if (isTamMaoModel(providerId, model)) {
+      const selectedTamMaoEndpoint = resolveTamMaoBaseUrl(connection, providerSpecificData);
+      if (selectedTamMaoEndpoint) {
+        providerSpecificData = {
+          ...providerSpecificData,
+          baseUrl: selectedTamMaoEndpoint.baseUrl,
+        };
+        await updateProviderConnection(connection.id, {
+          providerSpecificData: {
+            ...(connection.providerSpecificData || {}),
+            tamMaoRoundRobinIndex: selectedTamMaoEndpoint.index,
+          },
+        });
+      }
+    }
+
     const resolvedProxy = await resolveConnectionProxyConfig(providerSpecificData);
 
     return {

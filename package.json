@@ -7,6 +7,9 @@
     "license": "ISC",
     "bin": {
         "xlabrouter": "bin/xlab_router.js",
+        "omniroute": "bin/xlab_router.js",
+        "9router": "bin/xlab_router.js",
+        "cliproxyapi": "bin/xlab_router.js",
         "xlabuter": "bin/xlab_router.js",
         "xrouter": "bin/xlab_router.js"
     },
