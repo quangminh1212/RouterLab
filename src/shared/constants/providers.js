@@ -573,6 +573,17 @@ function normalizeSearchText(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function getProviderMatchTokens(provider) {
+  return [
+    provider.id,
+    provider.alias,
+    provider.name,
+  ]
+    .flatMap((value) => String(value || "").toLowerCase().split(/[^a-z0-9]+/))
+    .map((value) => normalizeSearchText(value))
+    .filter((value) => value.length >= 4 && !["openai", "compatible", "provider", "models", "model"].includes(value));
+}
+
 function matchesProviderMetadata(host, provider) {
   const urls = [
     provider.website,
@@ -595,6 +606,12 @@ function matchesProviderMetadata(host, provider) {
   });
 }
 
+function matchesProviderHostToken(host, provider) {
+  const normalizedHost = normalizeSearchText(host);
+  if (!normalizedHost) return false;
+  return getProviderMatchTokens(provider).some((token) => normalizedHost.includes(token));
+}
+
 export function inferProviderIconId(providerConfig = {}) {
   const host = readUrlHost(providerConfig.baseUrl || providerConfig.url);
   if (host) {
@@ -607,6 +624,11 @@ export function inferProviderIconId(providerConfig = {}) {
       matchesProviderMetadata(host, provider)
     ));
     if (metadataMatch) return metadataMatch.id;
+
+    const tokenMatch = Object.values(AI_PROVIDERS).find((provider) => (
+      matchesProviderHostToken(host, provider)
+    ));
+    if (tokenMatch) return tokenMatch.id;
   }
 
   const haystack = normalizeSearchText([

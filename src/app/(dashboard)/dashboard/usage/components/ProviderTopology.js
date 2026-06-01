@@ -3,7 +3,7 @@
 import { memo, useMemo, useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import "@xyflow/react/dist/style.css";
-import { AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
+import { AI_PROVIDERS, getProviderIconPath, getProviderIconPathFromConfig } from "@/shared/constants/providers";
 
 let reactFlowModulePromise = null;
 
@@ -12,8 +12,8 @@ function getProviderConfig(providerId) {
 }
 
 // Use safe provider icon path helper
-function getProviderImageUrl(providerId) {
-  return getProviderIconPath(providerId);
+function getProviderImageUrl(providerId, providerConfig = {}) {
+  return getProviderIconPathFromConfig({ ...providerConfig, id: providerId, provider: providerId }, getProviderIconPath(providerId));
 }
 
 // Node component factories - created after React Flow module loads
@@ -163,7 +163,7 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
     const data = {
       label: (config.name !== p.provider ? config.name : null) || p.name || p.provider,
       color: config.color || "#6b7280",
-      imageUrl: getProviderImageUrl(p.provider),
+      imageUrl: getProviderImageUrl(p.provider, p),
       textIcon: config.textIcon || (p.provider || "?").slice(0, 2).toUpperCase(),
       active,
     };
