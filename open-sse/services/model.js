@@ -36,6 +36,7 @@ const ALIAS_TO_PROVIDER_ID = {
   deepseek: "deepseek",
   cmc: "commandcode",
   commandcode: "commandcode",
+  "command-code": "commandcode",
   groq: "groq",
   xai: "xai",
   mistral: "mistral",
@@ -60,6 +61,12 @@ const ALIAS_TO_PROVIDER_ID = {
   chutes: "chutes",
   ark: "volcengine-ark",
   "volcengine-ark": "volcengine-ark",
+  "azure-openai": "azure",
+  "bailian-coding-plan": "alicode",
+  "alibaba-cn": "alicode",
+  "kimi-coding-apikey": "kimi-coding",
+  "devin-cli": "devin",
+  "v0-vercel": "v0-vercel-web",
   byteplus: "byteplus",
   bpm: "byteplus",
   cursor: "cursor",
@@ -380,4 +387,3 @@ function inferProviderFromModelName(modelName) {
   // Default fallback
   return "openai";
 }
-
