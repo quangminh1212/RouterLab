@@ -1,0 +1,9 @@
+<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+  <title>Auto Route</title>
+  <rect width="96" height="96" rx="22" fill="#132235"/>
+  <path d="M23 29h18c9 0 13 4 18 13l4 7c4 7 7 10 13 10h3" fill="none" stroke="#78A6FF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M23 67h16c11 0 15-7 20-16l4-7c4-7 7-10 13-10h3" fill="none" stroke="#5EEAD4" stroke-width="8" stroke-linecap="round"/>
+  <path d="M73 24l11 10-11 10" fill="none" stroke="#EAF2FF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M73 49l11 10-11 10" fill="none" stroke="#EAF2FF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M28 22l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8z" fill="#FACC15"/>
+</svg>

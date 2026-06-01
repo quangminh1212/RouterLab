@@ -370,6 +370,10 @@ export function getProviderIconPath(providerId) {
     "xiaomi-tokenplan": "/providers/local-device.png",
     "vercel-ai-gateway": "/vercel.svg",
     commandcode: "/providers/oai-cc.png",
+    auto: "/providers/auto-route.svg",
+    vllm: "/providers/vllm.svg",
+    lemonade: "/providers/lemonade.ico",
+    xinference: "/providers/xinference.svg",
   };
   if (iconOverrides[resolvedProviderId]) {
     return iconOverrides[resolvedProviderId];
