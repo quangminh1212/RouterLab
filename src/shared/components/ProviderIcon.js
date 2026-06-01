@@ -12,12 +12,17 @@ export default function ProviderIcon({
   fallbackColor,
 }) {
   const [errored, setErrored] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sources = Array.isArray(src) ? src.filter(Boolean) : (src ? [src] : []);
+  const sourceKey = sources.join("|");
+  const currentSrc = sources[sourceIndex] || "";
 
   useEffect(() => {
     setErrored(false);
-  }, [src]);
+    setSourceIndex(0);
+  }, [sourceKey]);
 
-  if (!src || errored) {
+  if (!currentSrc || errored) {
     return (
       <span
         className={`inline-flex items-center justify-center font-bold rounded-lg ${className}`.trim()}
@@ -35,18 +40,27 @@ export default function ProviderIcon({
 
   return (
     <img
-      src={src}
+      src={currentSrc}
       alt={alt}
       width={size}
       height={size}
       className={className}
-      onError={() => setErrored(true)}
+      onError={() => {
+        if (sourceIndex < sources.length - 1) {
+          setSourceIndex((index) => index + 1);
+        } else {
+          setErrored(true);
+        }
+      }}
     />
   );
 }
 
 ProviderIcon.propTypes = {
-  src: PropTypes.string,
+  src: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.arrayOf(PropTypes.string),
+  ]),
   alt: PropTypes.string,
   size: PropTypes.number,
   className: PropTypes.string,

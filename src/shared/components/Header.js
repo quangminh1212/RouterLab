@@ -8,7 +8,7 @@ import PropTypes from "prop-types";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
-import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconPath } from "@/shared/constants/providers";
+import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderIconSources } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
 import { fetchWithTimeout } from "@/shared/utils/fetch";
 
@@ -32,7 +32,7 @@ const getPageInfo = (pathname) => {
       breadcrumbs: [
         { label: "Media Providers", href: `/dashboard/media-providers/${kindId}` },
         { label: kindConfig?.label || kindId, href: `/dashboard/media-providers/${kindId}` },
-        { label: provider?.name || providerId, image: getProviderIconPath(providerId) },
+        { label: provider?.name || providerId, image: getProviderIconSources(providerId) },
       ],
     };
   }
@@ -64,7 +64,7 @@ const getPageInfo = (pathname) => {
           { label: "Providers", href: "/dashboard/providers" },
           {
             label: providerInfo.name,
-            image: getProviderIconPath(providerInfo.id),
+            image: getProviderIconSources(providerInfo.id),
           },
         ],
       };

@@ -20,6 +20,7 @@ import {
   ANTHROPIC_COMPATIBLE_PREFIX,
   getProviderIconPath,
   getProviderIconPathFromConfig,
+  getProviderIconSources,
 } from "@/shared/constants/providers";
 import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
@@ -661,7 +662,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
               }}
             >
               <ProviderIcon
-                src={getProviderIconPath(provider.id)}
+                src={getProviderIconSources(provider)}
                 alt={provider.name}
                 size={30}
                 className="object-contain rounded-lg max-w-[32px] max-h-[32px]"
@@ -792,7 +793,7 @@ function ApiKeyProviderCard({
               }}
             >
               <ProviderIcon
-                src={getIconPath()}
+                src={getProviderIconSources(provider, getIconPath())}
                 alt={provider.name}
                 size={30}
                 className="object-contain rounded-lg max-w-[30px] max-h-[30px]"
@@ -1354,5 +1355,4 @@ ProviderTestResultsView.propTypes = {
     error: PropTypes.string,
   }).isRequired,
 };
-
 

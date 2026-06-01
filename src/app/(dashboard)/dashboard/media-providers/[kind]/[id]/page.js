@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Card, Badge, Button, AddCustomEmbeddingModal, NoAuthProxyCard, ProviderInfoCard } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderAlias, getProviderIconPath, getProviderIconPathFromConfig, isCustomEmbeddingProvider } from "@/shared/constants/providers";
+import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderAlias, getProviderIconPath, getProviderIconPathFromConfig, getProviderIconSources, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import ConnectionsCard from "@/app/(dashboard)/dashboard/providers/components/ConnectionsCard";
@@ -1399,7 +1399,7 @@ export default function MediaProviderDetailPage() {
         <div className="flex items-center gap-4">
           <div className="size-12 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${provider.color}15` }}>
             <ProviderIcon
-              src={isCustom ? getProviderIconPathFromConfig(provider) : getProviderIconPath(provider.id)}
+              src={getProviderIconSources(provider, isCustom ? getProviderIconPathFromConfig(provider) : getProviderIconPath(provider.id))}
               alt={provider.name}
               size={48}
               className="object-contain rounded-lg max-w-[48px] max-h-[48px]"

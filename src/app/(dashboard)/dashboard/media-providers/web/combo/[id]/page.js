@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Input, Toggle, Modal } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { AI_PROVIDERS, getProviderIconPath, getProvidersByKind } from "@/shared/constants/providers";
+import { AI_PROVIDERS, getProviderIconSources, getProvidersByKind } from "@/shared/constants/providers";
 
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
 
@@ -59,7 +59,7 @@ function ProviderPickerModal({ isOpen, onClose, onPick, kind, currentIds, connec
               }`}
             >
               <ProviderIcon
-                src={getProviderIconPath(p.id)}
+                src={getProviderIconSources(p)}
                 alt={p.name}
                 size={24}
                 className="object-contain rounded shrink-0"
@@ -275,7 +275,7 @@ export default function ComboDetailPage() {
                 <div key={`${pid}-${idx}`} className="flex items-center gap-3 p-2 rounded-lg bg-black/[0.02] dark:bg-white/[0.02]">
                   <span className="text-xs text-text-muted w-5 text-center">{idx + 1}</span>
                   <ProviderIcon
-                    src={getProviderIconPath(pid)}
+                    src={getProviderIconSources(pid)}
                     alt={p?.name || pid}
                     size={24}
                     className="object-contain rounded shrink-0"

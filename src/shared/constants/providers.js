@@ -662,6 +662,42 @@ export function getProviderIconPathFromConfig(providerConfig = {}, fallbackIconP
   return getProviderIconPath(providerConfig.id);
 }
 
+function isLocalIconHost(host) {
+  return ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(host);
+}
+
+function getProviderIconDomainUrl(providerConfig = {}) {
+  const providerId = resolveProviderId(providerConfig.id || providerConfig.provider || "");
+  const provider = AI_PROVIDERS[providerId] || {};
+  return providerConfig.baseUrl ||
+    providerConfig.website ||
+    provider.website ||
+    provider.notice?.apiKeyUrl ||
+    provider.notice?.signupUrl ||
+    provider.modelsFetcher?.url ||
+    provider.embeddingConfig?.baseUrl ||
+    provider.ttsConfig?.baseUrl ||
+    provider.sttConfig?.baseUrl ||
+    provider.searchConfig?.baseUrl ||
+    "";
+}
+
+export function getProviderFaviconUrlFromConfig(providerConfig = {}) {
+  const url = getProviderIconDomainUrl(providerConfig);
+  const host = readUrlHost(url);
+  if (!host || isLocalIconHost(host)) return "";
+  return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(url)}&sz=64`;
+}
+
+export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") {
+  const providerConfig = typeof providerOrConfig === "string"
+    ? { id: providerOrConfig }
+    : (providerOrConfig || {});
+  const localIconPath = getProviderIconPathFromConfig(providerConfig, fallbackIconPath);
+  const faviconUrl = getProviderFaviconUrlFromConfig(providerConfig);
+  return [...new Set([faviconUrl, localIconPath].filter(Boolean))];
+}
+
 // Alias to ID mapping (for quick lookup)
 export const ALIAS_TO_ID = Object.values(AI_PROVIDERS).reduce((acc, p) => {
   acc[p.alias] = p.id;

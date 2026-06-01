@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { AI_PROVIDERS, getProviderIconPath, getProvidersByKind } from "@/shared/constants/providers";
+import { AI_PROVIDERS, getProviderIconSources, getProvidersByKind } from "@/shared/constants/providers";
 
 function getEffectiveStatus(conn) {
   const isCooldown = Object.entries(conn).some(
@@ -45,7 +45,7 @@ function ProviderCard({ provider, kind, connections }) {
             style={{ backgroundColor: `${provider.color?.length > 7 ? provider.color : (provider.color ?? "#888") + "15"}` }}
           >
             <ProviderIcon
-              src={getProviderIconPath(provider.id)}
+              src={getProviderIconSources(provider)}
               alt={provider.name}
               size={30}
               className="object-contain rounded-lg max-w-[30px] max-h-[30px]"
@@ -82,7 +82,7 @@ function ComboList({ combos }) {
                   return (
                     <div key={`${pid}-${i}`} title={p?.name || pid} className="size-5 rounded flex items-center justify-center" style={{ backgroundColor: `${(p?.color ?? "#888")}15` }}>
                       <ProviderIcon
-                        src={getProviderIconPath(pid)}
+                        src={getProviderIconSources(pid)}
                         alt={p?.name || pid}
                         size={18}
                         className="object-contain rounded max-w-[18px] max-h-[18px]"
