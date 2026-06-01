@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SenseNova icon">
+  <rect width="128" height="128" rx="28" fill="#7f1d1d"/>
+  <path d="M35 82c8 12 23 18 40 14 14-3 22-12 22-25 0-14-11-21-30-25-14-3-20-6-20-12 0-7 9-10 20-8 9 1 17 5 24 11" fill="none" stroke="#fecaca" stroke-width="12" stroke-linecap="round"/>
+  <text x="64" y="116" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#fef2f2">SenseNova</text>
+</svg>

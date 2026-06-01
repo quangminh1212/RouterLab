@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="GLHF Chat icon">
+  <rect width="128" height="128" rx="28" fill="#312e81"/>
+  <path d="M31 40h66v43H58l-20 17V83h-7z" fill="#c4b5fd"/>
+  <path d="M47 56h35M47 68h25" stroke="#312e81" stroke-width="8" stroke-linecap="round"/>
+  <text x="64" y="116" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#f5f3ff">GLHF</text>
+</svg>

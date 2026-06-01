@@ -360,25 +360,32 @@ export function getProviderAlias(providerId) {
   return provider?.alias || providerId;
 }
 
+const providerIconPathOverrides = {
+  auto: "/providers/auto-route.svg",
+  agentrouter: "/providers/agentrouter.svg",
+  bluesminds: "/providers/bluesminds.svg",
+  cablyai: "/providers/cablyai.svg",
+  cungcapai: "/providers/cungcapai.svg",
+  electroai: "/providers/electroai.svg",
+  fenayai: "/providers/fenayai.svg",
+  freetheai: "/providers/freetheai.svg",
+  glhf: "/providers/glhf.svg",
+  haiper: "/providers/haiper.svg",
+  inclusionai: "/providers/inclusionai.svg",
+  lemonade: "/providers/lemonade.ico",
+  llamagate: "/providers/llamagate.svg",
+  monsterapi: "/providers/monsterapi.svg",
+  sensenova: "/providers/sensenova.svg",
+  thebai: "/providers/thebai.svg",
+  vllm: "/providers/vllm.svg",
+  "aws-polly": "/providers/aws-polly.svg",
+  "xiaomi-mimo": "/providers/xiaomi-mimo.svg",
+  xinference: "/providers/xinference.svg",
+};
+
 export function getProviderIconPath(providerId) {
   const resolvedProviderId = resolveProviderId(providerId);
-  const iconOverrides = {
-    "cloudflare-ai": "/plugins/icons/cloudflare.png",
-    "aws-polly": "/providers/aws-polly.svg",
-    electroai: "/providers/electroai.svg",
-    "xiaomi-mimo": "/providers/local-device.png",
-    "xiaomi-tokenplan": "/providers/local-device.png",
-    "vercel-ai-gateway": "/vercel.svg",
-    commandcode: "/providers/oai-cc.png",
-    auto: "/providers/auto-route.svg",
-    vllm: "/providers/vllm.svg",
-    lemonade: "/providers/lemonade.ico",
-    xinference: "/providers/xinference.svg",
-  };
-  if (iconOverrides[resolvedProviderId]) {
-    return iconOverrides[resolvedProviderId];
-  }
-  return `/providers/${resolvedProviderId}.png`;
+  return providerIconPathOverrides[resolvedProviderId] || `/providers/${resolvedProviderId}.png`;
 }
 
 // Alias to ID mapping (for quick lookup)

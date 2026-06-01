@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="FreeTheAi icon">
+  <rect width="128" height="128" rx="28" fill="#18181b"/>
+  <path d="M33 38h62v14H50v16h37v14H50v26H33z" fill="#facc15"/>
+  <path d="M76 38h19v70H76z" fill="#e879f9"/>
+  <text x="64" y="119" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#fafafa">FreeTheAi</text>
+</svg>

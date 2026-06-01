@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TamMao icon">
+  <rect width="128" height="128" rx="28" fill="#7c2d12"/>
+  <path d="M35 36h58v16H72v43H56V52H35z" fill="#fed7aa"/>
+  <circle cx="91" cy="89" r="10" fill="#fb923c"/>
+  <text x="64" y="114" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#fff7ed">TamMao</text>
+</svg>
