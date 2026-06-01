@@ -392,17 +392,6 @@ const providerIconPathOverrides = {
   "xiaomi-mimo": "/providers/xiaomi-mimo.ico",
 };
 
-const providerPlaceholderIconIds = new Set([
-  "bluesminds",
-  "cablyai",
-  "fenayai",
-  "glhf",
-  "inclusionai",
-  "llamagate",
-  "monsterapi",
-  "thebai",
-]);
-
 const curatedProviderIconIds = new Set([
   "ai21",
   "alicode",
@@ -721,16 +710,16 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
   const faviconUrls = getProviderFaviconUrlsFromConfig(providerConfig);
 
   if (!hasExplicitBaseUrl) {
-    if (providerPlaceholderIconIds.has(providerId)) {
-      return [...new Set([...faviconUrls, knownProviderIconPath || fallbackIconPath].filter(Boolean))];
-    }
-    return [...new Set([knownProviderIconPath || fallbackIconPath].filter(Boolean))];
+    return [...new Set([...faviconUrls, knownProviderIconPath || fallbackIconPath].filter(Boolean))];
   }
 
   const inferredProviderId = inferProviderIconId(providerConfig);
   const inferredIconPath = inferredProviderId ? getProviderIconPath(inferredProviderId) : "";
+  const inferredFaviconUrls = inferredProviderId
+    ? getProviderFaviconUrlsFromConfig({ id: inferredProviderId })
+    : [];
   if (inferredIconPath) {
-    return [...new Set([inferredIconPath, ...faviconUrls, fallbackIconPath].filter(Boolean))];
+    return [...new Set([...faviconUrls, ...inferredFaviconUrls, inferredIconPath, fallbackIconPath].filter(Boolean))];
   }
 
   return [...new Set([...faviconUrls, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
