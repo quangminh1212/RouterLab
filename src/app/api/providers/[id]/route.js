@@ -5,6 +5,7 @@ import {
   updateProviderConnection,
   deleteProviderConnection,
 } from "@/models";
+import { resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
 
 function normalizeProxyConfig(body = {}) {
   const hasAnyProxyField =
@@ -57,6 +58,21 @@ async function normalizeProxyPoolUpdate(proxyPoolIdInput) {
 
 function shouldMergeProviderSpecificData(existing, incoming, hasLegacyProxy, hasProxyPoolField) {
   return existing !== undefined || incoming !== undefined || hasLegacyProxy || hasProxyPoolField;
+}
+
+function normalizeProviderSpecificData(provider, providerSpecificData) {
+  if (!providerSpecificData || typeof providerSpecificData !== "object" || Array.isArray(providerSpecificData)) {
+    return providerSpecificData;
+  }
+
+  const normalized = { ...providerSpecificData };
+  if (provider === "xiaomi-tokenplan") {
+    const region = String(normalized.region || "sgp").trim().toLowerCase() || "sgp";
+    normalized.region = region;
+    normalized.baseUrl = resolveXiaomiTokenPlanBaseUrl(region);
+  }
+
+  return normalized;
 }
 
 // GET /api/providers/[id] - Get single connection
@@ -130,17 +146,19 @@ export async function PUT(request, { params }) {
     if (lastError !== undefined) updateData.lastError = lastError;
     if (lastErrorAt !== undefined) updateData.lastErrorAt = lastErrorAt;
 
+    const normalizedProviderSpecificData = normalizeProviderSpecificData(existing.provider, providerSpecificData);
+
     if (
       shouldMergeProviderSpecificData(
         existing.providerSpecificData,
-        providerSpecificData,
+        normalizedProviderSpecificData,
         proxyConfig.hasAnyProxyField,
         proxyPoolResult.hasProxyPoolField
       )
     ) {
       updateData.providerSpecificData = {
         ...(existing.providerSpecificData || {}),
-        ...(providerSpecificData || {}),
+        ...(normalizedProviderSpecificData || {}),
       };
 
       if (proxyConfig.hasAnyProxyField) {

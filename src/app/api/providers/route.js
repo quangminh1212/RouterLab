@@ -7,7 +7,7 @@ import {
   getProxyPoolById,
 } from "@/models";
 import { APIKEY_PROVIDERS } from "@/shared/constants/config";
-import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider } from "@/shared/constants/providers";
+import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,20 @@ async function normalizeProxyPoolId(proxyPoolId) {
   }
 
   return { proxyPoolId: normalizedId };
+}
+
+function normalizeProviderSpecificData(provider, providerSpecificData) {
+  const normalized = providerSpecificData && typeof providerSpecificData === "object" && !Array.isArray(providerSpecificData)
+    ? { ...providerSpecificData }
+    : {};
+
+  if (provider === "xiaomi-tokenplan") {
+    const region = String(normalized.region || "sgp").trim().toLowerCase() || "sgp";
+    normalized.region = region;
+    normalized.baseUrl = resolveXiaomiTokenPlanBaseUrl(region);
+  }
+
+  return normalized;
 }
 
 // GET /api/providers - List all connections
@@ -150,7 +164,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    let providerSpecificData = body.providerSpecificData || null;
+    let providerSpecificData = normalizeProviderSpecificData(provider, body.providerSpecificData);
 
     if (isOpenAICompatibleProvider(provider)) {
       const node = await getProviderNodeById(provider);

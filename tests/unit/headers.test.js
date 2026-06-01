@@ -322,6 +322,25 @@ describe("DefaultExecutor.buildHeaders() — anthropic-compatible stripping", ()
 
 // ─── proxyFetch anthropicFetch routing ────────────────────────────────────────
 
+
+describe("DefaultExecutor.buildUrl() - xiaomi token plan regions", () => {
+  let DefaultExecutor;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import("open-sse/executors/default.js");
+    DefaultExecutor = mod.DefaultExecutor || mod.default;
+  });
+
+  it("uses providerSpecificData.baseUrl override for xiaomi-tokenplan", () => {
+    const executor = new DefaultExecutor("xiaomi-tokenplan");
+    const url = executor.buildUrl("mimo-v2.5", false, 0, {
+      providerSpecificData: { baseUrl: "https://token-plan-cn.xiaomimimo.com/v1" },
+    });
+
+    expect(url).toBe("https://token-plan-cn.xiaomimimo.com/v1/chat/completions");
+  });
+});
 describe("proxyAwareFetch — api.anthropic.com routing", () => {
   afterEach(() => {
     vi.restoreAllMocks();

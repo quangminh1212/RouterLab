@@ -41,6 +41,10 @@ export class DefaultExecutor extends BaseExecutor {
         return `${this.config.baseUrl}?beta=true`;
       case "gemini":
         return `${this.config.baseUrl}/${model}:${stream ? "streamGenerateContent?alt=sse" : "generateContent"}`;
+      case "xiaomi-tokenplan": {
+        const baseUrl = credentials?.providerSpecificData?.baseUrl || "https://token-plan-sgp.xiaomimimo.com/v1";
+        return `${baseUrl.replace(/\/$/, "")}/chat/completions`;
+      }
       default: {
         const url = this.config.baseUrl;
         if (url?.includes("{accountId}")) {

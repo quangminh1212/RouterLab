@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProviderMachineId } from "@/shared/utils/machineId";
 import { getProviderNodeById } from "@/models";
-import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS } from "@/shared/constants/providers";
+import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS, resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
 import { PROVIDER_ENDPOINTS } from "@/shared/constants/config";
@@ -34,6 +34,14 @@ function buildCommandCodeValidationPayload(model) {
     stream: false,
     messages: [{ role: "user", content: "ping" }],
   };
+}
+
+function resolveProviderBaseUrl(provider, providerSpecificData = {}) {
+  if (provider === "xiaomi-tokenplan") {
+    return String(providerSpecificData.baseUrl || resolveXiaomiTokenPlanBaseUrl(providerSpecificData.region)).replace(/\/$/, "");
+  }
+
+  return null;
 }
 
 // Probe a webSearch/webFetch provider using its searchConfig/fetchConfig.
@@ -111,7 +119,7 @@ async function probeMediaProvider(provider, apiKey) {
 }
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return String(baseUrl || "").includes("cungcapai");
+  return /cungcapai|electroai/i.test(String(baseUrl || ""));
 }
 
 async function probeTamMaoOpenAICompatible(node, apiKey) {
@@ -170,7 +178,7 @@ export async function POST(request) {
         }
         const modelsUrl = `${node.baseUrl?.replace(/\/$/, "")}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
-        if ((node.baseUrl || "").includes("cungcapai")) {
+        if ((node.baseUrl || "").includes("cungcapai") || (node.baseUrl || "").includes("electroai")) {
           headers["x-machine-id"] = getProviderMachineId(node.providerSpecificData);
         }
         let res;
@@ -471,7 +479,7 @@ export async function POST(request) {
             chutes: "https://llm.chutes.ai/v1/models",
             nvidia: "https://integrate.api.nvidia.com/v1/models",
             "xiaomi-mimo": "https://api.xiaomimimo.com/v1/models",
-            "xiaomi-tokenplan": "https://token-plan-sgp.xiaomimimo.com/v1/models"
+            "xiaomi-tokenplan": `${resolveProviderBaseUrl(provider, providerSpecificData)}/models`
           };
           const headers = {};
           if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
@@ -720,4 +728,3 @@ export async function POST(request) {
     return NextResponse.json({ error: "Validation failed" }, { status: 500 });
   }
 }
-

@@ -3,6 +3,7 @@ import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { getProviderMachineId } from "@/shared/utils/machineId";
+import { resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
 import { PROVIDER_ENDPOINTS } from "@/shared/constants/config";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
@@ -338,7 +339,15 @@ async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null
 }
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return String(baseUrl || "").includes("cungcapai");
+  return /cungcapai|electroai/i.test(String(baseUrl || ""));
+}
+
+function resolveConnectionBaseUrl(connection) {
+  if (connection?.provider === "xiaomi-tokenplan") {
+    return String(connection.providerSpecificData?.baseUrl || resolveXiaomiTokenPlanBaseUrl(connection.providerSpecificData?.region)).replace(/\/$/, "");
+  }
+
+  return String(connection?.providerSpecificData?.baseUrl || "").replace(/\/$/, "");
 }
 
 async function testTamMaoFallbackInference(connection, effectiveProxy = null) {
@@ -367,7 +376,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
     if (!modelsBase) return { valid: false, error: "Missing base URL" };
     try {
       const _testHeaders = { "Authorization": `Bearer ${connection.apiKey}` };
-      if (modelsBase.includes("cungcapai")) _testHeaders["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+      if (isTamMaoBaseUrl(modelsBase)) _testHeaders["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
       const res = await fetchWithConnectionProxy(`${modelsBase.replace(/\/$/, "")}/models`, {
         headers: _testHeaders,
       }, effectiveProxy);
@@ -592,6 +601,14 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }
       case "chutes": {
         const res = await fetchWithConnectionProxy("https://llm.chutes.ai/v1/models", { headers: { Authorization: `Bearer ${connection.apiKey}` } }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
+      }
+      case "xiaomi-mimo":
+      case "xiaomi-tokenplan": {
+        const baseUrl = connection.provider === "xiaomi-tokenplan"
+          ? resolveConnectionBaseUrl(connection)
+          : "https://api.xiaomimimo.com/v1";
+        const res = await fetchWithConnectionProxy(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${connection.apiKey}` } }, effectiveProxy);
         return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
       }
       case "grok-web": {
