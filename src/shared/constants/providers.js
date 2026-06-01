@@ -364,6 +364,8 @@ export function getProviderIconPath(providerId) {
   const resolvedProviderId = resolveProviderId(providerId);
   const iconOverrides = {
     "cloudflare-ai": "/plugins/icons/cloudflare.png",
+    "aws-polly": "/providers/aws-polly.svg",
+    electroai: "/providers/electroai.svg",
     "xiaomi-mimo": "/providers/local-device.png",
     "xiaomi-tokenplan": "/providers/local-device.png",
     "vercel-ai-gateway": "/vercel.svg",
