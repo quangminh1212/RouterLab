@@ -75,7 +75,7 @@ export const APIKEY_PROVIDERS = {
   "minimax-cn": { id: "minimax-cn", alias: "minimax-cn", name: "Minimax (China)", icon: "memory", color: "#DC2626", textIcon: "MC", website: "https://www.minimaxi.com", notice: { apiKeyUrl: "https://platform.minimaxi.com/user-center/basic-information/interface-key" }, serviceKinds: ["llm", "tts"], ttsConfig: { baseUrl: "https://api.minimaxi.com/v1/t2a_v2", authType: "apikey", authHeader: "bearer", format: "minimax-tts", models: MINIMAX_TTS_MODELS } },
   alicode: { id: "alicode", alias: "alicode", name: "Alibaba", icon: "cloud", color: "#FF6A00", textIcon: "ALi", website: "https://bailian.console.aliyun.com", notice: { apiKeyUrl: "https://bailian.console.aliyun.com/?apiKey=1" } },
   "alicode-intl": { id: "alicode-intl", alias: "alicode-intl", name: "Alibaba Intl", icon: "cloud", color: "#FF6A00", textIcon: "ALi", website: "https://modelstudio.console.alibabacloud.com", notice: { apiKeyUrl: "https://modelstudio.console.alibabacloud.com/?apiKey=1" } },
-  "xiaomi-mimo": { id: "xiaomi-mimo", alias: "mimo", name: "Xiaomi MiMo", icon: "smart_toy", color: "#FF6900", textIcon: "XM", website: "https://xiaomimimo.com", notice: { apiKeyUrl: "https://xiaomimimo.com" } },
+  "xiaomi-mimo": { id: "xiaomi-mimo", alias: "mimo", name: "Xiaomi MiMo", icon: "smart_toy", color: "#FF6900", textIcon: "XM", website: "https://mimo.xiaomi.com", notice: { apiKeyUrl: "https://mimo.xiaomi.com" } },
   "xiaomi-tokenplan": { id: "xiaomi-tokenplan", alias: "xmtp", name: "Xiaomi MiMo (Token Plan)", icon: "smart_toy", color: "#FF6700", textIcon: "XT", website: "https://mimo.xiaomi.com", notice: { text: "Xiaomi MiMo Token Plan subscription (API key starts with tp-). Uses Singapore endpoint.", apiKeyUrl: "https://mimo.xiaomi.com" } },
   "volcengine-ark": { id: "volcengine-ark", alias: "ark", name: "Volcengine Ark", icon: "cloud", color: "#1677FF", textIcon: "ARK", website: "https://ark.cn-beijing.volces.com", notice: { apiKeyUrl: "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey" } },
   openai: { id: "openai", alias: "openai", name: "OpenAI", icon: "auto_awesome", color: "#10A37F", textIcon: "OA", website: "https://platform.openai.com", notice: { apiKeyUrl: "https://platform.openai.com/api-keys" }, serviceKinds: ["llm", "embedding", "tts", "stt", "image", "imageToText", "webSearch"], thinkingConfig: THINKING_CONFIG.effort, searchViaChat: { defaultModel: "gpt-4o-mini", pricingUrl: "https://openai.com/api/pricing" }, ttsConfig: { baseUrl: "https://api.openai.com/v1/audio/speech", authType: "apikey", authHeader: "bearer", format: "openai", models: [{ id: "tts-1", name: "TTS-1" }, { id: "tts-1-hd", name: "TTS-1 HD" }, { id: "gpt-4o-mini-tts", name: "GPT-4o Mini TTS" }] }, sttConfig: { baseUrl: "https://api.openai.com/v1/audio/transcriptions", authType: "apikey", authHeader: "bearer", format: "openai", models: [{ id: "whisper-1", name: "Whisper 1" }, { id: "gpt-4o-transcribe", name: "GPT-4o Transcribe" }, { id: "gpt-4o-mini-transcribe", name: "GPT-4o Mini Transcribe" }] }, embeddingConfig: { baseUrl: "https://api.openai.com/v1/embeddings", authType: "apikey", authHeader: "bearer", models: [{ id: "text-embedding-3-small", name: "Text Embedding 3 Small", dimensions: 1536 }, { id: "text-embedding-3-large", name: "Text Embedding 3 Large", dimensions: 3072 }, { id: "text-embedding-ada-002", name: "Text Embedding Ada 002", dimensions: 1536 }] } },
@@ -363,7 +363,7 @@ export function getProviderAlias(providerId) {
 const providerIconPathOverrides = {
   auto: "/providers/auto-route.svg",
   "9router": "/providers/9router.png",
-  agentrouter: "/providers/agentrouter.svg",
+  agentrouter: "/providers/agentrouter.png",
   anthropic: "/providers/anthropic.svg",
   azure: "/providers/azure.svg",
   "azure-ai": "/providers/azure-ai.svg",
@@ -375,7 +375,7 @@ const providerIconPathOverrides = {
   "edge-tts": "/providers/edge-tts.svg",
   fenayai: "/providers/fenayai.svg",
   freetheai: "/providers/freetheai.svg",
-  freeaiapikey: "/providers/freeaiapikey.svg",
+  freeaiapikey: "/providers/freeaiapikey.png",
   glhf: "/providers/glhf.svg",
   "google-pse": "/providers/google-pse.svg",
   haiper: "/providers/haiper.svg",
@@ -385,12 +385,23 @@ const providerIconPathOverrides = {
   monsterapi: "/providers/monsterapi.svg",
   openrouter: "/providers/openrouter.svg",
   phind: "/providers/phind.svg",
-  sensenova: "/providers/sensenova.svg",
+  sensenova: "/providers/sensenova.ico",
   thebai: "/providers/thebai.svg",
   vllm: "/providers/vllm.svg",
   "volcengine-ark": "/providers/volcengine-ark.svg",
-  "xiaomi-mimo": "/providers/xiaomi-mimo.svg",
+  "xiaomi-mimo": "/providers/xiaomi-mimo.ico",
 };
+
+const providerPlaceholderIconIds = new Set([
+  "bluesminds",
+  "cablyai",
+  "fenayai",
+  "glhf",
+  "inclusionai",
+  "llamagate",
+  "monsterapi",
+  "thebai",
+]);
 
 const curatedProviderIconIds = new Set([
   "ai21",
@@ -689,6 +700,16 @@ export function getProviderFaviconUrlFromConfig(providerConfig = {}) {
   return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(url)}&sz=64`;
 }
 
+export function getProviderFaviconUrlsFromConfig(providerConfig = {}) {
+  const url = getProviderIconDomainUrl(providerConfig);
+  const host = readUrlHost(url);
+  if (!host || isLocalIconHost(host)) return [];
+  return [
+    `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(url)}&sz=64`,
+    `https://icons.duckduckgo.com/ip3/${host}.ico`,
+  ];
+}
+
 export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") {
   const providerConfig = typeof providerOrConfig === "string"
     ? { id: providerOrConfig }
@@ -697,19 +718,22 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
   const hasExplicitBaseUrl = typeof (providerConfig.baseUrl || providerConfig.url) === "string" &&
     Boolean((providerConfig.baseUrl || providerConfig.url).trim());
   const knownProviderIconPath = AI_PROVIDERS[providerId] ? getProviderIconPath(providerId) : "";
-  const faviconUrl = getProviderFaviconUrlFromConfig(providerConfig);
+  const faviconUrls = getProviderFaviconUrlsFromConfig(providerConfig);
 
   if (!hasExplicitBaseUrl) {
+    if (providerPlaceholderIconIds.has(providerId)) {
+      return [...new Set([...faviconUrls, knownProviderIconPath || fallbackIconPath].filter(Boolean))];
+    }
     return [...new Set([knownProviderIconPath || fallbackIconPath].filter(Boolean))];
   }
 
   const inferredProviderId = inferProviderIconId(providerConfig);
   const inferredIconPath = inferredProviderId ? getProviderIconPath(inferredProviderId) : "";
   if (inferredIconPath) {
-    return [...new Set([inferredIconPath, faviconUrl, fallbackIconPath].filter(Boolean))];
+    return [...new Set([inferredIconPath, ...faviconUrls, fallbackIconPath].filter(Boolean))];
   }
 
-  return [...new Set([faviconUrl, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
+  return [...new Set([...faviconUrls, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
 }
 
 // Alias to ID mapping (for quick lookup)

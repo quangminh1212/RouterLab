@@ -4,5 +4,4 @@
   <path d="M76 37h23v74H76z" fill="#38bdf8"/>
   <circle cx="88" cy="49" r="6" fill="#22c55e"/>
   <circle cx="88" cy="99" r="6" fill="#f97316"/>
-  <text x="64" y="121" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#e5e7eb">FreeAIAPIKey</text>
 </svg>
