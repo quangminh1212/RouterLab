@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, Toggle, Select } from "@/shared/components";
-import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, getProviderIconPath } from "@/shared/constants/providers";
+import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, getProviderIconPath, getProviderIconPathFromConfig } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
@@ -40,6 +40,7 @@ export default function ProviderDetailPage() {
       textIcon: providerNode.type === "anthropic-compatible" ? "AC" : "OC",
       apiType: providerNode.apiType,
       baseUrl: providerNode.baseUrl,
+      prefix: providerNode.prefix,
       type: providerNode.type,
     }
     : (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId]);
@@ -548,10 +549,11 @@ export default function ProviderDetailPage() {
   // Determine icon path: OpenAI Compatible providers use specialized icons
   const getHeaderIconPath = () => {
     if (isOpenAICompatible && providerInfo.apiType) {
-      return providerInfo.apiType === "responses" ? "/providers/oai-r.png" : "/providers/oai-cc.png";
+      const fallbackIconPath = providerInfo.apiType === "responses" ? "/providers/oai-r.png" : "/providers/oai-cc.png";
+      return getProviderIconPathFromConfig(providerInfo, fallbackIconPath);
     }
     if (isAnthropicCompatible) {
-      return "/providers/anthropic-m.png";
+      return getProviderIconPathFromConfig(providerInfo, "/providers/anthropic-m.png");
     }
     return getProviderIconPath(providerInfo.id);
   };

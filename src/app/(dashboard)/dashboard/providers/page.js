@@ -19,6 +19,7 @@ import {
   OPENAI_COMPATIBLE_PREFIX,
   ANTHROPIC_COMPATIBLE_PREFIX,
   getProviderIconPath,
+  getProviderIconPathFromConfig,
 } from "@/shared/constants/providers";
 import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
@@ -248,6 +249,7 @@ export default function ProvidersPage() {
     .filter((node) => node.type === "openai-compatible" && !isTamMaoNode(node))
     .map((node) => ({
       id: node.id,
+      type: node.type,
       name: node.name || "OpenAI Compatible",
       color: "#10A37F",
       textIcon: "OC",
@@ -261,6 +263,7 @@ export default function ProvidersPage() {
     .filter((node) => node.type === "openai-compatible" && isTamMaoNode(node))
     .map((node) => ({
       id: node.id,
+      type: node.type,
       name: node.name || "TamMao",
       color: "#10A37F",
       textIcon: "TM",
@@ -278,9 +281,12 @@ export default function ProvidersPage() {
     .filter((node) => node.type === "anthropic-compatible")
     .map((node) => ({
       id: node.id,
+      type: node.type,
       name: node.name || "Anthropic Compatible",
       color: "#D97757",
       textIcon: "AC",
+      prefix: node.prefix,
+      baseUrl: node.baseUrl,
     }))
     .filter((p) => matchSearch(p.name));
 
@@ -655,7 +661,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
               }}
             >
               <ProviderIcon
-                src={`/providers/${provider.id}.png`}
+                src={getProviderIconPath(provider.id)}
                 alt={provider.name}
                 size={30}
                 className="object-contain rounded-lg max-w-[32px] max-h-[32px]"
@@ -760,11 +766,14 @@ function ApiKeyProviderCard({
   };
 
   const getIconPath = () => {
-    if (isCompatible)
-      return provider.apiType === "responses"
-        ? "/providers/oai-r.png"
-        : "/providers/oai-cc.png";
-    if (isAnthropicCompatible) return "/providers/anthropic-m.png";
+    if (isCompatible) {
+      const fallbackIconPath = isAnthropicCompatible
+        ? "/providers/anthropic-m.png"
+        : provider.apiType === "responses"
+          ? "/providers/oai-r.png"
+          : "/providers/oai-cc.png";
+      return getProviderIconPathFromConfig(provider, fallbackIconPath);
+    }
     return getProviderIconPath(provider.id);
   };
 
@@ -1345,6 +1354,5 @@ ProviderTestResultsView.propTypes = {
     error: PropTypes.string,
   }).isRequired,
 };
-
 
 

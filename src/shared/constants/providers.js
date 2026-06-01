@@ -495,6 +495,151 @@ export function getProviderIconPath(providerId) {
   return providerIconPathOverrides[resolvedProviderId] || `/providers/${resolvedProviderId}.png`;
 }
 
+const providerDomainIconMatches = [
+  ["api.cungcapai.io.vn", "cungcapai"],
+  ["cungcapai.io.vn", "cungcapai"],
+  ["tammao", "cungcapai"],
+  ["openrouter.ai", "openrouter"],
+  ["api.groq.com", "groq"],
+  ["api.deepseek.com", "deepseek"],
+  ["api.anthropic.com", "anthropic"],
+  ["api.openai.com", "openai"],
+  ["generativelanguage.googleapis.com", "gemini"],
+  ["aiplatform.googleapis.com", "vertex"],
+  ["open.bigmodel.cn", "glm"],
+  ["bigmodel.cn", "glm"],
+  ["dashscope.aliyuncs.com", "alicode"],
+  ["aliyuncs.com", "alicode"],
+  ["moonshot.cn", "kimi"],
+  ["moonshot.ai", "moonshot"],
+  ["api.minimax.io", "minimax"],
+  ["api.minimaxi.com", "minimax-cn"],
+  ["ark.cn-beijing.volces.com", "volcengine-ark"],
+  ["volces.com", "volcengine-ark"],
+  ["volcengine.com", "volcengine"],
+  ["models.github.ai", "github-models"],
+  ["githubcopilot.com", "github"],
+  ["github.com", "github"],
+  ["api.together.xyz", "together"],
+  ["together.ai", "together"],
+  ["api.mistral.ai", "mistral"],
+  ["codestral.mistral.ai", "codestral"],
+  ["api.perplexity.ai", "perplexity"],
+  ["perplexity.ai", "perplexity"],
+  ["api.x.ai", "xai"],
+  ["x.ai", "xai"],
+  ["api.cloudflare.com", "cloudflare-ai"],
+  ["workers.cloudflare.com", "cloudflare-ai"],
+  ["ai.cloudflare.com", "cloudflare-ai"],
+  ["replicate.com", "replicate"],
+  ["api.fireworks.ai", "fireworks"],
+  ["fireworks.ai", "fireworks"],
+  ["api.cohere.com", "cohere"],
+  ["cohere.com", "cohere"],
+  ["api.nvidia.com", "nvidia"],
+  ["integrate.api.nvidia.com", "nvidia"],
+  ["build.nvidia.com", "nvidia"],
+  ["api.sambanova.ai", "sambanova"],
+  ["sambanova.ai", "sambanova"],
+  ["api.upstage.ai", "upstage"],
+  ["upstage.ai", "upstage"],
+  ["api.deepinfra.com", "deepinfra"],
+  ["deepinfra.com", "deepinfra"],
+  ["nebius.com", "nebius"],
+  ["hyperbolic.xyz", "hyperbolic"],
+  ["lambda.ai", "lambda-ai"],
+  ["lepton.ai", "lepton"],
+  ["novita.ai", "novita"],
+  ["siliconflow.cn", "siliconflow"],
+  ["siliconflow.com", "siliconflow"],
+  ["venice.ai", "venice"],
+  ["poe.com", "poe"],
+  ["ollama.com", "ollama"],
+  ["lmstudio.ai", "lm-studio"],
+  ["localhost", "local-device"],
+  ["127.0.0.1", "local-device"],
+];
+
+function readUrlHost(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    return new URL(value.trim()).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeSearchText(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function matchesProviderMetadata(host, provider) {
+  const urls = [
+    provider.website,
+    provider.notice?.apiKeyUrl,
+    provider.notice?.signupUrl,
+    provider.modelsFetcher?.url,
+    provider.searchViaChat?.pricingUrl,
+    provider.embeddingConfig?.baseUrl,
+    provider.ttsConfig?.baseUrl,
+    provider.sttConfig?.baseUrl,
+    provider.searchConfig?.baseUrl,
+  ];
+  return urls.some((url) => {
+    const providerHost = readUrlHost(url);
+    return providerHost && (
+      host === providerHost ||
+      host.endsWith(`.${providerHost}`) ||
+      providerHost.endsWith(`.${host}`)
+    );
+  });
+}
+
+export function inferProviderIconId(providerConfig = {}) {
+  const host = readUrlHost(providerConfig.baseUrl || providerConfig.url);
+  if (host) {
+    const matched = providerDomainIconMatches.find(([domain]) => (
+      host === domain || host.endsWith(`.${domain}`) || host.includes(domain)
+    ));
+    if (matched && AI_PROVIDERS[matched[1]]) return matched[1];
+
+    const metadataMatch = Object.values(AI_PROVIDERS).find((provider) => (
+      matchesProviderMetadata(host, provider)
+    ));
+    if (metadataMatch) return metadataMatch.id;
+  }
+
+  const haystack = normalizeSearchText([
+    providerConfig.id,
+    providerConfig.name,
+    providerConfig.prefix,
+    providerConfig.provider,
+  ].filter(Boolean).join(" "));
+
+  if (!haystack) return "";
+
+  if (haystack.includes("tammao") || haystack.includes("cungcapai")) {
+    return "cungcapai";
+  }
+
+  const textMatch = Object.values(AI_PROVIDERS).find((provider) => {
+    const id = normalizeSearchText(provider.id);
+    const alias = normalizeSearchText(provider.alias);
+    const name = normalizeSearchText(provider.name);
+    return (id && haystack.includes(id)) ||
+      (alias && haystack === alias) ||
+      (name && (haystack.includes(name) || name.includes(haystack)));
+  });
+  return textMatch?.id || "";
+}
+
+export function getProviderIconPathFromConfig(providerConfig = {}, fallbackIconPath = "") {
+  const inferredId = inferProviderIconId(providerConfig);
+  if (inferredId) return getProviderIconPath(inferredId);
+  if (fallbackIconPath) return fallbackIconPath;
+  return getProviderIconPath(providerConfig.id);
+}
+
 // Alias to ID mapping (for quick lookup)
 export const ALIAS_TO_ID = Object.values(AI_PROVIDERS).reduce((acc, p) => {
   acc[p.alias] = p.id;
