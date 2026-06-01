@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 
 export default function ProviderIcon({
@@ -11,18 +11,15 @@ export default function ProviderIcon({
   fallbackText = "?",
   fallbackColor,
 }) {
-  const [errored, setErrored] = useState(false);
-  const [sourceIndex, setSourceIndex] = useState(0);
   const sources = Array.isArray(src) ? src.filter(Boolean) : (src ? [src] : []);
   const sourceKey = sources.join("|");
-  const currentSrc = sources[sourceIndex] || "";
+  const [imageState, setImageState] = useState({ sourceKey, sourceIndex: 0, errored: false });
+  const activeImageState = imageState.sourceKey === sourceKey
+    ? imageState
+    : { sourceKey, sourceIndex: 0, errored: false };
+  const currentSrc = sources[activeImageState.sourceIndex] || "";
 
-  useEffect(() => {
-    setErrored(false);
-    setSourceIndex(0);
-  }, [sourceKey]);
-
-  if (!currentSrc || errored) {
+  if (!currentSrc || activeImageState.errored) {
     return (
       <span
         className={`inline-flex items-center justify-center font-bold rounded-lg ${className}`.trim()}
@@ -46,10 +43,18 @@ export default function ProviderIcon({
       height={size}
       className={className}
       onError={() => {
-        if (sourceIndex < sources.length - 1) {
-          setSourceIndex((index) => index + 1);
+        if (activeImageState.sourceIndex < sources.length - 1) {
+          setImageState({
+            sourceKey,
+            sourceIndex: activeImageState.sourceIndex + 1,
+            errored: false,
+          });
         } else {
-          setErrored(true);
+          setImageState({
+            sourceKey,
+            sourceIndex: activeImageState.sourceIndex,
+            errored: true,
+          });
         }
       }}
     />

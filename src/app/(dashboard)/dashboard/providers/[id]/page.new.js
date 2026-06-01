@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, Toggle, Select } from "@/shared/components";
-import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, getProviderIconPath, getProviderIconPathFromConfig } from "@/shared/constants/providers";
+import ProviderIcon from "@/shared/components/ProviderIcon";
+import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, getProviderIconSources } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
@@ -29,7 +29,6 @@ export default function ProviderDetailPage() {
   const [savingSelectedModels, setSavingSelectedModels] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
-  const [headerImgError, setHeaderImgError] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
   const providerInfo = providerNode
@@ -547,15 +546,15 @@ export default function ProviderDetailPage() {
   }
 
   // Determine icon path: OpenAI Compatible providers use specialized icons
-  const getHeaderIconPath = () => {
+  const getHeaderIconSources = () => {
     if (isOpenAICompatible && providerInfo.apiType) {
       const fallbackIconPath = providerInfo.apiType === "responses" ? "/providers/oai-r.png" : "/providers/oai-cc.png";
-      return getProviderIconPathFromConfig(providerInfo, fallbackIconPath);
+      return getProviderIconSources(providerInfo, fallbackIconPath);
     }
     if (isAnthropicCompatible) {
-      return getProviderIconPathFromConfig(providerInfo, "/providers/anthropic-m.png");
+      return getProviderIconSources(providerInfo, "/providers/anthropic-m.png");
     }
-    return getProviderIconPath(providerInfo.id);
+    return getProviderIconSources(providerInfo.id);
   };
 
   return (
@@ -574,21 +573,14 @@ export default function ProviderDetailPage() {
             className="rounded-lg flex items-center justify-center"
             style={{ backgroundColor: `${providerInfo.color}15` }}
           >
-            {headerImgError ? (
-              <span className="text-sm font-bold" style={{ color: providerInfo.color }}>
-                {providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
-              </span>
-            ) : (
-              <Image
-                src={getHeaderIconPath()}
-                alt={providerInfo.name}
-                width={48}
-                height={48}
-                className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
-                sizes="48px"
-                onError={() => setHeaderImgError(true)}
-              />
-            )}
+            <ProviderIcon
+              src={getHeaderIconSources()}
+              alt={providerInfo.name}
+              size={48}
+              className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
+              fallbackText={providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
+              fallbackColor={providerInfo.color}
+            />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">{providerInfo.name}</h1>

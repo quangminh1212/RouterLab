@@ -693,9 +693,23 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
   const providerConfig = typeof providerOrConfig === "string"
     ? { id: providerOrConfig }
     : (providerOrConfig || {});
-  const localIconPath = getProviderIconPathFromConfig(providerConfig, fallbackIconPath);
+  const providerId = resolveProviderId(providerConfig.id || providerConfig.provider || "");
+  const hasExplicitBaseUrl = typeof (providerConfig.baseUrl || providerConfig.url) === "string" &&
+    Boolean((providerConfig.baseUrl || providerConfig.url).trim());
+  const knownProviderIconPath = AI_PROVIDERS[providerId] ? getProviderIconPath(providerId) : "";
   const faviconUrl = getProviderFaviconUrlFromConfig(providerConfig);
-  return [...new Set([faviconUrl, localIconPath].filter(Boolean))];
+
+  if (!hasExplicitBaseUrl) {
+    return [...new Set([knownProviderIconPath || fallbackIconPath].filter(Boolean))];
+  }
+
+  const inferredProviderId = inferProviderIconId(providerConfig);
+  const inferredIconPath = inferredProviderId ? getProviderIconPath(inferredProviderId) : "";
+  if (inferredIconPath) {
+    return [...new Set([inferredIconPath, faviconUrl, fallbackIconPath].filter(Boolean))];
+  }
+
+  return [...new Set([faviconUrl, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
 }
 
 // Alias to ID mapping (for quick lookup)

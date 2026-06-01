@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, IFlowCookieModal, GitLabAuthModal, Toggle, Select, EditConnectionModal } from "@/shared/components";
-import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS, THINKING_CONFIG, getProviderIconPath, getProviderIconPathFromConfig } from "@/shared/constants/providers";
+import ProviderIcon from "@/shared/components/ProviderIcon";
+import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS, THINKING_CONFIG, getProviderIconSources } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { fetchSuggestedModels } from "@/shared/utils/suggest";
@@ -33,7 +33,6 @@ export default function ProviderDetailPage() {
   const [showBulkProxyModal, setShowBulkProxyModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
-  const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
   const [testingModelId, setTestingModelId] = useState(null);
@@ -779,15 +778,15 @@ export default function ProviderDetailPage() {
   }
 
   // Determine icon path: OpenAI Compatible providers use specialized icons
-  const getHeaderIconPath = () => {
+  const getHeaderIconSources = () => {
     if (isOpenAICompatible && providerInfo.apiType) {
       const fallbackIconPath = providerInfo.apiType === "responses" ? "/providers/oai-r.png" : "/providers/oai-cc.png";
-      return getProviderIconPathFromConfig(providerInfo, fallbackIconPath);
+      return getProviderIconSources(providerInfo, fallbackIconPath);
     }
     if (isAnthropicCompatible) {
-      return getProviderIconPathFromConfig(providerInfo, "/providers/anthropic-m.png");
+      return getProviderIconSources(providerInfo, "/providers/anthropic-m.png");
     }
-    return getProviderIconPath(providerInfo.id);
+    return getProviderIconSources(providerInfo.id);
   };
 
   return (
@@ -806,21 +805,14 @@ export default function ProviderDetailPage() {
             className="rounded-lg flex items-center justify-center"
             style={{ backgroundColor: `${providerInfo.color}15` }}
           >
-            {headerImgError ? (
-              <span className="text-sm font-bold" style={{ color: providerInfo.color }}>
-                {providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
-              </span>
-            ) : (
-              <Image
-                src={getHeaderIconPath()}
-                alt={providerInfo.name}
-                width={48}
-                height={48}
-                className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
-                sizes="48px"
-                onError={() => setHeaderImgError(true)}
-              />
-            )}
+            <ProviderIcon
+              src={getHeaderIconSources()}
+              alt={providerInfo.name}
+              size={48}
+              className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
+              fallbackText={providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
+              fallbackColor={providerInfo.color}
+            />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">{providerInfo.name}</h1>
