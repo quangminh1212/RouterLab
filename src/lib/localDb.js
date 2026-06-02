@@ -7,6 +7,7 @@ import lockfile from "proper-lockfile";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { logger } from "@/lib/logger.js";
 import { AI_PROVIDERS } from "@/shared/constants/providers.js";
+import { buildApiKey } from "@/shared/utils/apiKey.js";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
 const LEGACY_CLOUD_HOST_REGEX = /(^|\.)9router\.com$/i;
@@ -1639,19 +1640,45 @@ function generateShortKey() {
   return result;
 }
 
-export async function createApiKey(name, machineId, costLimit = null, allowedModels = null, rpmLimit = null) {
+function normalizeApiKeyPrefix(prefix) {
+  const value = String(prefix || "sk").trim().toLowerCase();
+  return value.replace(/[^a-z0-9]/g, "") || "sk";
+}
+
+function normalizeApiKeyValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isValidCustomApiKey(apiKey) {
+  return /^[a-z0-9][a-z0-9-]*-[A-Za-z0-9]{12,64}$/.test(apiKey);
+}
+
+function generateCustomApiKey(prefix = "sk", bodyLength = 24) {
+  return buildApiKey({ prefix: normalizeApiKeyPrefix(prefix), bodyLength });
+}
+
+export async function createApiKey(name, machineId, costLimit = null, allowedModels = null, rpmLimit = null, apiKeyInput = null) {
   if (!machineId) throw new Error("machineId is required");
 
   const db = await getDb();
   const now = new Date().toISOString();
 
-  const { generateApiKeyWithMachine } = await import("@/shared/utils/apiKey");
-  const result = generateApiKeyWithMachine(machineId);
+  const requestedKey = normalizeApiKeyValue(apiKeyInput);
+  const key = requestedKey || generateCustomApiKey("sk", 24);
+
+  if (!isValidCustomApiKey(key)) {
+    throw new Error("apiKey format is invalid");
+  }
+
+  const duplicate = db.data.apiKeys.some((entry) => entry.key === key);
+  if (duplicate) {
+    throw new Error("apiKey already exists");
+  }
 
   const apiKey = {
     id: uuidv4(),
     name: name,
-    key: result.key,
+    key,
     machineId: machineId,
     isActive: true,
     costLimit: costLimit, // null = unlimited, number = USD

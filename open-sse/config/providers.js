@@ -478,6 +478,11 @@ export const PROVIDERS = {
     format: "openai",
     headers: {}
   },
+  electroai: {
+    baseUrl: "https://api.electroai.io.vn/v1/chat/completions",
+    format: "openai",
+    headers: {}
+  },
 
   // === Batch 2 (synced from OmniRoute): OpenAI-compatible API-key providers ===
   "api-airforce": { baseUrl: "https://api.airforce/v1/chat/completions", format: "openai" },

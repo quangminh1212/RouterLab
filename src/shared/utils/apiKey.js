@@ -1,98 +1,37 @@
 import crypto from "crypto";
 
-const API_KEY_SECRET = process.env.API_KEY_SECRET || "endpoint-proxy-api-key-secret";
-
-/**
- * Generate 6-char random keyId
- */
-function generateKeyId() {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+const DEFAULT_API_KEY_PREFIX = "sk";
+const DEFAULT_API_KEY_LENGTH = 24;
+function normalizePrefix(prefix) {
+  const value = String(prefix || DEFAULT_API_KEY_PREFIX).trim().toLowerCase();
+  return value.replace(/[^a-z0-9]/g, "") || DEFAULT_API_KEY_PREFIX;
 }
 
-/**
- * Generate CRC (8-char HMAC)
- */
-function generateCrc(machineId, keyId) {
-  return crypto
-    .createHmac("sha256", API_KEY_SECRET)
-    .update(machineId + keyId)
-    .digest("hex")
-    .slice(0, 8);
+function normalizeLength(length) {
+  const parsed = Number(length);
+  if (!Number.isFinite(parsed)) return DEFAULT_API_KEY_LENGTH;
+  return Math.min(64, Math.max(12, Math.floor(parsed)));
 }
 
-/**
- * Generate API key with machineId embedded
- * Format: sk-{machineId}-{keyId}-{crc8}
- * @param {string} machineId - 16-char machine ID
- * @returns {{ key: string, keyId: string }}
- */
-export function generateApiKeyWithMachine(machineId) {
-  const keyId = generateKeyId();
-  const crc = generateCrc(machineId, keyId);
-  const key = `sk-${machineId}-${keyId}-${crc}`;
-  return { key, keyId };
+function generateKeyBody(length = DEFAULT_API_KEY_LENGTH) {
+  return crypto.randomBytes(length).toString("base64url").replace(/[^a-z0-9]/gi, "").slice(0, length);
 }
 
-/**
- * Parse API key and extract machineId + keyId
- * Supports both formats:
- * - New: sk-{machineId}-{keyId}-{crc8}
- * - Old: sk-{random8}
- * @param {string} apiKey
- * @returns {{ machineId: string, keyId: string, isNewFormat: boolean } | null}
- */
-export function parseApiKey(apiKey) {
-  if (!apiKey || !apiKey.startsWith("sk-")) return null;
-
-  const parts = apiKey.split("-");
-  
-  // New format: sk-{machineId}-{keyId}-{crc8} = 4 parts
-  if (parts.length === 4) {
-    const [, machineId, keyId, crc] = parts;
-    
-    // Validate CRC
-    const expectedCrc = generateCrc(machineId, keyId);
-    if (crc !== expectedCrc) return null;
-    
-    return { machineId, keyId, isNewFormat: true };
-  }
-  
-  // Old format: sk-{random8} = 2 parts
-  if (parts.length === 2) {
-    return { machineId: null, keyId: parts[1], isNewFormat: false };
-  }
-  
-  return null;
+export function buildApiKey({ prefix = DEFAULT_API_KEY_PREFIX, bodyLength = DEFAULT_API_KEY_LENGTH } = {}) {
+  const safePrefix = normalizePrefix(prefix);
+  const safeLength = normalizeLength(bodyLength);
+  let body = generateKeyBody(safeLength);
+  while (body.length < safeLength) body += generateKeyBody(safeLength - body.length);
+  return `${safePrefix}-${body.slice(0, safeLength)}`;
 }
 
-/**
- * Verify API key CRC (only for new format)
- * @param {string} apiKey
- * @returns {boolean}
- */
-export function verifyApiKeyCrc(apiKey) {
-  const parsed = parseApiKey(apiKey);
-  if (!parsed) return false;
-  
-  // Old format doesn't have CRC, always valid if parsed
-  if (!parsed.isNewFormat) return true;
-  
-  // New format already verified in parseApiKey
-  return true;
+export function isApiKeyFormat(value) {
+  if (typeof value !== "string") return false;
+  return /^[a-z0-9][a-z0-9-]*-[A-Za-z0-9]{12,64}$/.test(value.trim());
 }
 
-/**
- * Check if API key is new format (contains machineId)
- * @param {string} apiKey
- * @returns {boolean}
- */
-export function isNewFormatKey(apiKey) {
-  const parsed = parseApiKey(apiKey);
-  return parsed?.isNewFormat === true;
+export function normalizeApiKey(value) {
+  if (typeof value !== "string") return "";
+  return value.trim();
 }
 

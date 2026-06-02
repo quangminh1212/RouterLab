@@ -46,7 +46,7 @@ export async function POST(request) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return invalidJsonResponse();
     }
-    const { name, hasCostLimit, costLimit, allowedModels, rpmLimit } = body;
+    const { name, hasCostLimit, costLimit, allowedModels, rpmLimit, apiKey } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -77,22 +77,24 @@ export async function POST(request) {
     }
 
     const machineId = await getConsistentMachineId();
-    const apiKey = await createApiKey(
+    const normalizedApiKey = typeof apiKey === "string" ? apiKey.trim() : "";
+    const createdKey = await createApiKey(
       name,
       machineId,
       normalizedCostLimit,
       normalizedAllowedModels,
       normalizedRpmLimit,
+      normalizedApiKey || null,
     );
 
     return NextResponse.json({
-      key: apiKey.key,
-      name: apiKey.name,
-      id: apiKey.id,
-      machineId: apiKey.machineId,
-      costLimit: apiKey.costLimit,
-      allowedModels: apiKey.allowedModels,
-      rpmLimit: apiKey.rpmLimit,
+      key: createdKey.key,
+      name: createdKey.name,
+      id: createdKey.id,
+      machineId: createdKey.machineId,
+      costLimit: createdKey.costLimit,
+      allowedModels: createdKey.allowedModels,
+      rpmLimit: createdKey.rpmLimit,
     }, { status: 201 });
   } catch (error) {
     console.log("Error creating key:", error);

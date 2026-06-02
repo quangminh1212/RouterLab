@@ -327,7 +327,7 @@ const PROVIDER_MODELS_CONFIG = {
 };
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return String(baseUrl || "").includes("cungcapai");
+  return /cungcapai|electroai/i.test(String(baseUrl || ""));
 }
 
 async function buildTamMaoFallbackModels(connection, baseUrl) {
@@ -379,7 +379,7 @@ export async function GET(request, { params }) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${connection.apiKey}`,
       };
-      if (baseUrl.includes("cungcapai")) {
+      if (isTamMaoBaseUrl(baseUrl)) {
         headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
       }
       let response;
