@@ -1545,6 +1545,7 @@ export async function createCombo(data) {
     name: data.name,
     models: data.models || [],
     kind: data.kind || null,
+    order: db.data.combos.length,
     createdAt: now,
     updatedAt: now,
   });
@@ -1585,8 +1586,36 @@ export async function deleteCombo(id) {
   if (index === -1) return false;
 
   db.data.combos.splice(index, 1);
+  db.data.combos = db.data.combos.map((combo, comboIndex) => ({ ...combo, order: comboIndex }));
   await safeWrite(db);
   return true;
+}
+
+export async function reorderCombos(comboIds = []) {
+  const db = await getDb();
+  if (!db.data.combos) db.data.combos = [];
+
+  const ids = Array.isArray(comboIds)
+    ? comboIds.map((id) => (typeof id === "string" ? id.trim() : "")).filter(Boolean)
+    : [];
+  if (ids.length === 0) {
+    throw new Error("comboIds must be a non-empty array");
+  }
+
+  const comboMap = new Map(db.data.combos.map((combo) => [combo.id, combo]));
+  const existingIds = new Set(comboMap.keys());
+  if (ids.some((id) => !existingIds.has(id))) {
+    throw new Error("One or more combos were not found");
+  }
+
+  const ordered = ids.map((id, index) => ({ ...comboMap.get(id), order: index, updatedAt: new Date().toISOString() }));
+  const remaining = db.data.combos
+    .filter((combo) => !ids.includes(combo.id))
+    .map((combo, index) => ({ ...combo, order: ordered.length + index }));
+
+  db.data.combos = [...ordered, ...remaining];
+  await safeWrite(db);
+  return db.data.combos;
 }
 
 export async function getApiKeys() {
