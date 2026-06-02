@@ -408,6 +408,11 @@ export default function UsageStats() {
       try {
         messageCount++;
         const data = JSON.parse(e.data);
+        if (data?.support_refresh) return;
+        if (data?.refresh) {
+          fetchStats();
+          return;
+        }
         const nextRealtimeStats = {
           activeRequests: data.activeRequests || [],
           recentRequests: data.recentRequests || [],
