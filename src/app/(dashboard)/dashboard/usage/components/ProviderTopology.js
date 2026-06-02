@@ -37,8 +37,8 @@ function createProviderNode(Handle, Position) {
 
         {/* Provider icon */}
         <div
-          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-white/95 border border-slate-900/10 shadow-sm shadow-black/10"
-          style={{ boxShadow: active ? `0 0 10px ${color}35` : undefined }}
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-white border border-slate-200 dark:border-white/35 shadow-sm shadow-black/15 ring-1 ring-white/70 dark:ring-white/20"
+          style={{ boxShadow: active ? `0 0 12px ${color}45` : "0 2px 10px rgba(0, 0, 0, 0.18)" }}
         >
           {!imgError ? (
             <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
@@ -82,7 +82,7 @@ function createRouterNode(Handle, Position) {
         <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
         <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
-                <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-md border border-slate-900/10 bg-white/95 shadow-sm shadow-black/10">
+        <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-white/35 bg-white shadow-sm shadow-black/15 ring-1 ring-white/70 dark:ring-white/20">
           <img src="/topup.png" alt="XLab Router" className="h-5 w-5 object-contain" />
         </span>
         <span className="text-sm font-bold text-primary">XLab Router</span>
