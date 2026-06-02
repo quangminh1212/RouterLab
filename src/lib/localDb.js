@@ -1709,6 +1709,26 @@ export async function getApiKeyById(id) {
   return db.data.apiKeys.find(k => k.id === id) || null;
 }
 
+export async function regenerateApiKey(id) {
+  const db = await getDb();
+  const index = db.data.apiKeys.findIndex(k => k.id === id);
+  if (index === -1) return null;
+
+  let key = generateCustomApiKey("sk", 24);
+  while (db.data.apiKeys.some((entry) => entry.key === key)) {
+    key = generateCustomApiKey("sk", 24);
+  }
+
+  db.data.apiKeys[index] = {
+    ...db.data.apiKeys[index],
+    key,
+    updatedAt: new Date().toISOString(),
+  };
+  await safeWrite(db);
+  invalidateApiKeySnapshotCache();
+  return db.data.apiKeys[index];
+}
+
 export async function updateApiKey(id, data) {
   const db = await getDb();
   const index = db.data.apiKeys.findIndex(k => k.id === id);
