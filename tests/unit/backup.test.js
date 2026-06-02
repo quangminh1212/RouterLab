@@ -22,6 +22,9 @@ async function loadUsageModule() {
 
     return {
       getDb: vi.fn().mockResolvedValue(state),
+      getProviderConnections: vi.fn().mockResolvedValue([]),
+      getProviderNodes: vi.fn().mockResolvedValue([]),
+      getApiKeys: vi.fn().mockResolvedValue([]),
       getPricingForModel: vi.fn().mockResolvedValue(null),
       invalidateApiKeyCostCache: vi.fn(),
     };
@@ -131,5 +134,33 @@ describe("usage summary-only backup", () => {
 
     expect(runtimeHistory).toHaveLength(1);
     expect(runtimeHistory[0].durationMs).toBe(6200);
+  });
+
+  it("tracks executor type in runtime history and daily summary", async () => {
+    const usageDb = await loadUsageModule();
+
+    await usageDb.saveRequestUsage({
+      provider: "codex",
+      executorType: "codex-websocket",
+      model: "gpt-5.3-codex",
+      connectionId: "conn-codex",
+      endpoint: "/v1/responses",
+      tokens: { prompt_tokens: 100, completion_tokens: 20 },
+      timestamp: new Date(Date.UTC(2026, 5, 2, 1, 0, 0)).toISOString(),
+    });
+
+    const runtimeHistory = await usageDb.getUsageHistory();
+    const exported = await usageDb.exportUsageDb();
+    const stats = await usageDb.getUsageStats("all");
+
+    expect(runtimeHistory[0].executorType).toBe("codex-websocket");
+    expect(exported.dailySummary["2026-06-02"].byExecutorType["codex-websocket|codex"]).toMatchObject({
+      requests: 1,
+      promptTokens: 100,
+      completionTokens: 20,
+      executorType: "codex-websocket",
+      provider: "codex",
+    });
+    expect(stats.byExecutorType["codex-websocket (codex)"]).toMatchObject({ requests: 1, executorType: "codex-websocket" });
   });
 });

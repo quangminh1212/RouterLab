@@ -84,6 +84,7 @@ function isLikelyDuplicateUsageEntry(prev, next) {
   return (prev.provider || "") === (next.provider || "")
     && (prev.model || "") === (next.model || "")
     && (prev.connectionId || "") === (next.connectionId || "")
+    && (prev.executorType || "") === (next.executorType || "")
     && (prev.apiKey || "") === (next.apiKey || "")
     && (prev.endpoint || "") === (next.endpoint || "")
     && prevIn === nextIn
@@ -198,6 +199,12 @@ function aggregateEntryToDailySummary(dailySummary, entry) {
 
   const modelKey = entry.provider ? `${entry.model}|${entry.provider}` : entry.model;
   addToCounter(day.byModel, modelKey, { ...vals, meta: { rawModel: entry.model, provider: entry.provider } });
+
+  if (entry.executorType) {
+    const executorKey = `${entry.executorType}|${entry.provider || "unknown"}`;
+    if (!day.byExecutorType) day.byExecutorType = {};
+    addToCounter(day.byExecutorType, executorKey, { ...vals, meta: { executorType: entry.executorType, provider: entry.provider } });
+  }
 
   if (entry.connectionId) {
     addToCounter(day.byAccount, entry.connectionId, { ...vals, meta: { rawModel: entry.model, provider: entry.provider } });
@@ -1010,7 +1017,7 @@ export async function getUsageStats(period = "all") {
     totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0,
     compressionSavedBytes: 0, compressionHits: 0,
     rpm: 0,
-    byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
+    byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {}, byExecutorType: {},
     last10Minutes: [],
     pending: pendingRequests,
     activeRequests: [],
@@ -1107,6 +1114,20 @@ export async function getUsageStats(period = "all") {
         stats.byModel[statsKey].completionTokens += mData.completionTokens || 0;
         stats.byModel[statsKey].cost += mData.cost || 0;
         if (dateKey > (stats.byModel[statsKey].lastUsed || "")) stats.byModel[statsKey].lastUsed = dateKey;
+      }
+
+      for (const [executorKey, eData] of Object.entries(day.byExecutorType || {})) {
+        const executorType = eData.executorType || executorKey.split("|")[0] || "unknown";
+        const provider = eData.provider || executorKey.split("|")[1] || "unknown";
+        const statsKey = `${executorType} (${provider})`;
+        if (!stats.byExecutorType[statsKey]) {
+          stats.byExecutorType[statsKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0, executorType, provider, lastUsed: dateKey };
+        }
+        stats.byExecutorType[statsKey].requests += eData.requests || 0;
+        stats.byExecutorType[statsKey].promptTokens += eData.promptTokens || 0;
+        stats.byExecutorType[statsKey].completionTokens += eData.completionTokens || 0;
+        stats.byExecutorType[statsKey].cost += eData.cost || 0;
+        if (dateKey > (stats.byExecutorType[statsKey].lastUsed || "")) stats.byExecutorType[statsKey].lastUsed = dateKey;
       }
 
       // Merge byAccount
