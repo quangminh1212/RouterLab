@@ -543,6 +543,15 @@ export const PROVIDER_MODELS = {
     { id: "Qwen/Qwen2.5-Coder-32B-Instruct", name: "Qwen 2.5 Coder 32B" },
     { id: "NousResearch/Hermes-3-Llama-3.1-70B", name: "Hermes 3 70B" },
   ],
+  "inference-net": [
+    { id: "meta-llama/llama-3.3-70b-instruct/fp-16", name: "Llama 3.3 70B" },
+    { id: "deepseek/deepseek-v3-0324", name: "DeepSeek V3" },
+    { id: "mistralai/mistral-nemo-12b-instruct/fp-16", name: "Mistral Nemo 12B" },
+  ],
+  "nous-research": [
+    { id: "Hermes-4-405B", name: "Hermes 4 405B" },
+    { id: "Hermes-4-70B", name: "Hermes 4 70B" },
+  ],
   ollama: [
     { id: "gpt-oss:120b", name: "GPT OSS 120B" },
     { id: "kimi-k2.5", name: "Kimi K2.5" },
