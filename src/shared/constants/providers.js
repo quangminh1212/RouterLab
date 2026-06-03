@@ -740,7 +740,7 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
     ? getProviderFaviconUrlsFromConfig({ id: inferredProviderId })
     : [];
   if (inferredIconPath) {
-    return [...new Set([...faviconUrls, ...inferredFaviconUrls, inferredIconPath, fallbackIconPath].filter(Boolean))];
+    return [...new Set([inferredIconPath, fallbackIconPath, ...inferredFaviconUrls, ...faviconUrls].filter(Boolean))];
   }
 
   return [...new Set([...faviconUrls, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
