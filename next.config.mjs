@@ -53,11 +53,13 @@ const nextConfig = {
             framework: {
               name: 'framework',
               chunks: 'all',
+              type: 'javascript/auto',
               test: /[/\\]node_modules[/\\](react|react-dom|scheduler|next)[/\\]/,
               priority: 50,
               enforce: true,
             },
             lib: {
+              type: 'javascript/auto',
               test(module) {
                 return module.size() > 160000 && /node_modules/.test(module.identifier());
               },
@@ -72,23 +74,27 @@ const nextConfig = {
             vendor: {
               name: 'vendor',
               chunks: 'all',
+              type: 'javascript/auto',
               test: /node_modules/,
               priority: 20,
             },
             monaco: {
               name: 'monaco',
+              type: 'javascript/auto',
               test: /[/\\]node_modules[/\\](monaco-editor|@monaco-editor)[/\\]/,
               chunks: 'async',
               priority: 40,
             },
             recharts: {
               name: 'recharts',
+              type: 'javascript/auto',
               test: /[/\\]node_modules[/\\](recharts)[/\\]/,
               chunks: 'async',
               priority: 35,
             },
             xyflow: {
               name: 'xyflow',
+              type: 'javascript/auto',
               test: /[/\\]node_modules[/\\](@xyflow)[/\\]/,
               chunks: 'async',
               priority: 35,
@@ -97,6 +103,7 @@ const nextConfig = {
               name: 'common',
               minChunks: 2,
               chunks: 'all',
+              type: 'javascript/auto',
               priority: 10,
               reuseExistingChunk: true,
               enforce: true,
