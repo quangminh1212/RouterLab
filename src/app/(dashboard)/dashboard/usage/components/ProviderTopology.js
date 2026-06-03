@@ -19,14 +19,15 @@ function getProviderImageUrl(providerId, providerConfig = {}) {
 // Node component factories - created after React Flow module loads
 function createProviderNode(Handle, Position) {
   function ProviderNode({ data }) {
-    const { label, color, imageUrl, textIcon, active } = data;
+    const { label, color, imageUrl, textIcon, active, last, error } = data;
     const [imgError, setImgError] = useState(false);
+    const glowColor = error ? "#ef4444" : (active ? "#22c55e" : (last ? "#f59e0b" : color));
     return (
       <div
         className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
         style={{
-          borderColor: active ? color : "var(--color-border)",
-          boxShadow: active ? `0 0 16px ${color}40` : "none",
+          borderColor: error ? "#ef4444" : (active ? color : (last ? "#f59e0b" : "var(--color-border)")),
+          boxShadow: active || last || error ? `0 0 16px ${glowColor}40` : "none",
           minWidth: "150px",
         }}
       >
@@ -37,20 +38,20 @@ function createProviderNode(Handle, Position) {
 
         {/* Provider icon */}
         <div
-          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-white border border-slate-200 dark:border-white/35 shadow-sm shadow-black/15 ring-1 ring-white/70 dark:ring-white/20"
-          style={{ boxShadow: active ? `0 0 12px ${color}45` : "0 2px 10px rgba(0, 0, 0, 0.18)" }}
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-white border border-white/90 shadow-sm ring-1 ring-white/85"
+          style={{ boxShadow: active || last || error ? `0 0 12px ${glowColor}45` : "0 2px 12px rgba(255, 255, 255, 0.10)" }}
         >
           {!imgError ? (
             <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
           ) : (
-            <span className="text-sm font-bold" style={{ color }}>{textIcon}</span>
+            <span className="text-sm font-bold" style={{ color: glowColor }}>{textIcon}</span>
           )}
         </div>
 
         {/* Provider name */}
         <span
           className="text-base font-medium truncate"
-          style={{ color: active ? color : "var(--color-text)" }}
+          style={{ color: error ? "#ef4444" : (active ? color : (last ? "#f59e0b" : "var(--color-text)")) }}
         >
           {label}
         </span>
@@ -168,6 +169,8 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
       imageUrl: getProviderImageUrl(p.provider, p),
       textIcon: config.textIcon || (p.provider || "?").slice(0, 2).toUpperCase(),
       active,
+      last,
+      error,
     };
 
     // Distribute evenly starting from top (−π/2), clockwise

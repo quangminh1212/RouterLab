@@ -115,6 +115,7 @@ const EMPTY_REALTIME_STATS = {
   recentRequests: [],
   errorProvider: "",
   pending: {},
+  hasRealtime: false,
 };
 
 function isSamePrimitiveArray(prev = [], next = []) {
@@ -182,6 +183,7 @@ function isSameRealtimeStats(prev, next) {
       next.recentRequests.map(serializeRecentRequest),
     )
     && prev.errorProvider === next.errorProvider
+    && prev.hasRealtime === next.hasRealtime
     && isSameNestedRecord(prev.pending, next.pending);
 }
 
@@ -327,11 +329,11 @@ export default function UsageStats() {
 
   const activeRequests = realtimeStats.activeRequests.length > 0
     ? realtimeStats.activeRequests
-    : (stats?.activeRequests || []);
+    : (realtimeStats.hasRealtime ? [] : (stats?.activeRequests || []));
 
   const recentRequests = realtimeStats.recentRequests.length > 0
     ? realtimeStats.recentRequests
-    : (stats?.recentRequests || []);
+    : (realtimeStats.hasRealtime ? [] : (stats?.recentRequests || []));
 
   const errorProvider = realtimeStats.errorProvider || stats?.errorProvider || "";
 
@@ -418,6 +420,7 @@ export default function UsageStats() {
           recentRequests: data.recentRequests || [],
           errorProvider: data.errorProvider || "",
           pending: data.pending || {},
+          hasRealtime: true,
         };
         latestRealtimeStatsRef.current = nextRealtimeStats;
         if (sseFrameRef.current !== null) return;
@@ -455,6 +458,7 @@ export default function UsageStats() {
                 ? prev.errorProvider
                 : bufferedRealtimeStats.errorProvider,
               pending: nextPending,
+              hasRealtime: true,
             };
           });
         });
