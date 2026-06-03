@@ -4,7 +4,7 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 
-export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, proxyPools, onSave, onClose }) {
+export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, proxyPools, defaultName, onSave, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
   const isCookie = authType === "cookie";
   const credentialLabel = isCookie ? "Cookie Value" : "API Key";
@@ -13,6 +13,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     : "";
 
   const isAzure = provider === "azure";
+  const suggestedName = defaultName || "Production Key";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,7 +72,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
       }
 
       await onSave({
-        name: formData.name,
+        name: formData.name.trim() || suggestedName,
         apiKey: formData.apiKey,
         priority: formData.priority,
         proxyPoolId: formData.proxyPoolId === NONE_PROXY_POOL_VALUE ? null : formData.proxyPoolId,
@@ -92,7 +93,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           label="Name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Production Key"
+          placeholder={suggestedName}
         />
         <div className="flex gap-2">
           <Input
@@ -125,6 +126,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
               ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
               : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
             }
+            {defaultName ? " You can keep the suggested name or rename this key." : ""}
           </p>
         )}
         {isAzure && (
@@ -188,7 +190,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         </p>
 
         <div className="flex gap-2">
-          <Button onClick={handleSubmit} fullWidth disabled={!formData.name || !formData.apiKey || saving}>
+          <Button onClick={handleSubmit} fullWidth disabled={!(formData.name.trim() || suggestedName) || !formData.apiKey || saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
           <Button onClick={onClose} variant="ghost" fullWidth>
@@ -208,6 +210,7 @@ AddApiKeyModal.propTypes = {
   isAnthropic: PropTypes.bool,
   authType: PropTypes.string,
   authHint: PropTypes.string,
+  defaultName: PropTypes.string,
   proxyPools: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string,
     name: PropTypes.string,

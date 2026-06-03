@@ -1075,6 +1075,7 @@ export default function ProviderDetailPage() {
         isCompatible={isCompatible}
         isAnthropic={isAnthropicCompatible}
         proxyPools={proxyPools}
+        defaultName={isTamMaoCompatible ? `${providerInfo.name} #${connections.length + 1}` : undefined}
         onSave={handleSaveApiKey}
         onClose={() => setShowAddApiKeyModal(false)}
       />
