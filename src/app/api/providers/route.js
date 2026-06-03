@@ -48,6 +48,12 @@ async function normalizeProxyPoolId(proxyPoolId) {
   return { proxyPoolId: normalizedId };
 }
 
+function isTamMaoCompatibleNode(node = {}) {
+  const baseUrl = String(node.baseUrl || "").toLowerCase();
+  const name = String(node.name || "").toLowerCase();
+  return baseUrl.includes("cungcapai") || baseUrl.includes("electroai") || name.includes("tammao");
+}
+
 function normalizeProviderSpecificData(provider, providerSpecificData) {
   const normalized = providerSpecificData && typeof providerSpecificData === "object" && !Array.isArray(providerSpecificData)
     ? { ...providerSpecificData }
@@ -172,9 +178,11 @@ export async function POST(request) {
         return NextResponse.json({ error: "OpenAI Compatible node not found" }, { status: 404 });
       }
 
-      const existingConnections = await getProviderConnections({ provider });
-      if (existingConnections.length > 0) {
-        return NextResponse.json({ error: "Only one connection is allowed for this OpenAI Compatible node" }, { status: 400 });
+      if (!isTamMaoCompatibleNode(node)) {
+        const existingConnections = await getProviderConnections({ provider });
+        if (existingConnections.length > 0) {
+          return NextResponse.json({ error: "Only one connection is allowed for this OpenAI Compatible node" }, { status: 400 });
+        }
       }
 
       providerSpecificData = {

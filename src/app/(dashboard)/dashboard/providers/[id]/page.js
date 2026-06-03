@@ -69,6 +69,11 @@ export default function ProviderDetailPage() {
   const isOpenAICompatible = isOpenAICompatibleProvider(providerId);
   const isAnthropicCompatible = isAnthropicCompatibleProvider(providerId);
   const isCompatible = isOpenAICompatible || isAnthropicCompatible;
+  const isTamMaoCompatible = isOpenAICompatible && (
+    String(providerNode?.baseUrl || "").toLowerCase().includes("cungcapai")
+      || String(providerNode?.baseUrl || "").toLowerCase().includes("electroai")
+      || String(providerNode?.name || "").toLowerCase().includes("tammao")
+  );
   const thinkingConfig = AI_PROVIDERS[providerId]?.thinkingConfig || THINKING_CONFIG.extended;
   
   const providerStorageAlias = isCompatible ? providerId : providerAlias;
@@ -862,7 +867,7 @@ export default function ProviderDetailPage() {
                 size="sm"
                 icon="add"
                 onClick={() => setShowAddApiKeyModal(true)}
-                disabled={connections.length > 0}
+                disabled={!isTamMaoCompatible && connections.length > 0}
               >
                 Add
               </Button>
@@ -896,7 +901,9 @@ export default function ProviderDetailPage() {
           </div>
           {connections.length > 0 && (
             <p className="text-sm text-text-muted">
-              Only one connection is allowed per compatible node. Add another node if you need more connections.
+              {isTamMaoCompatible
+                ? "Multiple API keys are allowed for this TamMao endpoint. Add another connection to use the same endpoint with a different key."
+                : "Only one connection is allowed per compatible node. Add another node if you need more connections."}
             </p>
           )}
         </Card>
