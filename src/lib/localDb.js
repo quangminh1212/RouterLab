@@ -1080,7 +1080,9 @@ export async function getDb() {
 
 export async function getProviderConnections(filter = {}) {
   const now = Date.now();
-  const useCache = !filter || Object.keys(filter).length === 0;
+  const forceRefresh = filter?.forceRefresh === true;
+  const { forceRefresh: _forceRefresh, ...effectiveFilter } = filter || {};
+  const useCache = !forceRefresh && Object.keys(effectiveFilter).length === 0;
 
   if (useCache && providerConnectionsCache && now - providerConnectionsCacheAt < PROVIDER_CONNECTIONS_CACHE_TTL_MS) {
     return providerConnectionsCache.map((conn) => ({ ...conn }));
@@ -1092,10 +1094,11 @@ export async function getProviderConnections(filter = {}) {
   }
 
   const db = await getDb();
+  if (forceRefresh) await refreshDbSnapshot(db, { force: true });
   let connections = db.data.providerConnections || [];
 
-  if (filter.provider) connections = connections.filter(c => c.provider === filter.provider);
-  if (filter.isActive !== undefined) connections = connections.filter(c => c.isActive === filter.isActive);
+  if (effectiveFilter.provider) connections = connections.filter(c => c.provider === effectiveFilter.provider);
+  if (effectiveFilter.isActive !== undefined) connections = connections.filter(c => c.isActive === effectiveFilter.isActive);
 
   connections.sort((a, b) => (a.priority || 999) - (b.priority || 999));
 
@@ -1260,8 +1263,9 @@ export async function deleteProviderConnectionsByProvider(providerId) {
   return deletedCount;
 }
 
-export async function getProviderConnectionById(id) {
+export async function getProviderConnectionById(id, options = {}) {
   const db = await getDb();
+  if (options?.forceRefresh) await refreshDbSnapshot(db, { force: true });
   return db.data.providerConnections.find(c => c.id === id) || null;
 }
 

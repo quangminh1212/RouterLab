@@ -88,7 +88,7 @@ export async function GET() {
     }
 
     providersGetCache.promise = (async () => {
-      const connections = await getProviderConnections();
+      const connections = await getProviderConnections({ forceRefresh: true });
 
       let nodeNameMap = {};
       const needsNodeNames = connections.some((c) => isOpenAICompatibleProvider(c.provider) || isAnthropicCompatibleProvider(c.provider));
