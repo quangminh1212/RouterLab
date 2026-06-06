@@ -500,7 +500,6 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
 
     if (isBreakerTrippableStatus(result.status)) {
       recordProviderFailure(provider, result.status);
-      return result.response;
     }
 
     // Mark account unavailable (auto-calculates cooldown with exponential backoff, or precise resetsAtMs)
