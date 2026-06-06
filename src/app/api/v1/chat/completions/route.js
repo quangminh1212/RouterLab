@@ -407,6 +407,19 @@ function isMalformedGatewayPayload(status, payload) {
   return isMalformedGatewayResponse(status, message);
 }
 
+function extractSseChunkText(chunk) {
+  const choice = chunk?.choices?.[0];
+  if (typeof choice?.delta?.content === "string") return choice.delta.content;
+  if (typeof chunk?.delta === "string") return chunk.delta;
+  if (typeof chunk?.text === "string") return chunk.text;
+  if (chunk?.type === "response.output_text.delta" && typeof chunk?.delta === "string") return chunk.delta;
+  if (chunk?.type === "response.content_part.done" && typeof chunk?.part?.text === "string") return chunk.part.text;
+  if (chunk?.type === "response.output_item.done" && Array.isArray(chunk?.item?.content)) {
+    return chunk.item.content.map((part) => typeof part?.text === "string" ? part.text : "").join("");
+  }
+  return "";
+}
+
 function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
   const lines = String(raw || "").split(/\r?\n/);
   let text = "";
@@ -427,7 +440,7 @@ function chatCompletionFromSse(raw, fallbackModel = "openclaw") {
       if (!model && chunk?.model) model = chunk.model;
       if (typeof chunk?.created === "number") created = chunk.created;
       const choice = chunk?.choices?.[0];
-      if (typeof choice?.delta?.content === "string") text += choice.delta.content;
+      text += extractSseChunkText(chunk);
       if (typeof choice?.finish_reason === "string" && choice.finish_reason) finishReason = choice.finish_reason;
       if (chunk?.usage && typeof chunk.usage === "object") usage = chunk.usage;
     } catch {

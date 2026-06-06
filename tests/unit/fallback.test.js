@@ -146,7 +146,7 @@ describe("TamMao fallback", () => {
   });
 
   it("round-robins TamMao credentials using connection-specific base URLs", async () => {
-    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.5");
+    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/custom-model");
 
     expect(credentials.providerSpecificData.baseUrl).toBe("https://api.electroai.io.vn/v1");
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-tammao", {
@@ -179,7 +179,28 @@ describe("TamMao fallback", () => {
     expect(credentials.connectionId).toBe("conn-electroai");
   });
 
-  it("prefers responses endpoint for TamMao gpt-5.5", async () => {
+  it("does not round-robin away from preferred TamMao gpt-5.4 endpoint", async () => {
+    const { getProviderConnections } = await import("@/lib/localDb");
+    vi.mocked(getProviderConnections).mockResolvedValueOnce([
+      {
+        id: "conn-electroai",
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key",
+        isActive: true,
+        providerSpecificData: {
+          baseUrl: "https://api.electroai.io.vn/v1",
+          baseUrls: ["https://api.electroai.io.vn/v1", "https://api.cungcapai.io.vn/v1"],
+        },
+      },
+    ]);
+
+    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.4");
+    expect(credentials.providerSpecificData.baseUrl).toBe("https://api.electroai.io.vn/v1");
+    expect(updateProviderConnection).not.toHaveBeenCalled();
+  });
+
+
+  it("prefers fastest chat endpoint for TamMao gpt-5.5", async () => {
     const { getProviderConnections } = await import("@/lib/localDb");
     vi.mocked(getProviderConnections).mockResolvedValueOnce([
       {
@@ -201,7 +222,7 @@ describe("TamMao fallback", () => {
     ]);
 
     const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.5");
-    expect(credentials.connectionId).toBe("conn-responses");
+    expect(credentials.connectionId).toBe("conn-chat");
   });
   it("models route returns fallback catalog when /models times out", async () => {
     const fetchMock = vi.fn()
@@ -223,3 +244,4 @@ describe("TamMao fallback", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/responses");
   });
 });
+
