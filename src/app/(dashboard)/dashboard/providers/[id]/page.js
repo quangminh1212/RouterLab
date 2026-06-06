@@ -910,22 +910,31 @@ export default function ProviderDetailPage() {
                 : "Only one connection is allowed per compatible node. Add another node if you need more connections."}
             </p>
           )}
-          {isTamMaoCompatible && tamMaoMachineIds.length > 0 && (
+          {isTamMaoCompatible && (
             <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border/70 bg-sidebar/30 px-3 py-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-text-muted">memory</span>
-                <p className="text-sm font-medium">Machien ID</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px] text-text-muted">memory</span>
+                  <p className="text-sm font-medium">Machien ID</p>
+                </div>
+                <Button size="sm" variant="secondary" icon="settings" onClick={() => setShowEditNodeModal(true)}>
+                  Config
+                </Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {tamMaoMachineIds.map((machineId) => (
-                  <code
-                    key={machineId}
-                    className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted"
-                    title={machineId}
-                  >
-                    {machineId}
-                  </code>
-                ))}
+                {tamMaoMachineIds.length > 0 ? (
+                  tamMaoMachineIds.map((machineId) => (
+                    <code
+                      key={machineId}
+                      className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted"
+                      title={machineId}
+                    >
+                      {machineId}
+                    </code>
+                  ))
+                ) : (
+                  <span className="text-xs text-text-muted">No machine id configured yet.</span>
+                )}
               </div>
             </div>
           )}

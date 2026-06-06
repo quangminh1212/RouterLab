@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return invalidJsonResponse();
     }
-    const { name, prefix, apiType, baseUrl } = body;
+    const { name, prefix, apiType, baseUrl, providerSpecificData } = body;
     const node = await getProviderNodeById(id);
 
     if (!node) return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
@@ -33,7 +33,16 @@ export async function PUT(request, { params }) {
       if (sanitizedBaseUrl.endsWith("/embeddings")) sanitizedBaseUrl = sanitizedBaseUrl.slice(0, -"/embeddings".length);
     }
 
-    const updates = { name: name.trim(), prefix: prefix.trim(), baseUrl: sanitizedBaseUrl };
+    const machineId = typeof providerSpecificData?.machineId === "string" ? providerSpecificData.machineId.trim() : "";
+    const updates = {
+      name: name.trim(),
+      prefix: prefix.trim(),
+      baseUrl: sanitizedBaseUrl,
+      providerSpecificData: {
+        ...(node.providerSpecificData || {}),
+        ...(machineId ? { machineId } : {}),
+      },
+    };
     if (node.type === "openai-compatible") updates.apiType = apiType;
 
     const updated = await updateProviderNode(id, updates);
@@ -46,6 +55,7 @@ export async function PUT(request, { params }) {
           apiType: node.type === "openai-compatible" ? apiType : undefined,
           baseUrl: sanitizedBaseUrl,
           nodeName: updated.name,
+          ...(machineId ? { machineId } : {}),
         }
       })
     )));

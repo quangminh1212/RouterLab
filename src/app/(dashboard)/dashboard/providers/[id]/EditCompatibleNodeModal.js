@@ -10,6 +10,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
     prefix: "",
     apiType: "chat",
     baseUrl: "https://api.openai.com/v1",
+    machineId: "",
   });
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
@@ -24,6 +25,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
         prefix: node.prefix || "",
         apiType: node.apiType || "chat",
         baseUrl: node.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
+        machineId: node.providerSpecificData?.machineId || "",
       });
     }
   }, [node, isAnthropic]);
@@ -41,6 +43,9 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
         name: formData.name,
         prefix: formData.prefix,
         baseUrl: formData.baseUrl,
+        providerSpecificData: {
+          machineId: formData.machineId,
+        },
       };
       if (!isAnthropic) {
         payload.apiType = formData.apiType;
@@ -107,6 +112,13 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
           placeholder={isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"}
           hint={`Use the base URL (ending in /v1) for your ${isAnthropic ? "Anthropic" : "OpenAI"}-compatible API.`}
         />
+        <Input
+          label="Machine ID"
+          value={formData.machineId}
+          onChange={(e) => setFormData({ ...formData, machineId: e.target.value })}
+          placeholder="D2B607D9-D9A2-447D-9F87-E3E0BE2C7C3D"
+          hint="For TamMao-compatible endpoints, this Machine ID will be applied to all connections under this node."
+        />
         <div className="flex gap-2">
           <Input
             label="API Key (for Check)"
@@ -154,6 +166,7 @@ EditCompatibleNodeModal.propTypes = {
     prefix: PropTypes.string,
     apiType: PropTypes.string,
     baseUrl: PropTypes.string,
+    providerSpecificData: PropTypes.object,
   }),
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
