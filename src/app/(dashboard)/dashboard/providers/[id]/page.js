@@ -72,8 +72,12 @@ export default function ProviderDetailPage() {
   const isTamMaoCompatible = isOpenAICompatible && (
     String(providerNode?.baseUrl || "").toLowerCase().includes("cungcapai")
       || String(providerNode?.baseUrl || "").toLowerCase().includes("electroai")
+      || String(providerNode?.baseUrl || "").toLowerCase().includes("dientuai")
       || String(providerNode?.name || "").toLowerCase().includes("tammao")
   );
+  const tamMaoMachineIds = isTamMaoCompatible
+    ? [...new Set(connections.map((connection) => String(connection.providerSpecificData?.machineId || "").trim()).filter(Boolean))]
+    : [];
   const thinkingConfig = AI_PROVIDERS[providerId]?.thinkingConfig || THINKING_CONFIG.extended;
   
   const providerStorageAlias = isCompatible ? providerId : providerAlias;
@@ -905,6 +909,25 @@ export default function ProviderDetailPage() {
                 ? "Multiple API keys are allowed for this TamMao endpoint. Add another connection to use the same endpoint with a different key."
                 : "Only one connection is allowed per compatible node. Add another node if you need more connections."}
             </p>
+          )}
+          {isTamMaoCompatible && tamMaoMachineIds.length > 0 && (
+            <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border/70 bg-sidebar/30 px-3 py-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-text-muted">memory</span>
+                <p className="text-sm font-medium">Machien ID</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {tamMaoMachineIds.map((machineId) => (
+                  <code
+                    key={machineId}
+                    className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted"
+                    title={machineId}
+                  >
+                    {machineId}
+                  </code>
+                ))}
+              </div>
+            </div>
           )}
         </Card>
       )}
