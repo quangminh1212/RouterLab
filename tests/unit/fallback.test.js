@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getOpenAICompatibleType } from "open-sse/services/provider.js";
 import { getProviderCredentials } from "@/sse/services/auth";
+import { updateProviderConnection } from "@/lib/localDb";
 
 const originalFetch = global.fetch;
 vi.mock("@/lib/localDb", () => ({
@@ -9,7 +10,11 @@ vi.mock("@/lib/localDb", () => ({
     provider: "openai-compatible-tammao",
     apiKey: "tm-key",
     isActive: true,
-    providerSpecificData: { baseUrl: "http://36.50.26.247:20128/v1", machineId: "tm-machine-id" },
+    providerSpecificData: {
+      baseUrl: "http://36.50.26.247:20128/v1",
+      baseUrls: ["http://36.50.26.247:20128/v1", "https://api.electroai.io.vn/v1"],
+      machineId: "tm-machine-id",
+    },
   }])),
   getProviderNodeById: vi.fn(async () => ({
     id: "openai-compatible-tammao",
@@ -101,17 +106,52 @@ describe("TamMao fallback", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/responses");
   });
 
+  it("validate route probes the TamMao base URL provided by the connection form", async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new DOMException("timeout", "TimeoutError"))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: "resp_1" }) });
+    global.fetch = fetchMock;
+
+    const { POST } = await import("@/app/api/providers/validate/route");
+    const request = new Request("http://localhost/api/providers/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key",
+        providerSpecificData: { baseUrl: "https://api.electroai.io.vn/v1" },
+      }),
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.valid).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.electroai.io.vn/v1/models");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.electroai.io.vn/v1/responses");
+  });
+
 
   it("merges compatible node metadata into selected credentials", async () => {
     const credentials = await getProviderCredentials("openai-compatible-tammao");
 
     expect(credentials.providerSpecificData).toMatchObject({
-      baseUrl: "http://36.50.26.247:20128/v1",
+      baseUrl: "https://api.electroai.io.vn/v1",
       machineId: "tm-machine-id",
       prefix: "tammao",
       nodeName: "TamMao",
     });
     expect(getOpenAICompatibleType("openai-compatible-responses-tammao", credentials.providerSpecificData)).toBe("responses");
+  });
+
+  it("round-robins TamMao credentials using connection-specific base URLs", async () => {
+    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.5");
+
+    expect(credentials.providerSpecificData.baseUrl).toBe("https://api.electroai.io.vn/v1");
+    expect(updateProviderConnection).toHaveBeenCalledWith("conn-tammao", {
+      providerSpecificData: expect.objectContaining({ tamMaoRoundRobinIndex: 1 }),
+    });
   });
   it("models route returns fallback catalog when /models times out", async () => {
     const fetchMock = vi.fn()
