@@ -31,6 +31,18 @@ function looksLikeResponsesSSE(text) {
     || /(^|\n)data:\s*\{[^\n]*("type"\s*:\s*"response\.|"object"\s*:\s*"response"|"response"\s*:)/i.test(raw);
 }
 
+function isTamMaoEmptyContentResponse(provider, model, translatedResponse) {
+  const providerValue = String(provider || "").toLowerCase();
+  const modelValue = String(model || "").toLowerCase();
+  const isTamMao = providerValue.includes("tammao") || modelValue.startsWith("tammao/");
+  if (!isTamMao) return false;
+  const content = translatedResponse?.choices?.[0]?.message?.content;
+  if (Array.isArray(content)) {
+    return content.map((part) => part?.text || part?.content || "").join("").trim() === "";
+  }
+  return typeof content === "string" && content.trim() === "";
+}
+
 function responsesBodyToOpenAIChatCompletion(responseBody, fallbackModel) {
   const output = Array.isArray(responseBody?.output) ? responseBody.output : [];
   const messageItems = output.filter((item) => item?.type === "message");
@@ -304,6 +316,10 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     }
   }
 
+  if (isTamMaoEmptyContentResponse(provider, model, translatedResponse)) {
+    appendLog({ status: `FAILED ${HTTP_STATUS.BAD_GATEWAY}` });
+    return createErrorResult(HTTP_STATUS.BAD_GATEWAY, "TamMao returned empty content");
+  }
   reqLogger.logConvertedResponse(translatedResponse);
 
   const totalLatency = Date.now() - requestStartTime;
@@ -331,3 +347,4 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     })
   };
 }
+
