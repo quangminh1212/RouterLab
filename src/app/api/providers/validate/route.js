@@ -44,6 +44,10 @@ function resolveProviderBaseUrl(provider, providerSpecificData = {}) {
   return null;
 }
 
+function normalizeBaseUrl(baseUrl) {
+  return String(baseUrl || "").trim().replace(/\/+$/, "");
+}
+
 // Probe a webSearch/webFetch provider using its searchConfig/fetchConfig.
 // Returns true if API key is accepted (status !== 401 && !== 403).
 async function probeWebProvider(provider, apiKey) {
@@ -176,9 +180,10 @@ export async function POST(request) {
         if (!node) {
           return NextResponse.json({ error: "OpenAI Compatible node not found" }, { status: 404 });
         }
-        const modelsUrl = `${node.baseUrl?.replace(/\/$/, "")}/models`;
+        const baseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl || node.baseUrl);
+        const modelsUrl = `${baseUrl}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
-        if ((node.baseUrl || "").includes("cungcapai") || (node.baseUrl || "").includes("electroai")) {
+        if ((baseUrl || "").includes("cungcapai") || (baseUrl || "").includes("electroai")) {
           headers["x-machine-id"] = getProviderMachineId(node.providerSpecificData);
         }
         let res;
@@ -188,16 +193,16 @@ export async function POST(request) {
             signal: AbortSignal.timeout(8000),
           });
         } catch (error) {
-          if (!isTamMaoBaseUrl(node.baseUrl)) throw error;
-          const fallback = await probeTamMaoOpenAICompatible(node, apiKey);
+          if (!isTamMaoBaseUrl(baseUrl)) throw error;
+          const fallback = await probeTamMaoOpenAICompatible({ ...node, baseUrl }, apiKey);
           return NextResponse.json({
             valid: fallback.ok,
             error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,
             warning: "TamMao /models timeout, used inference fallback",
           }, { status: fallback.ok ? 200 : 502 });
         }
-        if (!res.ok && isTamMaoBaseUrl(node.baseUrl) && (res.status === 408 || res.status === 429 || res.status >= 500)) {
-          const fallback = await probeTamMaoOpenAICompatible(node, apiKey);
+        if (!res.ok && isTamMaoBaseUrl(baseUrl) && (res.status === 408 || res.status === 429 || res.status >= 500)) {
+          const fallback = await probeTamMaoOpenAICompatible({ ...node, baseUrl }, apiKey);
           return NextResponse.json({
             valid: fallback.ok,
             error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,

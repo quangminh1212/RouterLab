@@ -68,6 +68,13 @@ function normalizeProviderSpecificData(provider, providerSpecificData) {
   return normalized;
 }
 
+function normalizeBaseUrls(baseUrls) {
+  const values = Array.isArray(baseUrls) ? baseUrls : String(baseUrls || "").split(/[\n,]+/);
+  return [...new Set(values
+    .map((baseUrl) => String(baseUrl || "").trim().replace(/\/+$/, ""))
+    .filter(Boolean))];
+}
+
 // GET /api/providers - List all connections
 export async function GET() {
   try {
@@ -185,11 +192,15 @@ export async function POST(request) {
         }
       }
 
+      const tamMaoBaseUrls = isTamMaoCompatibleNode(node) ? normalizeBaseUrls(providerSpecificData.baseUrls) : [];
+      const tamMaoBaseUrl = String(providerSpecificData.baseUrl || tamMaoBaseUrls[0] || "").trim().replace(/\/+$/, "");
+
       providerSpecificData = {
         prefix: node.prefix,
         apiType: node.apiType,
-        baseUrl: node.baseUrl,
+        baseUrl: tamMaoBaseUrl || node.baseUrl,
         nodeName: node.name,
+        ...(tamMaoBaseUrls.length > 0 ? { baseUrls: tamMaoBaseUrls } : {}),
       };
     } else if (isAnthropicCompatibleProvider(provider)) {
       const node = await getProviderNodeById(provider);

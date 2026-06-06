@@ -13,6 +13,14 @@ const TAMMAO_ROUND_ROBIN_BASE_URLS = [
   "https://api.electroai.io.vn/v1",
 ];
 
+function normalizeBaseUrls(baseUrls) {
+  const values = Array.isArray(baseUrls) ? baseUrls : [];
+  const normalized = values
+    .map((baseUrl) => normalizeBaseUrl(baseUrl))
+    .filter(Boolean);
+  return normalized.length > 0 ? [...new Set(normalized)] : TAMMAO_ROUND_ROBIN_BASE_URLS;
+}
+
 function isTamMaoModel(providerId, model) {
   const providerValue = String(providerId || "").toLowerCase();
   const modelValue = String(model || "").toLowerCase();
@@ -24,18 +32,19 @@ function normalizeBaseUrl(baseUrl = "") {
 }
 
 function resolveTamMaoBaseUrl(connection, providerSpecificData) {
+  const candidateBaseUrls = normalizeBaseUrls(connection?.providerSpecificData?.baseUrls);
   const currentBaseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl);
-  const currentIndex = TAMMAO_ROUND_ROBIN_BASE_URLS.findIndex((baseUrl) => normalizeBaseUrl(baseUrl) === currentBaseUrl);
+  const currentIndex = candidateBaseUrls.findIndex((baseUrl) => normalizeBaseUrl(baseUrl) === currentBaseUrl);
   const lastIndex = Number(connection?.providerSpecificData?.tamMaoRoundRobinIndex);
 
   if (currentIndex < 0 && !Number.isInteger(lastIndex)) {
     return null;
   }
 
-  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % TAMMAO_ROUND_ROBIN_BASE_URLS.length : 0;
-  const fallbackIndex = Number.isInteger(lastIndex) ? (lastIndex + 1) % TAMMAO_ROUND_ROBIN_BASE_URLS.length : nextIndex;
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % candidateBaseUrls.length : 0;
+  const fallbackIndex = Number.isInteger(lastIndex) ? (lastIndex + 1) % candidateBaseUrls.length : nextIndex;
   return {
-    baseUrl: TAMMAO_ROUND_ROBIN_BASE_URLS[fallbackIndex],
+    baseUrl: candidateBaseUrls[fallbackIndex],
     index: fallbackIndex,
   };
 }

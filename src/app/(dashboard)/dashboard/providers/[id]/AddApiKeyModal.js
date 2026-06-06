@@ -4,7 +4,14 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 
-export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, proxyPools, defaultName, onSave, onClose }) {
+function parseBaseUrls(value) {
+  return String(value || "")
+    .split(/[\n,]+/)
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
+export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, isTamMaoCompatible, authType, authHint, proxyPools, defaultName, onSave, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
   const isCookie = authType === "cookie";
   const credentialLabel = isCookie ? "Cookie Value" : "API Key";
@@ -18,6 +25,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const [formData, setFormData] = useState({
     name: "",
     apiKey: "",
+    baseUrls: "",
     priority: 1,
     proxyPoolId: NONE_PROXY_POOL_VALUE,
   });
@@ -33,11 +41,16 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
 
   const handleValidate = async () => {
     setValidating(true);
+    const tamMaoBaseUrls = parseBaseUrls(formData.baseUrls);
     try {
       const res = await fetch("/api/providers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey: formData.apiKey }),
+        body: JSON.stringify({
+          provider,
+          apiKey: formData.apiKey,
+          ...(isTamMaoCompatible && tamMaoBaseUrls.length > 0 ? { providerSpecificData: { baseUrl: tamMaoBaseUrls[0], baseUrls: tamMaoBaseUrls } } : {}),
+        }),
       });
       const data = await res.json();
       setValidationResult(data.valid ? "success" : "failed");
@@ -50,6 +63,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
 
   const handleSubmit = async () => {
     if (!provider || !formData.apiKey) return;
+    const tamMaoBaseUrls = parseBaseUrls(formData.baseUrls);
 
     setSaving(true);
     try {
@@ -60,7 +74,11 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         const res = await fetch("/api/providers/validate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider, apiKey: formData.apiKey }),
+          body: JSON.stringify({
+            provider,
+            apiKey: formData.apiKey,
+            ...(isTamMaoCompatible && tamMaoBaseUrls.length > 0 ? { providerSpecificData: { baseUrl: tamMaoBaseUrls[0], baseUrls: tamMaoBaseUrls } } : {}),
+          }),
         });
         const data = await res.json();
         isValid = !!data.valid;
@@ -77,7 +95,9 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         priority: formData.priority,
         proxyPoolId: formData.proxyPoolId === NONE_PROXY_POOL_VALUE ? null : formData.proxyPoolId,
         testStatus: isValid ? "active" : "unknown",
-        providerSpecificData: undefined
+        providerSpecificData: isTamMaoCompatible && tamMaoBaseUrls.length > 0
+          ? { baseUrl: tamMaoBaseUrls[0], baseUrls: tamMaoBaseUrls }
+          : undefined
       });
     } finally {
       setSaving(false);
@@ -128,6 +148,21 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             }
             {defaultName ? " You can keep the suggested name or rename this key." : ""}
           </p>
+        )}
+        {isTamMaoCompatible && (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-text-primary">Base URLs</label>
+            <textarea
+              value={formData.baseUrls}
+              onChange={(e) => setFormData({ ...formData, baseUrls: e.target.value })}
+              placeholder={"https://api.cungcapai.io.vn/v1\nhttps://api.electroai.io.vn/v1"}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg bg-sidebar border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <p className="text-xs text-text-muted">
+              Enter one base URL per line, or separate URLs with commas. Empty keeps the node default base URL.
+            </p>
+          </div>
         )}
         {isAzure && (
           <div className="bg-sidebar/50 p-4 rounded-lg border border-accent/20">
@@ -208,6 +243,7 @@ AddApiKeyModal.propTypes = {
   providerName: PropTypes.string,
   isCompatible: PropTypes.bool,
   isAnthropic: PropTypes.bool,
+  isTamMaoCompatible: PropTypes.bool,
   authType: PropTypes.string,
   authHint: PropTypes.string,
   defaultName: PropTypes.string,
