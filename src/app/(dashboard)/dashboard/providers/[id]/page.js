@@ -924,13 +924,15 @@ export default function ProviderDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {tamMaoMachineIds.length > 0 ? (
                   tamMaoMachineIds.map((machineId) => (
-                    <code
+                    <button
                       key={machineId}
-                      className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted"
+                      type="button"
+                      onClick={() => copy(machineId, `tammao_machine_id_${machineId}`)}
+                      className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted hover:bg-black/10 dark:hover:bg-white/10"
                       title={machineId}
                     >
-                      {machineId}
-                    </code>
+                      {copied === `tammao_machine_id_${machineId}` ? "Copied" : machineId}
+                    </button>
                   ))
                 ) : (
                   <span className="text-xs text-text-muted">No machine id configured yet.</span>
