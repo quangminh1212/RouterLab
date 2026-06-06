@@ -153,6 +153,56 @@ describe("TamMao fallback", () => {
       providerSpecificData: expect.objectContaining({ tamMaoRoundRobinIndex: 1 }),
     });
   });
+
+  it("prefers electroai endpoint for TamMao gpt-5.4", async () => {
+    const { getProviderConnections } = await import("@/lib/localDb");
+    vi.mocked(getProviderConnections).mockResolvedValueOnce([
+      {
+        id: "conn-cungcapai",
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key-1",
+        isActive: true,
+        priority: 2,
+        providerSpecificData: { baseUrl: "https://api.cungcapai.io.vn/v1" },
+      },
+      {
+        id: "conn-electroai",
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key-2",
+        isActive: true,
+        priority: 3,
+        providerSpecificData: { baseUrl: "https://api.electroai.io.vn/v1" },
+      },
+    ]);
+
+    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.4");
+    expect(credentials.connectionId).toBe("conn-electroai");
+  });
+
+  it("prefers responses endpoint for TamMao gpt-5.5", async () => {
+    const { getProviderConnections } = await import("@/lib/localDb");
+    vi.mocked(getProviderConnections).mockResolvedValueOnce([
+      {
+        id: "conn-chat",
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key-1",
+        isActive: true,
+        priority: 1,
+        providerSpecificData: { baseUrl: "https://api.cungcapai.io.vn/v1" },
+      },
+      {
+        id: "conn-responses",
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key-2",
+        isActive: true,
+        priority: 5,
+        providerSpecificData: { baseUrl: "https://api.cungcapai.io.vn/v1/responses" },
+      },
+    ]);
+
+    const credentials = await getProviderCredentials("openai-compatible-tammao", null, "tammao/gpt-5.5");
+    expect(credentials.connectionId).toBe("conn-responses");
+  });
   it("models route returns fallback catalog when /models times out", async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new DOMException("timeout", "TimeoutError"))

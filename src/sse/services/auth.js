@@ -31,6 +31,35 @@ function normalizeBaseUrl(baseUrl = "") {
   return String(baseUrl || "").trim().replace(/\/+$/, "");
 }
 
+function getTamMaoEndpointScore(connection, model) {
+  const baseUrl = normalizeBaseUrl(connection?.providerSpecificData?.baseUrl).toLowerCase();
+  const modelValue = String(model || "").toLowerCase();
+  if (!isTamMaoModel(connection?.provider, modelValue)) return 0;
+
+  if (modelValue.includes("gpt-5.5")) {
+    if (baseUrl.endsWith("/responses")) return 100;
+    if (baseUrl.includes("dientuai") || baseUrl.includes("cungcapai")) return 80;
+    if (baseUrl.includes("electroai")) return 70;
+  }
+
+  if (modelValue.includes("gpt-5.4")) {
+    if (baseUrl.includes("electroai")) return 100;
+    if (baseUrl.includes("dientuai")) return 90;
+    if (baseUrl.includes("cungcapai") && !baseUrl.endsWith("/responses")) return 80;
+  }
+
+  return 0;
+}
+
+function pickPreferredTamMaoConnection(connections, model) {
+  if (!model || !Array.isArray(connections) || connections.length === 0) return null;
+  const ranked = connections
+    .map((connection) => ({ connection, score: getTamMaoEndpointScore(connection, model) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || (left.connection.priority || 999) - (right.connection.priority || 999));
+  return ranked[0]?.connection || null;
+}
+
 function resolveTamMaoBaseUrl(connection, providerSpecificData) {
   const candidateBaseUrls = normalizeBaseUrls(connection?.providerSpecificData?.baseUrls);
   const currentBaseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl);
@@ -180,6 +209,8 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     }
     if (connection) {
       // skip strategy
+    } else if (isTamMaoModel(providerId, model) && pickPreferredTamMaoConnection(availableConnections, model)) {
+      connection = pickPreferredTamMaoConnection(availableConnections, model);
     } else if (strategy === "round-robin") {
       const stickyLimit = providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
 
