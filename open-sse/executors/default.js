@@ -8,6 +8,10 @@ import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { getOpenAICompatibleType } from "../services/provider.js";
 import { getProviderMachineId } from "../../src/shared/utils/machineId.js";
 
+function isTamMaoBaseUrl(baseUrl = "") {
+  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
+}
+
 export class DefaultExecutor extends BaseExecutor {
   constructor(provider) {
     super(provider, PROVIDERS[provider] || PROVIDERS.openai);
@@ -133,7 +137,7 @@ export class DefaultExecutor extends BaseExecutor {
           Object.assign(headers, buildClineHeaders(credentials.apiKey || credentials.accessToken));
         } else {
           headers["Authorization"] = `Bearer ${credentials.apiKey || credentials.accessToken}`;
-          if ((credentials?.providerSpecificData?.baseUrl || "").includes("cungcapai")) {
+          if (isTamMaoBaseUrl(credentials?.providerSpecificData?.baseUrl)) {
             headers["x-machine-id"] = getProviderMachineId(credentials?.providerSpecificData);
           }
         }
@@ -141,7 +145,7 @@ export class DefaultExecutor extends BaseExecutor {
 
     // Add machine-id for CungCapAI (both direct and openai-compatible)
     const _cungcapaiBase = credentials?.providerSpecificData?.baseUrl || this.config?.baseUrl || "";
-    if (_cungcapaiBase.includes("cungcapai") || this.provider === "cungcapai") {
+    if (isTamMaoBaseUrl(_cungcapaiBase) || this.provider === "cungcapai" || this.provider === "electroai") {
       headers["x-machine-id"] = getProviderMachineId(credentials?.providerSpecificData);
     }
     // Strip first-party Claude Code identity headers for non-Anthropic anthropic-compatible upstreams

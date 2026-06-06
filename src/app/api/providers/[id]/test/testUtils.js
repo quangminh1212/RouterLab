@@ -339,7 +339,7 @@ async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null
 }
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return /cungcapai|electroai/i.test(String(baseUrl || ""));
+  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
 }
 
 function resolveConnectionBaseUrl(connection) {

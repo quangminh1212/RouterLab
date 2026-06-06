@@ -125,3 +125,4 @@ tammao-models-output.txt
 
 
 .tmp_deploy*.py
+tmp/

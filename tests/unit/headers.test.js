@@ -228,6 +228,36 @@ describe("DefaultExecutor.buildHeaders() — claude provider cold start (no cach
   });
 });
 
+describe("DefaultExecutor.buildHeaders() — TamMao machine id forwarding", () => {
+  it("adds x-machine-id for electroai-compatible base URLs", async () => {
+    vi.resetModules();
+    const mod = await import("open-sse/executors/default.js");
+    const DefaultExecutor = mod.DefaultExecutor || mod.default;
+    const executor = new DefaultExecutor("openai-compatible-tammao");
+
+    const headers = executor.buildHeaders({
+      apiKey: "sk-test",
+      providerSpecificData: { baseUrl: "https://api.electroai.io.vn/v1" },
+    }, false);
+
+    expect(headers["x-machine-id"]).toBeTruthy();
+  });
+
+  it("adds x-machine-id for dientuai-compatible base URLs", async () => {
+    vi.resetModules();
+    const mod = await import("open-sse/executors/default.js");
+    const DefaultExecutor = mod.DefaultExecutor || mod.default;
+    const executor = new DefaultExecutor("openai-compatible-tammao");
+
+    const headers = executor.buildHeaders({
+      apiKey: "sk-test",
+      providerSpecificData: { baseUrl: "https://api.dientuai.io.vn/v1" },
+    }, false);
+
+    expect(headers["x-machine-id"]).toBeTruthy();
+  });
+});
+
 // ─── anthropic-compatible header stripping ────────────────────────────────────
 
 describe("DefaultExecutor.buildHeaders() — anthropic-compatible stripping", () => {

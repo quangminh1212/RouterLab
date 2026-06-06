@@ -327,7 +327,7 @@ const PROVIDER_MODELS_CONFIG = {
 };
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return /cungcapai|electroai/i.test(String(baseUrl || ""));
+  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
 }
 
 async function buildTamMaoFallbackModels(connection, baseUrl) {

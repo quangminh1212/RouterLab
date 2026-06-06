@@ -123,7 +123,7 @@ async function probeMediaProvider(provider, apiKey) {
 }
 
 function isTamMaoBaseUrl(baseUrl = "") {
-  return /cungcapai|electroai/i.test(String(baseUrl || ""));
+  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
 }
 
 async function probeTamMaoOpenAICompatible(node, apiKey) {
@@ -183,7 +183,7 @@ export async function POST(request) {
         const baseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl || node.baseUrl);
         const modelsUrl = `${baseUrl}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
-        if ((baseUrl || "").includes("cungcapai") || (baseUrl || "").includes("electroai")) {
+        if (isTamMaoBaseUrl(baseUrl)) {
           headers["x-machine-id"] = getProviderMachineId(node.providerSpecificData);
         }
         let res;

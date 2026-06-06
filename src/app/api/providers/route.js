@@ -8,6 +8,7 @@ import {
 } from "@/models";
 import { APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
+import { getProviderMachineId } from "@/shared/utils/machineId";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,14 @@ async function normalizeProxyPoolId(proxyPoolId) {
 function isTamMaoCompatibleNode(node = {}) {
   const baseUrl = String(node.baseUrl || "").toLowerCase();
   const name = String(node.name || "").toLowerCase();
-  return baseUrl.includes("cungcapai") || baseUrl.includes("electroai") || name.includes("tammao");
+  return baseUrl.includes("cungcapai") || baseUrl.includes("electroai") || baseUrl.includes("dientuai") || name.includes("tammao");
+}
+
+function isTamMaoProviderConnection(connection = {}) {
+  const provider = String(connection.provider || "").toLowerCase();
+  const name = String(connection.name || "").toLowerCase();
+  const baseUrl = String(connection.providerSpecificData?.baseUrl || "").toLowerCase();
+  return provider.includes("tammao") || name.includes("tammao") || /cungcapai|electroai|dientuai/.test(baseUrl);
 }
 
 function normalizeProviderSpecificData(provider, providerSpecificData) {
@@ -113,9 +121,14 @@ export async function GET() {
         const name = isCompatible
           ? (nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
           : c.name;
+        const providerSpecificData = c.providerSpecificData || {};
+        const safeProviderSpecificData = isTamMaoProviderConnection(c)
+          ? { ...providerSpecificData, machineId: getProviderMachineId(providerSpecificData) }
+          : providerSpecificData;
         return {
           ...c,
           name,
+          providerSpecificData: safeProviderSpecificData,
           apiKey: undefined,
           accessToken: undefined,
           refreshToken: undefined,
