@@ -43,6 +43,10 @@ function isTamMaoPassthroughModel(modelId) {
   return value === "tammao" || value.startsWith("tammao/");
 }
 
+const HIDDEN_TAMMAO_PASSTHROUGH_MODELS = new Set([
+  "tammao/gpt-5.3-codex-xhigh",
+]);
+
 function toPassthroughInfoModel(combo, modelId) {
   return {
     id: modelId,
@@ -103,7 +107,7 @@ export async function GET() {
         const upstreamModels = Array.isArray(combo.models) ? combo.models : [];
         return upstreamModels
           .map((modelId) => String(modelId || "").trim())
-          .filter((modelId) => isTamMaoPassthroughModel(modelId) && !seenIds.has(modelId))
+          .filter((modelId) => isTamMaoPassthroughModel(modelId) && !seenIds.has(modelId) && !HIDDEN_TAMMAO_PASSTHROUGH_MODELS.has(modelId.toLowerCase()))
           .map((modelId) => {
             seenIds.add(modelId);
             return toPassthroughInfoModel(combo, modelId);
