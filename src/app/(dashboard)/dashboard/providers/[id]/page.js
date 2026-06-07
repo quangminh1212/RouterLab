@@ -963,7 +963,7 @@ export default function ProviderDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-text-muted">memory</span>
-                  <p className="text-sm font-medium">Machien ID</p>
+                  <p className="text-sm font-medium">Machine ID</p>
                 </div>
                 <Button size="sm" variant="secondary" icon="settings" onClick={() => setShowEditNodeModal(true)}>
                   Config
