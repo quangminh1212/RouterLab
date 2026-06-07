@@ -230,6 +230,20 @@ export default function ProvidersPage() {
     }
   };
 
+
+  const sortProvidersByConfigured = (items, resolveId, resolveAuthType) => {
+    return [...items].sort((left, right) => {
+      const leftStats = getProviderStats(resolveId(left), resolveAuthType(left));
+      const rightStats = getProviderStats(resolveId(right), resolveAuthType(right));
+      const leftConfigured = leftStats.total > 0 ? 1 : 0;
+      const rightConfigured = rightStats.total > 0 ? 1 : 0;
+      if (leftConfigured !== rightConfigured) return rightConfigured - leftConfigured;
+      const leftName = String(left?.provider?.name || left?.name || left?.[1]?.name || "").toLowerCase();
+      const rightName = String(right?.provider?.name || right?.name || right?.[1]?.name || "").toLowerCase();
+      return leftName.localeCompare(rightName);
+    });
+  };
+
   const isTamMaoNode = (node) => {
     const haystack = [
       node?.id,
@@ -291,21 +305,27 @@ export default function ProvidersPage() {
     }))
     .filter((p) => matchSearch(p.name));
 
-  const oauthEntries = Object.entries(OAUTH_PROVIDERS).filter(([, info]) =>
-    matchSearch(info.name),
+  const oauthEntries = sortProvidersByConfigured(
+    Object.entries(OAUTH_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    ([key]) => key,
+    () => "oauth",
   );
-  const freeEntries = Object.entries(FREE_PROVIDERS).filter(([, info]) =>
-    matchSearch(info.name),
+  const freeEntries = sortProvidersByConfigured(
+    Object.entries(FREE_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    ([key]) => key,
+    () => "free",
   );
-  const freeTierEntries = Object.entries(FREE_TIER_PROVIDERS).filter(
-    ([, info]) => matchSearch(info.name),
+  const freeTierEntries = sortProvidersByConfigured(
+    Object.entries(FREE_TIER_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    ([key]) => key,
+    () => "free",
   );
   const apikeyEntries = Object.entries(APIKEY_PROVIDERS).filter(
     ([, info]) =>
       (info.serviceKinds ?? ["llm"]).includes("llm") && matchSearch(info.name),
   );
 
-  const mergedApiKeyLikeProviders = [
+  const mergedApiKeyLikeProviders = sortProvidersByConfigured([
     ...apikeyEntries
       .filter(([key]) => key !== "cungcapai")
       .map(([key, info]) => ({
@@ -318,7 +338,7 @@ export default function ProvidersPage() {
       key: info.id,
       provider: info,
     })),
-  ];
+  ], (entry) => entry.key, (entry) => entry.kind === "compatible" ? "apikey" : "apikey");
 
   if (loading) {
     return (
@@ -329,10 +349,14 @@ export default function ProvidersPage() {
     );
   }
 
-  const displayedCompatibleProviders = [
-    ...compatibleProvidersWithoutTamMao,
-    ...anthropicCompatibleProviders,
-  ].filter((info) => !isTamMaoNode(info));
+  const displayedCompatibleProviders = sortProvidersByConfigured(
+    [
+      ...compatibleProvidersWithoutTamMao,
+      ...anthropicCompatibleProviders,
+    ].filter((info) => !isTamMaoNode(info)),
+    (info) => info.id,
+    () => "apikey",
+  );
 
   const hasAnyResult =
     oauthEntries.length > 0 ||
