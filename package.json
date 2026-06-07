@@ -31,6 +31,7 @@
         "ddns:cloudflare": "node scripts/cloudflare-ddns.js",
         "usage:compact": "node scripts/compact-usage-store.mjs",
         "usage:compact:apply": "node scripts/compact-usage-store.mjs --apply",
+        "usage:sync:9router": "node scripts/sync-9router-usage.mjs",
         "dev:bun": "bun --bun next dev --webpack --port 1212",
         "dev:bun:turbo": "bun --bun next dev --turbo --port 1212",
         "build:bun": "bun --bun next build --webpack",
