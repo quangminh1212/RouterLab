@@ -231,7 +231,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             </div>
           )}
           <button onClick={onTest} disabled={isTesting} className={`flex flex-col items-center px-2 py-1 rounded transition-colors ${isTesting ? "text-primary cursor-wait" : "hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"}`}>
-            <span className="material-symbols-outlined text-[18px]">{isTesting ? "progress_activity" : "science"}</span>
+            <span className={`material-symbols-outlined text-[18px] ${isTesting ? "animate-spin" : ""}`}>{isTesting ? "progress_activity" : "science"}</span>
             <span className="text-[10px] leading-tight">{isTesting ? "Testing..." : "Test"}</span>
           </button>
           <button onClick={onEdit} className="flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary">
