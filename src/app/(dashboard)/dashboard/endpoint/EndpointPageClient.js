@@ -253,7 +253,7 @@ export default function APIPageClient() {
       } else if (providers.cloudflare?.serviceInstalled) {
         setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
       } else {
-        setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
+        setTunnelStatus({ type: "success", message: "Cloudflare tunnel is active for this session" });
       }
     }
     
@@ -943,7 +943,7 @@ export default function APIPageClient() {
         } else if (data.serviceInstalled) {
           setTunnelStatus({ type: "success", message: "Cloudflare service installed - tunnel will persist after reboot" });
         } else {
-          setTunnelStatus({ type: "warning", message: "Need Administrator to persist after reboot" });
+          setTunnelStatus({ type: "success", message: "Cloudflare tunnel is active for this session" });
         }
       }
       
@@ -1904,7 +1904,7 @@ export default function APIPageClient() {
         {/* Security warnings when tunnel or tailscale is active */}
         {(cloudflareEnabled || ngrokEnabled || tsEnabled) && (
           <div className="mt-4 flex flex-col gap-2">
-            {cloudflareEnabled && tunnelServiceInstalled && tunnelStatus?.type === "success" && (
+            {cloudflareEnabled && tunnelStatus?.type === "success" && (
               <div className="flex items-center gap-2 px-3 py-2 rounded border border-green-300 dark:border-green-800 bg-green-500/5 text-sm text-green-600 dark:text-green-400">
                 <span className="material-symbols-outlined text-sm">check_circle</span>
                 {tunnelStatus.message}
