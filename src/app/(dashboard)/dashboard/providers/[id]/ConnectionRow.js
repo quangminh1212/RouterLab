@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { Badge, Toggle } from "@/shared/components";
 import CooldownTimer from "./CooldownTimer";
 
-export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMoveUp, onMoveDown, onToggleActive, onUpdateProxy, onEdit, onDelete }) {
+export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMoveUp, onMoveDown, onToggleActive, onUpdateProxy, onEdit, onDelete, onTest, isTesting = false, testSummary = null }) {
   const [showProxyDropdown, setShowProxyDropdown] = useState(false);
   const [updatingProxy, setUpdatingProxy] = useState(false);
   const proxyDropdownRef = useRef(null);
@@ -165,6 +165,12 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
               </span>
             )}
             <span className="text-xs text-text-muted">#{connection.priority}</span>
+            {testSummary?.total > 0 && (
+              <span className={`text-xs ${testSummary.failed > 0 ? "text-amber-500" : "text-emerald-500"}`} title={testSummary.message || ""}>
+                Test {testSummary.passed}/{testSummary.total}
+                {Number.isFinite(testSummary.avgLatencyMs) ? ` ? ~${testSummary.avgLatencyMs}ms` : ""}
+              </span>
+            )}
             {connection.globalPriority && (
               <span className="text-xs text-text-muted">Auto: {connection.globalPriority}</span>
             )}
@@ -224,6 +230,10 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
               )}
             </div>
           )}
+          <button onClick={onTest} disabled={isTesting} className={`flex flex-col items-center px-2 py-1 rounded transition-colors ${isTesting ? "text-primary cursor-wait" : "hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"}`}>
+            <span className="material-symbols-outlined text-[18px]">{isTesting ? "progress_activity" : "science"}</span>
+            <span className="text-[10px] leading-tight">{isTesting ? "Testing..." : "Test"}</span>
+          </button>
           <button onClick={onEdit} className="flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary">
             <span className="material-symbols-outlined text-[18px]">edit</span>
             <span className="text-[10px] leading-tight">Edit</span>

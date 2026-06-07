@@ -1,4 +1,4 @@
-import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
+import { getProviderConnectionById, getProviderNodeById, updateProviderConnection } from "@/lib/localDb";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
@@ -318,10 +318,11 @@ async function testOAuthConnection(connection, effectiveProxy = null) {
 }
 
 async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null) {
+  const fetchOptions = options?._fetchTimeout ? options : { ...options, _fetchTimeout: options.timeoutMs };
   // Vercel relay: forward via relay URL
   if (effectiveProxy?.vercelRelayUrl) {
     const { proxyAwareFetch } = await import("open-sse/utils/proxyFetch.js");
-    return proxyAwareFetch(url, options, {
+    return proxyAwareFetch(url, fetchOptions, {
       vercelRelayUrl: effectiveProxy.vercelRelayUrl,
     });
   }
@@ -331,7 +332,7 @@ async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null
   }
 
   const { proxyAwareFetch } = await import("open-sse/utils/proxyFetch.js");
-  return proxyAwareFetch(url, options, {
+  return proxyAwareFetch(url, fetchOptions, {
     connectionProxyEnabled: true,
     connectionProxyUrl: effectiveProxy.connectionProxyUrl,
     connectionNoProxy: effectiveProxy.connectionNoProxy || "",
@@ -348,6 +349,127 @@ function resolveConnectionBaseUrl(connection) {
   }
 
   return String(connection?.providerSpecificData?.baseUrl || "").replace(/\/$/, "");
+}
+
+
+function normalizeTestModels(models) {
+  const seen = new Set();
+  return (Array.isArray(models) ? models : [])
+    .map((model) => {
+      const id = typeof model === "string" ? model : (model?.id || model?.model || model?.name);
+      return String(id || "").trim();
+    })
+    .filter((id) => {
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+}
+
+function extractChatContent(payload) {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map((part) => part?.text || part?.content || "").join("");
+  if (typeof payload?.output_text === "string") return payload.output_text;
+  if (Array.isArray(payload?.output)) {
+    return payload.output.flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+      .map((part) => part?.text || "")
+      .join("");
+  }
+  return "";
+}
+
+async function fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs) {
+  const node = await getProviderNodeById(connection.provider).catch(() => null);
+  const baseUrl = resolveConnectionBaseUrl(connection);
+  if (!baseUrl) return [];
+  const headers = { Authorization: `Bearer ${connection.apiKey}` };
+  if (isTamMaoBaseUrl(baseUrl)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+  const res = await fetchWithConnectionProxy(`${baseUrl}/models`, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(timeoutMs),
+    timeoutMs,
+    _fetchTimeout: timeoutMs,
+  }, effectiveProxy);
+  if (!res.ok) {
+    if (String(node?.prefix || "").toLowerCase() === "tammao" || isTamMaoBaseUrl(baseUrl)) {
+      return ["gpt-5.4", "gpt-5.5"];
+    }
+    throw new Error(`Fetch models failed: HTTP ${res.status}`);
+  }
+  const data = await res.json().catch(() => null);
+  const models = normalizeTestModels(data?.data || data?.models || data?.results || []);
+  if (models.length === 0 && (String(node?.prefix || "").toLowerCase() === "tammao" || isTamMaoBaseUrl(baseUrl))) {
+    return ["gpt-5.4", "gpt-5.5"];
+  }
+  return models;
+}
+
+async function testOpenAICompatibleModel(connection, model, effectiveProxy, timeoutMs) {
+  const start = Date.now();
+  const baseUrl = resolveConnectionBaseUrl(connection);
+  const node = await getProviderNodeById(connection.provider).catch(() => null);
+  const apiType = String(connection.providerSpecificData?.apiType || node?.apiType || "chat").toLowerCase();
+  const useResponses = apiType === "responses" || baseUrl.endsWith("/responses");
+  const requestBaseUrl = useResponses && baseUrl.endsWith("/responses") ? baseUrl.slice(0, -10) : baseUrl;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${connection.apiKey}`,
+  };
+  if (isTamMaoBaseUrl(baseUrl)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+
+  const body = useResponses
+    ? { model, input: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_output_tokens: 16, stream: false }
+    : { model, messages: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_tokens: 16, stream: false };
+  const endpoint = useResponses ? `${requestBaseUrl}/responses` : `${requestBaseUrl}/chat/completions`;
+
+  try {
+    const res = await fetchWithConnectionProxy(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+      timeoutMs,
+      _fetchTimeout: timeoutMs,
+    }, effectiveProxy);
+    const latencyMs = Date.now() - start;
+    const rawText = await res.text().catch(() => "");
+    let parsed = null;
+    try { parsed = rawText ? JSON.parse(rawText) : null; } catch {}
+    const content = extractChatContent(parsed);
+    const detail = parsed?.error?.message || parsed?.message || parsed?.error || rawText;
+    const ok = res.ok && !!String(content || "").trim();
+    return {
+      model,
+      ok,
+      status: res.status,
+      latencyMs,
+      content: String(content || "").slice(0, 120),
+      error: ok ? null : (detail ? String(detail).slice(0, 240) : "Provider returned empty content"),
+    };
+  } catch (err) {
+    return { model, ok: false, status: 0, latencyMs: Date.now() - start, content: "", error: err.message };
+  }
+}
+
+async function testAllConnectionModels(connection, effectiveProxy, timeoutMs = 120000) {
+  if (!isOpenAICompatibleProvider(connection.provider)) {
+    return { valid: false, error: "All-model test is only supported for OpenAI-compatible connections", models: [] };
+  }
+  const models = normalizeTestModels(connection.providerSpecificData?.testModels?.length ? connection.providerSpecificData.testModels : await fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs));
+  if (models.length === 0) return { valid: false, error: "No models found for this connection", models: [] };
+  const results = [];
+  for (const model of models) {
+    results.push(await testOpenAICompatibleModel(connection, model, effectiveProxy, timeoutMs));
+  }
+  const passed = results.filter((item) => item.ok).length;
+  return {
+    valid: passed === results.length,
+    error: passed === results.length ? null : `${results.length - passed}/${results.length} models failed`,
+    models: results,
+    summary: { total: results.length, passed, failed: results.length - passed },
+  };
 }
 
 async function testTamMaoFallbackInference(connection, effectiveProxy = null) {
@@ -655,7 +777,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
 /**
  * Test a single connection by ID, update DB, and return result.
  */
-export async function testSingleConnection(id) {
+export async function testSingleConnection(id, options = {}) {
   const connection = await getProviderConnectionById(id);
   if (!connection) return { valid: false, error: "Connection not found", latencyMs: 0, testedAt: new Date().toISOString() };
 
@@ -677,7 +799,9 @@ export async function testSingleConnection(id) {
   const start = Date.now();
   let result;
 
-  if (connection.authType === "apikey" || connection.authType === "cookie") {
+  if (options.allModels) {
+    result = await testAllConnectionModels(connection, effectiveProxy, Number(options.timeoutMs) || 120000);
+  } else if (connection.authType === "apikey" || connection.authType === "cookie") {
     result = await testApiKeyConnection(connection, effectiveProxy);
   } else {
     result = await testOAuthConnection(connection, effectiveProxy);
@@ -701,6 +825,6 @@ export async function testSingleConnection(id) {
 
   await updateProviderConnection(id, updateData);
 
-  return { valid: result.valid, error: result.error, latencyMs, testedAt: new Date().toISOString() };
+  return { valid: result.valid, error: result.error, latencyMs, testedAt: new Date().toISOString(), models: result.models || null, summary: result.summary || null };
 }
 

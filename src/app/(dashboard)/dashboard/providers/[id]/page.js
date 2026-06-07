@@ -32,6 +32,8 @@ export default function ProviderDetailPage() {
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showBulkProxyModal, setShowBulkProxyModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
+  const [testingConnectionId, setTestingConnectionId] = useState(null);
+  const [connectionTestResults, setConnectionTestResults] = useState({});
   const [modelAliases, setModelAliases] = useState({});
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -561,6 +563,9 @@ export default function ProviderDetailPage() {
                   setShowEditModal(true);
                 }}
                 onDelete={() => handleDelete(conn.id)}
+                onTest={() => handleTestConnection(conn.id)}
+                isTesting={testingConnectionId === conn.id}
+                testSummary={connectionTestResults[conn.id] || null}
               />
             </div>
           </div>
@@ -608,6 +613,49 @@ export default function ProviderDetailPage() {
       </div>
     </Modal>
   );
+
+
+  const handleTestConnection = async (connectionId) => {
+    if (!connectionId || testingConnectionId) return;
+    setTestingConnectionId(connectionId);
+    setConnectionTestResults((prev) => ({
+      ...prev,
+      [connectionId]: { ...(prev[connectionId] || {}), message: "Testing all models...", total: 0, passed: 0, failed: 0 },
+    }));
+    try {
+      const res = await fetch(`/api/providers/${connectionId}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allModels: true, timeoutMs: 120000 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const models = Array.isArray(data.models) ? data.models : [];
+      const passedModels = models.filter((item) => item?.ok);
+      const avgLatencyMs = passedModels.length > 0
+        ? Math.round(passedModels.reduce((sum, item) => sum + (Number(item?.latencyMs) || 0), 0) / passedModels.length)
+        : null;
+      setConnectionTestResults((prev) => ({
+        ...prev,
+        [connectionId]: {
+          total: Number(data?.summary?.total) || models.length,
+          passed: Number(data?.summary?.passed) || passedModels.length,
+          failed: Number(data?.summary?.failed) || Math.max(models.length - passedModels.length, 0),
+          avgLatencyMs,
+          message: data?.error || null,
+          models,
+          testedAt: data?.testedAt || new Date().toISOString(),
+        },
+      }));
+      await fetchConnections();
+    } catch (error) {
+      setConnectionTestResults((prev) => ({
+        ...prev,
+        [connectionId]: { total: 0, passed: 0, failed: 0, avgLatencyMs: null, message: error?.message || "Test failed", models: [] },
+      }));
+    } finally {
+      setTestingConnectionId(null);
+    }
+  };
 
   const handleTestModel = async (modelId) => {
     if (testingModelId) return;
