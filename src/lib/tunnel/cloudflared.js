@@ -293,13 +293,9 @@ export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.
     }
   }
 
-  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "cloudflared-named-"));
-  const configPath = path.join(configDir, "config.yml");
-  fs.writeFileSync(configPath, "# named-tunnel config placeholder\n", "utf8");
-
   const args = [
     "tunnel",
-    "--config", configPath,
+    "--no-autoupdate",
     "--url", originUrl,
     "--edge-ip-version", EDGE_IP_VERSION,
     "run",
@@ -352,11 +348,6 @@ export async function spawnCloudflared(tunnelToken, originUrl = "http://127.0.0.
     });
 
     child.on("exit", (code) => {
-      try {
-        fs.rmSync(configDir, { recursive: true, force: true });
-      } catch {
-        // ignore cleanup errors
-      }
       cloudflaredProcess = null;
       clearPid();
       const wasConnected = resolved; // true = already connected successfully
