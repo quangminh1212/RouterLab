@@ -2,6 +2,23 @@ import { NextResponse } from "next/server";
 import { getApiKeys, getProviderNodes } from "@/lib/localDb";
 import { getModelInfo } from "@/sse/services/model";
 
+function extractCompletionText(payload) {
+  const choiceContent = payload?.choices?.[0]?.message?.content;
+  if (typeof choiceContent === "string") return choiceContent;
+  if (Array.isArray(choiceContent)) {
+    return choiceContent.map((part) => part?.text || part?.content || "").join("");
+  }
+
+  if (typeof payload?.output_text === "string") return payload.output_text;
+  if (Array.isArray(payload?.output)) {
+    return payload.output
+      .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+      .map((part) => part?.text || "")
+      .join("");
+  }
+
+  return "";
+}
 // POST /api/models/test - Ping a single model via internal completions or embeddings
 export async function POST(request) {
   try {
@@ -88,6 +105,7 @@ export async function POST(request) {
         return NextResponse.json({ ok: false, latencyMs, status: res.status, error: "Provider returned no embedding data" });
       }
       return NextResponse.json({ ok: true, latencyMs, error: null, status: res.status });
+
     }
 
     const res = await fetch(`${baseUrl}${targetEndpoint}`, {
@@ -146,6 +164,14 @@ export async function POST(request) {
       });
     }
 
+    if (!String(extractCompletionText(parsed) || "").trim()) {
+      return NextResponse.json({
+        ok: false,
+        latencyMs,
+        status: res.status,
+        error: "Provider returned empty completion content for this model",
+      });
+    }
     return NextResponse.json({ ok: true, latencyMs, error: null, status: res.status });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });

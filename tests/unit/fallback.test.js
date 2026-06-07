@@ -243,5 +243,28 @@ describe("TamMao fallback", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][0]).toContain("/responses");
   });
+  it("adds TamMao machine id while validating an IP base URL", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    global.fetch = fetchMock;
+
+    const { POST } = await import("@/app/api/providers/validate/route");
+    const request = new Request("http://localhost/api/providers/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "openai-compatible-tammao",
+        apiKey: "tm-key",
+        providerSpecificData: { baseUrl: "http://36.50.26.247:20128/v1", machineId: "tm-machine-id" },
+      }),
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.valid).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://36.50.26.247:20128/v1/models");
+    expect(fetchMock.mock.calls[0][1].headers["x-machine-id"]).toBe("tm-machine-id");
+  });
 });
 

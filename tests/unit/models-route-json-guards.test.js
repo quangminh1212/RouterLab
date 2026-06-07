@@ -80,4 +80,31 @@ describe("models route json guards", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "Invalid JSON body" });
   });
+  it("POST /api/models/test fails when provider returns empty completion content in a 200 response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      id: "resp_empty",
+      object: "response",
+      status: "completed",
+      output: [{
+        type: "message",
+        role: "assistant",
+        content: [{ type: "output_text", text: "" }],
+      }],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
+    vi.doMock("@/lib/localDb", () => ({ getApiKeys: vi.fn(async () => []), getProviderNodes: vi.fn(async () => []) }));
+    vi.doMock("@/sse/services/model", () => ({ getModelInfo: vi.fn(async () => null) }));
+    const { POST } = await import("@/app/api/models/test/route");
+    const response = await POST(new Request("http://localhost/api/models/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5.5" }),
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: "Provider returned empty completion content for this model",
+      status: 200,
+    });
+  });
 });

@@ -326,8 +326,15 @@ const PROVIDER_MODELS_CONFIG = {
   }
 };
 
-function isTamMaoBaseUrl(baseUrl = "") {
-  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
+function isTamMaoConnection(connection = {}) {
+  const baseUrl = String(connection?.providerSpecificData?.baseUrl || "");
+  const provider = String(connection?.provider || "").toLowerCase();
+  const prefix = String(connection?.providerSpecificData?.prefix || "").toLowerCase();
+  const nodeName = String(connection?.providerSpecificData?.nodeName || "").toLowerCase();
+  return provider.includes("tammao")
+    || prefix === "tammao"
+    || nodeName.includes("tammao")
+    || /cungcapai|electroai|dientuai/i.test(baseUrl);
 }
 
 async function buildTamMaoFallbackModels(connection, baseUrl) {
@@ -379,7 +386,7 @@ export async function GET(request, { params }) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${connection.apiKey}`,
       };
-      if (isTamMaoBaseUrl(baseUrl)) {
+      if (isTamMaoConnection(connection)) {
         headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
       }
       let response;
@@ -390,7 +397,7 @@ export async function GET(request, { params }) {
           signal: AbortSignal.timeout(8000),
         });
       } catch (error) {
-        if (!isTamMaoBaseUrl(baseUrl)) throw error;
+        if (!isTamMaoConnection(connection)) throw error;
         const fallback = await buildTamMaoFallbackModels(connection, baseUrl.replace(/\/$/, ""));
         return NextResponse.json({
           provider: connection.provider,
@@ -403,7 +410,7 @@ export async function GET(request, { params }) {
       if (!response.ok) {
         const errorText = await response.text();
         console.log(`Error fetching models from ${connection.provider}:`, errorText);
-        if (isTamMaoBaseUrl(baseUrl) && (response.status === 408 || response.status === 429 || response.status >= 500)) {
+        if (isTamMaoConnection(connection) && (response.status === 408 || response.status === 429 || response.status >= 500)) {
           const fallback = await buildTamMaoFallbackModels(connection, baseUrl.replace(/\/$/, ""));
           return NextResponse.json({
             provider: connection.provider,

@@ -339,8 +339,15 @@ async function fetchWithConnectionProxy(url, options = {}, effectiveProxy = null
   });
 }
 
-function isTamMaoBaseUrl(baseUrl = "") {
-  return /cungcapai|electroai|dientuai/i.test(String(baseUrl || ""));
+function isTamMaoConnection(connection = {}, node = null) {
+  const baseUrl = String(connection?.providerSpecificData?.baseUrl || "");
+  const provider = String(connection?.provider || "").toLowerCase();
+  const prefix = String(connection?.providerSpecificData?.prefix || node?.prefix || "").toLowerCase();
+  const nodeName = String(connection?.providerSpecificData?.nodeName || node?.nodeName || node?.name || "").toLowerCase();
+  return provider.includes("tammao")
+    || prefix === "tammao"
+    || nodeName.includes("tammao")
+    || /cungcapai|electroai|dientuai/i.test(baseUrl);
 }
 
 function resolveConnectionBaseUrl(connection) {
@@ -384,7 +391,7 @@ async function fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs
   const baseUrl = resolveConnectionBaseUrl(connection);
   if (!baseUrl) return [];
   const headers = { Authorization: `Bearer ${connection.apiKey}` };
-  if (isTamMaoBaseUrl(baseUrl)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+  if (isTamMaoConnection(connection, node)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
   const res = await fetchWithConnectionProxy(`${baseUrl}/models`, {
     method: "GET",
     headers,
@@ -393,14 +400,14 @@ async function fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs
     _fetchTimeout: timeoutMs,
   }, effectiveProxy);
   if (!res.ok) {
-    if (String(node?.prefix || "").toLowerCase() === "tammao" || isTamMaoBaseUrl(baseUrl)) {
+    if (isTamMaoConnection(connection, node)) {
       return ["gpt-5.4", "gpt-5.5"];
     }
     throw new Error(`Fetch models failed: HTTP ${res.status}`);
   }
   const data = await res.json().catch(() => null);
   const models = normalizeTestModels(data?.data || data?.models || data?.results || []);
-  if (models.length === 0 && (String(node?.prefix || "").toLowerCase() === "tammao" || isTamMaoBaseUrl(baseUrl))) {
+  if (models.length === 0 && isTamMaoConnection(connection, node)) {
     return ["gpt-5.4", "gpt-5.5"];
   }
   return models;
@@ -417,7 +424,7 @@ async function testOpenAICompatibleModel(connection, model, effectiveProxy, time
     "Content-Type": "application/json",
     Authorization: `Bearer ${connection.apiKey}`,
   };
-  if (isTamMaoBaseUrl(baseUrl)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+  if (isTamMaoConnection(connection, node)) headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
 
   const body = useResponses
     ? { model, input: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_output_tokens: 16, stream: false }
@@ -498,13 +505,13 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
     if (!modelsBase) return { valid: false, error: "Missing base URL" };
     try {
       const _testHeaders = { "Authorization": `Bearer ${connection.apiKey}` };
-      if (isTamMaoBaseUrl(modelsBase)) _testHeaders["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
+      if (isTamMaoConnection(connection)) _testHeaders["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
       const res = await fetchWithConnectionProxy(`${modelsBase.replace(/\/$/, "")}/models`, {
         headers: _testHeaders,
       }, effectiveProxy);
       return { valid: res.ok, error: res.ok ? null : "Invalid API key or base URL" };
     } catch (err) {
-      if (isTamMaoBaseUrl(modelsBase)) {
+      if (isTamMaoConnection(connection)) {
         return testTamMaoFallbackInference(connection, effectiveProxy);
       }
       return { valid: false, error: err.message };
