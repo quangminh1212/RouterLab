@@ -358,12 +358,41 @@ export default function ProvidersPage() {
     () => "apikey",
   );
 
+
+  const isConfiguredProvider = (providerId, authType) => getProviderStats(providerId, authType).total > 0;
+
+  const configuredProviders = sortProvidersByConfigured([
+    ...oauthEntries
+      .filter(([key]) => isConfiguredProvider(key, "oauth"))
+      .map(([key, info]) => ({ kind: "oauth", key, provider: info, authType: "oauth", cardType: "provider" })),
+    ...freeEntries
+      .filter(([key]) => isConfiguredProvider(key, "oauth"))
+      .map(([key, info]) => ({ kind: "free", key, provider: info, authType: "free", cardType: "provider" })),
+    ...freeTierEntries
+      .filter(([key]) => isConfiguredProvider(key, "apikey"))
+      .map(([key, info]) => ({ kind: "free-tier", key, provider: info, authType: "apikey", cardType: "apikey" })),
+    ...mergedApiKeyLikeProviders
+      .filter((entry) => isConfiguredProvider(entry.key, "apikey"))
+      .map((entry) => ({ ...entry, authType: "apikey", cardType: "apikey" })),
+    ...displayedCompatibleProviders
+      .filter((info) => isConfiguredProvider(info.id, "apikey"))
+      .map((info) => ({ kind: "compatible-only", key: info.id, provider: info, authType: "compatible", cardType: "apikey" })),
+  ], (entry) => entry.key, (entry) => entry.authType === "free" ? "oauth" : (entry.authType === "oauth" ? "oauth" : "apikey"));
+
+  const configuredProviderIds = new Set(configuredProviders.map((entry) => `${entry.cardType}:${entry.key}`));
+  const unconfiguredOAuthEntries = oauthEntries.filter(([key]) => !configuredProviderIds.has(`provider:${key}`));
+  const unconfiguredFreeEntries = freeEntries.filter(([key]) => !configuredProviderIds.has(`provider:${key}`));
+  const unconfiguredFreeTierEntries = freeTierEntries.filter(([key]) => !configuredProviderIds.has(`apikey:${key}`));
+  const unconfiguredApiKeyLikeProviders = mergedApiKeyLikeProviders.filter((entry) => !configuredProviderIds.has(`apikey:${entry.key}`));
+  const unconfiguredCompatibleProviders = displayedCompatibleProviders.filter((info) => !configuredProviderIds.has(`apikey:${info.id}`));
+
   const hasAnyResult =
-    oauthEntries.length > 0 ||
-    freeEntries.length > 0 ||
-    freeTierEntries.length > 0 ||
-    mergedApiKeyLikeProviders.length > 0 ||
-    displayedCompatibleProviders.length > 0;
+    configuredProviders.length > 0 ||
+    unconfiguredOAuthEntries.length > 0 ||
+    unconfiguredFreeEntries.length > 0 ||
+    unconfiguredFreeTierEntries.length > 0 ||
+    unconfiguredApiKeyLikeProviders.length > 0 ||
+    unconfiguredCompatibleProviders.length > 0;
 
   return (
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
@@ -376,8 +405,40 @@ export default function ProvidersPage() {
         </div>
       )}
 
+      {configuredProviders.length > 0 && (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">Configured Providers</h2>
+          <span className="text-xs text-text-muted">Providers with API key or configured connection</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {configuredProviders.map((entry) => (
+            entry.cardType === "provider" ? (
+              <ProviderCard
+                key={`${entry.cardType}:${entry.key}`}
+                providerId={entry.key}
+                provider={entry.provider}
+                stats={getProviderStats(entry.key, entry.authType === "free" ? "oauth" : entry.authType)}
+                authType={entry.authType}
+                onToggle={(active) => handleToggleProvider(entry.key, entry.authType === "free" ? "oauth" : entry.authType, active)}
+              />
+            ) : (
+              <ApiKeyProviderCard
+                key={`${entry.cardType}:${entry.key}`}
+                providerId={entry.key}
+                provider={entry.provider}
+                stats={getProviderStats(entry.key, "apikey")}
+                authType={entry.authType}
+                onToggle={(active) => handleToggleProvider(entry.key, "apikey", active)}
+              />
+            )
+          ))}
+        </div>
+      </div>
+      )}
+
       {/* OAuth Providers */}
-      {oauthEntries.length > 0 && (
+      {unconfiguredOAuthEntries.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -406,7 +467,7 @@ export default function ProvidersPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {oauthEntries.map(([key, info]) => (
+          {unconfiguredOAuthEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -421,7 +482,7 @@ export default function ProvidersPage() {
       )}
 
       {/* Free Tier Providers */}
-      {(freeEntries.length > 0 || freeTierEntries.length > 0) && (
+      {(unconfiguredFreeEntries.length > 0 || unconfiguredFreeTierEntries.length > 0) && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -447,7 +508,7 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {freeEntries.map(([key, info]) => (
+          {unconfiguredFreeEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
               providerId={key}
@@ -457,7 +518,7 @@ export default function ProvidersPage() {
               onToggle={(active) => handleToggleProvider(key, "oauth", active)}
             />
           ))}
-          {freeTierEntries.map(([key, info]) => (
+          {unconfiguredFreeTierEntries.map(([key, info]) => (
             <ApiKeyProviderCard
               key={key}
               providerId={key}
@@ -472,7 +533,7 @@ export default function ProvidersPage() {
       )}
 
       {/* API Key Providers - fixed list */}
-      {mergedApiKeyLikeProviders.length > 0 && (
+      {unconfiguredApiKeyLikeProviders.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -498,7 +559,7 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {mergedApiKeyLikeProviders.map((entry) => (
+          {unconfiguredApiKeyLikeProviders.map((entry) => (
             <ApiKeyProviderCard
               key={entry.key}
               providerId={entry.key}
@@ -575,7 +636,7 @@ export default function ProvidersPage() {
             </Button>
           </div>
         </div>
-        {displayedCompatibleProviders.length === 0 ? (
+        {unconfiguredCompatibleProviders.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-border rounded-xl">
             <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
               extension
@@ -590,7 +651,7 @@ export default function ProvidersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {displayedCompatibleProviders.map((info) => (
+            {unconfiguredCompatibleProviders.map((info) => (
               <ApiKeyProviderCard
                 key={info.id}
                 providerId={info.id}
