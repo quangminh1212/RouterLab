@@ -976,10 +976,15 @@ export default function APIPageClient() {
 
   const handleEnableCloudflareWithRetry = async () => {
     setSelectedTunnelProvider("cloudflare");
+    const oauthCode = oauthCodeInput.trim();
+    if (!oauthCode) {
+      setShowEnableTunnelModal(true);
+      setTunnelStatus({ type: "error", message: "Authenticator code is required to enable tunnel" });
+      return;
+    }
     setTunnelLoading(true);
     setTunnelStatus(null);
     setTunnelProgress("Starting Cloudflare tunnel...");
-    const oauthCode = oauthCodeInput.trim();
     const tryEnable = async () => {
       const res = await fetch("/api/tunnel/enable", {
         method: "POST",
@@ -1044,6 +1049,10 @@ export default function APIPageClient() {
 
   const handleEnableSecuredTunnel = async (provider) => {
     setSelectedTunnelProvider(provider);
+    if (!oauthCodeInput.trim()) {
+      setShowEnableTunnelModal(true);
+      return;
+    }
     let enabled = await ensureRequireApiKeyEnabled();
     if (!enabled) {
       const keysRes = await fetch("/api/keys").catch(() => null);
