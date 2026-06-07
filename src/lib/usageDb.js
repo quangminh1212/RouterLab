@@ -439,8 +439,8 @@ if (!global._pendingTimersCleanupInterval) {
  * @param {boolean} [error] - true if ended with error
  */
 export function trackPendingRequest(model, provider, connectionId, started, error = false) {
-  const modelKey = provider ? `${model} (${provider})` : model;
-  const timerKey = `${connectionId}|${modelKey}`;
+  const modelKey = model;
+  const timerKey = `${connectionId}|${provider || "unknown"}|${modelKey}`;
 
   // Track by model
   if (!pendingRequests.byModel[modelKey]) pendingRequests.byModel[modelKey] = 0;
@@ -1104,7 +1104,7 @@ export async function getUsageStats(period = "all") {
       for (const [mk, mData] of Object.entries(day.byModel || {})) {
         const rawModel = mData.rawModel || mk.split("|")[0];
         const provider = mData.provider || mk.split("|")[1] || "";
-        const statsKey = provider ? `${rawModel} (${provider})` : rawModel;
+        const statsKey = rawModel;
         const providerDisplayName = providerNodeNameMap[provider] || provider;
         if (!stats.byModel[statsKey]) {
           stats.byModel[statsKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0, rawModel, provider: providerDisplayName, lastUsed: dateKey };
@@ -1113,6 +1113,7 @@ export async function getUsageStats(period = "all") {
         stats.byModel[statsKey].promptTokens += mData.promptTokens || 0;
         stats.byModel[statsKey].completionTokens += mData.completionTokens || 0;
         stats.byModel[statsKey].cost += mData.cost || 0;
+        if (!stats.byModel[statsKey].provider && providerDisplayName) stats.byModel[statsKey].provider = providerDisplayName;
         if (dateKey > (stats.byModel[statsKey].lastUsed || "")) stats.byModel[statsKey].lastUsed = dateKey;
       }
 
@@ -1216,7 +1217,7 @@ export async function getUsageStats(period = "all") {
         stats.byProvider[entry.provider].completionTokens += completionTokens;
         stats.byProvider[entry.provider].cost += entryCost;
 
-        const modelKey = entry.provider ? `${entry.model} (${entry.provider})` : entry.model;
+        const modelKey = entry.model;
         if (!stats.byModel[modelKey]) {
           stats.byModel[modelKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0, rawModel: entry.model, provider: providerDisplayName, lastUsed: entry.timestamp };
         }
@@ -1224,6 +1225,7 @@ export async function getUsageStats(period = "all") {
         stats.byModel[modelKey].promptTokens += promptTokens;
         stats.byModel[modelKey].completionTokens += completionTokens;
         stats.byModel[modelKey].cost += entryCost;
+        if (!stats.byModel[modelKey].provider && providerDisplayName) stats.byModel[modelKey].provider = providerDisplayName;
         if (new Date(entry.timestamp) > new Date(stats.byModel[modelKey].lastUsed)) stats.byModel[modelKey].lastUsed = entry.timestamp;
 
         if (entry.connectionId) {
@@ -1275,7 +1277,7 @@ export async function getUsageStats(period = "all") {
       const ts = entry.timestamp;
       if (!ts || new Date(ts).getTime() < overlayCutoff) continue;
 
-      const modelKey = entry.provider ? `${entry.model} (${entry.provider})` : entry.model;
+      const modelKey = entry.model;
       if (stats.byModel[modelKey] && new Date(ts) > new Date(stats.byModel[modelKey].lastUsed)) {
         stats.byModel[modelKey].lastUsed = ts;
       }
@@ -1329,7 +1331,7 @@ export async function getUsageStats(period = "all") {
       stats.byProvider[entry.provider].cost += entryCost;
 
       // byModel
-      const modelKey = entry.provider ? `${entry.model} (${entry.provider})` : entry.model;
+      const modelKey = entry.model;
       if (!stats.byModel[modelKey]) {
         stats.byModel[modelKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cost: 0, rawModel: entry.model, provider: providerDisplayName, lastUsed: entry.timestamp };
       }
@@ -1337,6 +1339,7 @@ export async function getUsageStats(period = "all") {
       stats.byModel[modelKey].promptTokens += promptTokens;
       stats.byModel[modelKey].completionTokens += completionTokens;
       stats.byModel[modelKey].cost += entryCost;
+      if (!stats.byModel[modelKey].provider && providerDisplayName) stats.byModel[modelKey].provider = providerDisplayName;
       if (new Date(entry.timestamp) > new Date(stats.byModel[modelKey].lastUsed)) stats.byModel[modelKey].lastUsed = entry.timestamp;
 
       // byAccount

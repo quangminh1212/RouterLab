@@ -533,7 +533,7 @@ export default function UsageStats() {
           Object.entries(stats.byAccount || {}).forEach(([accountKey, data]) => {
             const connPending = pendingStats.byAccount[data.connectionId];
             if (connPending) {
-              const modelKey = data.provider ? `${data.rawModel} (${data.provider})` : data.rawModel;
+              const modelKey = data.rawModel;
               pendingMap[accountKey] = connPending[modelKey] || 0;
             }
           });
