@@ -16,41 +16,6 @@ function safeJsonFromResponse(response) {
   });
 }
 
-function isTamMaoPassthroughModel(modelId) {
-  const value = String(modelId || "").trim().toLowerCase();
-  return value === "tammao" || value.startsWith("tammao/");
-}
-
-const HIDDEN_TAMMAO_PASSTHROUGH_MODELS = new Set([
-  "tammao/gpt-5.3-codex-xhigh",
-]);
-
-function buildTamMaoPassthroughModels(combos, hiddenModels, existingIds, timestamp) {
-  const hiddenSet = new Set(Array.isArray(hiddenModels) ? hiddenModels : []);
-  const models = [];
-
-  for (const combo of combos) {
-    if (!combo || combo.showInModelsEndpoint === false || hiddenSet.has(combo?.name)) continue;
-    const upstreamModels = Array.isArray(combo.models) ? combo.models : [];
-    for (const upstreamModel of upstreamModels) {
-      const modelId = String(upstreamModel || "").trim();
-      if (!isTamMaoPassthroughModel(modelId) || existingIds.has(modelId) || HIDDEN_TAMMAO_PASSTHROUGH_MODELS.has(modelId.toLowerCase())) continue;
-      existingIds.add(modelId);
-      models.push({
-        id: modelId,
-        object: "model",
-        created: timestamp,
-        owned_by: "tammao",
-        permission: [],
-        root: combo.name,
-        parent: combo.name,
-      });
-    }
-  }
-
-  return models;
-}
-
 async function hasInvalidJsonBody(request) {
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.toLowerCase().includes("application/json")) return false;
@@ -126,9 +91,8 @@ export async function GET() {
       .filter(Boolean);
 
     const existingIds = new Set([...models, ...aliasModels].map((model) => String(model.id)));
-    const tammaoPassthroughModels = buildTamMaoPassthroughModels(combos, hiddenModels, existingIds, timestamp);
 
-    const data = [...models, ...aliasModels, ...tammaoPassthroughModels]
+    const data = [...models, ...aliasModels]
       .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
     return Response.json({

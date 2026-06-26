@@ -8,7 +8,6 @@ import {
 } from "@/models";
 import { APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
-import { getProviderMachineId } from "@/shared/utils/machineId";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +48,6 @@ async function normalizeProxyPoolId(proxyPoolId) {
   return { proxyPoolId: normalizedId };
 }
 
-function isTamMaoCompatibleNode(node = {}) {
-  const baseUrl = String(node.baseUrl || "").toLowerCase();
-  const name = String(node.name || "").toLowerCase();
-  return baseUrl.includes("cungcapai") || baseUrl.includes("electroai") || baseUrl.includes("dientuai") || name.includes("tammao");
-}
-
-function isTamMaoProviderConnection(connection = {}) {
-  const provider = String(connection.provider || "").toLowerCase();
-  const name = String(connection.name || "").toLowerCase();
-  const baseUrl = String(connection.providerSpecificData?.baseUrl || "").toLowerCase();
-  return provider.includes("tammao") || name.includes("tammao") || /cungcapai|electroai|dientuai/.test(baseUrl);
-}
-
 function normalizeProviderSpecificData(provider, providerSpecificData) {
   const normalized = providerSpecificData && typeof providerSpecificData === "object" && !Array.isArray(providerSpecificData)
     ? { ...providerSpecificData }
@@ -74,13 +60,6 @@ function normalizeProviderSpecificData(provider, providerSpecificData) {
   }
 
   return normalized;
-}
-
-function normalizeBaseUrls(baseUrls) {
-  const values = Array.isArray(baseUrls) ? baseUrls : String(baseUrls || "").split(/[\n,]+/);
-  return [...new Set(values
-    .map((baseUrl) => String(baseUrl || "").trim().replace(/\/+$/, ""))
-    .filter(Boolean))];
 }
 
 // GET /api/providers - List all connections
@@ -122,13 +101,10 @@ export async function GET() {
           ? (nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
           : c.name;
         const providerSpecificData = c.providerSpecificData || {};
-        const safeProviderSpecificData = isTamMaoProviderConnection(c)
-          ? { ...providerSpecificData, machineId: getProviderMachineId(providerSpecificData) }
-          : providerSpecificData;
         return {
           ...c,
           name,
-          providerSpecificData: safeProviderSpecificData,
+          providerSpecificData,
           apiKey: undefined,
           accessToken: undefined,
           refreshToken: undefined,
@@ -198,22 +174,16 @@ export async function POST(request) {
         return NextResponse.json({ error: "OpenAI Compatible node not found" }, { status: 404 });
       }
 
-      if (!isTamMaoCompatibleNode(node)) {
-        const existingConnections = await getProviderConnections({ provider });
-        if (existingConnections.length > 0) {
-          return NextResponse.json({ error: "Only one connection is allowed for this OpenAI Compatible node" }, { status: 400 });
-        }
+      const existingConnections = await getProviderConnections({ provider });
+      if (existingConnections.length > 0) {
+        return NextResponse.json({ error: "Only one connection is allowed for this OpenAI Compatible node" }, { status: 400 });
       }
-
-      const tamMaoBaseUrls = isTamMaoCompatibleNode(node) ? normalizeBaseUrls(providerSpecificData.baseUrls) : [];
-      const tamMaoBaseUrl = String(providerSpecificData.baseUrl || tamMaoBaseUrls[0] || "").trim().replace(/\/+$/, "");
 
       providerSpecificData = {
         prefix: node.prefix,
         apiType: node.apiType,
-        baseUrl: tamMaoBaseUrl || node.baseUrl,
+        baseUrl: String(providerSpecificData.baseUrl || node.baseUrl).trim().replace(/\/+$/, ""),
         nodeName: node.name,
-        ...(tamMaoBaseUrls.length > 0 ? { baseUrls: tamMaoBaseUrls } : {}),
       };
     } else if (isAnthropicCompatibleProvider(provider)) {
       const node = await getProviderNodeById(provider);

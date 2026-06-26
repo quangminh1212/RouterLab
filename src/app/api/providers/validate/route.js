@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getProviderMachineId } from "@/shared/utils/machineId";
 import { getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS, resolveXiaomiTokenPlanBaseUrl } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
@@ -122,46 +121,6 @@ async function probeMediaProvider(provider, apiKey) {
   return res.status !== 401 && res.status !== 403;
 }
 
-function isTamMaoNode(provider, node = {}, providerSpecificData = {}) {
-  const providerValue = String(provider || "").toLowerCase();
-  const baseUrl = String(providerSpecificData?.baseUrl || node?.baseUrl || "");
-  const prefix = String(providerSpecificData?.prefix || node?.prefix || "").toLowerCase();
-  const nodeName = String(providerSpecificData?.nodeName || node?.nodeName || node?.name || "").toLowerCase();
-  return providerValue.includes("tammao")
-    || prefix === "tammao"
-    || nodeName.includes("tammao")
-    || /cungcapai|electroai|dientuai/i.test(baseUrl);
-}
-
-async function probeTamMaoOpenAICompatible(node, apiKey) {
-  const baseUrl = String(node?.baseUrl || "").replace(/\/$/, "");
-  if (!baseUrl) return { ok: false, reason: "missing_base_url" };
-
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${apiKey}`,
-    "x-machine-id": getProviderMachineId(node?.providerSpecificData),
-  };
-
-  const responsesUrl = `${baseUrl}/responses`;
-  const payload = {
-    model: "gpt-5.5",
-    input: [{ role: "user", content: [{ type: "input_text", text: "Reply exactly OK" }] }],
-    max_output_tokens: 16,
-  };
-
-  try {
-    const res = await fetch(responsesUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15000),
-    });
-    return { ok: res.ok, status: res.status };
-  } catch (error) {
-    return { ok: false, reason: error?.name === "TimeoutError" ? "timeout" : (error?.message || "request_failed") };
-  }
-}
 // POST /api/providers/validate - Validate API key with provider
 export async function POST(request) {
   try {
@@ -190,9 +149,6 @@ export async function POST(request) {
         const baseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl || node.baseUrl);
         const modelsUrl = `${baseUrl}/models`;
         const headers = { "Authorization": `Bearer ${apiKey}` };
-        if (isTamMaoNode(provider, node, { ...node.providerSpecificData, ...providerSpecificData, baseUrl })) {
-          headers["x-machine-id"] = getProviderMachineId({ ...node.providerSpecificData, ...providerSpecificData });
-        }
         let res;
         try {
           res = await fetch(modelsUrl, {
@@ -200,21 +156,7 @@ export async function POST(request) {
             signal: AbortSignal.timeout(8000),
           });
         } catch (error) {
-          if (!isTamMaoNode(provider, node, { ...node.providerSpecificData, ...providerSpecificData, baseUrl })) throw error;
-          const fallback = await probeTamMaoOpenAICompatible({ ...node, baseUrl }, apiKey);
-          return NextResponse.json({
-            valid: fallback.ok,
-            error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,
-            warning: "TamMao /models timeout, used inference fallback",
-          }, { status: fallback.ok ? 200 : 502 });
-        }
-        if (!res.ok && isTamMaoNode(provider, node, { ...node.providerSpecificData, ...providerSpecificData, baseUrl }) && (res.status === 408 || res.status === 429 || res.status >= 500)) {
-          const fallback = await probeTamMaoOpenAICompatible({ ...node, baseUrl }, apiKey);
-          return NextResponse.json({
-            valid: fallback.ok,
-            error: fallback.ok ? null : `TamMao validation fallback failed: ${fallback.reason || fallback.status || "unknown_error"}`,
-            warning: "TamMao /models unavailable, used inference fallback",
-          }, { status: fallback.ok ? 200 : 502 });
+          throw error;
         }
         isValid = res.ok;
         return NextResponse.json({

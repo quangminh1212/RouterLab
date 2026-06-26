@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getProviderMachineId } from "@/shared/utils/machineId";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
@@ -326,44 +325,6 @@ const PROVIDER_MODELS_CONFIG = {
   }
 };
 
-function isTamMaoConnection(connection = {}) {
-  const baseUrl = String(connection?.providerSpecificData?.baseUrl || "");
-  const provider = String(connection?.provider || "").toLowerCase();
-  const prefix = String(connection?.providerSpecificData?.prefix || "").toLowerCase();
-  const nodeName = String(connection?.providerSpecificData?.nodeName || "").toLowerCase();
-  return provider.includes("tammao")
-    || prefix === "tammao"
-    || nodeName.includes("tammao")
-    || /cungcapai|electroai|dientuai/i.test(baseUrl);
-}
-
-async function buildTamMaoFallbackModels(connection, baseUrl) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${connection.apiKey}`,
-    "x-machine-id": getProviderMachineId(connection.providerSpecificData),
-  };
-  const response = await fetch(`${baseUrl}/responses`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "gpt-5.5",
-      input: [{ role: "user", content: [{ type: "input_text", text: "Reply exactly OK" }] }],
-      max_output_tokens: 16,
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!response.ok) {
-    return { error: `TamMao fallback failed: ${response.status}`, status: response.status };
-  }
-
-  return {
-    models: [{ id: "gpt-5.5", object: "model", owned_by: "tammao", fallback: true }],
-    warning: "TamMao /models timeout, returned minimal fallback catalog from successful inference probe.",
-  };
-}
-
 /**
  * GET /api/providers/[id]/models - Get models list from provider
  */
@@ -386,9 +347,6 @@ export async function GET(request, { params }) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${connection.apiKey}`,
       };
-      if (isTamMaoConnection(connection)) {
-        headers["x-machine-id"] = getProviderMachineId(connection.providerSpecificData);
-      }
       let response;
       try {
         response = await fetch(url, {
@@ -397,28 +355,12 @@ export async function GET(request, { params }) {
           signal: AbortSignal.timeout(8000),
         });
       } catch (error) {
-        if (!isTamMaoConnection(connection)) throw error;
-        const fallback = await buildTamMaoFallbackModels(connection, baseUrl.replace(/\/$/, ""));
-        return NextResponse.json({
-          provider: connection.provider,
-          connectionId: connection.id,
-          models: fallback.models || [],
-          warning: fallback.warning || fallback.error,
-        }, { status: fallback.models ? 200 : (fallback.status || 502) });
+        throw error;
       }
 
       if (!response.ok) {
         const errorText = await response.text();
         console.log(`Error fetching models from ${connection.provider}:`, errorText);
-        if (isTamMaoConnection(connection) && (response.status === 408 || response.status === 429 || response.status >= 500)) {
-          const fallback = await buildTamMaoFallbackModels(connection, baseUrl.replace(/\/$/, ""));
-          return NextResponse.json({
-            provider: connection.provider,
-            connectionId: connection.id,
-            models: fallback.models || [],
-            warning: fallback.warning || fallback.error,
-          }, { status: fallback.models ? 200 : (fallback.status || 502) });
-        }
         return NextResponse.json(
           { error: `Failed to fetch models: ${response.status}` },
           { status: response.status }
