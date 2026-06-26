@@ -244,24 +244,8 @@ export default function ProvidersPage() {
     });
   };
 
-  const isTamMaoNode = (node) => {
-    const haystack = [
-      node?.id,
-      node?.name,
-      node?.prefix,
-      node?.baseUrl,
-      node?.providerSpecificData?.prefix,
-      node?.providerSpecificData?.baseUrl,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return haystack.includes("tammao") || haystack.includes("cungcapai");
-  };
-
   const compatibleProviders = providerNodes
-    .filter((node) => node.type === "openai-compatible" && !isTamMaoNode(node))
+    .filter((node) => node.type === "openai-compatible")
     .map((node) => ({
       id: node.id,
       type: node.type,
@@ -273,24 +257,6 @@ export default function ProvidersPage() {
       baseUrl: node.baseUrl,
     }))
     .filter((p) => matchSearch(p.name));
-
-  const tammaoCompatibleProviders = providerNodes
-    .filter((node) => node.type === "openai-compatible" && isTamMaoNode(node))
-    .map((node) => ({
-      id: node.id,
-      type: node.type,
-      name: node.name || "TamMao",
-      color: "#10A37F",
-      textIcon: "TM",
-      apiType: node.apiType,
-      prefix: node.prefix,
-      baseUrl: node.baseUrl,
-    }))
-    .filter((p) => matchSearch(p.name));
-
-  const compatibleProvidersWithoutTamMao = compatibleProviders.filter(
-    (p) => !isTamMaoNode(p),
-  );
 
   const anthropicCompatibleProviders = providerNodes
     .filter((node) => node.type === "anthropic-compatible")
@@ -327,17 +293,11 @@ export default function ProvidersPage() {
 
   const mergedApiKeyLikeProviders = sortProvidersByConfigured([
     ...apikeyEntries
-      .filter(([key]) => key !== "cungcapai")
       .map(([key, info]) => ({
         kind: "fixed",
         key,
         provider: info,
       })),
-    ...tammaoCompatibleProviders.map((info) => ({
-      kind: "compatible",
-      key: info.id,
-      provider: info,
-    })),
   ], (entry) => entry.key, (entry) => entry.kind === "compatible" ? "apikey" : "apikey");
 
   if (loading) {
@@ -351,9 +311,9 @@ export default function ProvidersPage() {
 
   const displayedCompatibleProviders = sortProvidersByConfigured(
     [
-      ...compatibleProvidersWithoutTamMao,
+      ...compatibleProviders,
       ...anthropicCompatibleProviders,
-    ].filter((info) => !isTamMaoNode(info)),
+    ],
     (info) => info.id,
     () => "apikey",
   );

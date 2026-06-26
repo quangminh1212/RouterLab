@@ -69,8 +69,6 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
     ? connection.name || connection.email || connection.displayName || "OAuth Account"
     : connection.name;
   const compatibleBaseUrl = connection.providerSpecificData?.baseUrl || "";
-  const configuredMachineId = connection.providerSpecificData?.machineId || "";
-  const showMachineId = /cungcapai|electroai|dientuai|tammao/i.test(`${displayName || ""} ${compatibleBaseUrl}`);
 
   // Use useState + useEffect for impure Date.now() to avoid calling during render
   const [isCooldown, setIsCooldown] = useState(false);
@@ -140,14 +138,6 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             <p className="text-[11px] text-text-muted truncate max-w-[420px]" title={compatibleBaseUrl}>
               {compatibleBaseUrl}
             </p>
-          )}
-          {showMachineId && configuredMachineId && (
-            <div className="mt-0.5 flex items-center gap-2 min-w-0">
-              <span className="text-[11px] text-text-muted shrink-0">Machine ID</span>
-              <code className="text-[10px] font-mono bg-black/5 dark:bg-white/5 px-1 py-0.5 rounded text-text-muted truncate max-w-[420px]" title={configuredMachineId}>
-                {configuredMachineId}
-              </code>
-            </div>
           )}
           <div className="flex items-center gap-2 mt-1">
             <Badge variant={getStatusVariant()} size="sm" dot>

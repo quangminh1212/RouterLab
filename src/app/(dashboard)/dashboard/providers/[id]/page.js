@@ -71,15 +71,6 @@ export default function ProviderDetailPage() {
   const isOpenAICompatible = isOpenAICompatibleProvider(providerId);
   const isAnthropicCompatible = isAnthropicCompatibleProvider(providerId);
   const isCompatible = isOpenAICompatible || isAnthropicCompatible;
-  const isTamMaoCompatible = isOpenAICompatible && (
-    String(providerNode?.baseUrl || "").toLowerCase().includes("cungcapai")
-      || String(providerNode?.baseUrl || "").toLowerCase().includes("electroai")
-      || String(providerNode?.baseUrl || "").toLowerCase().includes("dientuai")
-      || String(providerNode?.name || "").toLowerCase().includes("tammao")
-  );
-  const tamMaoMachineIds = isTamMaoCompatible
-    ? [...new Set(connections.map((connection) => String(connection.providerSpecificData?.machineId || "").trim()).filter(Boolean))]
-    : [];
   const thinkingConfig = AI_PROVIDERS[providerId]?.thinkingConfig || THINKING_CONFIG.extended;
   
   const providerStorageAlias = isCompatible ? providerId : providerAlias;
@@ -919,7 +910,7 @@ export default function ProviderDetailPage() {
                 size="sm"
                 icon="add"
                 onClick={() => setShowAddApiKeyModal(true)}
-                disabled={!isTamMaoCompatible && connections.length > 0}
+                disabled={connections.length > 0}
               >
                 Add
               </Button>
@@ -953,40 +944,8 @@ export default function ProviderDetailPage() {
           </div>
           {connections.length > 0 && (
             <p className="text-sm text-text-muted">
-              {isTamMaoCompatible
-                ? "Multiple API keys are allowed for this TamMao endpoint. Add another connection to use the same endpoint with a different key."
-                : "Only one connection is allowed per compatible node. Add another node if you need more connections."}
+              Only one connection is allowed per compatible node. Add another node if you need more connections.
             </p>
-          )}
-          {isTamMaoCompatible && (
-            <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border/70 bg-sidebar/30 px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[16px] text-text-muted">memory</span>
-                  <p className="text-sm font-medium">Machine ID</p>
-                </div>
-                <Button size="sm" variant="secondary" icon="settings" onClick={() => setShowEditNodeModal(true)}>
-                  Config
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {tamMaoMachineIds.length > 0 ? (
-                  tamMaoMachineIds.map((machineId) => (
-                    <button
-                      key={machineId}
-                      type="button"
-                      onClick={() => copy(machineId, `tammao_machine_id_${machineId}`)}
-                      className="rounded bg-black/5 dark:bg-white/5 px-2 py-1 text-xs font-mono text-text-muted hover:bg-black/10 dark:hover:bg-white/10"
-                      title={machineId}
-                    >
-                      {copied === `tammao_machine_id_${machineId}` ? "Copied" : machineId}
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-xs text-text-muted">No machine id configured yet.</span>
-                )}
-              </div>
-            </div>
           )}
         </Card>
       )}
@@ -1156,9 +1115,7 @@ export default function ProviderDetailPage() {
         providerName={providerInfo.name}
         isCompatible={isCompatible}
         isAnthropic={isAnthropicCompatible}
-        isTamMaoCompatible={isTamMaoCompatible}
         proxyPools={proxyPools}
-        defaultName={isTamMaoCompatible ? `${providerInfo.name} #${connections.length + 1}` : undefined}
         onSave={handleSaveApiKey}
         onClose={() => setShowAddApiKeyModal(false)}
       />
