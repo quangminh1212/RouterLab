@@ -21,7 +21,7 @@ WORKDIR /app
 LABEL org.opencontainers.image.title="xlabrouter"
 
 ENV NODE_ENV=production
-ENV PORT=20128
+ENV PORT=1212
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -34,14 +34,14 @@ COPY --from=builder /app/src/mitm ./src/mitm
 # Standalone node_modules may omit deps only required by the MITM child process.
 COPY --from=builder /app/node_modules/node-forge ./node_modules/node-forge
 
-RUN mkdir -p /app/data && chown -R bun:bun /app
+RUN mkdir -p /var/lib/xlabrouter && chown -R bun:bun /var/lib/xlabrouter
 
 # Fix permissions at runtime (handles mounted volumes)
 RUN apk --no-cache upgrade && apk --no-cache add su-exec && \
-  printf '#!/bin/sh\nchown -R bun:bun /app/data 2>/dev/null\nexec su-exec bun "$@"\n' > /entrypoint.sh && \
+  printf '#!/bin/sh\nchown -R bun:bun "${DATA_DIR:-/var/lib/xlabrouter}" 2>/dev/null\nexec su-exec bun "$@"\n' > /entrypoint.sh && \
   chmod +x /entrypoint.sh
 
-EXPOSE 20128
+EXPOSE 1212
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bun", "server.js"]

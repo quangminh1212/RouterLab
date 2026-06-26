@@ -8,15 +8,15 @@ chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 echo ========================================
-echo   Deploy XLab Router to vpssieutoc.vn
+echo   Deploy XLab Router to 36.50.26.247
 echo ========================================
 echo   Source : %CD%
-echo   Target : 157.66.100.194:1212
+echo   Target : 36.50.26.247:1212
 echo   Path   : /root/xlabrouter-pkg
 echo ========================================
 echo.
-set "VPS_DIR=C:\Dev\vps\vpssieutoc.vn\xlabrouter"
-set "DEPLOY_PY=%VPS_DIR%\python\deploy_source_157.py"
+set "VPS_DIR=C:\\Dev\\vps\\my.bnix.one\\xlabrouter"
+set "DEPLOY_PY=%VPS_DIR%\python\deploy_source_36.py"
 if not exist "%DEPLOY_PY%" goto missing_deploy_py
 where npm >nul 2>&1
 if errorlevel 1 goto missing_npm
@@ -44,14 +44,14 @@ if not defined TGZ goto missing_tgz
 echo [OK] Package: %TGZ%
 if /I "%DRY_RUN%"=="1" goto dry_run_done
 echo.
-echo [*] Deploying to VPS via deploy_source_157.py ...
+echo [*] Deploying to VPS via deploy_source_36.py ...
 python -u "%DEPLOY_PY%" "%TGZ%"
 if errorlevel 1 goto deploy_failed
 echo.
 echo [*] Verifying deployed endpoint /api/version ...
 set "VERIFY_OK="
 for /l %%I in (1,1,20) do (
-    for /f "delims=" %%R in ('curl.exe -sS --max-time 8 -o nul -w "%%{http_code}" http://157.66.100.194:1212/api/version 2^>nul') do set "VERIFY_RESULT=%%R"
+    for /f "delims=" %%R in ('curl.exe -sS --max-time 8 -o nul -w "%%{http_code}" http://36.50.26.247:1212/api/version 2^>nul') do set "VERIFY_RESULT=%%R"
     echo     try %%I: !VERIFY_RESULT!
     if "!VERIFY_RESULT!"=="200" set "VERIFY_OK=1"
     if "!VERIFY_RESULT!"=="200" goto verify_done
@@ -61,7 +61,7 @@ for /l %%I in (1,1,20) do (
 if not defined VERIFY_OK goto verify_failed
 echo.
 echo ========================================
-echo [OK] Done. Web UI: http://157.66.100.194:1212
+echo [OK] Done. Web UI: http://36.50.26.247:1212
 echo [OK] Verify: /api/version returned 200
 echo ========================================
 endlocal

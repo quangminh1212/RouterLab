@@ -116,13 +116,12 @@ full-model-test-results.json
 full-model-test-errors.txt
 vietapi-model-test-results.json
 vietapi-model-test-errors.txt
-tammao-model-test-results.json
-tammao-model-test-errors.txt
 vietapi_test_remote.py
-tammao_test_remote.py
 test-models-server-output.txt
-tammao-models-output.txt
 
 
 .tmp_deploy*.py
 tmp/
+
+xlabrouter-*.tgz
+node_modules/
