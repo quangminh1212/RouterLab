@@ -151,7 +151,7 @@ Cập nhật lần cuối: 2026-05-31
 > Trạng thái cập nhật theo từng đợt thêm.
 
 ### 5.1 Đã có đầy đủ (UI + backend)
-openai ✅ · anthropic ✅ · gemini ✅ · deepseek ✅ · groq ✅ · xai ✅ · mistral ✅ · perplexity ✅ · together ✅ · fireworks ✅ · cerebras ✅ · cohere ✅ · nebius ✅ · siliconflow ✅ · hyperbolic ✅ · openrouter ✅ · nvidia ✅ · vercel-ai-gateway ✅ · glm ✅ · glm-cn ✅ · kimi ✅ · minimax ✅ · minimax-cn ✅ · alicode ✅ · alicode-intl ✅ · xiaomi-mimo ✅ · xiaomi-tokenplan ✅ · volcengine-ark ✅ · byteplus ✅ · opencode ✅ · opencode-go ✅ · commandcode ✅ · blackbox ✅ · chutes ✅ · cungcapai(TamMao) ✅ · ollama ✅ · ollama-local ✅ · azure ✅ · cloudflare-ai ✅ · vertex ✅ · vertex-partner ✅
+openai ✅ · anthropic ✅ · gemini ✅ · deepseek ✅ · groq ✅ · xai ✅ · mistral ✅ · perplexity ✅ · together ✅ · fireworks ✅ · cerebras ✅ · cohere ✅ · nebius ✅ · siliconflow ✅ · hyperbolic ✅ · openrouter ✅ · nvidia ✅ · vercel-ai-gateway ✅ · glm ✅ · glm-cn ✅ · kimi ✅ · minimax ✅ · minimax-cn ✅ · alicode ✅ · alicode-intl ✅ · xiaomi-mimo ✅ · xiaomi-tokenplan ✅ · volcengine-ark ✅ · byteplus ✅ · opencode ✅ · opencode-go ✅ · commandcode ✅ · blackbox ✅ · chutes ✅ · ollama ✅ · ollama-local ✅ · azure ✅ · cloudflare-ai ✅ · vertex ✅ · vertex-partner ✅
 
 ### 5.2 OmniRoute — đã surface vào UI (Đợt 1 ✅)
 agentrouter ✅ · aimlapi ✅ · novita ✅ · modal ✅ · reka ✅ · nlpcloud ✅ · bazaarlink ✅ · completions ✅ · enally ✅ · freetheai ✅ · llm7 ✅ · lepton ✅ · kluster ✅ · ai21 ✅ · inference-net ✅ · predibase ✅ · bytez ✅ · morph ✅ · longcat ✅ · puter ✅ · uncloseai ✅ · scaleway ✅ · deepinfra ✅ · sambanova ✅ · nscale ✅ · baseten ✅ · publicai ✅ · nous-research ✅ · glhf ✅

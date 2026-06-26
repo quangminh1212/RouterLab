@@ -473,16 +473,6 @@ export const PROVIDERS = {
   "nous-research": { baseUrl: "https://inference-api.nousresearch.com/v1/chat/completions", format: "openai" },
   glhf: { baseUrl: "https://glhf.chat/api/openai/v1/chat/completions", format: "openai" },
   blackbox: { baseUrl: "https://api.blackbox.ai/chat/completions", format: "openai" },
-  cungcapai: {
-    baseUrl: "https://api.cungcapai.io.vn/v1/chat/completions",
-    format: "openai",
-    headers: {}
-  },
-  electroai: {
-    baseUrl: "https://api.electroai.io.vn/v1/chat/completions",
-    format: "openai",
-    headers: {}
-  },
 
   // === Batch 2 (synced from OmniRoute): OpenAI-compatible API-key providers ===
   "api-airforce": { baseUrl: "https://api.airforce/v1/chat/completions", format: "openai" },

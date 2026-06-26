@@ -20,7 +20,7 @@ import { injectCaveman } from "../rtk/caveman.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
 import { applyPayloadRules } from "../services/payloadRules.js";
 
-const INTERNAL_STREAM_ONLY_PROVIDERS = new Set(["openai", "codex", "cungcapai"]);
+const INTERNAL_STREAM_ONLY_PROVIDERS = new Set(["openai", "codex"]);
 
 export function isInternallyStreamOnlyProvider(provider) {
   return INTERNAL_STREAM_ONLY_PROVIDERS.has(provider);

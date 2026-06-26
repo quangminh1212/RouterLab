@@ -125,7 +125,6 @@ export const APIKEY_PROVIDERS = {
   comfyui: { id: "comfyui", alias: "comfyui", name: "ComfyUI", icon: "account_tree", color: "#4CAF50", textIcon: "CF", website: "https://github.com/comfyanonymous/ComfyUI", serviceKinds: ["image"] },
   huggingface: { id: "huggingface", alias: "hf", name: "HuggingFace", icon: "face", color: "#FFD21E", textIcon: "HF", website: "https://huggingface.co", notice: { apiKeyUrl: "https://huggingface.co/settings/tokens" }, serviceKinds: ["image", "imageToText", "tts", "stt"], hiddenKinds: ["tts"], ttsConfig: { baseUrl: "https://api-inference.huggingface.co/models", authType: "apikey", authHeader: "bearer", format: "huggingface-tts", models: [{ id: "facebook/mms-tts-eng", name: "MMS TTS English" }, { id: "microsoft/speecht5_tts", name: "SpeechT5 TTS" }] }, sttConfig: { baseUrl: "https://api-inference.huggingface.co/models", authType: "apikey", authHeader: "bearer", format: "huggingface-asr", models: [{ id: "openai/whisper-large-v3", name: "Whisper Large v3 (HF)" }, { id: "openai/whisper-small", name: "Whisper Small (HF)" }] } },
   blackbox: { id: "blackbox", alias: "bb", name: "Blackbox AI", icon: "smart_toy", color: "#5B5FEF", textIcon: "BB", website: "https://blackbox.ai", notice: { apiKeyUrl: "https://www.blackbox.ai/api-management" }, serviceKinds: ["llm"] },
-  cungcapai: { id: "cungcapai", alias: "tammao", name: "TamMao", icon: "hub", color: "#10A37F", textIcon: "TM", website: "https://cungcapai.io.vn", notice: { apiKeyUrl: "https://cungcapai.io.vn" }, passthroughModels: true, serviceKinds: ["llm"] },
   chutes: { id: "chutes", alias: "ch", name: "Chutes AI", icon: "water_drop", color: "#ffffffff", textIcon: "CH", website: "https://chutes.ai", notice: { apiKeyUrl: "https://chutes.ai/app/api" } },
   // === Free-tier LLM providers (synced from OmniRoute) ===
   agentrouter: { id: "agentrouter", alias: "agentrouter", name: "AgentRouter", icon: "router", color: "#10B981", textIcon: "AR", website: "https://agentrouter.org", notice: { text: "$200 free credits on signup - multi-model routing gateway.", apiKeyUrl: "https://agentrouter.org/register" }, passthroughModels: true, serviceKinds: ["llm"] },
@@ -381,8 +380,6 @@ const providerIconPathOverrides = {
   baichuan: "/providers/baichuan.svg",
   bluesminds: "/providers/bluesminds.svg",
   cablyai: "/providers/cablyai.svg",
-  cungcapai: "/providers/cungcapai.svg",
-  electroai: "/providers/electroai.svg",
   "edge-tts": "/providers/edge-tts.svg",
   fenayai: "/providers/fenayai.svg",
   freetheai: "/providers/freetheai.svg",
@@ -512,9 +509,6 @@ export function getProviderIconPath(providerId) {
 }
 
 const providerDomainIconMatches = [
-  ["api.cungcapai.io.vn", "cungcapai"],
-  ["cungcapai.io.vn", "cungcapai"],
-  ["tammao", "cungcapai"],
   ["openrouter.ai", "openrouter"],
   ["api.groq.com", "groq"],
   ["api.deepseek.com", "deepseek"],
@@ -657,10 +651,6 @@ export function inferProviderIconId(providerConfig = {}) {
   ].filter(Boolean).join(" "));
 
   if (!haystack) return "";
-
-  if (haystack.includes("tammao") || haystack.includes("cungcapai")) {
-    return "cungcapai";
-  }
 
   const textMatch = Object.values(AI_PROVIDERS).find((provider) => {
     const id = normalizeSearchText(provider.id);

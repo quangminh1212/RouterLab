@@ -8,80 +8,6 @@ import * as log from "../utils/logger.js";
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
 
-const TAMMAO_ROUND_ROBIN_BASE_URLS = [
-  "https://api.cungcapai.io.vn/v1",
-  "https://api.electroai.io.vn/v1",
-];
-
-function normalizeBaseUrls(baseUrls) {
-  const values = Array.isArray(baseUrls) ? baseUrls : [];
-  const normalized = values
-    .map((baseUrl) => normalizeBaseUrl(baseUrl))
-    .filter(Boolean);
-  return normalized.length > 0 ? [...new Set(normalized)] : TAMMAO_ROUND_ROBIN_BASE_URLS;
-}
-
-function isTamMaoModel(providerId, model) {
-  const providerValue = String(providerId || "").toLowerCase();
-  const modelValue = String(model || "").toLowerCase();
-  return providerValue.includes("tammao") || providerValue === "cungcapai" || modelValue === "tammao" || modelValue.startsWith("tammao/");
-}
-
-function normalizeBaseUrl(baseUrl = "") {
-  return String(baseUrl || "").trim().replace(/\/+$/, "");
-}
-
-function getTamMaoEndpointScore(connection, model) {
-  const baseUrl = normalizeBaseUrl(connection?.providerSpecificData?.baseUrl).toLowerCase();
-  const modelValue = String(model || "").toLowerCase();
-  if (!isTamMaoModel(connection?.provider, modelValue)) return 0;
-
-  if (modelValue.includes("gpt-5.5")) {
-    if (baseUrl.includes("cungcapai") && !baseUrl.endsWith("/responses")) return 100;
-    if (baseUrl.includes("electroai")) return 90;
-    if (baseUrl.includes("dientuai")) return 80;
-    if (baseUrl.endsWith("/responses")) return 10;
-  }
-  if (modelValue.includes("gpt-5.4")) {
-    if (baseUrl.includes("electroai")) return 100;
-    if (baseUrl.includes("dientuai")) return 90;
-    if (baseUrl.includes("cungcapai") && !baseUrl.endsWith("/responses")) return 80;
-  }
-
-  return 0;
-}
-
-function pickPreferredTamMaoConnection(connections, model) {
-  if (!model || !Array.isArray(connections) || connections.length === 0) return null;
-  const ranked = connections
-    .map((connection) => ({ connection, score: getTamMaoEndpointScore(connection, model) }))
-    .filter((item) => item.score > 0)
-    .sort((left, right) => right.score - left.score || (left.connection.priority || 999) - (right.connection.priority || 999));
-  return ranked[0]?.connection || null;
-}
-
-function shouldKeepPinnedTamMaoEndpoint(connection, model) {
-  return getTamMaoEndpointScore(connection, model) > 0;
-}
-
-function resolveTamMaoBaseUrl(connection, providerSpecificData) {
-  const candidateBaseUrls = normalizeBaseUrls(connection?.providerSpecificData?.baseUrls);
-  const currentBaseUrl = normalizeBaseUrl(providerSpecificData?.baseUrl);
-  const currentIndex = candidateBaseUrls.findIndex((baseUrl) => normalizeBaseUrl(baseUrl) === currentBaseUrl);
-  const lastIndex = Number(connection?.providerSpecificData?.tamMaoRoundRobinIndex);
-
-  if (currentIndex < 0 && !Number.isInteger(lastIndex)) {
-    return null;
-  }
-
-  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % candidateBaseUrls.length : 0;
-  const fallbackIndex = Number.isInteger(lastIndex) ? (lastIndex + 1) % candidateBaseUrls.length : nextIndex;
-  return {
-    baseUrl: candidateBaseUrls[fallbackIndex],
-    index: fallbackIndex,
-  };
-}
-
 async function buildResolvedProviderSpecificData(providerId, connection) {
   const providerSpecificData = {
     ...(connection?.providerSpecificData || {}),
@@ -204,7 +130,6 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     const strategy = providerOverride.fallbackStrategy || settings.fallbackStrategy || "fill-first";
 
     let connection;
-    let keepPinnedTamMaoEndpoint = false;
     // Pin to preferred connection if specified and available
     if (preferredConnectionId) {
       connection = availableConnections.find((c) => c.id === preferredConnectionId);
@@ -214,14 +139,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     }
     if (connection) {
       // skip strategy
-    } else {
-      const preferredTamMaoConnection = isTamMaoModel(providerId, model)
-        ? pickPreferredTamMaoConnection(availableConnections, model)
-        : null;
-      if (preferredTamMaoConnection) {
-        connection = preferredTamMaoConnection;
-        keepPinnedTamMaoEndpoint = true;
-      } else if (strategy === "round-robin") {
+    } else if (strategy === "round-robin") {
         const stickyLimit = providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
 
       // Sort by lastUsed (most recent first) to find current candidate
@@ -273,24 +191,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       connection = availableConnections[0];
     }
 
-    }
     let providerSpecificData = await buildResolvedProviderSpecificData(providerId, connection);
-
-    if (isTamMaoModel(providerId, model) && !keepPinnedTamMaoEndpoint && !shouldKeepPinnedTamMaoEndpoint(connection, model)) {
-      const selectedTamMaoEndpoint = resolveTamMaoBaseUrl(connection, providerSpecificData);
-      if (selectedTamMaoEndpoint) {
-        providerSpecificData = {
-          ...providerSpecificData,
-          baseUrl: selectedTamMaoEndpoint.baseUrl,
-        };
-        await updateProviderConnection(connection.id, {
-          providerSpecificData: {
-            ...(connection.providerSpecificData || {}),
-            tamMaoRoundRobinIndex: selectedTamMaoEndpoint.index,
-          },
-        });
-      }
-    }
 
     const resolvedProxy = await resolveConnectionProxyConfig(providerSpecificData);
 
