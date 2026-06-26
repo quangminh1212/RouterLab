@@ -57,7 +57,7 @@ describe("chat endpoint failover", () => {
     authMocks.clearAccountError.mockResolvedValue(undefined);
     authMocks.markAccountUnavailable.mockResolvedValue({ shouldFallback: true, cooldownMs: 30000 });
     modelMocks.getComboModels.mockResolvedValue(null);
-    modelMocks.getModelInfo.mockResolvedValue({ provider: "openai-compatible-tammao", model: "tammao/gpt-5.5" });
+    modelMocks.getModelInfo.mockResolvedValue({ provider: "openai-compatible-testprov", model: "testprov/gpt-5.5" });
     tokenRefreshMocks.checkAndRefreshToken.mockImplementation(async (_provider, credentials) => credentials);
     tokenRefreshMocks.updateProviderCredentials.mockResolvedValue(undefined);
     breakerMocks.canExecuteProvider.mockReturnValue(true);
@@ -68,15 +68,15 @@ describe("chat endpoint failover", () => {
     authMocks.getProviderCredentials
       .mockResolvedValueOnce({
         connectionId: "conn-1",
-        connectionName: "TamMao #1",
+        connectionName: "TestProv #1",
         apiKey: "key-1",
-        providerSpecificData: { baseUrl: "https://api.dientuai.io.vn/v1" },
+        providerSpecificData: { baseUrl: "https://api.testprov.example/v1" },
       })
       .mockResolvedValueOnce({
         connectionId: "conn-2",
-        connectionName: "TamMao #2",
+        connectionName: "TestProv #2",
         apiKey: "key-2",
-        providerSpecificData: { baseUrl: "https://api.electroai.io.vn/v1" },
+        providerSpecificData: { baseUrl: "https://api.testprov-alt.example/v1" },
       });
 
     chatCoreMocks.handleChatCore
@@ -92,12 +92,12 @@ describe("chat endpoint failover", () => {
       });
   });
 
-  it("switches to the next TamMao endpoint immediately after a transient upstream failure", async () => {
+  it("switches to the next endpoint immediately after a transient upstream failure", async () => {
     const { handleChat } = await import("../../src/sse/handlers/chat.js");
     const request = new Request("http://localhost/v1/responses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "openai-compatible-tammao/tammao/gpt-5.5", input: "ping" }),
+      body: JSON.stringify({ model: "openai-compatible-testprov/testprov/gpt-5.5", input: "ping" }),
     });
 
     const response = await handleChat(request);
@@ -105,13 +105,13 @@ describe("chat endpoint failover", () => {
 
     expect(response.status).toBe(200);
     expect(payload.id).toBe("resp_ok");
-    expect(breakerMocks.recordProviderFailure).toHaveBeenCalledWith("openai-compatible-tammao", 503);
+    expect(breakerMocks.recordProviderFailure).toHaveBeenCalledWith("openai-compatible-testprov", 503);
     expect(authMocks.markAccountUnavailable).toHaveBeenCalledWith(
       "conn-1",
       503,
       "upstream unavailable",
-      "openai-compatible-tammao",
-      "tammao/gpt-5.5",
+      "openai-compatible-testprov",
+      "testprov/gpt-5.5",
       undefined,
       expect.any(Object),
     );

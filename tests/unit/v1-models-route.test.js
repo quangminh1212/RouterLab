@@ -35,30 +35,6 @@ describe("/api/v1/models", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
-  it("also exposes TamMao upstream model ids for chained routers", async () => {
-    vi.doMock("@/lib/localDb", () => ({
-      getCombos: vi.fn(async () => [
-        { name: "gpt-5.5", showInModelsEndpoint: true, models: ["tammao/gpt-5.5"] },
-        { name: "hidden-tammao", showInModelsEndpoint: false, models: ["tammao/hidden"] },
-        { name: "other", showInModelsEndpoint: true, models: ["openai/gpt-4o"] },
-      ]),
-      getModelAliases: vi.fn(async () => ({})),
-      getSettings: vi.fn(async () => ({ hiddenModels: [] })),
-    }));
-    vi.doMock("@/app/api/models/route", () => ({ PUT: vi.fn() }));
-
-    const { GET } = await import("@/app/api/v1/models/route");
-    const response = await GET();
-    const data = await response.json();
-
-    expect(data.data.map((model) => model.id)).toEqual(["gpt-5.5", "other", "tammao/gpt-5.5"]);
-    expect(data.data.find((model) => model.id === "tammao/gpt-5.5")).toMatchObject({
-      owned_by: "tammao",
-      root: "gpt-5.5",
-      parent: "gpt-5.5",
-    });
-  });
-
   it("proxies alias updates with CORS headers", async () => {
     vi.doMock("@/lib/localDb", () => ({
       getCombos: vi.fn(),

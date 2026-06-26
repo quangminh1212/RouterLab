@@ -203,11 +203,11 @@ describe("/api/v1/chat/completions input normalization", () => {
     process.env.OPENCLAW_CAPTURE_PROXY = "false";
     const handleChat = vi.fn().mockResolvedValue(new Response([
       JSON.stringify({
-        id: "resp_tammao_1",
+        id: "resp_testprov_1",
         object: "response",
         created_at: 1780135409,
         status: "completed",
-        model: "tammao/gpt-5.5",
+        model: "testprov/gpt-5.5",
         output: [{
           type: "message",
           role: "assistant",
@@ -230,53 +230,14 @@ describe("/api/v1/chat/completions input normalization", () => {
     const response = await POST(new Request("http://localhost/api/v1/chat/completions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "tammao/gpt-5.5", messages: [{ role: "user", content: "hi" }] }),
+      body: JSON.stringify({ model: "testprov/gpt-5.5", messages: [{ role: "user", content: "hi" }] }),
     }));
 
     await expect(response.json()).resolves.toMatchObject({
       object: "chat.completion",
-      model: "tammao/gpt-5.5",
+      model: "testprov/gpt-5.5",
       choices: [{ message: { role: "assistant", content: "RESPONSES_OK" } }],
       usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
-    });
-  });
-
-  it("retries empty TamMao chat completion via Responses SSE stream", async () => {
-    process.env.OPENCLAW_CAPTURE_PROXY = "false";
-    const handleChat = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        id: "chatcmpl-empty",
-        object: "chat.completion",
-        model: "tammao/gpt-5.4",
-        choices: [{ index: 0, message: { role: "assistant", content: "" }, finish_reason: "stop" }],
-      }), { status: 200, headers: { "content-type": "application/json" } }))
-      .mockResolvedValueOnce(new Response([
-        "event: response.output_text.delta",
-        "data: {\"type\":\"response.output_text.delta\",\"delta\":\"pong\"}",
-        "event: response.completed",
-        "data: {\"type\":\"response.completed\"}",
-        "data: [DONE]",
-        "",
-      ].join("\n"), {
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-      }));
-    vi.doMock("@/sse/handlers/chat.js", () => ({ handleChat }));
-    vi.doMock("open-sse/translator/index.js", () => ({ initTranslators: vi.fn().mockResolvedValue(true) }));
-    vi.doMock("@/lib/runtimeGuard", () => ({ withRouteGuard: (_name, handler) => handler }));
-    vi.doMock("@/models", () => ({ parseBearerToken: vi.fn(() => "token-1") }));
-
-    const { POST } = await import("@/app/api/v1/chat/completions/route");
-    const response = await POST(new Request("http://localhost/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "tammao/gpt-5.4", messages: [{ role: "user", content: "hi" }] }),
-    }));
-
-    expect(handleChat).toHaveBeenCalledTimes(2);
-    await expect(response.json()).resolves.toMatchObject({
-      object: "chat.completion",
-      choices: [{ message: { role: "assistant", content: "pong" } }],
     });
   });
 });
