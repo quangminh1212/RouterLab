@@ -17,6 +17,9 @@ import { handleNonStreamingResponse } from "./chatCore/nonStreamingHandler.js";
 import { handleStreamingResponse, buildOnStreamComplete } from "./chatCore/streamingHandler.js";
 import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.js";
 import { injectCaveman } from "../rtk/caveman.js";
+import { injectPonytail } from "../rtk/ponytail.js";
+import { compressViaHeadroom } from "../rtk/headroom.js";
+import { checkPromptInjection } from "../services/promptInjectionGuard.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
 import { applyPayloadRules } from "../services/payloadRules.js";
 
@@ -33,7 +36,7 @@ export function isInternallyStreamOnlyProvider(provider) {
  * @param {object} options.credentials - Provider credentials
  * @param {string} options.sourceFormatOverride - Override detected source format (e.g. "openai-responses")
  */
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, cavemanEnabled, cavemanLevel, sourceFormatOverride, providerThinking, payloadRules }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, headroomEnabled, headroomUrl, guardMode, sourceFormatOverride, providerThinking, payloadRules }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
 
@@ -42,6 +45,18 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   // Check for bypass patterns (warmup, skip, cc naming)
   const bypassResponse = handleBypassRequest(body, model, userAgent, ccFilterNaming);
   if (bypassResponse) return bypassResponse;
+
+  // Prompt injection guard
+  if (guardMode && guardMode !== "off") {
+    const guard = checkPromptInjection(body, { mode: guardMode });
+    if (!guard.allowed) {
+      log?.warn?.("GUARD", `Blocked: ${guard.warning} | score=${guard.details?.score}`);
+      return createErrorResult(HTTP_STATUS.BAD_REQUEST, guard.warning || "Request blocked by prompt injection guard");
+    }
+    if (guard.warning) {
+      log?.warn?.("GUARD", `${guard.warning} | score=${guard.details?.score} | patterns=${guard.details?.patterns?.join(", ")}`);
+    }
+  }
 
   const alias = PROVIDER_ID_TO_ALIAS[provider] || provider;
   const modelTargetFormat = getModelTargetFormat(alias, model);
@@ -105,6 +120,17 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   // Covers both passthrough (source shape) and translated (target shape) flows
   const finalFormat = passthrough ? sourceFormat : targetFormat;
 
+  // Headroom: optional external compression proxy (runs before RTK/Caveman)
+  if (headroomEnabled) {
+    const hr = await compressViaHeadroom(translatedBody, { headroomUrl, model });
+    if (hr.compressed) {
+      translatedBody = hr.body;
+      log?.debug?.("HEADROOM", `compressed, saved ~${hr.savedTokens} tokens`);
+    } else if (hr.error) {
+      log?.debug?.("HEADROOM", `skipped: ${hr.error}`);
+    }
+  }
+
   // RTK: compress tool_result content
   const rtkStats = compressMessages(translatedBody, rtkEnabled);
   const rtkLine = formatRtkLog(rtkStats);
@@ -114,6 +140,12 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   if (cavemanEnabled && cavemanLevel) {
     injectCaveman(translatedBody, finalFormat, cavemanLevel);
     log?.debug?.("CAVEMAN", `${cavemanLevel} | ${finalFormat}`);
+  }
+
+  // Ponytail: inject "lazy senior dev" prompt for minimal code output
+  if (ponytailEnabled && ponytailLevel) {
+    injectPonytail(translatedBody, finalFormat, ponytailLevel);
+    log?.debug?.("PONYTAIL", `${ponytailLevel} | ${finalFormat}`);
   }
 
   // Payload rules engine: declarative body edits (set/default/delete/rename)

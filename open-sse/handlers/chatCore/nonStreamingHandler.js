@@ -8,6 +8,7 @@ import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
 import { convertResponsesStreamToJson } from "../../transformer/streamToJsonConverter.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
+import { buildCostHeaders } from "../../utils/costHeaders.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
 
 function streamFromText(text) {
@@ -324,10 +325,12 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     console.error("[RequestDetail] Failed to save:", err.message);
   });
 
+  const costHeaders = buildCostHeaders(translatedResponse, { provider, model });
+
   return {
     success: true,
     response: new Response(JSON.stringify(translatedResponse), {
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", ...costHeaders }
     })
   };
 }

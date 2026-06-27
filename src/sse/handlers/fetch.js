@@ -84,6 +84,7 @@ export async function handleFetch(request) {
   if (comboModels) {
     const comboStrategies = settings.comboStrategies || {};
     const comboStrategy = comboStrategies[providerInput]?.fallbackStrategy || settings.comboStrategy || "fallback";
+    const fusionJudgeModel = comboStrategies[providerInput]?.fusionJudgeModel || settings.fusionJudgeModel || null;
     log.info("FETCH", `Combo "${providerInput}" with ${comboModels.length} providers (strategy: ${comboStrategy})`);
     return handleComboChat({
       body,
@@ -91,7 +92,8 @@ export async function handleFetch(request) {
       handleSingleModel: (b, m) => handleSingleProviderFetch(b, m, request, apiKey, settings),
       log,
       comboName: providerInput,
-      comboStrategy
+      comboStrategy,
+      fusionJudgeModel,
     });
   }
 

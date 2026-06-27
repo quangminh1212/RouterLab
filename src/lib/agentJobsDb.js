@@ -17,6 +17,7 @@ const DB_FILE = isCloud ? null : path.join(DATA_DIR, "agent-jobs.json");
 const MAX_BATCHES = 500;
 const MAX_FILES = 1000;
 const MAX_TASKS = 500;
+const MAX_AGENT_TASKS = 500;
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB per uploaded file content
 
 if (!isCloud && !fs.existsSync(DATA_DIR)) {
@@ -24,7 +25,7 @@ if (!isCloud && !fs.existsSync(DATA_DIR)) {
 }
 
 function emptyData() {
-  return { batches: [], files: [], tasks: [] };
+  return { batches: [], files: [], tasks: [], agentTasks: [] };
 }
 
 let dbInstance = null;
@@ -48,6 +49,7 @@ async function getDb() {
   if (!Array.isArray(dbInstance.data.batches)) dbInstance.data.batches = [];
   if (!Array.isArray(dbInstance.data.files)) dbInstance.data.files = [];
   if (!Array.isArray(dbInstance.data.tasks)) dbInstance.data.tasks = [];
+  if (!Array.isArray(dbInstance.data.agentTasks)) dbInstance.data.agentTasks = [];
   return dbInstance;
 }
 
@@ -236,6 +238,48 @@ export async function listTasks({ limit = 50 } = {}) {
 export async function updateTask(id, updates) {
   const db = await getDb();
   const task = db.data.tasks.find((t) => t.id === id);
+  if (!task) return null;
+  Object.assign(task, updates, { updated_at: nowSec() });
+  await persist(db);
+  return { ...task };
+}
+
+/* ----------------------------- Cloud Agent Tasks ----------------------------- */
+
+export async function createAgentTask({
+  provider, prompt, repo_url, branch = "main", auto_create_pr = false,
+  providerTaskId, status = "submitted",
+}) {
+  const db = await getDb();
+  const id = `agent_task_${uuidv4().replace(/-/g, "")}`;
+  const created = nowSec();
+  const task = {
+    id, object: "agent.task", provider, prompt, repo_url, branch,
+    auto_create_pr, status, providerTaskId, result: null, error: null,
+    activity: [], created_at: created, updated_at: created,
+  };
+  db.data.agentTasks.push(task);
+  db.data.agentTasks = trimNewestFirst(db.data.agentTasks, MAX_AGENT_TASKS);
+  await persist(db);
+  return { ...task };
+}
+
+export async function getAgentTask(id) {
+  const db = await getDb();
+  const task = db.data.agentTasks.find((t) => t.id === id);
+  return task ? { ...task } : null;
+}
+
+export async function listAgentTasks({ status = null, limit = 50 } = {}) {
+  const db = await getDb();
+  let tasks = [...db.data.agentTasks].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  if (status) tasks = tasks.filter((t) => t.status === status);
+  return tasks.slice(0, limit).map((t) => ({ ...t }));
+}
+
+export async function updateAgentTask(id, updates) {
+  const db = await getDb();
+  const task = db.data.agentTasks.find((t) => t.id === id);
   if (!task) return null;
   Object.assign(task, updates, { updated_at: nowSec() });
   await persist(db);

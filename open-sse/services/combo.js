@@ -4,6 +4,7 @@
 
 import { checkFallbackError, formatRetryAfter } from "./accountFallback.js";
 import { unavailableResponse } from "../utils/error.js";
+import { handleFusionChat } from "./comboFusion.js";
 
 /**
  * Track rotation state per combo (for round-robin strategy)
@@ -249,11 +250,16 @@ export function getComboModelsFromData(modelStr, combosData) {
  * @param {Function} options.handleSingleModel - Function to handle single model: (body, modelStr) => Promise<Response>
  * @param {Object} options.log - Logger object
  * @param {string} [options.comboName] - Name of the combo (for round-robin tracking)
- * @param {string} [options.comboStrategy] - Strategy: "fallback" or "round-robin"
+ * @param {string} [options.comboStrategy] - Strategy: "fallback", "round-robin", or "fusion"
  * @param {number} [options.comboStickyLimit=1] - Number of requests before rotating (sticky round-robin)
+ * @param {string} [options.fusionJudgeModel] - Model to use as fusion judge (defaults to first combo model)
  * @returns {Promise<Response>}
  */
-export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1, comboSlowModelCooldownEnabled = true }) {
+export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1, comboSlowModelCooldownEnabled = true, fusionJudgeModel }) {
+  if (comboStrategy === "fusion") {
+    return handleFusionChat({ body, models, handleSingleModel, log, comboName, fusionJudgeModel });
+  }
+
   // Apply rotation strategy if enabled
   const rotatedModels = rankComboModels(
     getRotatedModels(models, comboName, comboStrategy, comboStickyLimit),

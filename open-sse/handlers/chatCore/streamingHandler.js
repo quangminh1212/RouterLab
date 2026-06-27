@@ -44,9 +44,13 @@ export function handleStreamingResponse({ providerResponse, provider, model, sou
   const transformStream = buildTransformStream({ provider, sourceFormat, targetFormat, userAgent, reqLogger, toolNameMap, model, connectionId, body, onStreamComplete, apiKey });
   const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController);
 
+  const headers = { ...SSE_HEADERS };
+  if (provider) headers["X-Provider"] = provider;
+  if (model) headers["X-Model"] = model;
+
   return {
     success: true,
-    response: new Response(transformedBody, { headers: SSE_HEADERS })
+    response: new Response(transformedBody, { headers })
   };
 }
 

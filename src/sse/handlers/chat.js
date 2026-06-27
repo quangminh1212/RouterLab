@@ -273,6 +273,7 @@ export async function handleChat(request, clientRawRequest = null) {
     const comboSpecificStrategy = comboStrategies[effectiveModelStr]?.fallbackStrategy;
     const comboStrategy = comboSpecificStrategy || settings.comboStrategy || "fallback";
     const comboStickyLimit = Math.max(1, Number(comboStrategies[effectiveModelStr]?.stickyRoundRobinLimit || settings.comboStickyRoundRobinLimit || 1));
+    const fusionJudgeModel = comboStrategies[effectiveModelStr]?.fusionJudgeModel || settings.fusionJudgeModel || null;
 
     log.info("CHAT", `Combo "${effectiveModelStr}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
     return handleComboChat({
@@ -284,6 +285,7 @@ export async function handleChat(request, clientRawRequest = null) {
       comboStrategy,
       comboStickyLimit,
       comboSlowModelCooldownEnabled: settings.comboSlowModelCooldownEnabled !== false,
+      fusionJudgeModel,
     });
   }
 
@@ -315,6 +317,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       const comboSpecificStrategy = comboStrategies[comboName]?.fallbackStrategy;
       const comboStrategy = comboSpecificStrategy || chatSettings.comboStrategy || "fallback";
       const comboStickyLimit = Math.max(1, Number(comboStrategies[comboName]?.stickyRoundRobinLimit || chatSettings.comboStickyRoundRobinLimit || 1));
+      const fusionJudgeModel = comboStrategies[comboName]?.fusionJudgeModel || chatSettings.fusionJudgeModel || null;
       
       log.info("CHAT", `Combo "${comboName}" with ${comboModels.length} models (strategy: ${comboStrategy}, stickyLimit: ${comboStickyLimit})`);
       return handleComboChat({
@@ -326,6 +329,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         comboStrategy,
         comboStickyLimit,
         comboSlowModelCooldownEnabled: chatSettings.comboSlowModelCooldownEnabled !== false,
+        fusionJudgeModel,
       });
     }
     log.warn("CHAT", "Invalid model format", { model: modelStr });
@@ -429,6 +433,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       rtkEnabled: !!chatSettings.rtkEnabled,
       cavemanEnabled: !!chatSettings.cavemanEnabled,
       cavemanLevel: chatSettings.cavemanLevel || "full",
+      ponytailEnabled: !!chatSettings.ponytailEnabled,
+      ponytailLevel: chatSettings.ponytailLevel || "full",
+      headroomEnabled: !!chatSettings.headroomEnabled,
+      headroomUrl: chatSettings.headroomUrl || undefined,
+      guardMode: chatSettings.promptInjectionGuard || "off",
       payloadRules: Array.isArray(chatSettings.payloadRules) ? chatSettings.payloadRules : undefined,
       providerThinking,
       // Detect source format by endpoint + body
