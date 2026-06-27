@@ -8,6 +8,7 @@ import { DATA_DIR } from "@/lib/dataDir.js";
 import { logger } from "@/lib/logger.js";
 import { AI_PROVIDERS } from "@/shared/constants/providers.js";
 import { buildApiKey } from "@/shared/utils/apiKey.js";
+import { configWatcher } from "@/lib/configWatcher.js";
 
 const DEFAULT_MITM_ROUTER_BASE = "http://localhost:1212";
 const LEGACY_CLOUD_HOST_REGEX = /(^|\.)9router\.com$/i;
@@ -1077,6 +1078,43 @@ export async function getDb() {
 
   return dbInstance;
 }
+
+// --- Hot-reload: watch for external db.json changes ---
+const _settingsListeners = new Set();
+let _hotReloadInitialized = false;
+
+function initHotReload() {
+  if (_hotReloadInitialized || !DB_FILE) return;
+  _hotReloadInitialized = true;
+  configWatcher.start(DB_FILE);
+  configWatcher.on("change", async () => {
+    try {
+      if (dbInstance) {
+        await dbInstance.read();
+        dbLastReadAt = Date.now();
+        dbHydrated = true;
+        settingsCache = null;
+        settingsCacheAt = 0;
+        invalidateProviderConnectionsCache();
+        logger.info("DB", "Hot-reloaded db.json from disk");
+        const settings = dbInstance.data?.settings;
+        for (const fn of _settingsListeners) {
+          try { fn(settings); } catch {}
+        }
+      }
+    } catch (err) {
+      logger.warn("DB", "Hot-reload failed:", err.message);
+    }
+  });
+}
+
+export function onSettingsChanged(callback) {
+  if (typeof callback === "function") _settingsListeners.add(callback);
+  return () => _settingsListeners.delete(callback);
+}
+
+// Initialize hot-reload on first import
+initHotReload();
 
 export async function getProviderConnections(filter = {}) {
   const now = Date.now();

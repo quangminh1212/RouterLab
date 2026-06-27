@@ -6,6 +6,7 @@ import {
   clearAccountError,
   extractApiKey,
   isValidApiKey,
+  bindSessionToConnection,
 } from "../services/auth.js";
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
@@ -343,6 +344,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   // Extract userAgent from request
   const userAgent = request?.headers?.get("user-agent") || "";
   const sessionId = extractSessionId(body);
+  const clientSessionId = request?.headers?.get("x-session-id") || body?.session_id || null;
   const contextRelayKey = options.comboName || `${provider}/${model}`;
 
   // Try with available accounts (fallback on errors)
@@ -357,7 +359,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, message);
     }
 
-    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
+    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model, { sessionId: clientSessionId });
 
     // All accounts unavailable
     if (!credentials || credentials.allRateLimited) {
@@ -441,6 +443,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       },
       onRequestSuccess: async () => {
         await clearAccountError(credentials.connectionId, credentials, model);
+        if (clientSessionId) bindSessionToConnection(clientSessionId, provider, credentials.connectionId);
         if (sessionId && contextRelayKey) {
           await clearContextHandoff(sessionId, contextRelayKey);
         }

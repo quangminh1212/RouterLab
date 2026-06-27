@@ -9,7 +9,7 @@ So sánh XLab Router với 3 repo nguồn để đảm bảo phủ 100% tính n�
 > Trạng thái: ✅ = đã có & verify · 🟡 = có một phần / cần hoàn thiện · ⬜ = chưa có
 > Cột "Nguồn" cho biết repo nào có tính năng đó.
 
-Cập nhật lần cuối: 2026-05-31
+Cập nhật lần cuối: 2026-06-27
 
 ---
 
@@ -40,11 +40,11 @@ Cập nhật lần cuối: 2026-05-31
 | 3 | `GET /v1/models` | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 4 | `POST /v1/embeddings` | ✓ | ✓ | | ✓ | ✅ |
 | 5 | `POST /v1/images/generations` | ✓ | ✓ | ✓ | ✓ | ✅ |
-| 6 | `POST /v1/images/edits` | ✓ | | ✓ | 🟡 | 🟡 |
+| 6 | `POST /v1/images/edits` | ✓ | | ✓ | ✓ | ✅ |
 | 7 | `POST /v1/images/understanding` (image→text) | ✓ | | | ✓ | ✅ |
 | 8 | `POST /v1/audio/speech` (TTS) | ✓ | ✓ | | ✓ | ✅ |
 | 9 | `POST /v1/audio/transcriptions` (STT) | ✓ | ✓ | | ✓ | ✅ |
-| 10 | `POST /v1/audio/music` | ✓ | | | 🟡 | 🟡 |
+| 10 | `POST /v1/audio/music` | ✓ | | | ✓ | ✅ |
 | 11 | `POST /v1/video/generations` | ✓ | | ✓ | ✓ | ✅ |
 | 12 | `POST /v1/search` (web search) | ✓ | ✓ | | ✓ | ✅ |
 | 13 | `POST /v1/web/fetch` | ✓ | ✓ | | ✓ | ✅ |
@@ -57,9 +57,9 @@ Cập nhật lần cuối: 2026-05-31
 | 20 | `POST /backend-api/codex/responses` | | | ✓ | 🟡 | 🟡 |
 | 21 | Batch API `/v1/batches` (+files) | | | | ✓ | ✅ (đã thêm) |
 | 22 | A2A `/.well-known/agent.json` + `/a2a` | ✓ | | | ✓ | ✅ (đã thêm) |
-| 23 | MCP bridge `/api/mcp/[plugin]/sse` | ✓ | ✓ | | 🟡 | 🟡 |
+| 23 | MCP bridge `/api/mcp/sse` + `/api/mcp/messages` | ✓ | ✓ | | ✓ | ✅ |
 | 24 | Management API `/api/management/*` | ✓ | ✓ | ✓ (`/v0/management`) | ✓ | ✅ |
-| 25 | WebSocket gateway `/v1/ws` | | | ✓ | ⬜ | ⬜ |
+| 25 | WebSocket gateway `/v1/ws` | | | ✓ | ✓ | ✅ |
 | 26 | Amp CLI `/api/provider/{p}/...` | | | ✓ | ✓ (Đợt 5 — chat/completions, messages, models + model-mappings) | ✅ |
 | 27 | `GET /health` + `/api/health` | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 28 | Redis RESP usage queue (same port) | | | ✓ | ⬜ | ⬜ |
@@ -84,12 +84,12 @@ Cập nhật lần cuối: 2026-05-31
 | 12 | Auto combo / self-healing optimizer | Omni | 🟡 | 🟡 |
 | 13 | RTK token saver (compress tool output) | 9router/Omni | ✓ (`rtk/`) | ✅ |
 | 14 | Caveman mode (giảm output token) | 9router/Omni | ✓ (`rtk/caveman.js`) | ✅ |
-| 15 | Hot-reload config (không cần restart) | CLIProxy | 🟡 (lowdb cache refresh) | 🟡 |
+| 15 | Hot-reload config (không cần restart) | CLIProxy | ✓ (`configWatcher.js` + fs.watch) | ✅ |
 | 16 | Model mapping / alias (forced mappings) | tất cả | ✓ | ✅ |
 | 17 | Thinking/reasoning config (extended + effort) | tất cả | ✓ (`THINKING_CONFIG`) | ✅ |
 | 18 | Signature cache (Claude/Gemini thinking sig) | CLIProxy | ✓ (`defaultThinkingSignature`, claudeHeaderCache) | ✅ |
 | 19 | Claude cloaking / client spoofing | CLIProxy | ✓ (`claudeCloaking.js`) | ✅ |
-| 20 | Session affinity (sticky routing by session id) | CLIProxy | 🟡 | 🟡 |
+| 20 | Session affinity (sticky routing by session id) | CLIProxy | ✓ (`sessionAffinity.js` + x-session-id header) | ✅ |
 | 21 | Multi-account load balancing | tất cả | ✓ | ✅ |
 | 22 | Per-credential proxy (socks5/http) | CLIProxy/Omni | ✓ (`connectionProxy`, proxy pools) | ✅ |
 | 23 | Payload rules engine (gjson/sjson edits) | CLIProxy | ✓ (Đợt 5 — `open-sse/services/payloadRules.js`: set/default/delete/rename + when conditions) | ✅ |

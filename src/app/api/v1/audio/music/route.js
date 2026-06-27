@@ -1,9 +1,4 @@
-// POST /v1/audio/music — music generation endpoint (Suno / Udio).
-//
-// Registered for catalog parity with OmniRoute. Music providers (suno, udio)
-// use cookie/session auth + async task generation; a dedicated music handler
-// with per-provider task polling is not yet implemented in this build, so this
-// endpoint returns a clear 501 with guidance rather than a fragile stub.
+import { handleMusic as handleMusicGeneration } from "@/sse/handlers/music.js";
 import { withRouteGuard } from "@/lib/runtimeGuard";
 
 function corsHeaders() {
@@ -23,21 +18,15 @@ async function postHandler(request) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return Response.json(
       { error: { message: "Invalid JSON body", type: "invalid_request_error" } },
-      { status: 400, headers: corsHeaders() },
+      { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   }
-  return Response.json(
-    {
-      error: {
-        message:
-          "Music generation (suno/udio) is registered but not yet implemented in this build. " +
-          "These providers require cookie/session auth and async task polling. Track the parity checklist for status.",
-        type: "not_implemented_error",
-        code: "MUSIC_NOT_IMPLEMENTED",
-      },
-    },
-    { status: 501, headers: corsHeaders() },
-  );
+  const forwardedRequest = new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: JSON.stringify(body),
+  });
+  return await handleMusicGeneration(forwardedRequest);
 }
 
-export const POST = withRouteGuard("v1/audio/music", postHandler, { timeoutMs: 30000 });
+export const POST = withRouteGuard("v1/audio/music", postHandler, { timeoutMs: 120000 });

@@ -3,6 +3,7 @@ import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
+import { sessionAffinityStore } from "open-sse/services/sessionAffinity.js";
 import * as log from "../utils/logger.js";
 
 // Mutex to prevent race conditions during account selection
@@ -135,6 +136,17 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       connection = availableConnections.find((c) => c.id === preferredConnectionId);
       if (connection) {
         log.info("AUTH", `${provider} | pinned to ${connection.id?.slice(0, 8)} (${connection.name || connection.email || "unnamed"})`);
+      }
+    }
+    // Session affinity: prefer bound connection
+    if (!connection && options?.sessionId) {
+      const affinityId = sessionAffinityStore.get(options.sessionId, providerId);
+      if (affinityId) {
+        const affinityConn = availableConnections.find((c) => c.id === affinityId);
+        if (affinityConn) {
+          connection = affinityConn;
+          log.debug("AUTH", `${provider} | session-affinity hit: ${affinityId.slice(0, 8)}`);
+        }
       }
     }
     if (connection) {
@@ -351,4 +363,11 @@ export function extractApiKey(request) {
 export async function isValidApiKey(apiKey, requestContext = {}) {
   if (!apiKey) return false;
   return await validateApiKey(apiKey, requestContext);
+}
+
+/**
+ * Bind a session to a specific connection for sticky routing.
+ */
+export function bindSessionToConnection(sessionId, provider, connectionId) {
+  sessionAffinityStore.bind(sessionId, resolveProviderId(provider), connectionId);
 }
