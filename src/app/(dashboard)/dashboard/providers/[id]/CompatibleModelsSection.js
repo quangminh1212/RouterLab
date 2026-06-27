@@ -70,7 +70,7 @@ function CompatibleModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias,
   );
 }
 
-export default function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, modelAliases, copied, onCopy, onSetAlias, onDeleteAlias, connections, combos, isAnthropic }) {
+export default function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, modelAliases, copied, onCopy, onSetAlias, onDeleteAlias, connections, isAnthropic }) {
   const [newModel, setNewModel] = useState("");
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -95,21 +95,12 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
     }
   };
 
-  const comboModelIds = new Set(
-  (Array.isArray(combos) ? combos : [])
-    .filter((combo) => combo?.showInModelsEndpoint !== false)
-    .flatMap((combo) => Array.isArray(combo?.models) ? combo.models : [])
-    .filter((model) => typeof model === "string" && model.startsWith(`${providerDisplayAlias}/`))
-    .map((model) => model.slice(`${providerDisplayAlias}/`.length))
-);
+  const providerAliases = Object.entries(modelAliases).filter(([, model]) => {
+    if (!model.startsWith(`${providerStorageAlias}/`)) return false;
+    return true;
+  });
 
-const providerAliases = Object.entries(modelAliases).filter(([, model]) => {
-  if (!model.startsWith(`${providerStorageAlias}/`)) return false;
-  const modelId = model.replace(`${providerStorageAlias}/`, "");
-  return comboModelIds.size === 0 || comboModelIds.has(modelId);
-});
-
-const allModels = providerAliases.map(([alias, fullModel]) => ({
+  const allModels = providerAliases.map(([alias, fullModel]) => ({
   modelId: fullModel.replace(`${providerStorageAlias}/`, ""),
   fullModel,
   alias,

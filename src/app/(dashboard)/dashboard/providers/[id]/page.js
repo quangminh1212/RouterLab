@@ -48,7 +48,6 @@ export default function ProviderDetailPage() {
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [suggestedModels, setSuggestedModels] = useState([]);
   const [kiloFreeModels, setKiloFreeModels] = useState([]);
-  const [combos, setCombos] = useState([]);
   const { copied, copy } = useCopyToClipboard();
 
   const providerInfo = providerNode
@@ -77,14 +76,6 @@ export default function ProviderDetailPage() {
   const providerDisplayAlias = isCompatible
     ? (providerNode?.prefix || providerId)
     : providerAlias;
-
-  useEffect(() => {
-    if (!isOpenAICompatible || !providerNode?.prefix) return;
-    fetch("/api/combos", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => setCombos(Array.isArray(data?.combos) ? data.combos : []))
-      .catch(() => setCombos([]));
-  }, [isOpenAICompatible, providerNode?.prefix]);
 
   // Define callbacks BEFORE the useEffect that uses them
   const fetchAliases = useCallback(async () => {
@@ -680,7 +671,6 @@ export default function ProviderDetailPage() {
           onSetAlias={handleSetAlias}
           onDeleteAlias={handleDeleteAlias}
           connections={connections}
-          combos={combos}
           isAnthropic={isAnthropicCompatible}
         />
       );
