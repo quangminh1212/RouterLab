@@ -374,6 +374,23 @@ function extractChatContent(payload) {
   return "";
 }
 
+function extractStreamContent(rawText) {
+  let content = "";
+  for (const line of String(rawText || "").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const parsed = JSON.parse(payload);
+      const delta = parsed?.choices?.[0]?.delta;
+      if (typeof delta?.content === "string") content += delta.content;
+      if (typeof delta?.reasoning_content === "string") content += delta.reasoning_content;
+    } catch {}
+  }
+  return content;
+}
+
 async function fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs) {
   const node = await getProviderNodeById(connection.provider).catch(() => null);
   const baseUrl = resolveConnectionBaseUrl(connection);
@@ -390,7 +407,11 @@ async function fetchOpenAICompatibleModels(connection, effectiveProxy, timeoutMs
     throw new Error(`Fetch models failed: HTTP ${res.status}`);
   }
   const data = await res.json().catch(() => null);
-  const models = normalizeTestModels(data?.data || data?.models || data?.results || []);
+  let models = normalizeTestModels(data?.data || data?.models || data?.results || []);
+  // Digigo / OneAPI advertises models that actually fail at runtime.
+  if (baseUrl?.includes("digishop.work")) {
+    models = models.filter((id) => !id.endsWith("-openai-compact") && id !== "gpt-5.1" && id !== "gpt-5.2");
+  }
   return models;
 }
 
@@ -406,9 +427,10 @@ async function testOpenAICompatibleModel(connection, model, effectiveProxy, time
     Authorization: `Bearer ${connection.apiKey}`,
   };
 
+  const isDigigo = baseUrl?.includes("digishop.work");
   const body = useResponses
     ? { model, input: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_output_tokens: 16, stream: false }
-    : { model, messages: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_tokens: 16, stream: false };
+    : { model, messages: [{ role: "user", content: "Reply exactly pong. No punctuation." }], max_tokens: 16, stream: isDigigo ? true : false };
   const endpoint = useResponses ? `${requestBaseUrl}/responses` : `${requestBaseUrl}/chat/completions`;
 
   try {
@@ -424,7 +446,7 @@ async function testOpenAICompatibleModel(connection, model, effectiveProxy, time
     const rawText = await res.text().catch(() => "");
     let parsed = null;
     try { parsed = rawText ? JSON.parse(rawText) : null; } catch {}
-    const content = extractChatContent(parsed);
+    const content = isDigigo ? extractStreamContent(rawText) : extractChatContent(parsed);
     const detail = parsed?.error?.message || parsed?.message || parsed?.error || rawText;
     const ok = res.ok && !!String(content || "").trim();
     return {
