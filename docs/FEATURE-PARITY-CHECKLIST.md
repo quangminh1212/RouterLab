@@ -84,6 +84,12 @@ Cập nhật lần cuối: 2026-06-27
 | 12 | Auto combo / self-healing optimizer | Omni | 🟡 | 🟡 |
 | 13 | RTK token saver (compress tool output) | 9router/Omni | ✓ (`rtk/`) | ✅ |
 | 14 | Caveman mode (giảm output token) | 9router/Omni | ✓ (`rtk/caveman.js`) | ✅ |
+| 14b | Ponytail mode (lazy senior dev, YAGNI code) | 9router | ✓ (`rtk/ponytail.js`) | ✅ |
+| 14c | Headroom integration (external compress proxy) | 9router | ✓ (`rtk/headroom.js`) | ✅ |
+| 14d | Combo Fusion strategy (parallel + judge) | 9router/Omni | ✓ (`services/comboFusion.js`) | ✅ |
+| 14e | Prompt injection guard | Omni | ✓ (`services/promptInjectionGuard.js`) | ✅ |
+| 14f | Cost telemetry headers (X-Cost, X-Usage) | Omni | ✓ (`utils/costHeaders.js`) | ✅ |
+| 14g | Cloud agent tasks (Jules/Devin/Codex-Cloud) | Omni | ✓ (`handlers/cloudAgents.js`) | ✅ |
 | 15 | Hot-reload config (không cần restart) | CLIProxy | ✓ (`configWatcher.js` + fs.watch) | ✅ |
 | 16 | Model mapping / alias (forced mappings) | tất cả | ✓ | ✅ |
 | 17 | Thinking/reasoning config (extended + effort) | tất cả | ✓ (`THINKING_CONFIG`) | ✅ |
