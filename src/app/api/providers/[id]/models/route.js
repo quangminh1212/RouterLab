@@ -368,7 +368,12 @@ export async function GET(request, { params }) {
       }
 
       const data = await response.json();
-      const models = data.data || data.models || [];
+      let models = data.data || data.models || [];
+
+      // Digigo / OneAPI gateway lists models it cannot actually serve
+      if (baseUrl?.includes("digishop.work")) {
+        models = models.filter((m) => !m.id?.endsWith("-openai-compact"));
+      }
 
       return NextResponse.json({
         provider: connection.provider,
