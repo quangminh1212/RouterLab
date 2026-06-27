@@ -1270,19 +1270,11 @@ export default function ProfilePage() {
 
     event?.preventDefault();
 
-    const { currentUsername, currentPassword, username, password, confirmPassword } = accountForm;
+    const { currentPassword, password, confirmPassword } = accountForm;
 
-    if (!currentUsername.trim() || !currentPassword) {
+    if (!currentPassword) {
 
-      setAccountStatus({ type: "error", message: "Vui lòng nhập tài khoản và mật khẩu hiện tại" });
-
-      return;
-
-    }
-
-    if (!username.trim()) {
-
-      setAccountStatus({ type: "error", message: "Vui lòng nhập tên đăng nhập mới" });
+      setAccountStatus({ type: "error", message: "Vui lòng nhập mật khẩu hiện tại" });
 
       return;
 
@@ -1316,21 +1308,17 @@ export default function ProfilePage() {
 
         headers: { "Content-Type": "application/json" },
 
-        body: JSON.stringify({ currentUsername, currentPassword, username: username.trim(), password }),
+        body: JSON.stringify({ currentPassword, password }),
 
       });
 
       const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) throw new Error(data.error || "Đổi tài khoản thất bại");
+      if (!res.ok) throw new Error(data.error || "Đổi mật khẩu thất bại");
 
       setAccountForm((current) => ({
 
         ...current,
-
-        currentUsername: data.username,
-
-        username: data.username,
 
         currentPassword: "",
 
@@ -1340,11 +1328,11 @@ export default function ProfilePage() {
 
       }));
 
-      setAccountStatus({ type: "success", message: "Đổi tài khoản thành công" });
+      setAccountStatus({ type: "success", message: "Đổi mật khẩu thành công" });
 
     } catch (err) {
 
-      setAccountStatus({ type: "error", message: err.message || "Đổi tài khoản thất bại" });
+      setAccountStatus({ type: "error", message: err.message || "Đổi mật khẩu thất bại" });
 
     } finally {
 
@@ -1966,7 +1954,7 @@ export default function ProfilePage() {
 
             </div>
 
-            {!securityLoading ? (
+            {!securityLoading && requireLoginEnabled ? (
 
               <form onSubmit={changeAccountCredentials} className="flex flex-col gap-4 pt-4 border-t border-border/50">
 
@@ -1980,33 +1968,15 @@ export default function ProfilePage() {
 
                   <div>
 
-                    <p className="font-medium">Quản lý tài khoản</p>
+                    <p className="font-medium">Đổi mật khẩu</p>
 
-                    <p className="text-sm text-text-muted">Đổi tên đăng nhập và mật khẩu đăng nhập dashboard.</p>
+                    <p className="text-sm text-text-muted">Đổi mật khẩu đăng nhập dashboard.</p>
 
                   </div>
 
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-
-                  <Input
-
-                    label="Tài khoản hiện tại"
-
-                    type="text"
-
-                    value={accountForm.currentUsername}
-
-                    onChange={(event) => setAccountForm((current) => ({ ...current, currentUsername: event.target.value }))}
-
-                    autoComplete="username"
-
-                    disabled={accountLoading || disableSecurityControls}
-
-                    required
-
-                  />
+                <div className="grid gap-4 sm:grid-cols-1">
 
                   <Input
 
@@ -2019,24 +1989,6 @@ export default function ProfilePage() {
                     onChange={(event) => setAccountForm((current) => ({ ...current, currentPassword: event.target.value }))}
 
                     autoComplete="current-password"
-
-                    disabled={accountLoading || disableSecurityControls}
-
-                    required
-
-                  />
-
-                  <Input
-
-                    label="Tên đăng nhập mới"
-
-                    type="text"
-
-                    value={accountForm.username}
-
-                    onChange={(event) => setAccountForm((current) => ({ ...current, username: event.target.value }))}
-
-                    autoComplete="username"
 
                     disabled={accountLoading || disableSecurityControls}
 
@@ -2078,7 +2030,7 @@ export default function ProfilePage() {
 
                     required
 
-                    className="sm:col-span-2"
+                    className=""
 
                   />
 
@@ -2098,7 +2050,7 @@ export default function ProfilePage() {
 
                   <Button type="submit" variant="primary" loading={accountLoading} disabled={accountLoading || disableSecurityControls}>
 
-                    Lưu tài khoản
+                    Đổi mật khẩu
 
                   </Button>
 

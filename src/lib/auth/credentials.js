@@ -90,19 +90,20 @@ export async function hasStoredCredentials() {
 
 export async function verifyCredentials(username, password) {
 
+  // Support password-only login: if username is empty/omitted, auto-resolve the stored username
   const settings = await getSettings();
 
   const stored = settings?.adminAuth;
 
-  const inputUsername = String(username || "").trim();
-
   const inputPassword = String(password || "");
 
+  const inputUsername = String(username || "").trim() || stored?.username || process.env.ADMIN_USERNAME || DEFAULT_USERNAME;
 
 
-  if (stored && stored.username && stored.passwordHash && stored.salt) {
 
-    if (!timingSafeEqualBuf(inputUsername, stored.username)) return false;
+  if (stored && stored.passwordHash && stored.salt) {
+
+    if (stored.username && !timingSafeEqualBuf(inputUsername, stored.username)) return false;
 
     const candidate = hashPassword(inputPassword, stored.salt);
 
@@ -124,17 +125,10 @@ export async function verifyCredentials(username, password) {
 
 export async function setCredentials({ username, password }) {
 
-  const trimmedUser = String(username || "").trim();
+  // Username is optional — falls back to existing or default
+  const settings = await getSettings();
 
-  if (!trimmedUser) {
-
-    const err = new Error("Vui lòng nhập tên đăng nhập");
-
-    err.code = "USERNAME_REQUIRED";
-
-    throw err;
-
-  }
+  const trimmedUser = String(username || "").trim() || settings?.adminAuth?.username || process.env.ADMIN_USERNAME || DEFAULT_USERNAME;
 
   if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
 

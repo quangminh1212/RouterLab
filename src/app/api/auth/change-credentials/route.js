@@ -66,17 +66,16 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const currentUsername = String(body?.currentUsername || "").trim();
     const currentPassword = String(body?.currentPassword || "");
-    const username = String(body?.username || "").trim();
     const password = String(body?.password || "");
 
-    const currentOk = await verifyCredentials(currentUsername, currentPassword);
+    // Username is optional — verify with auto-resolved username
+    const currentOk = await verifyCredentials("", currentPassword);
     if (!currentOk) {
-      return NextResponse.json({ error: "Tài khoản hoặc mật khẩu hiện tại không đúng" }, { status: 401 });
+      return NextResponse.json({ error: "Mật khẩu hiện tại không đúng" }, { status: 401 });
     }
 
-    const updated = await setCredentials({ username, password });
+    const updated = await setCredentials({ password });
     return NextResponse.json({ success: true, username: updated.username });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Không đổi được tài khoản" }, { status: 400 });

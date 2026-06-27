@@ -72,13 +72,17 @@ export async function POST(request) {
 
     if (!ok) {
 
-      return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng" }, { status: 401 });
+      return NextResponse.json({ error: "Mật khẩu không đúng" }, { status: 401 });
 
     }
 
 
 
-    const token = await new SignJWT({ authenticated: true, provider: "password", sub: username })
+    // Resolve effective username for JWT (may have been auto-filled by verifyCredentials)
+    const { getEffectiveUsername } = await import("@/lib/auth/credentials");
+    const effectiveUser = username || await getEffectiveUsername();
+
+    const token = await new SignJWT({ authenticated: true, provider: "password", sub: effectiveUser })
 
       .setProtectedHeader({ alg: "HS256" })
 

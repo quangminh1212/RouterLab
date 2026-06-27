@@ -7,7 +7,6 @@ import { APP_CONFIG } from "@/shared/constants/config";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,8 +14,8 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
-    if (!username.trim() || !password) {
-      setError("Vui lòng nhập tên đăng nhập và mật khẩu");
+    if (!password) {
+      setError("Vui lòng nhập mật khẩu");
       return;
     }
     setLoading(true);
@@ -24,7 +23,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({ password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -47,21 +46,10 @@ export default function LoginPage() {
             <Image src="/icon.png" alt="XLab Router" width={56} height={56} priority />
           </div>
           <h1 className="text-xl font-semibold text-text-main">{APP_CONFIG?.name || "XLab Router"}</h1>
-          <p className="text-sm text-text-muted mt-1">Đăng nhập để tiếp tục</p>
+          <p className="text-sm text-text-muted mt-1">Nhập mật khẩu để tiếp tục</p>
         </div>
         <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              label="Tên đăng nhập"
-              type="text"
-              placeholder="admin"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              autoFocus
-              disabled={loading}
-              required
-            />
             <Input
               label="Mật khẩu"
               type="password"
@@ -69,6 +57,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              autoFocus
               disabled={loading}
               required
             />
