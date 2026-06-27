@@ -404,10 +404,14 @@ export async function GET(request, { params }) {
       if (baseUrl?.includes("digishop.work")) {
         models = models.filter((m) => !m.id?.endsWith("-openai-compact"));
         const testedModels = [];
-        for (const model of models) {
-          if (await testModelAvailability(baseUrl, connection.apiKey, model.id)) {
-            testedModels.push(model);
-          }
+        const testResults = await Promise.all(
+          models.map(async (model) => ({
+            model,
+            ok: await testModelAvailability(baseUrl, connection.apiKey, model.id),
+          }))
+        );
+        for (const { model, ok } of testResults) {
+          if (ok) testedModels.push(model);
         }
         models = testedModels;
       }
