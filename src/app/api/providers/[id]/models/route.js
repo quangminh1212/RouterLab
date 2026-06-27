@@ -325,6 +325,35 @@ const PROVIDER_MODELS_CONFIG = {
   }
 };
 
+async function testModelAvailability(baseUrl, apiKey, modelId) {
+  try {
+    const url = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: [{ role: "user", content: "hi" }],
+        stream: true,
+        max_tokens: 1,
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!response.ok) return false;
+    if (!response.body) return false;
+    const reader = response.body.getReader();
+    const { value, done } = await reader.read();
+    if (done) return false;
+    const text = new TextDecoder().decode(value);
+    return text.includes("data:");
+  } catch (error) {
+    return false;
+  }
+}
+
 /**
  * GET /api/providers/[id]/models - Get models list from provider
  */
@@ -370,9 +399,17 @@ export async function GET(request, { params }) {
       const data = await response.json();
       let models = data.data || data.models || [];
 
-      // Digigo / OneAPI gateway lists models it cannot actually serve
+      // Digigo / OneAPI gateway lists models it cannot actually serve.
+      // Some models are advertised but return "unknown provider" at runtime.
       if (baseUrl?.includes("digishop.work")) {
         models = models.filter((m) => !m.id?.endsWith("-openai-compact"));
+        const testedModels = [];
+        for (const model of models) {
+          if (await testModelAvailability(baseUrl, connection.apiKey, model.id)) {
+            testedModels.push(model);
+          }
+        }
+        models = testedModels;
       }
 
       return NextResponse.json({
