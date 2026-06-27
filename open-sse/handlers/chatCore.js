@@ -30,6 +30,21 @@ export function isInternallyStreamOnlyProvider(provider) {
 }
 
 /**
+ * Detect providers that must always call upstream in streaming mode.
+ * Supports static list, explicit forceStream flag in providerSpecificData,
+ * and known gateways that cannot aggregate non-streaming responses.
+ */
+function isProviderForcedStreaming(provider, credentials) {
+  if (INTERNAL_STREAM_ONLY_PROVIDERS.has(provider)) return true;
+  const psd = credentials?.providerSpecificData || {};
+  if (psd.forceStream === true) return true;
+  // Digigo / OneAPI gateway returns bad_response_body for non-streaming requests
+  const baseUrl = psd.baseUrl || "";
+  if (baseUrl.includes("digishop.work")) return true;
+  return false;
+}
+
+/**
  * Core chat handler - shared between SSE and Worker
  * @param {object} options.body - Request body
  * @param {object} options.modelInfo - { provider, model }
@@ -78,7 +93,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   }
 
   const clientRequestedStreaming = body.stream === true || sourceFormat === FORMATS.ANTIGRAVITY || sourceFormat === FORMATS.GEMINI || sourceFormat === FORMATS.GEMINI_CLI;
-  const providerRequiresStreaming = isInternallyStreamOnlyProvider(provider);
+  const providerRequiresStreaming = isProviderForcedStreaming(provider, credentials);
   let stream = providerRequiresStreaming ? true : (body.stream !== false);
 
   // Check client Accept header preference for non-streaming requests
@@ -114,6 +129,12 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     toolNameMap = translatedBody._toolNameMap;
     delete translatedBody._toolNameMap;
     translatedBody.model = model;
+  }
+
+  // Providers that require streaming upstream must set stream=true in the body
+  // (headers already use the stream flag, but the upstream also reads the body field).
+  if (providerRequiresStreaming) {
+    translatedBody.stream = true;
   }
 
   // Token savers: applied at the final body just before dispatch
