@@ -75,6 +75,15 @@ export const OAUTH_PROVIDERS = {
   cline: { id: "cline", alias: "cl", name: "Cline", icon: "smart_toy", color: "#5B9BD5", textIcon: "CL", website: "https://cline.bot", notice: { signupUrl: "https://cline.bot" } },
   gitlab: { id: "gitlab", alias: "gl", name: "GitLab Duo", icon: "hub", color: "#FC6D26", textIcon: "GL", website: "https://docs.gitlab.com/user/duo_agent_platform/code_suggestions/", notice: { signupUrl: "https://gitlab.com" } },
   codebuddy: { id: "codebuddy", alias: "cb", name: "CodeBuddy", icon: "smart_toy", color: "#006EFF", textIcon: "CB", website: "https://copilot.tencent.com", notice: { signupUrl: "https://copilot.tencent.com" } },
+  // OmniRoute OAuth/CLI vendor stubs (Đợt 6) — surface in UI; full OAuth flow needs desktop/session
+  agy: { id: "agy", alias: "agy", name: "Antigravity CLI", icon: "terminal", color: "#F59E0B", textIcon: "AGY", website: "https://antigravity.google", notice: { signupUrl: "https://antigravity.google", text: "CLI OAuth — paste credential from Antigravity CLI." } },
+  windsurf: { id: "windsurf", alias: "ws", name: "Windsurf (Devin CLI)", icon: "surfing", color: "#00C5A0", textIcon: "WS", website: "https://windsurf.com", notice: { signupUrl: "https://windsurf.com", text: "Device-code / token paste from Windsurf/Devin CLI." } },
+  trae: { id: "trae", alias: "tr", name: "Trae", icon: "edit_note", color: "#FF7849", textIcon: "TR", website: "https://trae.ai", notice: { signupUrl: "https://trae.ai", text: "Paste Cloud-IDE JWT from Trae." } },
+  zed: { id: "zed", alias: "zd", name: "Zed IDE", icon: "code", color: "#084CCF", textIcon: "ZD", website: "https://zed.dev", notice: { signupUrl: "https://zed.dev", text: "Import creds from OS keychain / hosted token." } },
+  "zed-hosted": { id: "zed-hosted", alias: "zedh", name: "Zed Hosted Models", icon: "cloud", color: "#084CCF", textIcon: "ZH", website: "https://zed.dev", notice: { signupUrl: "https://zed.dev" }, passthroughModels: true },
+  clinepass: { id: "clinepass", alias: "cp", name: "ClinePass", icon: "vpn_key", color: "#9D4EDD", textIcon: "CP", website: "https://cline.bot/clinepass", notice: { signupUrl: "https://cline.bot/clinepass" } },
+  "grok-cli": { id: "grok-cli", alias: "gcli", name: "Grok Build", icon: "bolt", color: "#000000", textIcon: "GB", website: "https://x.ai", notice: { text: "Paste ~/.grok/auth.json or JWT from Grok Build CLI." } },
+  "devin-cli": { id: "devin-cli", alias: "dvcli", name: "Devin CLI", icon: "smart_toy", color: "#111827", textIcon: "DV", website: "https://cli.devin.ai", notice: { signupUrl: "https://cli.devin.ai" } },
   // opencode: { id: "opencode", alias: "oc", name: "OpenCode", icon: "terminal", color: "#E87040", textIcon: "OC" },
 };
 
@@ -212,6 +221,40 @@ export const APIKEY_PROVIDERS = {
   monsterapi: { id: "monsterapi", alias: "monster", name: "MonsterAPI", icon: "cloud", color: "#EF4444", textIcon: "MA", website: "https://monsterapi.ai", notice: { text: "Free credits for decentralized GPU inference.", apiKeyUrl: "https://monsterapi.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
   dify: { id: "dify", alias: "dify", name: "Dify", icon: "smart_toy", color: "#6366F1", textIcon: "DF", website: "https://dify.ai", notice: { text: "Open-source AI app builder + RAG platform.", apiKeyUrl: "https://dify.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
 
+  // === OmniRoute wave (Đợt 6) — gateways / inference hosts / regional ===
+  tokenrouter: { id: "tokenrouter", alias: "trk", name: "TokenRouter", icon: "router", color: "#F59E0B", textIcon: "TK", website: "https://tokenrouter.com", notice: { apiKeyUrl: "https://tokenrouter.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  requesty: { id: "requesty", alias: "requesty", name: "Requesty", icon: "hub", color: "#6366F1", textIcon: "RQ", website: "https://requesty.ai", notice: { text: "BYOK gateway — ~200 free req/day.", apiKeyUrl: "https://requesty.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  zenmux: { id: "zenmux", alias: "zm", name: "ZenMux", icon: "hub", color: "#7C3AED", textIcon: "ZM", website: "https://zenmux.ai", notice: { apiKeyUrl: "https://zenmux.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  dgrid: { id: "dgrid", alias: "dgrid", name: "DGrid", icon: "grid_view", color: "#65A30D", textIcon: "DG", website: "https://dgrid.ai", notice: { apiKeyUrl: "https://dgrid.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  orcarouter: { id: "orcarouter", alias: "orcarouter", name: "OrcaRouter", icon: "router", color: "#0891B2", textIcon: "ORC", website: "https://www.orcarouter.ai", notice: { apiKeyUrl: "https://www.orcarouter.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  modelscope: { id: "modelscope", alias: "ms", name: "ModelScope", icon: "science", color: "#FF6A00", textIcon: "MS", website: "https://modelscope.cn", notice: { text: "Alibaba ModelScope inference.", apiKeyUrl: "https://modelscope.cn" }, passthroughModels: true, serviceKinds: ["llm"] },
+  digitalocean: { id: "digitalocean", alias: "doai", name: "DigitalOcean AI", icon: "water", color: "#0060FF", textIcon: "DO", website: "https://docs.digitalocean.com/products/ai-platform/", notice: { apiKeyUrl: "https://cloud.digitalocean.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  alibaba: { id: "alibaba", alias: "ali", name: "Alibaba DashScope (Intl)", icon: "cloud", color: "#FF6600", textIcon: "AL", website: "https://bailian.console.alibabacloud.com/", notice: { apiKeyUrl: "https://bailian.console.alibabacloud.com/" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "alibaba-cn": { id: "alibaba-cn", alias: "alicn", name: "Alibaba DashScope (CN)", icon: "cloud", color: "#FF6600", textIcon: "AC", website: "https://bailian.console.aliyun.com/", notice: { apiKeyUrl: "https://bailian.console.aliyun.com/" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "bailian-coding-plan": { id: "bailian-coding-plan", alias: "bcp", name: "Alibaba Coding Plan", icon: "code", color: "#FF6600", textIcon: "BCP", website: "https://bailian.console.alibabacloud.com/", notice: { text: "DashScope coding plan (Anthropic-compatible).", apiKeyUrl: "https://bailian.console.alibabacloud.com/" }, passthroughModels: true, serviceKinds: ["llm"] },
+  hcnsec: { id: "hcnsec", alias: "hcnsec", name: "Huancheng Public API", icon: "public", color: "#0EA5E9", textIcon: "HC", website: "https://api.hcnsec.cn", notice: { apiKeyUrl: "https://api.hcnsec.cn" }, passthroughModels: true, serviceKinds: ["llm"] },
+  glmt: { id: "glmt", alias: "glmt", name: "GLM Thinking (Z.AI Coding)", icon: "psychology", color: "#1D4ED8", textIcon: "GT", website: "https://open.bigmodel.cn", notice: { apiKeyUrl: "https://open.bigmodel.cn" }, passthroughModels: true, serviceKinds: ["llm"] },
+  sparkdesk: { id: "sparkdesk", alias: "sparkdesk", name: "SparkDesk", icon: "bolt", color: "#0066FF", textIcon: "SD", website: "https://xinghuo.xfyun.cn", notice: { apiKeyUrl: "https://console.xfyun.cn" }, passthroughModels: true, serviceKinds: ["llm"] },
+  openvecta: { id: "openvecta", alias: "openvecta", name: "OpenVecta", icon: "hub", color: "#7C3AED", textIcon: "OV", website: "https://openvecta.com", notice: { apiKeyUrl: "https://openvecta.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  sumopod: { id: "sumopod", alias: "sumopod", name: "SumoPod", icon: "cloud", color: "#2563EB", textIcon: "SP", website: "https://ai.sumopod.com", notice: { apiKeyUrl: "https://ai.sumopod.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  kenari: { id: "kenari", alias: "kenari", name: "Kenari", icon: "auto_awesome", color: "#B5362A", textIcon: "KN", website: "https://kenari.id", notice: { apiKeyUrl: "https://kenari.id" }, passthroughModels: true, serviceKinds: ["llm"] },
+  x5lab: { id: "x5lab", alias: "x5lab", name: "X5Lab", icon: "science", color: "#7C3AED", textIcon: "X5", website: "https://x5lab.dev", notice: { apiKeyUrl: "https://x5lab.dev" }, passthroughModels: true, serviceKinds: ["llm"] },
+  wafer: { id: "wafer", alias: "wafer", name: "Wafer AI", icon: "hub", color: "#6366F1", textIcon: "WF", website: "https://wafer.ai", notice: { text: "Anthropic-compatible pass-through.", apiKeyUrl: "https://wafer.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  nube: { id: "nube", alias: "nube", name: "Nube.sh", icon: "cloud", color: "#2563EB", textIcon: "NB", website: "https://nube.sh", notice: { apiKeyUrl: "https://nube.sh" }, passthroughModels: true, serviceKinds: ["llm"] },
+  qiniu: { id: "qiniu", alias: "qiniu", name: "Qiniu AI", icon: "cloud", color: "#1E88E5", textIcon: "QN", website: "https://www.qiniu.com", notice: { apiKeyUrl: "https://portal.qiniu.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  factory: { id: "factory", alias: "factory", name: "Factory", icon: "precision_manufacturing", color: "#0F172A", textIcon: "FA", website: "https://factory.ai", notice: { apiKeyUrl: "https://factory.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  openadapter: { id: "openadapter", alias: "oad", name: "OpenAdapter", icon: "hub", color: "#10B981", textIcon: "OD", website: "https://openadapter.dev", notice: { apiKeyUrl: "https://openadapter.dev" }, passthroughModels: true, serviceKinds: ["llm"] },
+  pioneer: { id: "pioneer", alias: "pn", name: "Pioneer AI", icon: "rocket_launch", color: "#7C5CFF", textIcon: "PN", website: "https://pioneer.ai", notice: { apiKeyUrl: "https://pioneer.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "charm-hyper": { id: "charm-hyper", alias: "charm", name: "Charm Hyper", icon: "terminal", color: "#C026D3", textIcon: "CH", website: "https://hyper.charm.land", notice: { apiKeyUrl: "https://hyper.charm.land" }, passthroughModels: true, serviceKinds: ["llm"] },
+  dit: { id: "dit", alias: "dai", name: "DIT.ai", icon: "hub", color: "#0EA5E9", textIcon: "DT", website: "https://dit.ai", notice: { apiKeyUrl: "https://dit.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  bai: { id: "bai", alias: "thebai2", name: "b.ai", icon: "hub", color: "#3B82F6", textIcon: "BAI", website: "https://theb.ai", notice: { apiKeyUrl: "https://theb.ai" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "v0-vercel": { id: "v0-vercel", alias: "v0api", name: "v0 (Vercel API)", icon: "code", color: "#000000", textIcon: "V0", website: "https://v0.dev", notice: { apiKeyUrl: "https://v0.dev" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "codebuddy-cn": { id: "codebuddy-cn", alias: "cbcn", name: "CodeBuddy CN", icon: "smart_toy", color: "#006EFF", textIcon: "CB", website: "https://copilot.tencent.com", notice: { apiKeyUrl: "https://copilot.tencent.com" }, passthroughModels: true, serviceKinds: ["llm"] },
+  "kimi-coding-apikey": { id: "kimi-coding-apikey", alias: "kmca", name: "Kimi Coding (API Key)", icon: "psychology", color: "#1E40AF", textIcon: "KCA", website: "https://www.kimi.com/code", notice: { apiKeyUrl: "https://www.kimi.com/code" }, passthroughModels: true, serviceKinds: ["llm"] },
+  theoldllm: { id: "theoldllm", alias: "tllm", name: "The Old LLM (Free)", icon: "auto_awesome", color: "#8B5CF6", textIcon: "TL", website: "https://theoldllm.vercel.app", notice: { text: "Free public endpoint — no API key required for many models." }, passthroughModels: true, noAuth: true, serviceKinds: ["llm"] },
+  mimocode: { id: "mimocode", alias: "mcode", name: "MiMoCode (Free)", icon: "code", color: "#FF6B35", textIcon: "MC", website: "https://mimo.mi.com", notice: { text: "Xiaomi MiMo free coding endpoint." }, passthroughModels: true, noAuth: true, serviceKinds: ["llm"] },
+  auggie: { id: "auggie", alias: "aug", name: "Augment (Auggie CLI)", icon: "terminal", color: "#7C3AED", textIcon: "AU", website: "https://augmentcode.com", notice: { text: "Local CLI passthrough — auth via auggie login outside XLab." }, passthroughModels: true, noAuth: true, serviceKinds: ["llm"] },
+
   // === Chinese LLM providers ===
   baidu: { id: "baidu", alias: "baidu", name: "Baidu (ERNIE)", icon: "auto_awesome", color: "#2932E1", textIcon: "BD", website: "https://yiyan.baidu.com", notice: { text: "Free ERNIE Speed/Lite models.", apiKeyUrl: "https://console.bce.baidu.com" }, passthroughModels: true, serviceKinds: ["llm"] },
   tencent: { id: "tencent", alias: "tencent", name: "Tencent Hunyuan", icon: "auto_awesome", color: "#07C160", textIcon: "TC", website: "https://hunyuan.tencent.com", notice: { text: "Free Hunyuan Lite models.", apiKeyUrl: "https://console.cloud.tencent.com" }, passthroughModels: true, serviceKinds: ["llm"] },
@@ -307,6 +350,14 @@ export const WEB_COOKIE_PROVIDERS = {
   "v0-vercel-web": { id: "v0-vercel-web", alias: "v0", name: "v0 Vercel Web (Code Gen)", icon: "auto_awesome", color: "#000000", textIcon: "V0", website: "https://v0.dev", authType: "cookie", authHint: "Paste your session cookie from v0.dev", passthroughModels: true, serviceKinds: ["llm"] },
   "kimi-web": { id: "kimi-web", alias: "kimi-web", name: "Kimi Web (Moonshot AI)", icon: "auto_awesome", color: "#2563EB", textIcon: "KW", website: "https://kimi.moonshot.cn", authType: "cookie", authHint: "Paste your session cookie from kimi.moonshot.cn", passthroughModels: true, serviceKinds: ["llm"] },
   "doubao-web": { id: "doubao-web", alias: "db", name: "Doubao Web (ByteDance)", icon: "auto_awesome", color: "#3B82F6", textIcon: "DW", website: "https://www.doubao.com", authType: "cookie", authHint: "Paste your session cookie from doubao.com", passthroughModels: true, serviceKinds: ["llm"] },
+  // OmniRoute web free / cookie (Đợt 6)
+  "yuanbao-web": { id: "yuanbao-web", alias: "ybw", name: "Tencent Yuanbao (Web)", icon: "auto_awesome", color: "#07C160", textIcon: "YB", website: "https://yuanbao.tencent.com", authType: "cookie", authHint: "Paste session cookie from yuanbao.tencent.com", passthroughModels: true, serviceKinds: ["llm"] },
+  "zai-web": { id: "zai-web", alias: "zw", name: "Z.ai Web (Free)", icon: "auto_awesome", color: "#1D4ED8", textIcon: "ZW", website: "https://chat.z.ai", authType: "cookie", authHint: "Paste session cookie from chat.z.ai", passthroughModels: true, serviceKinds: ["llm"] },
+  "qwen-web": { id: "qwen-web", alias: "qweb", name: "Qwen Web (Free)", icon: "auto_awesome", color: "#10B981", textIcon: "QW", website: "https://chat.qwen.ai", authType: "cookie", authHint: "Paste session cookie from chat.qwen.ai", passthroughModels: true, serviceKinds: ["llm"] },
+  "copilot-m365-web": { id: "copilot-m365-web", alias: "m365copilot", name: "Microsoft 365 Copilot", icon: "auto_awesome", color: "#0078D4", textIcon: "M365", website: "https://m365.cloud.microsoft/chat", authType: "cookie", authHint: "Paste session from m365.cloud.microsoft/chat", passthroughModels: true, serviceKinds: ["llm"] },
+  lmarena: { id: "lmarena", alias: "lma", name: "Arena (Free)", icon: "emoji_events", color: "#FF6B6B", textIcon: "AR", website: "https://arena.ai", authType: "cookie", authHint: "Optional session cookie from arena.ai / lmarena.ai", passthroughModels: true, serviceKinds: ["llm"] },
+  "zenmux-free": { id: "zenmux-free", alias: "zmf", name: "ZenMux Free (Web)", icon: "hub", color: "#7C3AED", textIcon: "ZF", website: "https://zenmux.ai", authType: "cookie", authHint: "Session cookie free tier from zenmux.ai", passthroughModels: true, serviceKinds: ["llm"] },
+  "veoaifree-web": { id: "veoaifree-web", alias: "veo-free", name: "Veo AI Free", icon: "videocam", color: "#8B5CF6", textIcon: "VF", website: "https://veoaifree.com", authType: "none", noAuth: true, passthroughModels: true, serviceKinds: ["video"] },
 };
 
 // Media provider kinds — each kind maps to a route and endpoint config
@@ -388,6 +439,8 @@ export const FREE_PUBLIC_DEFAULT_MODELS = [
   "oc/north-mini-code-free",
   "oc/big-pickle",
   "unc/Lorbus/Qwen3.6-27B-int4-AutoRound",
+  "tllm/gpt-5.4",
+  "mcode/mimo",
 ];
 
 // Helper: Get alias from provider ID

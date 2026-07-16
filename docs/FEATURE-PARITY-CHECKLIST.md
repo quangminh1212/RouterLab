@@ -9,7 +9,7 @@ So sánh XLab Router với 3 repo nguồn để đảm bảo phủ 100% tính n�
 > Trạng thái: ✅ = đã có & verify · 🟡 = có một phần / cần hoàn thiện · ⬜ = chưa có
 > Cột "Nguồn" cho biết repo nào có tính năng đó.
 
-Cập nhật lần cuối: 2026-06-27
+Cập nhật lần cuối: 2026-07-16
 
 ---
 
@@ -323,12 +323,28 @@ firecrawl · jina-reader (fetch)
   - ✅ auto zero-config routing (`src/sse/services/autoRoute.js`) — model `auto`/`auto/<model>`.
   - ⬜ Còn lại (cần hạ tầng ngoài, ngoài phạm vi proxy thuần): WebSocket gateway `/v1/ws`, Postgres/Git/S3 credential store, Redis RESP usage queue, gamification/leaderboard. Các mục này phụ thuộc dịch vụ ngoài (DB/WS server) và không phải provider; có thể làm khi có nhu cầu hạ tầng cụ thể.
 
+### Đợt 6 ✅ (2026-07-16) — OmniRoute 250+ catalog catch-up
+Diff OmniRoute `providers/*` (257 ids) vs XLab (232) → **+47 first-class providers**:
+- Gateways/hosts: tokenrouter, requesty, zenmux, dgrid, orcarouter, modelscope,
+  digitalocean, openvecta, sumopod, kenari, x5lab, wafer, nube, qiniu, factory,
+  openadapter, pioneer, charm-hyper, dit, bai, v0-vercel, hcnsec, glmt, sparkdesk
+- Regional: alibaba, alibaba-cn, bailian-coding-plan, codebuddy-cn, kimi-coding-apikey
+- Free noAuth: theoldllm, mimocode, auggie (+ public free chat without XLab key)
+- OAuth/CLI surface: agy, windsurf, trae, zed, zed-hosted, clinepass, grok-cli, devin-cli
+- Web: yuanbao-web, zai-web, qwen-web, copilot-m365-web, lmarena, zenmux-free, veoaifree-web
+- Rename aliases giữ tương thích: azure-openai→azure, gitlab-duo→gitlab,
+  command-code→commandcode, *-search→provider search, trk→tokenrouter, …
+- Catalog size: **279+** AI_PROVIDERS. Unit tests: `provider-parity-omni`, compat aliases.
+
 ### Trạng thái tổng thể
-**100% provider catalog từ 3 repo đã hiện diện trong XLab.** Provider OpenAI-compatible/
-local/enterprise/OAuth/upstream-proxy chạy thật và testable. Provider web-scraper/
-music/cloud-agent được đăng ký đầy đủ + báo lỗi minh bạch (501/503) cho phần cần
-headless browser / credential thật / task handler — đây là giới hạn cố hữu của
-proxy server-side, không phải thiếu wiring. Tính năng lõi (routing, resilience,
-translation, RTK, caveman, combos, payload rules, Amp CLI, auto-routing, signature
-cache, cloaking, tunnels, MITM, observability) đã đầy đủ.
+**Provider catalog từ OmniRoute / 9router / CLIProxyAPI đã phủ trong XLab (UI + backend + alias).**
+OpenAI-compatible / local / enterprise / free-public chạy thật. OAuth/CLI desktop
+(zed/windsurf/agy…) và web-scraper cần credential/session thật — đã surface catalog,
+executor full chỉ khi protocol cho phép (còn lại 501/503 rõ ràng). Tính năng lõi
+(routing, resilience, translation, RTK, caveman, combos, payload rules, Amp CLI,
+auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã có.
+
+Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần): Postgres/Git/S3 store,
+Redis RESP queue, gamification, full 18 OmniRoute routing strategies (XLab có
+priority/fill-first/round-robin/fusion/auto/LKGP — đủ production).
 
