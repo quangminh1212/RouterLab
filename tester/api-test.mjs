@@ -1,4 +1,4 @@
-const BASE_URL = (process.env.API_BASE || 'http://157.66.100.194:1212/v1').replace(/\/$/, '');
+const BASE_URL = (process.env.API_BASE || 'http://36.50.26.247:1212/v1').replace(/\/$/, '');
 const ROOT_BASE = (process.env.ROOT_BASE || BASE_URL.replace(/\/v1$/, '')).replace(/\/$/, '');
 const API_KEY = process.env.API_KEY;
 const INFERRED_MODE = process.env.npm_lifecycle_event === 'test:vps-smoke' ? 'smoke' : 'seq';
