@@ -2,7 +2,7 @@ import { getProviderConnections, getProviderNodeById, validateApiKey, updateProv
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
-import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
+import { resolveProviderId, isNoAuthProvider } from "@/shared/constants/providers.js";
 import { sessionAffinityStore } from "open-sse/services/sessionAffinity.js";
 import * as log from "../utils/logger.js";
 
@@ -60,13 +60,15 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     // Resolve alias to provider ID (e.g., "kc" -> "kilocode")
     const providerId = resolveProviderId(provider);
 
-    // Inject a virtual connection for no-auth free providers (with optional proxy pool from settings)
-    if (FREE_PROVIDERS[providerId]?.noAuth) {
+    // Inject a virtual connection for no-auth free providers (with optional proxy pool from settings).
+    // Covers FREE_PROVIDERS (opencode) and other noAuth providers (pollinations, uncloseai, hackclub, ...).
+    if (isNoAuthProvider(providerId)) {
       const settings = await getSettings();
       const override = (settings.providerStrategies || {})[providerId] || {};
       const resolvedProxy = await resolveConnectionProxyConfig({ proxyPoolId: override.proxyPoolId || "" });
       return {
         id: "noauth",
+        connectionId: "noauth",
         connectionName: "Public",
         isActive: true,
         accessToken: "public",

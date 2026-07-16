@@ -364,6 +364,32 @@ export function resolveProviderId(aliasOrId) {
   return provider?.id || aliasOrId;
 }
 
+/**
+ * True when the provider can be used without stored credentials
+ * (public free endpoints / local servers). Matches 9router noAuth behavior.
+ */
+export function isNoAuthProvider(providerId) {
+  if (!providerId || typeof providerId !== "string") return false;
+  const id = resolveProviderId(providerId);
+  return !!(AI_PROVIDERS[id]?.noAuth);
+}
+
+/**
+ * Seed models for public free LLM providers (no signup / no API key upstream).
+ * Prefix form: providerAlias/model — usable directly or via FREE combo.
+ */
+export const FREE_PUBLIC_DEFAULT_MODELS = [
+  "pol/openai",
+  "pol/openai-fast",
+  "oc/deepseek-v4-flash-free",
+  "oc/mimo-v2.5-free",
+  "oc/hy3-free",
+  "oc/nemotron-3-ultra-free",
+  "oc/north-mini-code-free",
+  "oc/big-pickle",
+  "unc/Lorbus/Qwen3.6-27B-int4-AutoRound",
+];
+
 // Helper: Get alias from provider ID
 export function getProviderAlias(providerId) {
   const provider = AI_PROVIDERS[providerId];

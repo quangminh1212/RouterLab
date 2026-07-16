@@ -11,6 +11,7 @@ import {
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
 import { getModelInfo, getComboModels } from "../services/model.js";
+import { isPublicFreeRequest } from "../services/freePublic.js";
 import { isAutoModel, resolveAutoModel } from "../services/autoRoute.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -229,9 +230,17 @@ export async function handleChat(request, clientRawRequest = null) {
   const effort = body.reasoning_effort || body.reasoning?.effort || null;
   log.request("POST", `${url.pathname} | ${modelStr} | ${msgCount} msgs${toolCount ? ` | ${toolCount} tools` : ""}${effort ? ` | effort=${effort}` : ""}`);
 
-  // Enforce API key if enabled in settings
+  // Enforce API key if enabled in settings.
+  // Exception: pure noAuth free providers (pollinations/opencode/uncloseai/...) may be
+  // called without XLab login/API key — same idea as 9router public free routes.
   const settings = await getSettings();
-  if (settings.requireApiKey && !isInternalDashboardRequest) {
+  if (!modelStr) {
+    log.warn("CHAT", "Missing model");
+    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
+  }
+
+  const publicFree = await isPublicFreeRequest(modelStr, settings);
+  if (settings.requireApiKey && !isInternalDashboardRequest && !publicFree) {
     if (!apiKey) {
       log.warn("AUTH", "Missing API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");
@@ -241,11 +250,8 @@ export async function handleChat(request, clientRawRequest = null) {
       log.warn("AUTH", "Invalid API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
     }
-  }
-
-  if (!modelStr) {
-    log.warn("CHAT", "Missing model");
-    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
+  } else if (publicFree && !apiKey) {
+    log.debug("AUTH", `Public free model allowed without API key: ${modelStr}`);
   }
 
   // "auto" zero-config routing: resolve to the best connected provider/model.
