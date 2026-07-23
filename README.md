@@ -28,21 +28,17 @@ API endpoint mặc định: `http://localhost:1212/v1`
 - Hỗ trợ CLI tools như Codex, Claude Code, Cursor, OpenCode, Copilot...
 - Backup/restore local database và GitHub Gist backup
 - Tunnel Cloudflare / Ngrok / Tailscale
-- **Devin CLI**: native OpenAI path (`devin-cli` / `dvcli`) + Hermes module qua submodule `hermes-devin-acp/` → [Hermes_DevinACP](https://github.com/quangminh1212/Hermes_DevinACP)
+- **Devin CLI**: native OpenAI path (`devin-cli` / `dvcli`) + Hermes package trong `hermes-devin-acp/` (provider `devin-acp`)
 
-### Hermes Devin ACP (git submodule)
+### Hermes Devin ACP (built-in package)
 
-```bash
-git submodule update --init hermes-devin-acp
-```
-
-Primary SoT local: `C:\Dev\Hermes_DevinACP`. Cài vào Hermes:
+SoT: `C:\Dev\RouterLab\hermes-devin-acp` (vendored trong repo, không còn repo riêng).
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File C:\Dev\Hermes_DevinACP\scripts\install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Dev\RouterLab\hermes-devin-acp\scripts\install.ps1
 ```
 
-Chi tiết: `hermes-devin-acp/README.md` (submodule) hoặc repo Hermes_DevinACP.
+Chi tiết: `hermes-devin-acp/README.md`.
 
 ## Cấu trúc dữ liệu runtime
 
