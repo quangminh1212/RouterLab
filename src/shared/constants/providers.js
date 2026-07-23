@@ -93,7 +93,7 @@ export const OAUTH_PROVIDERS = {
     website: "https://cli.devin.ai",
     notice: {
       signupUrl: "https://cli.devin.ai",
-      text: "Local Devin CLI (install + `devin auth`). Free models: swe-1-7, swe-1-7-medium, glm-5-2, swe-1-6. Hermes plugin SoT: RouterLab/hermes-devin-acp.",
+      text: "Local Devin CLI (install + `devin auth`). Free models: swe-1-7, swe-1-7-medium, glm-5-2, swe-1-6. Hermes plugin SoT: Hermes_DevinACP (submodule hermes-devin-acp).",
     },
     noAuth: true,
     serviceKinds: ["llm"],
