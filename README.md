@@ -28,6 +28,17 @@ API endpoint mặc định: `http://localhost:1212/v1`
 - Hỗ trợ CLI tools như Codex, Claude Code, Cursor, OpenCode, Copilot...
 - Backup/restore local database và GitHub Gist backup
 - Tunnel Cloudflare / Ngrok / Tailscale
+- **Devin CLI**: native OpenAI path (`devin-cli` / `dvcli`) + Hermes external module `hermes-devin-acp/`
+
+### Hermes Devin ACP (external module)
+
+SoT: `hermes-devin-acp/` — không nằm trong Hermes core. Cài junction + patch:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\hermes-devin-acp\scripts\install.ps1
+```
+
+Chi tiết: `hermes-devin-acp/README.md`.
 
 ## Cấu trúc dữ liệu runtime
 

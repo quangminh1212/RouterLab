@@ -1,5 +1,8 @@
 name: devin-acp-provider
 kind: model-provider
 version: 1.0.0
-description: Devin CLI via ACP subprocess
-author: local
+description: >
+  Devin CLI via ACP subprocess (RouterLab hermes-devin-acp).
+  External module — not part of Hermes core. Install from RouterLab.
+author: RouterLab
+homepage: https://github.com/quangminh1212/RouterLab
