@@ -19,6 +19,7 @@ import { DuckDuckGoWebExecutor } from "./webChat/duckduckgo.js";
 import { GenericWebExecutor } from "./webChat/genericWeb.js";
 import { WEB_CHAT_PROVIDER_IDS } from "./webChat/registry.js";
 import { DefaultExecutor } from "./default.js";
+import { DevinCLIExecutor } from "./devin-cli.js";
 
 const executors = {
   antigravity: new AntigravityExecutor(),
@@ -41,6 +42,8 @@ const executors = {
   bedrock: new BedrockExecutor(),
   "amazon-q": new AmazonQExecutor(),
   "duckduckgo-web": new DuckDuckGoWebExecutor(),
+  "devin-cli": new DevinCLIExecutor(),
+  dvcli: new DevinCLIExecutor(),
 };
 
 // Register config-driven web-cookie chat providers (GenericWebExecutor).
@@ -81,3 +84,4 @@ export { BedrockExecutor } from "./bedrock.js";
 export { AmazonQExecutor } from "./amazon-q.js";
 export { DuckDuckGoWebExecutor } from "./webChat/duckduckgo.js";
 export { GenericWebExecutor } from "./webChat/genericWeb.js";
+export { DevinCLIExecutor } from "./devin-cli.js";

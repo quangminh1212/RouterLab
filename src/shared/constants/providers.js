@@ -83,7 +83,21 @@ export const OAUTH_PROVIDERS = {
   "zed-hosted": { id: "zed-hosted", alias: "zedh", name: "Zed Hosted Models", icon: "cloud", color: "#084CCF", textIcon: "ZH", website: "https://zed.dev", notice: { signupUrl: "https://zed.dev" }, passthroughModels: true },
   clinepass: { id: "clinepass", alias: "cp", name: "ClinePass", icon: "vpn_key", color: "#9D4EDD", textIcon: "CP", website: "https://cline.bot/clinepass", notice: { signupUrl: "https://cline.bot/clinepass" } },
   "grok-cli": { id: "grok-cli", alias: "gcli", name: "Grok Build", icon: "bolt", color: "#000000", textIcon: "GB", website: "https://x.ai", notice: { text: "Paste ~/.grok/auth.json or JWT from Grok Build CLI." } },
-  "devin-cli": { id: "devin-cli", alias: "dvcli", name: "Devin CLI", icon: "smart_toy", color: "#111827", textIcon: "DV", website: "https://cli.devin.ai", notice: { signupUrl: "https://cli.devin.ai" } },
+  "devin-cli": {
+    id: "devin-cli",
+    alias: "dvcli",
+    name: "Devin CLI",
+    icon: "smart_toy",
+    color: "#111827",
+    textIcon: "DV",
+    website: "https://cli.devin.ai",
+    notice: {
+      signupUrl: "https://cli.devin.ai",
+      text: "Local Devin CLI (install + `devin auth`). Free models: swe-1-7, swe-1-7-medium, glm-5-2, swe-1-6. Hermes plugin SoT: RouterLab/hermes-devin-acp.",
+    },
+    noAuth: true,
+    serviceKinds: ["llm"],
+  },
   // opencode: { id: "opencode", alias: "oc", name: "OpenCode", icon: "terminal", color: "#E87040", textIcon: "OC" },
 };
 

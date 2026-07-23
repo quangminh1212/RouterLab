@@ -215,6 +215,20 @@ export const PROVIDER_MODELS = {
     // { id: "trinity-large-preview-free", name: "Trinity Large Preview" },
   ],
 
+  // Devin CLI free catalog (local binary; Hermes picker shows Ultra labels)
+  "devin-cli": [
+    { id: "swe-1-7", name: "Swe 1 7 Ultra" },
+    { id: "swe-1-7-medium", name: "Swe 1 7 Medium Ultra" },
+    { id: "glm-5-2", name: "Glm 5 2 Ultra" },
+    { id: "swe-1-6", name: "Swe 1 6 Ultra" },
+  ],
+  dvcli: [
+    { id: "swe-1-7", name: "Swe 1 7 Ultra" },
+    { id: "swe-1-7-medium", name: "Swe 1 7 Medium Ultra" },
+    { id: "glm-5-2", name: "Glm 5 2 Ultra" },
+    { id: "swe-1-6", name: "Swe 1 6 Ultra" },
+  ],
+
   cl: [  // Cline
     { id: "anthropic/claude-opus-4.7", name: "Claude Opus 4.7" },
     { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },

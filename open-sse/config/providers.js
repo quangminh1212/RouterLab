@@ -417,6 +417,8 @@ export const PROVIDERS = {
   // === Cloud-agent providers (task-based; registered for parity) ===
   jules: { baseUrl: "https://jules.googleapis.com/v1alpha/sessions", format: "openai" },
   devin: { baseUrl: "https://api.devin.ai/v1/sessions", format: "openai" },
+  // Local Devin CLI (print mode) — free SWE/GLM; no HTTP base (executor spawns binary)
+  "devin-cli": { baseUrl: "local://devin-cli", format: "openai", noAuth: true },
   "codex-cloud": { baseUrl: "https://chatgpt.com/backend-api/codex/responses", format: "openai-responses" },
   // === Music providers (task-based; see /v1/audio/music) ===
   suno: { baseUrl: "https://studio-api.suno.ai/api/generate/v2/", format: "openai", authType: "cookie" },

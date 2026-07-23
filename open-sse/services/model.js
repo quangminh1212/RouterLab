@@ -65,7 +65,7 @@ const ALIAS_TO_PROVIDER_ID = {
   "bailian-coding-plan": "alicode",
   "alibaba-cn": "alicode",
   "kimi-coding-apikey": "kimi-coding",
-  "devin-cli": "devin",
+  "devin-cli": "devin-cli",
   "v0-vercel": "v0-vercel-web",
   byteplus: "byteplus",
   bpm: "byteplus",

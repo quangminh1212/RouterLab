@@ -277,7 +277,7 @@ firecrawl · jina-reader (fetch)
 | zed | Omni | ⬜ (import creds từ OS keychain — desktop only, không phù hợp server-side) | ⬜ |
 | trae | Omni | ⬜ (paste Cloud-IDE-JWT — cần xác minh endpoint backend) | ⬜ |
 | windsurf (Devin CLI) | Omni | ⬜ (device-code/token paste — cần executor riêng) | ⬜ |
-| devin-cli | Omni | ⬜ (cần Devin CLI binary + WINDSURF_API_KEY) | ⬜ |
+| devin-cli | Omni | ✅ (`open-sse/executors/devin-cli.js` + free SWE/GLM; Hermes plugin SoT `hermes-devin-acp/`) | ✅ |
 | xai-oauth (Grok Build) | CLIProxy | 🟡 (có xai apikey; OAuth PKCE flow chưa thêm) | 🟡 |
 | aistudio (AI Studio Build, WS) | CLIProxy | ⬜ (cần WebSocket gateway — Đợt 5) | ⬜ |
 
