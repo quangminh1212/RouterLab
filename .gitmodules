@@ -1,3 +1,6 @@
 [submodule "src/mitm/dev"]
 	path = src/mitm/dev
 	url = https://github.com/decolua/xlabrouter-dev.git
+[submodule "hermes-devin-acp"]
+	path = hermes-devin-acp
+	url = https://github.com/quangminh1212/Hermes_DevinACP.git
