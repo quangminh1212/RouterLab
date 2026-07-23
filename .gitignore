@@ -125,3 +125,7 @@ tmp/
 
 xlabrouter-*.tgz
 node_modules/
+# Python
+__pycache__/
+*.py[cod]
+
