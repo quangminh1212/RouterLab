@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "permissions": {
+    "allow": [
+      "Read(**)"
+    ]
+  },
+  "agent": {
+    "model": "swe-1-7"
+  },
+  "mcpServers": {},
+  "shell": {
+    "setup_complete": true
+  }
+}
