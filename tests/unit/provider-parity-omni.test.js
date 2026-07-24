@@ -13,6 +13,7 @@ const OMNI_WAVE = [
   "mimocode", "auggie", "agy", "windsurf", "trae", "zed", "zed-hosted",
   "clinepass", "grok-cli", "devin-cli", "yuanbao-web", "zai-web", "qwen-web",
   "copilot-m365-web", "lmarena", "zenmux-free", "veoaifree-web",
+  "agnes", "aihorde", "ainative", "aion", "ant-ling", "chenzk", "chipotle", "clova-studio", "dahl", "felo-web", "freepik", "g4f-gemini", "g4f-groq", "g4f-nvidia", "g4f-ollama", "g4f-pollinations", "ghe-copilot", "hyperagent", "inception", "internlm", "nara", "navy", "notion-web", "plamo", "promptql", "qwen-cloud", "qwen-cloud-token-plan", "routeway", "sarvam", "sealion", "typhoon", "writer", "xai-oauth"
 ];
 
 const OMNI_ALIASES = {
@@ -59,6 +60,6 @@ describe("OmniRoute provider parity (Đợt 6)", () => {
 
   it("keeps catalog above OmniRoute baseline", () => {
     // OmniRoute ~250+, XLab should stay competitive after wave
-    expect(Object.keys(AI_PROVIDERS).length).toBeGreaterThanOrEqual(270);
+    expect(Object.keys(AI_PROVIDERS).length).toBeGreaterThanOrEqual(300);
   });
 });

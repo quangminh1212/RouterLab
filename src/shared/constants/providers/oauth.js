@@ -36,4 +36,8 @@ export const OAUTH_PROVIDERS = {
     serviceKinds: ["llm"],
   },
   // opencode: { id: "opencode", alias: "oc", name: "OpenCode", icon: "terminal", color: "#E87040", textIcon: "OC" },
+
+  // --- OmniRoute catch-up (auto) ---
+  "ghe-copilot": { id: "ghe-copilot", alias: "ghe-copilot", name: "GitHub Enterprise Copilot", icon: "smart_toy", color: "#24292F", textIcon: "GE", website: "https://github.com/features/copilot", notice: { text: "GHE Copilot proxy. Set providerSpecificData.gheUrl per connection.", signupUrl: "https://github.com/features/copilot" }, serviceKinds: ["llm"], hasProviderSpecificData: true, hasProviderSpecificData: true },
+  "xai-oauth": { id: "xai-oauth", alias: "xao", name: "xAI OAuth (Grok)", icon: "smart_toy", color: "#000000", textIcon: "XO", website: "https://x.ai", notice: { text: "Grok Build OAuth / PKCE. Prefer API key provider `xai` when possible.", signupUrl: "https://x.ai" }, serviceKinds: ["llm"], passthroughModels: true, hasProviderSpecificData: true },
 };

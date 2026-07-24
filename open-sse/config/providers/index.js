@@ -239,6 +239,39 @@ import p_ideogram from "./registry/ideogram.js";
 import p_leonardo from "./registry/leonardo.js";
 import p_haiper from "./registry/haiper.js";
 import p_bedrock from "./registry/bedrock.js";
+import p_agnes from "./registry/agnes.js";
+import p_aihorde from "./registry/aihorde.js";
+import p_ainative from "./registry/ainative.js";
+import p_aion from "./registry/aion.js";
+import p_ant_ling from "./registry/ant-ling.js";
+import p_chenzk from "./registry/chenzk.js";
+import p_chipotle from "./registry/chipotle.js";
+import p_clova_studio from "./registry/clova-studio.js";
+import p_dahl from "./registry/dahl.js";
+import p_felo_web from "./registry/felo-web.js";
+import p_freepik from "./registry/freepik.js";
+import p_g4f_gemini from "./registry/g4f-gemini.js";
+import p_g4f_groq from "./registry/g4f-groq.js";
+import p_g4f_nvidia from "./registry/g4f-nvidia.js";
+import p_g4f_ollama from "./registry/g4f-ollama.js";
+import p_g4f_pollinations from "./registry/g4f-pollinations.js";
+import p_ghe_copilot from "./registry/ghe-copilot.js";
+import p_hyperagent from "./registry/hyperagent.js";
+import p_inception from "./registry/inception.js";
+import p_internlm from "./registry/internlm.js";
+import p_nara from "./registry/nara.js";
+import p_navy from "./registry/navy.js";
+import p_notion_web from "./registry/notion-web.js";
+import p_plamo from "./registry/plamo.js";
+import p_promptql from "./registry/promptql.js";
+import p_qwen_cloud from "./registry/qwen-cloud.js";
+import p_qwen_cloud_token_plan from "./registry/qwen-cloud-token-plan.js";
+import p_routeway from "./registry/routeway.js";
+import p_sarvam from "./registry/sarvam.js";
+import p_sealion from "./registry/sealion.js";
+import p_typhoon from "./registry/typhoon.js";
+import p_writer from "./registry/writer.js";
+import p_xai_oauth from "./registry/xai-oauth.js";
 
 export const PROVIDERS = {
   "claude": p_claude,
@@ -481,6 +514,40 @@ export const PROVIDERS = {
   "leonardo": p_leonardo,
   "haiper": p_haiper,
   "bedrock": p_bedrock,
+
+  "agnes": p_agnes,
+  "aihorde": p_aihorde,
+  "ainative": p_ainative,
+  "aion": p_aion,
+  "ant-ling": p_ant_ling,
+  "chenzk": p_chenzk,
+  "chipotle": p_chipotle,
+  "clova-studio": p_clova_studio,
+  "dahl": p_dahl,
+  "felo-web": p_felo_web,
+  "freepik": p_freepik,
+  "g4f-gemini": p_g4f_gemini,
+  "g4f-groq": p_g4f_groq,
+  "g4f-nvidia": p_g4f_nvidia,
+  "g4f-ollama": p_g4f_ollama,
+  "g4f-pollinations": p_g4f_pollinations,
+  "ghe-copilot": p_ghe_copilot,
+  "hyperagent": p_hyperagent,
+  "inception": p_inception,
+  "internlm": p_internlm,
+  "nara": p_nara,
+  "navy": p_navy,
+  "notion-web": p_notion_web,
+  "plamo": p_plamo,
+  "promptql": p_promptql,
+  "qwen-cloud": p_qwen_cloud,
+  "qwen-cloud-token-plan": p_qwen_cloud_token_plan,
+  "routeway": p_routeway,
+  "sarvam": p_sarvam,
+  "sealion": p_sealion,
+  "typhoon": p_typhoon,
+  "writer": p_writer,
+  "xai-oauth": p_xai_oauth,
 };
 
 

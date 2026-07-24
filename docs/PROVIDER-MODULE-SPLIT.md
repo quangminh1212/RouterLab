@@ -96,3 +96,9 @@ open-sse/config/providers.js  # re-export shim
 - Import full body config từ OmniRoute cho các id còn thiếu (agnes, freepik, g4f-*, …)
 - Tách thêm UI theo từng provider file nếu catalog >300
 - Port CLIProxyAPI auth modules còn thiếu (aistudio WS, xai-oauth full)
+
+## Omni catch-up wave (auto)
+
+- Added backend modules: **33**
+- UI apikey +29, oauth +2, web +2
+- IDs: `agnes`, `aihorde`, `ainative`, `aion`, `ant-ling`, `chenzk`, `chipotle`, `clova-studio`, `dahl`, `felo-web`, `freepik`, `g4f-gemini`, `g4f-groq`, `g4f-nvidia`, `g4f-ollama`, `g4f-pollinations`, `ghe-copilot`, `hyperagent`, `inception`, `internlm`, `nara`, `navy`, `notion-web`, `plamo`, `promptql`, `qwen-cloud`, `qwen-cloud-token-plan`, `routeway`, `sarvam`, `sealion`, `typhoon`, `writer`, `xai-oauth`

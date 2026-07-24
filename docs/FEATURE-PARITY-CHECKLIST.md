@@ -353,6 +353,12 @@ auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã
 - ✅ Redis RESP usage queue (CLIProxyAPI): `redisUsageQueue.js` + publish từ `saveRequestUsage` + `REDIS_USAGE_QUEUE_PORT`
 - ✅ Management: `GET/POST /api/management/redis-usage-queue`
 
+### Đợt 8 ✅ (2026-07-25) — Omni catalog catch-up + modular registry
+- ✅ Tách UI catalog theo nhóm auth + backend `open-sse/config/providers/registry/<id>.js` (Omni-style)
+- ✅ Port **33** provider Omni còn thiếu: agnes, aihorde, ainative, aion, ant-ling, chenzk, chipotle, clova-studio, dahl, felo-web, freepik, g4f-*, ghe-copilot, hyperagent, inception, internlm, nara, navy, notion-web, plamo, promptql, qwen-cloud, qwen-cloud-token-plan, routeway, sarvam, sealion, typhoon, writer, xai-oauth
+- ✅ Catalog UI ~313 · backend PROVIDERS ~273 · monogram SVG icons cho id mới
+- 🟡 Executor full cho web/cookie/oauth phức tạp (felo-web, notion-web, ghe-copilot, xai-oauth) — đã surface catalog + baseUrl; chat e2e cần credential/session thật
+
 Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần / ToS-risk RE):
 Postgres/Git/S3 credential store, gamification/leaderboard, full browser RE
 cho 18 web-scraper (501 rõ ràng), suno/udio music task handlers, aistudio WS

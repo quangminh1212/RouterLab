@@ -27,4 +27,8 @@ export const WEB_COOKIE_PROVIDERS = {
   lmarena: { id: "lmarena", alias: "lma", name: "Arena (Free)", icon: "emoji_events", color: "#FF6B6B", textIcon: "AR", website: "https://arena.ai", authType: "cookie", authHint: "Optional session cookie from arena.ai / lmarena.ai", passthroughModels: true, serviceKinds: ["llm"] },
   "zenmux-free": { id: "zenmux-free", alias: "zmf", name: "ZenMux Free (Web)", icon: "hub", color: "#7C3AED", textIcon: "ZF", website: "https://zenmux.ai", authType: "cookie", authHint: "Session cookie free tier from zenmux.ai", passthroughModels: true, serviceKinds: ["llm"] },
   "veoaifree-web": { id: "veoaifree-web", alias: "veo-free", name: "Veo AI Free", icon: "videocam", color: "#8B5CF6", textIcon: "VF", website: "https://veoaifree.com", authType: "none", noAuth: true, passthroughModels: true, serviceKinds: ["video"] },
+
+  // --- OmniRoute catch-up (auto) ---
+  "felo-web": { id: "felo-web", alias: "felo", name: "Felo Web", icon: "smart_toy", color: "#22C55E", textIcon: "FW", website: "https://felo.ai", notice: { text: "Unofficial web endpoint — ToS risk.", signupUrl: "https://felo.ai" }, serviceKinds: ["llm"], authType: "cookie" },
+  "notion-web": { id: "notion-web", alias: "nw", name: "Notion AI Web", icon: "smart_toy", color: "#000000", textIcon: "NA", website: "https://www.notion.so", notice: { text: "Unofficial Notion AI web. Cookie auth. ToS risk.", signupUrl: "https://www.notion.so" }, serviceKinds: ["llm"], passthroughModels: true, authType: "cookie" },
 };
