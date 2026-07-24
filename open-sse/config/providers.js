@@ -124,6 +124,13 @@ export const PROVIDERS = {
     baseUrl: "https://api.openai.com/v1/chat/completions",
     format: "openai"
   },
+  qwencoder: {
+    baseUrl: "https://api.qwencoder.cloud/api/v1/chat/completions",
+    format: "openai",
+    headers: {
+      "User-Agent": "XLab-Router/qwencoder",
+    },
+  },
   "vercel-ai-gateway": {
     baseUrl: "https://ai-gateway.vercel.sh/v1/chat/completions",
     format: "openai"

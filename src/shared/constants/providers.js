@@ -119,6 +119,23 @@ export const APIKEY_PROVIDERS = {
   azure: { id: "azure", alias: "azure", name: "Azure OpenAI", icon: "cloud", color: "#0078D4", textIcon: "AZ", website: "https://azure.microsoft.com/en-us/products/ai-services/openai-service", notice: { apiKeyUrl: "https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/OpenAI" }, hasProviderSpecificData: true },
 
   deepseek: { id: "deepseek", alias: "ds", name: "DeepSeek", icon: "bolt", color: "#4D6BFE", textIcon: "DS", website: "https://deepseek.com", notice: { apiKeyUrl: "https://platform.deepseek.com/api_keys" } },
+  // QwenCoder cloud gateway (OpenAI-compatible) — multi-model coding API used by Hermes/XLab combos
+  qwencoder: {
+    id: "qwencoder",
+    alias: "qwc",
+    name: "QwenCoder",
+    icon: "code",
+    color: "#059669",
+    textIcon: "QC",
+    website: "https://api.qwencoder.cloud",
+    notice: {
+      text: "QwenCoder cloud gateway (OpenAI-compatible). Prefer gpt-5.6-sol / gpt-5.6-luna for tool-call stability; avoid step-3.7-flash for empty/short completions.",
+      apiKeyUrl: "https://api.qwencoder.cloud",
+    },
+    passthroughModels: true,
+    modelsFetcher: { url: "https://api.qwencoder.cloud/api/v1/models", type: "openai" },
+    serviceKinds: ["llm"],
+  },
   commandcode: { id: "commandcode", alias: "cmc", name: "Command Code", icon: "smart_toy", color: "#000000", textIcon: "CC", website: "https://commandcode.ai", notice: { text: "Use your CommandCode CLI API key (starts with user_...) from ~/.commandcode/auth.json or commandcode.ai/studio.", apiKeyUrl: "https://commandcode.ai/studio" } },
   groq: { id: "groq", alias: "groq", name: "Groq", icon: "speed", color: "#F55036", textIcon: "GQ", website: "https://groq.com", notice: { apiKeyUrl: "https://console.groq.com/keys" }, serviceKinds: ["llm", "imageToText", "stt"], sttConfig: { baseUrl: "https://api.groq.com/openai/v1/audio/transcriptions", authType: "apikey", authHeader: "bearer", format: "openai", models: [{ id: "whisper-large-v3", name: "Whisper Large v3" }, { id: "whisper-large-v3-turbo", name: "Whisper Large v3 Turbo" }, { id: "distil-whisper-large-v3-en", name: "Distil Whisper Large v3 EN" }] } },
   xai: { id: "xai", alias: "xai", name: "xAI (Grok)", icon: "auto_awesome", color: "#1DA1F2", textIcon: "XA", website: "https://x.ai", notice: { apiKeyUrl: "https://console.x.ai" }, serviceKinds: ["llm", "imageToText", "webSearch"], searchViaChat: { defaultModel: "grok-4.20-reasoning", pricingUrl: "https://x.ai/api#pricing" } },
@@ -605,6 +622,7 @@ const providerDomainIconMatches = [
   ["openrouter.ai", "openrouter"],
   ["api.groq.com", "groq"],
   ["api.deepseek.com", "deepseek"],
+  ["api.qwencoder.cloud", "qwencoder"],
   ["api.anthropic.com", "anthropic"],
   ["api.openai.com", "openai"],
   ["generativelanguage.googleapis.com", "gemini"],

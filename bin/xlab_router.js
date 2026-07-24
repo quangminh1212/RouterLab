@@ -20,6 +20,23 @@ const https = require("https");
 const LOG_FILE_NAME = "log.txt";
 const MAX_LOG_SIZE_BYTES = 100 * 1024 * 1024;
 const DEFAULT_HOSTNAME = process.env.HOSTNAME || process.env.XLABROUTER_HOSTNAME || "0.0.0.0";
+
+// CLIProxyAPI parity: optional Redis RESP usage queue (env REDIS_USAGE_QUEUE_PORT)
+try {
+  if (process.env.REDIS_USAGE_QUEUE_PORT) {
+    // Lazy ESM import from CJS entry
+    import("open-sse/services/redisUsageQueue.js")
+      .then((m) => m.startRedisUsageQueue())
+      .then((info) => {
+        if (info?.port) console.log(`[INFO] Redis RESP usage queue on :${info.port}`);
+      })
+      .catch((err) => {
+        console.log(`[WARN] Redis RESP usage queue failed: ${err.message}`);
+      });
+  }
+} catch (error) {
+  console.log(`[WARN] Redis RESP usage queue init error: ${error.message}`);
+}
 function readRamConfig() {
   try {
     const configPath = path.join(__dirname, "..", ".ram-config.json");

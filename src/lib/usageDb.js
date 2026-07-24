@@ -686,6 +686,23 @@ export async function saveRequestUsage(entry) {
   if (isCloud) return; // Skip saving in Workers
 
   try {
+    // CLIProxyAPI parity: optional Redis RESP usage stream (no-op if disabled)
+    try {
+      const { publishUsageEvent } = await import("open-sse/services/redisUsageQueue.js");
+      publishUsageEvent({
+        model: entry?.model,
+        provider: entry?.provider,
+        connectionId: entry?.connectionId,
+        tokens: entry?.tokens,
+        status: entry?.status,
+        cost: entry?.cost,
+        latencyMs: entry?.latencyMs ?? entry?.durationMs,
+        apiKey: entry?.apiKey ? String(entry.apiKey).slice(-6) : undefined,
+      });
+    } catch {
+      /* optional */
+    }
+
     const db = await getUsageDb();
 
     // Add timestamp if not present

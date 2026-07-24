@@ -9,7 +9,7 @@ So sánh XLab Router với 3 repo nguồn để đảm bảo phủ 100% tính n�
 > Trạng thái: ✅ = đã có & verify · 🟡 = có một phần / cần hoàn thiện · ⬜ = chưa có
 > Cột "Nguồn" cho biết repo nào có tính năng đó.
 
-Cập nhật lần cuối: 2026-07-16
+Cập nhật lần cuối: 2026-07-25
 
 ---
 
@@ -62,7 +62,7 @@ Cập nhật lần cuối: 2026-07-16
 | 25 | WebSocket gateway `/v1/ws` | | | ✓ | ✓ | ✅ |
 | 26 | Amp CLI `/api/provider/{p}/...` | | | ✓ | ✓ (Đợt 5 — chat/completions, messages, models + model-mappings) | ✅ |
 | 27 | `GET /health` + `/api/health` | ✓ | ✓ | ✓ | ✓ | ✅ |
-| 28 | Redis RESP usage queue (same port) | | | ✓ | ⬜ | ⬜ |
+| 28 | Redis RESP usage queue (same port) | | | ✓ | ✓ (`open-sse/services/redisUsageQueue.js`, env `REDIS_USAGE_QUEUE_PORT`) | ✅ |
 
 ---
 
@@ -81,7 +81,7 @@ Cập nhật lần cuối: 2026-07-16
 | 9 | Precise reset-at cooldown (codex usage_limit) | tất cả | ✓ | ✅ |
 | 10 | Auto token refresh (OAuth) | tất cả | ✓ (`tokenRefresh.js`) | ✅ |
 | 11 | Format translation (OpenAI↔Claude↔Gemini↔Codex↔Cursor↔Kiro↔Vertex↔Antigravity↔Ollama) | tất cả | ✓ (`translator/`) | ✅ |
-| 12 | Auto combo / self-healing optimizer | Omni | 🟡 | 🟡 |
+| 12 | Auto combo / self-healing optimizer | Omni | ✓ (`comboSelfHeal.js` + `POST /api/management/combo-self-heal`) | ✅ |
 | 13 | RTK token saver (compress tool output) | 9router/Omni | ✓ (`rtk/`) | ✅ |
 | 14 | Caveman mode (giảm output token) | 9router/Omni | ✓ (`rtk/caveman.js`) | ✅ |
 | 14b | Ponytail mode (lazy senior dev, YAGNI code) | 9router | ✓ (`rtk/ponytail.js`) | ✅ |
@@ -321,7 +321,9 @@ firecrawl · jina-reader (fetch)
   - ✅ Payload rules engine (`open-sse/services/payloadRules.js`) + route `/api/settings/payload-rules` + tích hợp chatCore + 9 unit test.
   - ✅ Amp CLI routes (`/api/provider/{provider}/v1/chat/completions|messages`, `/models`) + model-mappings.
   - ✅ auto zero-config routing (`src/sse/services/autoRoute.js`) — model `auto`/`auto/<model>`.
-  - ⬜ Còn lại (cần hạ tầng ngoài, ngoài phạm vi proxy thuần): WebSocket gateway `/v1/ws`, Postgres/Git/S3 credential store, Redis RESP usage queue, gamification/leaderboard. Các mục này phụ thuộc dịch vụ ngoài (DB/WS server) và không phải provider; có thể làm khi có nhu cầu hạ tầng cụ thể.
+  - ✅ Redis RESP usage queue (Đợt 7 — in-process RESP, env `REDIS_USAGE_QUEUE_PORT`)
+  - ✅ WebSocket-like gateway `/v1/ws` (SSE bridge đã có)
+  - ⬜ Còn lại (hạ tầng ngoài): Postgres/Git/S3 credential store, gamification/leaderboard.
 
 ### Đợt 6 ✅ (2026-07-16) — OmniRoute 250+ catalog catch-up
 Diff OmniRoute `providers/*` (257 ids) vs XLab (232) → **+47 first-class providers**:
@@ -344,7 +346,16 @@ executor full chỉ khi protocol cho phép (còn lại 501/503 rõ ràng). Tính
 (routing, resilience, translation, RTK, caveman, combos, payload rules, Amp CLI,
 auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã có.
 
-Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần): Postgres/Git/S3 store,
-Redis RESP queue, gamification, full 18 OmniRoute routing strategies (XLab có
-priority/fill-first/round-robin/fusion/auto/LKGP — đủ production).
+### Đợt 7 ✅ (2026-07-25) — gap fill + QwenCoder first-class
+- ✅ Provider **qwencoder** (APIKEY + open-sse endpoint + seed models + domain map)
+- ✅ Combo strategies mở rộng OmniRoute: random, p2c, weighted, least-used, cost-optimized, auto/lkgp/context-optimized (+ aliases priority/fill-first)
+- ✅ Combo self-heal: `suggestOptimizedComboOrder` + `POST /api/management/combo-self-heal`
+- ✅ Redis RESP usage queue (CLIProxyAPI): `redisUsageQueue.js` + publish từ `saveRequestUsage` + `REDIS_USAGE_QUEUE_PORT`
+- ✅ Management: `GET/POST /api/management/redis-usage-queue`
+
+Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần / ToS-risk RE):
+Postgres/Git/S3 credential store, gamification/leaderboard, full browser RE
+cho 18 web-scraper (501 rõ ràng), suno/udio music task handlers, aistudio WS
+auth, zed keychain desktop-only. Production routing đã đủ (fallback + sticky RR
++ fusion + auto/LKGP + p2c + self-heal).
 

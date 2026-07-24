@@ -446,6 +446,23 @@ export const PROVIDER_MODELS = {
     { id: "deepseek-chat", name: "DeepSeek V3.2 Chat" },
     { id: "deepseek-reasoner", name: "DeepSeek V3.2 Reasoner" },
   ],
+  // QwenCoder cloud gateway — seed models (passthrough also fetches live list)
+  qwencoder: [
+    { id: "gpt-5.6-sol", name: "GPT-5.6 Sol (stable tools)" },
+    { id: "gpt-5.6-luna", name: "GPT-5.6 Luna (fast)" },
+    { id: "kimi-2.6", name: "Kimi 2.6" },
+    { id: "qwen3.7-max", name: "Qwen3.7 Max" },
+    { id: "qwen3.8-max-preview", name: "Qwen3.8 Max Preview" },
+    { id: "qwen3.6-35b-a3b", name: "Qwen3.6 35B A3B" },
+    { id: "minimax-m2.7", name: "MiniMax M2.7" },
+    { id: "minimax-m3", name: "MiniMax M3" },
+    { id: "glm-5.2", name: "GLM 5.2" },
+    { id: "mimo-2.5", name: "MiMo 2.5" },
+    { id: "laguna-s-2.1", name: "Laguna S 2.1" },
+    { id: "grok-4.5", name: "Grok 4.5 (via QwenCoder)" },
+    { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+    { id: "step-3.7-flash", name: "Step 3.7 Flash (may truncate)" },
+  ],
   groq: [
     { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" },
     { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick" },

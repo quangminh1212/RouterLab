@@ -72,7 +72,17 @@ function recordComboResult(comboName, modelStr, durationMs, ok, slowCooldownEnab
 }
 
 function rankComboModels(models, comboName, strategy, slowCooldownEnabled = true) {
-  if (!comboName || !Array.isArray(models) || models.length <= 1 || strategy === "round-robin") {
+  if (!comboName || !Array.isArray(models) || models.length <= 1) {
+    return models;
+  }
+
+  const strat = normalizeStrategy(strategy);
+  // Round-robin / random / p2c / weighted already ordered by getRotatedModels
+  if (strat === "round-robin" || strat === "random" || strat === "p2c" || strat === "weighted" || strat === "fusion") {
+    return models;
+  }
+  // Fixed order: fallback / priority / fill-first
+  if (strat === "fallback") {
     return models;
   }
 
@@ -89,6 +99,14 @@ function rankComboModels(models, comboName, strategy, slowCooldownEnabled = true
       : 0;
     const leftSlowPenalty = slowCooldownEnabled && leftPerf?.slowCooldownUntil && leftPerf.slowCooldownUntil > now ? 100000 : 0;
     const rightSlowPenalty = slowCooldownEnabled && rightPerf?.slowCooldownUntil && rightPerf.slowCooldownUntil > now ? 100000 : 0;
+
+    if (strat === "least-used") {
+      const ls = leftPerf?.samples || 0;
+      const rs = rightPerf?.samples || 0;
+      if (ls !== rs) return ls - rs;
+    }
+
+    // cost-optimized / auto / lkgp / context-optimized: latency + failure + slow cooldown
     const leftScore = getLatencyScore(leftPerf) + leftPenalty + leftSlowPenalty;
     const rightScore = getLatencyScore(rightPerf) + rightPenalty + rightSlowPenalty;
     if (leftScore !== rightScore) return leftScore - rightScore;
@@ -97,15 +115,111 @@ function rankComboModels(models, comboName, strategy, slowCooldownEnabled = true
 }
 
 /**
+ * Self-healing optimizer (OmniRoute parity): return models reordered by live performance.
+ * Callers can persist this order into combo.models periodically.
+ */
+export function suggestOptimizedComboOrder(comboName, models, { slowCooldownEnabled = true } = {}) {
+  if (!Array.isArray(models) || models.length <= 1) return models || [];
+  return rankComboModels(models, comboName, "auto", slowCooldownEnabled);
+}
+
+/**
+ * Supported combo routing strategies (OmniRoute/9router parity).
+ * - fallback / priority / fill-first: fixed order (first healthy wins)
+ * - round-robin: sticky rotation
+ * - random / strict-random: shuffle order each request
+ * - least-used: fewest samples first
+ * - cost-optimized: lowest avg latency score first (proxy for cost when pricing missing)
+ * - p2c: power-of-two-choices — pick best of two random candidates, try that first
+ * - weighted: prefer earlier models but allow random exploration
+ * - auto / lkgp / context-optimized: performance-ranked (same as latency rank)
+ */
+export const COMBO_STRATEGIES = [
+  "fallback",
+  "priority",
+  "fill-first",
+  "round-robin",
+  "random",
+  "strict-random",
+  "least-used",
+  "cost-optimized",
+  "p2c",
+  "weighted",
+  "auto",
+  "lkgp",
+  "context-optimized",
+  "fusion",
+];
+
+function normalizeStrategy(strategy) {
+  const s = String(strategy || "fallback").toLowerCase().trim();
+  if (s === "priority" || s === "fill-first" || s === "fillfirst") return "fallback";
+  if (s === "strict-random" || s === "strictrandom") return "random";
+  if (s === "power-of-two" || s === "power-of-two-choices") return "p2c";
+  if (s === "context-relay") return "context-optimized";
+  return s;
+}
+
+function shuffleCopy(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
  * Get rotated model list based on strategy
  * @param {string[]} models - Array of model strings
  * @param {string} comboName - Name of the combo
- * @param {string} strategy - "fallback" or "round-robin"
+ * @param {string} strategy - see COMBO_STRATEGIES
  * @param {number} [stickyLimit=1] - Number of requests before rotating (sticky round-robin)
  * @returns {string[]} Rotated models array
  */
 export function getRotatedModels(models, comboName, strategy, stickyLimit = 1) {
-  if (!models || models.length <= 1 || strategy !== "round-robin") {
+  if (!models || models.length <= 1) {
+    return models;
+  }
+
+  const strat = normalizeStrategy(strategy);
+
+  // Fixed order strategies
+  if (strat === "fallback" || strat === "fusion") {
+    return models;
+  }
+
+  if (strat === "random") {
+    return shuffleCopy(models);
+  }
+
+  if (strat === "p2c") {
+    const a = Math.floor(Math.random() * models.length);
+    let b = Math.floor(Math.random() * models.length);
+    if (b === a) b = (b + 1) % models.length;
+    const perf = getComboPerf(comboName);
+    const score = (m) => {
+      const p = perf?.get(m);
+      return getLatencyScore(p) + (p?.failures || 0) * FAILURE_PENALTY_MS;
+    };
+    const first = score(models[a]) <= score(models[b]) ? models[a] : models[b];
+    return [first, ...models.filter((m) => m !== first)];
+  }
+
+  if (strat === "weighted") {
+    // 70% keep declared order, 30% promote a random later model to front
+    if (Math.random() > 0.3 || models.length < 2) return models;
+    const idx = 1 + Math.floor(Math.random() * (models.length - 1));
+    const pick = models[idx];
+    return [pick, ...models.filter((m) => m !== pick)];
+  }
+
+  if (strat === "least-used" || strat === "cost-optimized" || strat === "auto" || strat === "lkgp" || strat === "context-optimized") {
+    // rankComboModels handles ordering; keep declared order here
+    return models;
+  }
+
+  if (strat !== "round-robin") {
     return models;
   }
 
