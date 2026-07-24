@@ -287,4 +287,5 @@ export const APIKEY_PROVIDERS = {
   sealion: { id: "sealion", alias: "sealion", name: "SEA-LION", icon: "smart_toy", color: "#0F766E", textIcon: "SL", website: "https://sea-lion.ai", notice: { apiKeyUrl: "https://sea-lion.ai" }, serviceKinds: ["llm"] },
   typhoon: { id: "typhoon", alias: "typhoon", name: "Typhoon", icon: "smart_toy", color: "#2563EB", textIcon: "TY", website: "https://opentyphoon.ai", notice: { apiKeyUrl: "https://opentyphoon.ai" }, serviceKinds: ["llm"] },
   writer: { id: "writer", alias: "writer", name: "Writer", icon: "smart_toy", color: "#111827", textIcon: "WR", website: "https://writer.com", notice: { apiKeyUrl: "https://writer.com" }, serviceKinds: ["llm"] },
+  "command-code": { id: "command-code", alias: "command-code", name: "Command Code (alias)", icon: "code", color: "#6366F1", textIcon: "CC", website: "https://commandcode.ai", notice: { text: "Alias of commandcode for OmniRoute naming." }, serviceKinds: ["llm"], hidden: true },
 };

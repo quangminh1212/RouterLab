@@ -95,6 +95,31 @@ function getConnectionErrorTag(connection) {
   return "ERR";
 }
 
+const FEATURED_PROVIDER_IDS = [
+  "openrouter",
+  "openai",
+  "claude",
+  "gemini",
+  "deepseek",
+  "groq",
+  "xai",
+  "nvidia",
+  "qwen-cloud",
+  "qwencoder",
+  "ollama",
+  "github",
+];
+
+const CATEGORY_CHIPS = [
+  { id: "all", label: "All", icon: "apps" },
+  { id: "configured", label: "Configured", icon: "check_circle" },
+  { id: "oauth", label: "OAuth", icon: "lock" },
+  { id: "free", label: "Free", icon: "redeem" },
+  { id: "apikey", label: "API Key", icon: "key" },
+  { id: "web", label: "Web Cookie", icon: "cookie" },
+  { id: "compatible", label: "Compatible", icon: "extension" },
+];
+
 export default function ProvidersPage() {
   const [connections, setConnections] = useState([]);
   const [providerNodes, setProviderNodes] = useState([]);
@@ -104,19 +129,54 @@ export default function ProvidersPage() {
     useState(false);
   const [testingMode, setTestingMode] = useState(null);
   const [testResults, setTestResults] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [compactMode, setCompactMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem("routerlab.providers.compact") === "1";
+    } catch {
+      return false;
+    }
+  });
   const notify = useNotificationStore();
   const searchQuery = useHeaderSearchStore((s) => s.query);
   const registerSearch = useHeaderSearchStore((s) => s.register);
   const unregisterSearch = useHeaderSearchStore((s) => s.unregister);
 
   useEffect(() => {
-    registerSearch("Search providers...");
+    registerSearch("Search name, id, alias...");
     return () => unregisterSearch();
   }, [registerSearch, unregisterSearch]);
 
-  const matchSearch = (name) =>
-    !searchQuery.trim() ||
-    name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        "routerlab.providers.compact",
+        compactMode ? "1" : "0",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [compactMode]);
+
+  const matchSearch = (providerOrName, maybeId) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    if (typeof providerOrName === "string") {
+      const id = String(maybeId || "").toLowerCase();
+      const name = providerOrName.toLowerCase();
+      return name.includes(q) || id.includes(q);
+    }
+    const p = providerOrName || {};
+    const hay = [p.name, p.id, p.alias, maybeId]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  };
+
+  const showSection = (sectionId) =>
+    categoryFilter === "all" || categoryFilter === sectionId;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -256,7 +316,7 @@ export default function ProvidersPage() {
       prefix: node.prefix,
       baseUrl: node.baseUrl,
     }))
-    .filter((p) => matchSearch(p.name));
+    .filter((p) => matchSearch(p, p.id));
 
   const anthropicCompatibleProviders = providerNodes
     .filter((node) => node.type === "anthropic-compatible")
@@ -269,26 +329,41 @@ export default function ProvidersPage() {
       prefix: node.prefix,
       baseUrl: node.baseUrl,
     }))
-    .filter((p) => matchSearch(p.name));
+    .filter((p) => matchSearch(p, p.id));
 
   const oauthEntries = sortProvidersByConfigured(
-    Object.entries(OAUTH_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    Object.entries(OAUTH_PROVIDERS).filter(
+      ([key, info]) => !info.hidden && matchSearch(info, key),
+    ),
     ([key]) => key,
     () => "oauth",
   );
   const freeEntries = sortProvidersByConfigured(
-    Object.entries(FREE_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    Object.entries(FREE_PROVIDERS).filter(
+      ([key, info]) => !info.hidden && matchSearch(info, key),
+    ),
     ([key]) => key,
     () => "free",
   );
   const freeTierEntries = sortProvidersByConfigured(
-    Object.entries(FREE_TIER_PROVIDERS).filter(([, info]) => matchSearch(info.name)),
+    Object.entries(FREE_TIER_PROVIDERS).filter(
+      ([key, info]) => !info.hidden && matchSearch(info, key),
+    ),
     ([key]) => key,
     () => "free",
   );
   const apikeyEntries = Object.entries(APIKEY_PROVIDERS).filter(
-    ([, info]) =>
-      (info.serviceKinds ?? ["llm"]).includes("llm") && matchSearch(info.name),
+    ([key, info]) =>
+      !info.hidden &&
+      (info.serviceKinds ?? ["llm"]).includes("llm") &&
+      matchSearch(info, key),
+  );
+  const webCookieEntries = sortProvidersByConfigured(
+    Object.entries(WEB_COOKIE_PROVIDERS).filter(
+      ([key, info]) => !info.hidden && matchSearch(info, key),
+    ),
+    ([key]) => key,
+    () => "apikey",
   );
 
   const mergedApiKeyLikeProviders = sortProvidersByConfigured([
@@ -346,16 +421,124 @@ export default function ProvidersPage() {
   const unconfiguredApiKeyLikeProviders = mergedApiKeyLikeProviders.filter((entry) => !configuredProviderIds.has(`apikey:${entry.key}`));
   const unconfiguredCompatibleProviders = displayedCompatibleProviders.filter((info) => !configuredProviderIds.has(`apikey:${info.id}`));
 
+  const unconfiguredWebEntries = webCookieEntries.filter(
+    ([key]) => !configuredProviderIds.has(`apikey:${key}`),
+  );
+
   const hasAnyResult =
     configuredProviders.length > 0 ||
     unconfiguredOAuthEntries.length > 0 ||
     unconfiguredFreeEntries.length > 0 ||
     unconfiguredFreeTierEntries.length > 0 ||
     unconfiguredApiKeyLikeProviders.length > 0 ||
-    unconfiguredCompatibleProviders.length > 0;
+    unconfiguredCompatibleProviders.length > 0 ||
+    unconfiguredWebEntries.length > 0;
+
+  const gridClass = compactMode
+    ? "grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+    : "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4";
+
+  // Featured strip: known popular providers still matching search (9router-style quick pick)
+  const featuredPool = [
+    ...oauthEntries.map(([key, info]) => ({ key, info, authType: "oauth", card: "provider" })),
+    ...freeEntries.map(([key, info]) => ({ key, info, authType: "free", card: "provider" })),
+    ...freeTierEntries.map(([key, info]) => ({ key, info, authType: "apikey", card: "apikey" })),
+    ...apikeyEntries.map(([key, info]) => ({ key, info, authType: "apikey", card: "apikey" })),
+  ];
+  const featuredEntries = FEATURED_PROVIDER_IDS.map((id) =>
+    featuredPool.find((e) => e.key === id),
+  ).filter(Boolean);
+
+  const sectionVisible = {
+    configured: showSection("configured") || showSection("all"),
+    oauth: showSection("oauth") || showSection("all"),
+    free: showSection("free") || showSection("all"),
+    apikey: showSection("apikey") || showSection("all"),
+    web: showSection("web") || showSection("all"),
+    compatible: showSection("compatible") || showSection("all"),
+  };
+  // When filtering a single category, hide "configured" split except for configured chip
+  if (categoryFilter === "configured") {
+    Object.assign(sectionVisible, {
+      oauth: false,
+      free: false,
+      apikey: false,
+      web: false,
+      compatible: false,
+      configured: true,
+    });
+  } else if (categoryFilter !== "all") {
+    sectionVisible.configured = false;
+  }
 
   return (
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
+      {/* Toolbar — 9router / OmniRoute style filters */}
+      <div className="sticky top-0 z-20 -mx-1 flex flex-col gap-3 border-b border-border/60 bg-bg/90 px-1 py-3 backdrop-blur-md sm:mx-0 sm:rounded-xl sm:border sm:bg-surface/80 sm:px-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {CATEGORY_CHIPS.map((chip) => {
+              const active = categoryFilter === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(chip.id)}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-primary/40 bg-primary/15 text-primary"
+                      : "border-border bg-bg text-text-muted hover:border-primary/30 hover:text-text-main"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[14px]">{chip.icon}</span>
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setCompactMode((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              compactMode
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-bg text-text-muted hover:text-text-main"
+            }`}
+            title="Compact grid (9router density)"
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              {compactMode ? "grid_view" : "view_agenda"}
+            </span>
+            {compactMode ? "Compact" : "Comfort"}
+          </button>
+        </div>
+        {featuredEntries.length > 0 && categoryFilter === "all" && !searchQuery.trim() && (
+          <div className="flex flex-col gap-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
+              Featured
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {featuredEntries.map((entry) => (
+                <Link
+                  key={`feat-${entry.key}`}
+                  href={`/dashboard/providers/${entry.key}`}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-bg px-2.5 py-1.5 text-xs hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <ProviderIcon
+                    src={getProviderIconSources(entry.info)}
+                    alt={entry.info.name}
+                    size={20}
+                    fallbackText={entry.info.textIcon || entry.key.slice(0, 2).toUpperCase()}
+                    fallbackColor={entry.info.color}
+                  />
+                  <span className="font-medium text-text-main">{entry.info.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {!hasAnyResult && (
         <div className="text-center py-8 border border-dashed border-border rounded-xl">
           <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
@@ -365,13 +548,13 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      {configuredProviders.length > 0 && (
+      {sectionVisible.configured && configuredProviders.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">Configured Providers</h2>
           <span className="text-xs text-text-muted">Providers with API key or configured connection</span>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={gridClass}>
           {configuredProviders.map((entry) => (
             entry.cardType === "provider" ? (
               <ProviderCard
@@ -398,7 +581,7 @@ export default function ProvidersPage() {
       )}
 
       {/* OAuth Providers */}
-      {unconfiguredOAuthEntries.length > 0 && (
+      {sectionVisible.oauth && unconfiguredOAuthEntries.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -426,7 +609,7 @@ export default function ProvidersPage() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={gridClass}>
           {unconfiguredOAuthEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
@@ -442,7 +625,7 @@ export default function ProvidersPage() {
       )}
 
       {/* Free Tier Providers */}
-      {(unconfiguredFreeEntries.length > 0 || unconfiguredFreeTierEntries.length > 0) && (
+      {sectionVisible.free && (unconfiguredFreeEntries.length > 0 || unconfiguredFreeTierEntries.length > 0) && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -467,7 +650,7 @@ export default function ProvidersPage() {
             {testingMode === "free" ? "Testing..." : "Test All"}
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={gridClass}>
           {unconfiguredFreeEntries.map(([key, info]) => (
             <ProviderCard
               key={key}
@@ -493,7 +676,7 @@ export default function ProvidersPage() {
       )}
 
       {/* API Key Providers - fixed list */}
-      {unconfiguredApiKeyLikeProviders.length > 0 && (
+      {sectionVisible.apikey && unconfiguredApiKeyLikeProviders.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -518,7 +701,7 @@ export default function ProvidersPage() {
             {testingMode === "apikey" ? "Testing..." : "Test All"}
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={gridClass}>
           {unconfiguredApiKeyLikeProviders.map((entry) => (
             <ApiKeyProviderCard
               key={entry.key}
@@ -533,15 +716,21 @@ export default function ProvidersPage() {
       </div>
       )}
 
-      {/* Web Cookie Providers - use browser subscription cookie instead of API key */}
-      {/* <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            Web Cookie Providers{" "}
-          </h2>
+      {/* Web Cookie Providers — 9router/Omni style (browser session) */}
+      {sectionVisible.web && unconfiguredWebEntries.length > 0 && (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
+              Web Cookie Providers
+            </h2>
+            <p className="mt-0.5 text-xs text-text-muted">
+              Dùng cookie/session trình duyệt (ToS risk). Grok-web & Perplexity-web chạy ổn định hơn các web khác.
+            </p>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(WEB_COOKIE_PROVIDERS).map(([key, info]) => (
+        <div className={gridClass}>
+          {unconfiguredWebEntries.map(([key, info]) => (
             <ApiKeyProviderCard
               key={key}
               providerId={key}
@@ -552,9 +741,11 @@ export default function ProvidersPage() {
             />
           ))}
         </div>
-      </div> */}
+      </div>
+      )}
 
       {/* API Key Compatible Providers - dynamic (OpenAI/Anthropic compatible) */}
+      {sectionVisible.compatible && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -610,7 +801,7 @@ export default function ProvidersPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={gridClass}>
             {unconfiguredCompatibleProviders.map((info) => (
               <ApiKeyProviderCard
                 key={info.id}
@@ -626,6 +817,7 @@ export default function ProvidersPage() {
           </div>
         )}
       </div>
+      )}
 
       <AddOpenAICompatibleModal
         isOpen={showAddCompatibleModal}

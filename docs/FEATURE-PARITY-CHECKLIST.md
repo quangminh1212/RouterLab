@@ -359,6 +359,13 @@ auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã
 - ✅ Catalog UI ~313 · backend PROVIDERS ~273 · monogram SVG icons cho id mới
 - 🟡 Executor full cho web/cookie/oauth phức tạp (felo-web, notion-web, ghe-copilot, xai-oauth) — đã surface catalog + baseUrl; chat e2e cần credential/session thật
 
+### Đợt 9 ✅ (2026-07-25) — full Omni top-level + UI 9router-style
+- ✅ Backend gap-fill: agy, clinepass, grok-cli, huggingface, trae, windsurf, zed-hosted + aliases command-code / gitlab-duo
+- ✅ UI Providers: filter chips (All/Configured/OAuth/Free/API Key/Web Cookie/Compatible), compact density, Featured strip, search id+alias+name
+- ✅ Bật lại section **Web Cookie Providers** (trước đó bị comment)
+- ✅ Catalog UI ~315 · backend ~282 · Omni top-level registry covered (aliases map)
+- 🟡 Full port 100+ Omni *executors* web/TTS/custom (không chặn catalog; default/openai path cho OpenAI-compatible)
+
 Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần / ToS-risk RE):
 Postgres/Git/S3 credential store, gamification/leaderboard, full browser RE
 cho 18 web-scraper (501 rõ ràng), suno/udio music task handlers, aistudio WS

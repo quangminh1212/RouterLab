@@ -272,6 +272,15 @@ import p_sealion from "./registry/sealion.js";
 import p_typhoon from "./registry/typhoon.js";
 import p_writer from "./registry/writer.js";
 import p_xai_oauth from "./registry/xai-oauth.js";
+import p_agy from "./registry/agy.js";
+import p_clinepass from "./registry/clinepass.js";
+import p_grok_cli from "./registry/grok-cli.js";
+import p_huggingface from "./registry/huggingface.js";
+import p_trae from "./registry/trae.js";
+import p_windsurf from "./registry/windsurf.js";
+import p_zed_hosted from "./registry/zed-hosted.js";
+import p_command_code from "./registry/command-code.js";
+import p_gitlab_duo from "./registry/gitlab-duo.js";
 
 export const PROVIDERS = {
   "claude": p_claude,
@@ -548,6 +557,16 @@ export const PROVIDERS = {
   "typhoon": p_typhoon,
   "writer": p_writer,
   "xai-oauth": p_xai_oauth,
+
+  "agy": p_agy,
+  "clinepass": p_clinepass,
+  "grok-cli": p_grok_cli,
+  "huggingface": p_huggingface,
+  "trae": p_trae,
+  "windsurf": p_windsurf,
+  "zed-hosted": p_zed_hosted,
+  "command-code": p_command_code,
+  "gitlab-duo": p_gitlab_duo,
 };
 
 
