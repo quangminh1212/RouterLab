@@ -1,0 +1,3 @@
+/** Provider module: llama-cpp (RouterLab registry — OmniRoute-style) */
+export const id = "llama-cpp";
+export default { baseUrl: "http://127.0.0.1:8080/v1/chat/completions", format: "openai", noAuth: true };

@@ -25,6 +25,10 @@ product
 .DS_Store
 *.pem
 
+# local split backups / smoke artifacts
+*.pre-split
+data_smoke.json
+
 # debug
 *.log
 npm-debug.log*
@@ -55,6 +59,7 @@ docs/*
 !docs/ARCHITECTURE.md
 !docs/backup.md
 !docs/FEATURE-PARITY-CHECKLIST.md
+!docs/PROVIDER-MODULE-SPLIT.md
 test/*
 bin/*
 open-sse/test/*
