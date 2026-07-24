@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Sync combos + providerConnections (+ apiKeys) from live 9router into xlabrouter.
+"""Sync combos + providerConnections + providerNodes (+ apiKeys) from 9router → xlabrouter.
 
 Source of truth: /root/.9router/db/data.sqlite
 Target (service DATA_DIR): /var/lib/xlabrouter/db.json
 
 Also merges related combo/provider strategies from 9router settings.
+Ensures openai-compatible nodes get prefix routes (qwencoder + qwc) so UI
+model ids work without falling back to OpenAI baseUrl.
 Does not wipe unrelated xlabrouter keys (tunnel, usage, etc.).
 """
 from __future__ import annotations
@@ -197,9 +199,48 @@ src_settings = json.loads(settings_raw[0]) if settings_raw else {}
 # apiKeys schema varies by 9router version — inspect columns
 ak_cols = [r[1] for r in cur.execute("PRAGMA table_info(apiKeys)")]
 ak_rows = list(cur.execute("SELECT * FROM apiKeys")) if ak_cols else []
+
+# providerNodes (critical for openai-compatible prefix routing)
+pn_cols = [r[1] for r in cur.execute("PRAGMA table_info(providerNodes)")]
+pn_rows = list(cur.execute("SELECT * FROM providerNodes")) if pn_cols else []
 conn.close()
 
 src_providers = [flatten_provider(r) for r in pc_rows]
+src_nodes = []
+for row in pn_rows:
+    item = dict(zip(pn_cols, row))
+    data_blob = item.get("data")
+    if isinstance(data_blob, str):
+        try:
+            data_blob = json.loads(data_blob)
+        except Exception:
+            data_blob = {}
+    if isinstance(data_blob, dict):
+        for k, v in data_blob.items():
+            if k not in item or item.get(k) in (None, ""):
+                item[k] = v
+    node = {
+        "id": item.get("id"),
+        "type": item.get("type") or "openai-compatible",
+        "prefix": item.get("prefix"),
+        "nodeName": item.get("nodeName") or item.get("name"),
+        "baseUrl": item.get("baseUrl"),
+        "apiType": item.get("apiType") or "chat",
+        "createdAt": item.get("createdAt"),
+        "updatedAt": item.get("updatedAt"),
+    }
+    # fill from matching connection if incomplete
+    if not node.get("prefix") or not node.get("baseUrl"):
+        for p in src_providers:
+            if p.get("provider") == node.get("id"):
+                ps = p.get("providerSpecificData") or {}
+                node["prefix"] = node.get("prefix") or ps.get("prefix")
+                node["baseUrl"] = node.get("baseUrl") or ps.get("baseUrl")
+                node["apiType"] = node.get("apiType") or ps.get("apiType") or "chat"
+                node["nodeName"] = node.get("nodeName") or ps.get("nodeName") or p.get("name")
+                break
+    if node.get("id"):
+        src_nodes.append(node)
 src_combos = []
 for row in combo_rows:
     models = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or [])
@@ -253,6 +294,48 @@ pcs, pc_stats = upsert_by_id(data.get("providerConnections") or [], src_provider
 combos, combo_stats = upsert_combos(data.get("combos") or [], src_combos)
 data["providerConnections"] = pcs
 data["combos"] = combos
+
+# Ensure providerNodes exist for openai-compatible connections (prefix routing).
+# Also add dual prefix qwc (RouterLab alias) → same node as qwencoder.
+node_by_id = {}
+for n in data.get("providerNodes") or []:
+    if isinstance(n, dict) and n.get("id"):
+        node_by_id[n["id"]] = n
+for n in src_nodes:
+    if n.get("id"):
+        node_by_id[n["id"]] = {**(node_by_id.get(n["id"]) or {}), **n}
+# Derive nodes from openai-compatible connections if 9router had none
+for p in pcs:
+    pid = str(p.get("provider") or "")
+    if not pid.startswith("openai-compatible"):
+        continue
+    ps = p.get("providerSpecificData") if isinstance(p.get("providerSpecificData"), dict) else {}
+    prefix = ps.get("prefix")
+    base_url = ps.get("baseUrl")
+    if not prefix or not base_url:
+        continue
+    node_by_id[pid] = {
+        **(node_by_id.get(pid) or {}),
+        "id": pid,
+        "type": "openai-compatible",
+        "prefix": prefix,
+        "nodeName": ps.get("nodeName") or p.get("name") or prefix,
+        "baseUrl": base_url,
+        "apiType": ps.get("apiType") or "chat",
+        "createdAt": p.get("createdAt"),
+        "updatedAt": p.get("updatedAt"),
+    }
+# Expand dual prefixes for QwenCoder (UI uses qwc/, combo uses qwencoder/)
+expanded_nodes = []
+for n in node_by_id.values():
+    prefix = n.get("prefix")
+    expanded_nodes.append(n)
+    if prefix == "qwencoder":
+        expanded_nodes.append({**n, "prefix": "qwc"})
+    elif prefix == "qwc":
+        expanded_nodes.append({**n, "prefix": "qwencoder"})
+data["providerNodes"] = expanded_nodes
+print("NODE_STATS", len(expanded_nodes), [(n.get("prefix"), n.get("id")) for n in expanded_nodes])
 
 # Upsert api keys (needed for /v1 clients)
 if src_api_keys:

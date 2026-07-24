@@ -45,6 +45,16 @@ export class DefaultExecutor extends BaseExecutor {
         return `${baseUrl.replace(/\/$/, "")}/chat/completions`;
       }
       default: {
+        // Prefer connection baseUrl when present so native providers (e.g. qwencoder)
+        // still work if registry is missing/outdated (would otherwise fall back to OpenAI).
+        const fromCreds = credentials?.providerSpecificData?.baseUrl;
+        if (typeof fromCreds === "string" && fromCreds.trim()) {
+          const normalized = fromCreds.trim().replace(/\/$/, "");
+          if (/\/(chat\/completions|responses|messages)$/i.test(normalized)) {
+            return normalized;
+          }
+          return `${normalized}/chat/completions`;
+        }
         const url = this.config.baseUrl;
         if (url?.includes("{accountId}")) {
           const accountId = credentials?.providerSpecificData?.accountId;
