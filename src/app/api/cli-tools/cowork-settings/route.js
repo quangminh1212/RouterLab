@@ -295,12 +295,14 @@ export async function GET() {
       .filter((p) => p.servers.some((s) => managedMcpArr.some((v) => v?.url === s.url)))
       .map((p) => p.name);
 
-    const hasXLabRouter = !!(config?.inferenceProvider === PROVIDER && baseUrl);
+    const hasRouterLab = !!(config?.inferenceProvider === PROVIDER && baseUrl);
 
     return NextResponse.json({
       installed: true,
       config,
-      hasXLabRouter,
+      hasRouterLab,
+      // legacy alias for older UI builds
+      hasXLabRouter: hasRouterLab,
       configPath,
       cowork: {
         appliedId,

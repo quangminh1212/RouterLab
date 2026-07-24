@@ -91,14 +91,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/quangminh1212/XLab_Router.git"
+        "url": "git+https://github.com/quangminh1212/RouterLab.git"
     },
     "keywords": [],
     "author": "",
     "bugs": {
-        "url": "https://github.com/quangminh1212/XLab_Router/issues"
+        "url": "https://github.com/quangminh1212/RouterLab/issues"
     },
-    "homepage": "https://github.com/quangminh1212/XLab_Router#readme",
+    "homepage": "https://github.com/quangminh1212/RouterLab#readme",
     "overrides": {
         "dompurify": "^3.4.2",
         "postcss": "^8.5.10"

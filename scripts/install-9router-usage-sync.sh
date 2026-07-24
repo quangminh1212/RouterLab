@@ -19,7 +19,7 @@ if [[ -z "$TARGET_PASSWORD" ]]; then
 fi
 
 if [[ ! -f "$APP_DIR/scripts/sync-9router-usage.mjs" ]]; then
-  echo "ERROR: APP_DIR does not look like XLab_Router: $APP_DIR" >&2
+  echo "ERROR: APP_DIR does not look like RouterLab: $APP_DIR" >&2
   exit 1
 fi
 
