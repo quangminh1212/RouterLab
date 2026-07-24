@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * XLab Router Uninstall Script
+ * RouterLab Uninstall Script
  * Provides clean uninstallation with options to keep or remove user data
  */
 
@@ -16,7 +16,7 @@ const DATA_DIR = path.join(os.homedir(), `.${APP_NAME}`);
 // Check if --full flag is provided
 const isFullUninstall = process.argv.includes("--full");
 
-console.log(`\n🗑️  XLab Router Uninstall ${isFullUninstall ? "(FULL)" : "(Keep Data)"}\n`);
+console.log(`\n🗑️  RouterLab Uninstall ${isFullUninstall ? "(FULL)" : "(Keep Data)"}\n`);
 
 function removeDirectory(dir) {
   if (fs.existsSync(dir)) {
@@ -37,7 +37,7 @@ function removeFile(file) {
 }
 
 try {
-  console.log("📦 Uninstalling XLab Router package...\n");
+  console.log("📦 Uninstalling RouterLab package...\n");
 
   // Stop any running processes
   console.log("🛑 Stopping running processes...");
@@ -72,7 +72,7 @@ try {
     console.log("\n   To remove all data, run: npm run uninstall:full\n");
   }
 
-  console.log("✅ XLab Router uninstalled successfully!\n");
+  console.log("✅ RouterLab uninstalled successfully!\n");
 
   if (isFullUninstall) {
     console.log("⚠️  All data has been permanently deleted.\n");
@@ -81,7 +81,7 @@ try {
     console.log("   Reinstalling will restore your configuration.\n");
   }
 
-  console.log("Thank you for using XLab Router! 👋\n");
+  console.log("Thank you for using RouterLab! 👋\n");
 } catch (err) {
   console.error("\n❌ Error during uninstallation:", err.message);
   console.error("\nPlease try manual cleanup or contact support.\n");

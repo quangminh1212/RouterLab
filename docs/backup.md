@@ -1,8 +1,8 @@
-﻿# XLab Router Backup
+# RouterLab Backup
 
 ## Mục tiêu
 
-Backup dùng để khôi phục cấu hình XLab Router và số liệu Usage & Analytics ở mức tổng quan. Backup không lưu nội dung request/response chi tiết để tránh file quá nặng và hạn chế lưu dữ liệu nhạy cảm.
+Backup dùng để khôi phục cấu hình RouterLab và số liệu Usage & Analytics ở mức tổng quan. Backup không lưu nội dung request/response chi tiết để tránh file quá nặng và hạn chế lưu dữ liệu nhạy cảm.
 
 ## File backup
 
@@ -30,7 +30,7 @@ Backup giữ các nhóm dữ liệu chính trong local DB:
 - `modelAliases`: alias model.
 - `mitmAlias`: alias MITM/router.
 - `combos`: combo model/router.
-- `apiKeys`: API keys nội bộ của XLab Router.
+- `apiKeys`: API keys nội bộ của RouterLab.
 - `settings`: cấu hình ứng dụng.
 - `pricing`: dữ liệu giá/model pricing.
 - `customModels`: model tùy chỉnh nếu có.
@@ -143,11 +143,11 @@ Lưu ý an toàn:
 - Mặc định là dry-run; chỉ ghi khi có `--apply`.
 - Luôn tạo bản `*.bak-<timestamp>` trước khi sửa file live.
 - Xóa snapshot cũ cần cờ riêng `--prune-backups`.
-- Nên dừng tiến trình XLab Router trước khi chạy `--apply` để tránh tranh chấp ghi file.
+- Nên dừng tiến trình RouterLab trước khi chạy `--apply` để tránh tranh chấp ghi file.
 
 ## Nhập usage từ Cockpit (Antigravity Cockpit Tools)
 
-Với các tài khoản mà XLab Router chỉ giữ token để chat (không có quyền đọc quota API của nhà cung cấp), panel **Antigravity Cockpit** là nơi duy nhất thấy được usage. Có thể export từ Cockpit rồi nhập vào XLab Router để cộng dồn vào tổng usage.
+Với các tài khoản mà RouterLab chỉ giữ token để chat (không có quyền đọc quota API của nhà cung cấp), panel **Antigravity Cockpit** là nơi duy nhất thấy được usage. Có thể export từ Cockpit rồi nhập vào RouterLab để cộng dồn vào tổng usage.
 
 ### Định dạng file export được hỗ trợ
 
@@ -161,13 +161,13 @@ Parser nhận diện nhiều dạng, ưu tiên cao nhất là **Cockpit Tools da
 }
 ```
 
-Đây là **snapshot quota/credit theo từng account** (không phải lịch sử request theo ngày). XLab Router suy ra số "đơn vị đã dùng" cho mỗi account:
+Đây là **snapshot quota/credit theo từng account** (không phải lịch sử request theo ngày). RouterLab suy ra số "đơn vị đã dùng" cho mỗi account:
 
 - **kiro**: `credits_used` + `bonus_used`.
 - **github-copilot / windsurf**: tổng `entitlement - quota_remaining` qua các quota có giới hạn (bỏ qua quota `unlimited`).
 - **codex**: chỉ có `%` đã dùng (`hourly_percentage`/`weekly_percentage`) → không suy ra được số tuyệt đối → **bỏ qua** (không đoán).
 
-Các dạng khác cũng được hỗ trợ: mảng record/event theo ngày, map quota theo model, và chính file `dailySummary` của XLab Router (re-import).
+Các dạng khác cũng được hỗ trợ: mảng record/event theo ngày, map quota theo model, và chính file `dailySummary` của RouterLab (re-import).
 
 ### API
 

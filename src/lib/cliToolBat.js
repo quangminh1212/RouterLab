@@ -61,14 +61,14 @@ export function buildCliSetupScript({ endpoint, apiKey, os, installCmd }) {
 setlocal
 chcp 65001 >nul
 echo ========================================
-echo XLab Router CLI Setup
+echo RouterLab CLI Setup
 echo ========================================
 echo.
-echo [1/3] Installing XLab Router CLI globally...
+echo [1/3] Installing RouterLab CLI globally...
 call ${installCmd}
 if errorlevel 1 (
   echo.
-  echo [ERROR] Failed to install XLab Router CLI.
+  echo [ERROR] Failed to install RouterLab CLI.
   echo Please run manually: ${installCmd}
   pause
   exit /b 1
@@ -98,10 +98,10 @@ pause
 set -e
 
 echo "========================================"
-echo "XLab Router CLI Setup"
+echo "RouterLab CLI Setup"
 echo "========================================"
 echo ""
-echo "[1/3] Installing XLab Router CLI globally..."
+echo "[1/3] Installing RouterLab CLI globally..."
 ${installCmd}
 echo "[OK] CLI installed successfully."
 echo ""

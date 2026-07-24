@@ -292,7 +292,7 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "XLab Router settings removed successfully",
+      message: "RouterLab settings removed successfully",
     });
   } catch (error) {
     console.log("Error resetting openclaw settings:", error);

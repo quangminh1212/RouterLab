@@ -1,5 +1,5 @@
 /**
- * Comprehensive remote feature test for XLab Router VPS.
+ * Comprehensive remote feature test for RouterLab VPS.
  * Run: node tester/remote-feature-test.mjs
  * Env: ROOT_BASE (default http://36.50.26.247:1212), API_KEY, TIMEOUT_MS
  */
@@ -54,7 +54,7 @@ async function req(name, method, url, { body, headers, expect, soft } = {}) {
 }
 
 async function main() {
-  console.log(`\n=== XLab Router remote feature test ===`);
+  console.log(`\n=== RouterLab remote feature test ===`);
   console.log(`Base: ${ROOT}`);
   console.log(`Model: ${MODEL}`);
   console.log(`API_KEY: ${API_KEY ? 'set' : 'none'}`);

@@ -182,7 +182,7 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
 
     const effectiveSubagentModel = subagentModel || selectedModel;
 
-    const configContent = `# XLab Router Configuration for Codex CLI
+    const configContent = `# RouterLab Configuration for Codex CLI
 model = "${selectedModel}"
 model_provider = "xlabrouter"
 
@@ -250,7 +250,7 @@ model = "${effectiveSubagentModel}"
                       <span className="material-symbols-outlined text-yellow-500">warning</span>
                       <div className="flex-1">
                         <p className="font-medium text-yellow-600 dark:text-yellow-400">Codex CLI not detected locally</p>
-                        <p className="text-sm text-text-muted">Manual configuration is still available if XLab Router is deployed on a remote server.</p>
+                        <p className="text-sm text-text-muted">Manual configuration is still available if RouterLab is deployed on a remote server.</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pl-9">

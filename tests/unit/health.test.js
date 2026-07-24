@@ -18,7 +18,7 @@ vi.mock("@/lib/localDb", () => ({
 
 vi.mock("@/shared/constants/config", () => ({
   APP_CONFIG: {
-    name: "XLab Router",
+    name: "RouterLab",
     version: "1.0.47",
   },
 }));

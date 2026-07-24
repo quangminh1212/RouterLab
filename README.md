@@ -1,6 +1,6 @@
-# XLab Router
+# RouterLab
 
-XLab Router là bộ định tuyến AI đa nhà cung cấp, hỗ trợ gom endpoint, quota, fallback, tunnel và dashboard quản trị tập trung.
+RouterLab là bộ định tuyến AI đa nhà cung cấp, hỗ trợ gom endpoint, quota, fallback, tunnel và dashboard quản trị tập trung.
 
 ## Quick Start
 

@@ -2,7 +2,7 @@
 /**
  * compact-usage-store.mjs
  *
- * Reclaims disk space in the XLab Router data directory by:
+ * Reclaims disk space in the RouterLab data directory by:
  *   1. Re-compacting request-details.json (enforces per-field + total-size caps).
  *   2. Stripping the legacy `requestDetailsData` blob from db.json.
  *   3. Optionally pruning stale db.backup-* / db.*.json snapshot files.
@@ -11,7 +11,7 @@
  *   - Dry-run by default. Pass --apply to write changes.
  *   - Always writes a *.bak-<timestamp> copy before modifying a live file.
  *   - Backup pruning requires the explicit --prune-backups flag.
- *   - Stop the XLab Router process before running with --apply.
+ *   - Stop the RouterLab process before running with --apply.
  *
  * Usage:
  *   node scripts/compact-usage-store.mjs               # report only (dry-run)
@@ -267,7 +267,7 @@ function pruneRuntimeBackups(keep = 10) {
 }
 
 function main() {
-  console.log(`XLab Router — usage store compaction`);
+  console.log(`RouterLab — usage store compaction`);
   console.log(`Data dir: ${DATA_DIR}`);
   console.log(`Mode: ${APPLY ? "APPLY (writing changes)" : "DRY-RUN (report only)"}\n`);
 
@@ -277,7 +277,7 @@ function main() {
   }
 
   if (APPLY) {
-    console.log("⚠  Make sure the XLab Router process is stopped before applying.\n");
+    console.log("⚠  Make sure the RouterLab process is stopped before applying.\n");
   }
 
   let saved = 0;

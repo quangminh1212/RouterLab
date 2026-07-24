@@ -8,6 +8,7 @@ const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
 const BACKUP_FILE_NAME = "xlabrouter-backup.json";
+// Keep legacy Drive folder name so existing backups remain discoverable after rebrand.
 const BACKUP_FOLDER_NAME = "XLab Router Backup";
 const GOOGLE_SESSION_MAX_AGE_SECONDS = Number(process.env.GOOGLE_SESSION_MAX_AGE_SECONDS || 60 * 60 * 24 * 90);
 const SCOPE = [

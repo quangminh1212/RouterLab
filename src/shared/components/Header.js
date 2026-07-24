@@ -103,7 +103,7 @@ const getPageInfo = (pathname) => {
   if (pathname.includes("/mitm"))
     return {
       title: "MITM Proxy",
-      description: "Intercept CLI tool traffic and route through XLab Router",
+      description: "Intercept CLI tool traffic and route through RouterLab",
       icon: "security",
       breadcrumbs: [],
     };
@@ -446,7 +446,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
               </span>
             </span>
             {typeof systemMetrics.diskUsedBytes === "number" && (
-              <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 text-amber-600 shadow-sm shadow-amber-500/5 transition-colors dark:text-amber-300 dark:border-amber-400/25 dark:bg-amber-400/10" title="Dung lượng dữ liệu XLab Router">
+              <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 text-amber-600 shadow-sm shadow-amber-500/5 transition-colors dark:text-amber-300 dark:border-amber-400/25 dark:bg-amber-400/10" title="Dung lượng dữ liệu RouterLab">
                 <span className="material-symbols-outlined text-[14px] leading-none">hard_drive</span>
                 <span className="text-[9px] uppercase tracking-[0.12em] text-amber-700/70 dark:text-amber-200/70">SSD</span>
                 <span className="tabular-nums text-text-main dark:text-white">

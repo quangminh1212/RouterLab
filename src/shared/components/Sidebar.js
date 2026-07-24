@@ -270,7 +270,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         <div className={cn("py-4 flex flex-col gap-2", collapsed ? "px-3" : "px-6")}>
           <Link href="/dashboard" prefetch={false} className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
             <div className="flex items-center justify-center size-9 rounded overflow-hidden">
-              <img src="/topup.png" alt="XLab Router logo" loading="lazy" className="w-full h-full object-cover" />
+              <img src="/topup.png" alt="RouterLab logo" loading="lazy" className="w-full h-full object-cover" />
             </div>
             {!collapsed && (
               <div className="flex flex-col">
@@ -536,8 +536,8 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update XLab Router"
-        message={`This will close XLab Router and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
+        title="Update RouterLab"
+        message={`This will close RouterLab and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
         confirmText="Update"
         cancelText="Cancel"
         variant="primary"
@@ -589,7 +589,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
   const errorMsg = status?.error;
 
   const steps = [
-    { key: "stopped", label: "Stopped XLab Router server", state: "done" },
+    { key: "stopped", label: "Stopped RouterLab server", state: "done" },
     {
       key: "launched",
       label: "Launched background installer",
@@ -631,7 +631,7 @@ function UpdateProgress({ status, latestVersion, installCmd, copied, onCopy }) {
         </div>
         <div>
           <h2 className="text-lg font-semibold">
-            {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating XLab Router"}
+            {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating RouterLab"}
           </h2>
           <p className="text-xs text-white/60">
             {done && success

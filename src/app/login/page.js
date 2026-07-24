@@ -43,9 +43,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4 overflow-hidden">
-            <Image src="/icon.png" alt="XLab Router" width={56} height={56} priority />
+            <Image src="/icon.png" alt="RouterLab" width={56} height={56} priority />
           </div>
-          <h1 className="text-xl font-semibold text-text-main">{APP_CONFIG?.name || "XLab Router"}</h1>
+          <h1 className="text-xl font-semibold text-text-main">{APP_CONFIG?.name || "RouterLab"}</h1>
           <p className="text-sm text-text-muted mt-1">Nhập mật khẩu để tiếp tục</p>
         </div>
         <Card>

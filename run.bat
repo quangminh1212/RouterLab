@@ -13,7 +13,7 @@ set HOSTNAME=127.0.0.1
 set CLOUDFLARED_PROCESS_MODE=true
 set CLOUDFLARED_WINDOWS_SERVICE_MODE=false
 
-echo Starting XLab Router...
+echo Starting RouterLab...
 echo.
 
 REM Always clear old dev server processes before starting

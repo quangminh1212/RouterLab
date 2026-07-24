@@ -1,7 +1,7 @@
 {
     "name": "xlabrouter",
     "version": "1.0.48",
-    "description": "Global CLI and web dashboard for XLab Router",
+    "description": "Global CLI and web dashboard for RouterLab",
     "private": false,
     "preferGlobal": true,
     "license": "ISC",

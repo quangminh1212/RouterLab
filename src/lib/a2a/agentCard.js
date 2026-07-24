@@ -33,12 +33,12 @@ export function buildAgentCard(request) {
   }));
 
   return {
-    name: "XLab Router",
+    name: "RouterLab",
     description:
       "Multi-provider AI router exposing chat, image, speech, embeddings, web search and fetch capabilities through the A2A protocol.",
     url: `${baseUrl}/a2a`,
     provider: {
-      organization: "XLab Router",
+      organization: "RouterLab",
       url: baseUrl,
     },
     version: PROTOCOL_VERSION,

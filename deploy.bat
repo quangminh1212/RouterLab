@@ -8,7 +8,7 @@ chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 echo ========================================
-echo   Deploy XLab Router to 36.50.26.247
+echo   Deploy RouterLab to 36.50.26.247
 echo ========================================
 echo   Source : %CD%
 echo   Target : 36.50.26.247:1212

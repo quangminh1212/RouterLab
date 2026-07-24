@@ -11,6 +11,7 @@ const BACKUP_FILE_NAME = "xlabrouter.backup.json";
 const LEGACY_PLAIN_FILE_NAME = "xlabrouter.enc.json";
 const LEGACY_ENCRYPTED_FILE_NAME = "xlabrouter-backup.enc.json";
 const BACKUP_GIST_DESCRIPTION = "xlabrouter";
+// Pre-rebrand Gist description — must stay for restore of old backups.
 const LEGACY_BACKUP_GIST_DESCRIPTION = "XLab Router encrypted backup";
 const LEGACY_ENVELOPE_FORMAT = "xlabrouter-gist-backup";
 const PBKDF2_ITERATIONS = 210000;
@@ -356,7 +357,7 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
     }
   }
 
-  if (candidates.length === 0) throw new Error("No XLab Router backup Gist found yet");
+  if (candidates.length === 0) throw new Error("No RouterLab backup Gist found yet");
 
   let lastError = null;
   for (const candidate of candidates) {
@@ -364,12 +365,12 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
       const gist = await githubRequest(token, `${GITHUB_GISTS_URL}/${candidate.id}`, { method: "GET" });
       const file = gist.files?.[BACKUP_FILE_NAME] || gist.files?.[LEGACY_PLAIN_FILE_NAME] || gist.files?.[LEGACY_ENCRYPTED_FILE_NAME];
       if (!file) {
-        throw new Error("XLab Router backup file not found in Gist");
+        throw new Error("RouterLab backup file not found in Gist");
       }
 
       const content = await readFullGistFileContent(token, file);
       if (!content) {
-        throw new Error("XLab Router backup file content is empty");
+        throw new Error("RouterLab backup file content is empty");
       }
 
       const payload = parseGistBackupPayload(content, passphrases || passphrase);
@@ -385,5 +386,5 @@ export async function restoreFromGist({ token, gistId, passphrase, passphrases }
     }
   }
 
-  throw lastError || new Error("No restorable XLab Router backup Gist found");
+  throw lastError || new Error("No restorable RouterLab backup Gist found");
 }

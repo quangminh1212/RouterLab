@@ -54,7 +54,7 @@ export default function FlowAnimation() {
           hub
         </span>
         <span className="text-xs font-bold text-white tracking-widest uppercase">
-          XLab Router
+          RouterLab
         </span>
         <div className="absolute inset-0 rounded-full border border-[#187878]/30 animate-ping opacity-20"></div>
       </div>

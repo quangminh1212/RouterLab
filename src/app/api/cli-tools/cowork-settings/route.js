@@ -47,7 +47,7 @@ async function pickPluginsRoot() {
     try {
       await fs.mkdir(dir, { recursive: true });
       // Probe write
-      const probe = path.join(dir, ".__XLab Router_probe");
+      const probe = path.join(dir, ".__RouterLab_probe");
       await fs.writeFile(probe, "ok");
       await fs.unlink(probe);
       return dir;
@@ -72,7 +72,7 @@ async function writeOrgPluginsFolder(selectedPluginNames) {
     const metaDir = path.join(pluginRoot, ".claude-plugin");
     try {
       await fs.mkdir(metaDir, { recursive: true });
-      const manifest = { name: p.name, version: "1.0.0", description: p.description || p.name, author: { name: "XLab Router" } };
+      const manifest = { name: p.name, version: "1.0.0", description: p.description || p.name, author: { name: "RouterLab" } };
       await fs.writeFile(path.join(metaDir, "plugin.json"), JSON.stringify(manifest, null, 2));
       // .mcp.json at plugin root, schema: {mcpServers: {name: {type, url, oauth?}}}
       const mcpServers = {};

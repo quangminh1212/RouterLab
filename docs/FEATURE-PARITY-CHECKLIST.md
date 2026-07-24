@@ -1,6 +1,6 @@
-# XLab Router — Feature & Provider Parity Checklist
+# RouterLab — Feature & Provider Parity Checklist
 
-So sánh XLab Router với 3 repo nguồn để đảm bảo phủ 100% tính năng + provider:
+So sánh RouterLab với 3 repo nguồn để đảm bảo phủ 100% tính năng + provider:
 
 - **OmniRoute** — https://github.com/diegosouzapw/OmniRoute (TypeScript, hậu duệ của 9router, ~180 provider)
 - **9router** — https://github.com/decolua/9router (JS, repo gốc mà XLab fork từ đó)

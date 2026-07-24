@@ -58,7 +58,7 @@ fi
 
 cat > /etc/systemd/system/xlabrouter-9router-usage-sync.service <<EOF
 [Unit]
-Description=XLab Router hourly 9router usage DB sync
+Description=RouterLab hourly 9router usage DB sync
 After=network-online.target
 Wants=network-online.target
 
@@ -74,7 +74,7 @@ EOF
 
 cat > /etc/systemd/system/xlabrouter-9router-usage-sync.timer <<EOF
 [Unit]
-Description=Run XLab Router 9router usage DB sync hourly
+Description=Run RouterLab 9router usage DB sync hourly
 
 [Timer]
 OnCalendar=hourly

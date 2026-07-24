@@ -381,7 +381,7 @@ if (command === "--version" || command === "-v") {
 }
 
 if (command === "--help" || command === "-h") {
-  console.log("xlab_router - XLab Router CLI");
+  console.log("xlab_router - RouterLab CLI");
   console.log("");
   console.log("Usage:");
   console.log("  xlab_router           Start Web UI directly (port 1212)");
@@ -516,7 +516,7 @@ async function stopOldXLabRouterProcesses(targetPort, repoRoot) {
 
   const leftoverRouterPids = await getXLabRouterPids(repoRoot);
   if (leftoverRouterPids.length > 0) {
-    throw new Error(`Old XLab Router process is still running: ${leftoverRouterPids.join(", ")}`);
+    throw new Error(`Old RouterLab process is still running: ${leftoverRouterPids.join(", ")}`);
   }
 
   return killedPids;
@@ -634,6 +634,10 @@ function getWindowsStartupDir() {
 }
 
 function getAutostartScriptPath() {
+  return path.join(getWindowsStartupDir(), "RouterLab Autostart.vbs");
+}
+
+function getLegacyAutostartScriptPath() {
   return path.join(getWindowsStartupDir(), "XLab Router Autostart.vbs");
 }
 
@@ -654,7 +658,7 @@ function isAutostartEnabled() {
   if (!isWindows()) {
     return false;
   }
-  return fs.existsSync(getAutostartScriptPath());
+  return fs.existsSync(getAutostartScriptPath()) || fs.existsSync(getLegacyAutostartScriptPath());
 }
 
 function ensureAutostartEnabled() {
@@ -664,8 +668,17 @@ function ensureAutostartEnabled() {
 
   const startupDir = getWindowsStartupDir();
   const autostartScriptPath = getAutostartScriptPath();
+  const legacyAutostartScriptPath = getLegacyAutostartScriptPath();
   fs.mkdirSync(startupDir, { recursive: true });
   fs.writeFileSync(autostartScriptPath, getAutostartScriptContent(), "utf8");
+  // Migrate away from the pre-rebrand Startup shortcut name.
+  if (fs.existsSync(legacyAutostartScriptPath)) {
+    try {
+      fs.unlinkSync(legacyAutostartScriptPath);
+    } catch {
+      // Best-effort cleanup only.
+    }
+  }
   return autostartScriptPath;
 }
 
@@ -675,8 +688,12 @@ function disableAutostart() {
   }
 
   const autostartScriptPath = getAutostartScriptPath();
+  const legacyAutostartScriptPath = getLegacyAutostartScriptPath();
   if (fs.existsSync(autostartScriptPath)) {
     fs.unlinkSync(autostartScriptPath);
+  }
+  if (fs.existsSync(legacyAutostartScriptPath)) {
+    fs.unlinkSync(legacyAutostartScriptPath);
   }
   return autostartScriptPath;
 }
@@ -719,7 +736,7 @@ async function launchWebUIProcess(options = {}) {
     || (requestedMode === "auto" && (isNonInteractive || isNpmStart));
   let modeLabel = runProd ? "production" : "development";
 
-  console.log(`\n[INFO] Starting XLab Router Web UI on ${hostname}:${port} (${modeLabel})...`);
+  console.log(`\n[INFO] Starting RouterLab Web UI on ${hostname}:${port} (${modeLabel})...`);
   console.log(`[INFO] Runtime paths => repoRoot: ${repoRoot} | appRoot: ${appRoot}`);
 
   runAutoCleanup(appRoot);
@@ -884,7 +901,7 @@ async function launchWebUIProcess(options = {}) {
   }
 
   child.on("error", (err) => {
-    console.error("[ERROR] Failed to start XLab Router:", err);
+    console.error("[ERROR] Failed to start RouterLab:", err);
     onExit?.(1);
     if (exitOnChildExit) {
       process.exit(1);
@@ -929,12 +946,12 @@ async function startWebUI() {
 }
 
 function printTrayLaunchMessage() {
-  console.log(`[INFO] XLab Router is starting in the system tray.`);
+  console.log(`[INFO] RouterLab is starting in the system tray.`);
   console.log(`[INFO] Dashboard: ${getDashboardUrl()}`);
   console.log(`[INFO] Use the tray menu to open the dashboard, open logs, or quit.`);
   console.log(`[INFO] Run xlabrouter --web if you want to keep it in the current terminal.`);
   if (isWindows()) {
-    console.log(`[INFO] Run xlabrouter --autostart-on to launch XLab Router automatically when Windows starts.`);
+    console.log(`[INFO] Run xlabrouter --autostart-on to launch RouterLab automatically when Windows starts.`);
   }
 }
 
@@ -950,7 +967,7 @@ function getHiddenNodeExecutable() {
 }
 
 function printWebLaunchMessage() {
-  console.log(`[INFO] XLab Router is starting in background mode.`);
+  console.log(`[INFO] RouterLab is starting in background mode.`);
   console.log(`[INFO] Dashboard: ${getDashboardUrl()}`);
   console.log(`[INFO] No extra CMD windows will be shown.`);
 }
@@ -1059,12 +1076,12 @@ async function startTrayHost() {
   tray = new SysTray({
     menu: {
       icon,
-      title: "XLab Router",
-      tooltip: `XLab Router ${pkg.version}`,
+      title: "RouterLab",
+      tooltip: `RouterLab ${pkg.version}`,
       items: [
         {
           title: `Dashboard: ${launch.baseUrl}`,
-          tooltip: "Open XLab Router dashboard",
+          tooltip: "Open RouterLab dashboard",
           checked: false,
           enabled: true,
         },
@@ -1082,19 +1099,19 @@ async function startTrayHost() {
         },
         {
           title: "Enable Autostart",
-          tooltip: "Launch XLab Router automatically when you sign in",
+          tooltip: "Launch RouterLab automatically when you sign in",
           checked: false,
           enabled: isWindows() && !autostartEnabled,
         },
         {
           title: "Disable Autostart",
-          tooltip: "Stop launching XLab Router automatically on sign in",
+          tooltip: "Stop launching RouterLab automatically on sign in",
           checked: false,
           enabled: isWindows() && autostartEnabled,
         },
         {
-          title: "Quit XLab Router",
-          tooltip: "Stop XLab Router and close the tray",
+          title: "Quit RouterLab",
+          tooltip: "Stop RouterLab and close the tray",
           checked: false,
           enabled: true,
         },
@@ -1296,7 +1313,7 @@ function checkForUpdates() {
 async function showMenu() {
   console.clear();
   console.log("========================================");
-  console.log("       XLab Router v" + pkg.version);
+  console.log("       RouterLab v" + pkg.version);
   console.log("========================================\n");
 
   const answers = await inquirer.prompt([
@@ -1332,7 +1349,7 @@ async function showMenu() {
             name: "confirmToggle",
             message: enabled
               ? "Autostart Ä‘ang báº­t. Báº¡n muá»‘n táº¯t khÃ´ng?"
-              : "Báº­t autostart Ä‘á»ƒ XLab Router tá»± cháº¡y cÃ¹ng Windows?",
+              : "Báº­t autostart Ä‘á»ƒ RouterLab tá»± cháº¡y cÃ¹ng Windows?",
             default: true,
           },
         ]);
@@ -1340,7 +1357,7 @@ async function showMenu() {
         if (enabled) {
           if (answer.confirmToggle) {
             disableAutostart();
-            console.log("[OK] ÄÃ£ táº¯t autostart cho XLab Router.");
+            console.log("[OK] ÄÃ£ táº¯t autostart cho RouterLab.");
           } else {
             console.log("[INFO] Giá»¯ nguyÃªn autostart Ä‘ang báº­t.");
           }
@@ -1373,7 +1390,7 @@ async function showMenu() {
             console.log(`[INFO] Running auto update: npm i -g ${pkg.name}`);
             const success = await runGlobalUpdate();
             if (success) {
-              console.log(`[OK] Update completed. Please restart XLab Router.`);
+              console.log(`[OK] Update completed. Please restart RouterLab.`);
             }
           } else {
             console.log(`[INFO] Skipped auto update.`);

@@ -11,7 +11,7 @@ set "PORT=%XLABROUTER_PORT%"
 set "FOUND=0"
 set "PIDS= "
 
-echo Stopping XLab Router on port %PORT%...
+echo Stopping RouterLab on port %PORT%...
 
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"') do (
     set "PID=%%P"
@@ -27,7 +27,7 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"')
 )
 
 if "%FOUND%"=="0" (
-    echo [INFO] No active XLab Router process found on port %PORT%.
+    echo [INFO] No active RouterLab process found on port %PORT%.
     exit /b 0
 )
 
@@ -55,5 +55,5 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"')
 )
 
 :STOPPED
-echo [OK] XLab Router stopped completely.
+echo [OK] RouterLab stopped completely.
 exit /b 0

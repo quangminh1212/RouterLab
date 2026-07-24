@@ -1107,7 +1107,7 @@ export default function MCPServersPageClient() {
         <div>
           <h1 className="text-[42px] leading-tight font-semibold text-text-main">Make MCP work your way</h1>
           <p className="text-text-muted mt-2">
-            Enable ready-to-use MCP servers inside XLab Router. Presets are curated from XLab defaults and MCPMarket.
+            Enable ready-to-use MCP servers inside RouterLab. Presets are curated from XLab defaults and MCPMarket.
           </p>
           <a href="https://mcpmarket.com/" target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm text-primary hover:underline">
             Browse MCPMarket reference

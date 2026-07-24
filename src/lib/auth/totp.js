@@ -4,7 +4,7 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const TOTP_PERIOD_SECONDS = 30;
 const TOTP_DIGITS = 6;
-const TOTP_ISSUER = "XLab Router";
+const TOTP_ISSUER = "RouterLab";
 const TOTP_ACCOUNT = "Dashboard";
 
 function base32Encode(buffer) {

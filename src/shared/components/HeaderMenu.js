@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
@@ -110,7 +110,7 @@ function UpdateProgress({ status, latestVersion, installCmd }) {
         </span>
       </div>
       <h2 className="text-xl font-semibold text-white mb-2">
-        {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating XLab Router"}
+        {done && success ? "Update Completed" : done && !success ? "Update Failed" : "Updating RouterLab"}
       </h2>
       <p className="text-text-muted mb-4">{statusText}</p>
       {done && !success && (
@@ -367,8 +367,8 @@ export default function HeaderMenu({ onLogout }) {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update XLab Router"
-        message={`This will close XLab Router and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
+        title="Update RouterLab"
+        message={`This will close RouterLab and install v${updateInfo?.latestVersion || ""} in a separate window. Continue?`}
         confirmText="Update"
         cancelText="Cancel"
         variant="primary"

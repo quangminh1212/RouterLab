@@ -1,5 +1,5 @@
 /**
- * Full user-facing suite against remote XLab Router.
+ * Full user-facing suite against remote RouterLab.
  * Env: ROOT_BASE, API_KEY (optional for free cases), TIMEOUT_MS
  */
 const ROOT = (process.env.ROOT_BASE || 'http://36.50.26.247:1212').replace(/\/$/, '');

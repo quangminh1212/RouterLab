@@ -1,13 +1,13 @@
 /**
  * Cockpit usage import — parse a Cockpit / Antigravity-style "Data Export"
  * file and normalize it into usage entries that can be merged additively into
- * XLab Router's usage `dailySummary`.
+ * RouterLab's usage `dailySummary`.
  *
  * Why this exists:
- *   For accounts where XLab Router only holds a chat token (no scope to read
+ *   For accounts where RouterLab only holds a chat token (no scope to read
  *   the provider's quota API), the Antigravity "Cockpit" panel is the only
  *   place that sees usage. Exporting from Cockpit and importing here lets that
- *   usage be folded into the totals XLab Router already tracks.
+ *   usage be folded into the totals RouterLab already tracks.
  *
  * Design:
  *   The exact export schema can vary by Cockpit/Antigravity version, so the

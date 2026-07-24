@@ -18,7 +18,7 @@ RUN npm run build
 FROM ${BUN_IMAGE} AS runner
 WORKDIR /app
 
-LABEL org.opencontainers.image.title="xlabrouter"
+LABEL org.opencontainers.image.title="RouterLab"
 
 ENV NODE_ENV=production
 ENV PORT=1212

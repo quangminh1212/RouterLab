@@ -84,9 +84,9 @@ function createRouterNode(Handle, Position) {
         <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
         <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-white/35 bg-white shadow-sm shadow-black/15 ring-1 ring-white/70 dark:ring-white/20">
-          <img src="/topup.png" alt="XLab Router" className="h-5 w-5 object-contain" />
+          <img src="/topup.png" alt="RouterLab" className="h-5 w-5 object-contain" />
         </span>
-        <span className="text-sm font-bold text-primary">XLab Router</span>
+        <span className="text-sm font-bold text-primary">RouterLab</span>
         {data.activeCount > 0 && (
           <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
             {data.activeCount}
