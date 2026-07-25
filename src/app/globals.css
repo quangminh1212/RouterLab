@@ -294,6 +294,29 @@ body {
   animation: topology-edge-dash 0.18s linear infinite, topology-edge-flicker 0.22s steps(3) infinite;
 }
 
+/* Provider node blink while transmitting / last / error */
+@keyframes topology-node-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--topo-glow, #22d3ee) 45%, transparent);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 18px color-mix(in srgb, var(--topo-glow, #22d3ee) 75%, transparent),
+      0 0 28px color-mix(in srgb, var(--topo-glow, #22d3ee) 35%, transparent);
+    filter: brightness(1.12);
+  }
+}
+.topology-node-active {
+  animation: topology-node-pulse 0.7s ease-in-out infinite;
+}
+.topology-node-last {
+  animation: topology-node-pulse 1.1s ease-in-out infinite;
+}
+.topology-node-error {
+  animation: topology-node-pulse 0.55s ease-in-out infinite;
+}
+
 /* Changelog markdown body */
 .changelog-body h1 {
   font-size: 1.4rem;

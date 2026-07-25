@@ -26,13 +26,17 @@ function createProviderNode(Handle, Position) {
     const { label, color, imageUrl, textIcon, active, last, error } = data;
     const [imgError, setImgError] = useState(false);
     const glowColor = error ? "#ef4444" : (active ? color : (last ? "#f59e0b" : color));
+    const busy = active || last || error;
     return (
       <div
-        className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
+        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg ${
+          active ? "topology-node-active" : error ? "topology-node-error" : last ? "topology-node-last" : ""
+        }`}
         style={{
           borderColor: error ? "#ef4444" : (active ? color : (last ? "#f59e0b" : "var(--color-border)")),
-          boxShadow: active || last || error ? `0 0 16px ${glowColor}40` : "none",
+          boxShadow: busy ? `0 0 16px ${glowColor}55` : "none",
           minWidth: "150px",
+          ["--topo-glow"]: glowColor,
         }}
       >
         <Handle type="target" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
@@ -149,15 +153,23 @@ function createTopologyEdge(BaseEdge, getBezierPath) {
       targetPosition,
     });
     const active = !!data?.active;
+    const last = !!data?.last;
+    const error = !!data?.error;
+    const live = active || last || error;
     const stroke = style.stroke || "var(--color-border)";
     const filterId = `topo-electric-${id}`;
+    // Colors: active=cyan/green, last=amber, error=red
+    const halo = error ? "#f87171" : last ? "#fbbf24" : "#22d3ee";
+    const plasma = error ? "#ef4444" : last ? "#f59e0b" : "#4ade80";
+    const core = error ? "#fecaca" : last ? "#fef3c7" : "#f8fafc";
+    const spark = error ? "#fee2e2" : last ? "#fde68a" : "#e0f2fe";
 
-    if (!active) {
+    if (!live) {
       return <BaseEdge id={id} path={edgePath} style={{ ...style, stroke }} />;
     }
 
     return (
-      <g className="topology-edge-electric">
+      <g className={`topology-edge-electric ${active ? "is-active" : error ? "is-error" : "is-last"}`}>
         <defs>
           <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
             <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2" result="noise">
@@ -169,9 +181,9 @@ function createTopologyEdge(BaseEdge, getBezierPath) {
         <path
           d={edgePath}
           fill="none"
-          stroke="#22d3ee"
-          strokeWidth={10}
-          strokeOpacity={0.35}
+          stroke={halo}
+          strokeWidth={active ? 10 : 8}
+          strokeOpacity={0.4}
           strokeLinecap="round"
           filter={`url(#${filterId})`}
           className="topology-edge-halo"
@@ -179,9 +191,9 @@ function createTopologyEdge(BaseEdge, getBezierPath) {
         <path
           d={edgePath}
           fill="none"
-          stroke="#4ade80"
-          strokeWidth={5}
-          strokeOpacity={0.85}
+          stroke={plasma}
+          strokeWidth={active ? 5 : 4}
+          strokeOpacity={0.9}
           strokeLinecap="round"
           filter={`url(#${filterId})`}
           className="topology-edge-plasma"
@@ -189,39 +201,39 @@ function createTopologyEdge(BaseEdge, getBezierPath) {
         <BaseEdge
           id={id}
           path={edgePath}
-          style={{ stroke: "#f8fafc", strokeWidth: 2.2, opacity: 1 }}
+          style={{ stroke: core, strokeWidth: 2.2, opacity: 1 }}
           className="topology-edge-kame"
         />
         {Array.from({ length: KAME_PARTICLE_COUNT }, (_, i) => (
           <circle
             key={`${id}-p-${i}`}
             r={i % 2 === 0 ? 4 : 2.5}
-            fill={i % 3 === 0 ? "#fde047" : i % 3 === 1 ? "#67e8f9" : "#fff"}
+            fill={i % 3 === 0 ? plasma : i % 3 === 1 ? halo : core}
             opacity={0.95}
-            style={{ filter: "drop-shadow(0 0 4px #22d3ee)" }}
+            style={{ filter: `drop-shadow(0 0 4px ${halo})` }}
           >
             <animateMotion
-              dur={`${0.4 + i * 0.08}s`}
+              dur={`${0.35 + i * 0.07}s`}
               repeatCount="indefinite"
               path={edgePath}
-              begin={`${i * 0.09}s`}
+              begin={`${i * 0.08}s`}
             />
           </circle>
         ))}
         {Array.from({ length: SPARK_COUNT }, (_, i) => (
-          <circle key={`${id}-s-${i}`} r={1.8} fill="#e0f2fe" opacity={0}>
+          <circle key={`${id}-s-${i}`} r={1.8} fill={spark} opacity={0}>
             <animate
               attributeName="opacity"
               values="0;1;0;0;1;0"
-              dur={`${0.35 + (i % 3) * 0.1}s`}
-              begin={`${i * 0.07}s`}
+              dur={`${0.3 + (i % 3) * 0.1}s`}
+              begin={`${i * 0.06}s`}
               repeatCount="indefinite"
             />
             <animateMotion
-              dur={`${0.28 + i * 0.05}s`}
+              dur={`${0.24 + i * 0.05}s`}
               repeatCount="indefinite"
               path={edgePath}
-              begin={`${i * 0.11}s`}
+              begin={`${i * 0.1}s`}
             />
           </circle>
         ))}
@@ -348,7 +360,7 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
       targetHandle,
       // Built-in animated uses stroke-dasharray (CPU-heavy); use particle beam instead
       animated: false,
-      data: { active },
+      data: { active, last, error },
       style: edgeStyle(active, last, error),
     });
   });
