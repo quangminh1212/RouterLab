@@ -120,12 +120,19 @@ const providerIconPathOverrides = {
   "clova-studio": "/providers/clova-studio.svg",
   dahl: "/providers/dahl.svg",
   freepik: "/providers/freepik.svg",
-  "g4f-gemini": "/providers/g4f-gemini.svg",
-  "g4f-groq": "/providers/g4f-groq.svg",
-  "g4f-nvidia": "/providers/g4f-nvidia.svg",
-  "g4f-ollama": "/providers/g4f-ollama.svg",
-  "g4f-pollinations": "/providers/g4f-pollinations.svg",
-  "ghe-copilot": "/providers/ghe-copilot.svg",
+  // Real brand assets (not letter-placeholder SVGs)
+  "g4f-gemini": "/providers/gemini.svg",
+  "g4f-groq": "/providers/groq.svg",
+  "g4f-nvidia": "/providers/nvidia.svg",
+  "g4f-ollama": "/providers/ollama.svg",
+  "g4f-pollinations": "/providers/pollinations.svg",
+  "ghe-copilot": "/providers/github.svg",
+  "qwen-cloud": "/providers/qwen.svg",
+  "qwen-cloud-token-plan": "/providers/qwen.svg",
+  "xai-oauth": "/providers/xai.svg",
+  // jules.svg was a copy of gemini.svg — use distinct raster brand icon
+  jules: "/providers/jules.png",
+  // Letter-badge SVGs kept only when no better brand asset exists
   hyperagent: "/providers/hyperagent.svg",
   inception: "/providers/inception.svg",
   internlm: "/providers/internlm.svg",
@@ -135,14 +142,11 @@ const providerIconPathOverrides = {
   "felo-web": "/providers/felo-web.svg",
   plamo: "/providers/plamo.svg",
   promptql: "/providers/promptql.svg",
-  "qwen-cloud": "/providers/qwen-cloud.svg",
-  "qwen-cloud-token-plan": "/providers/qwen-cloud-token-plan.svg",
   routeway: "/providers/routeway.svg",
   sarvam: "/providers/sarvam.svg",
   sealion: "/providers/sealion.svg",
   typhoon: "/providers/typhoon.svg",
   writer: "/providers/writer.svg",
-  "xai-oauth": "/providers/xai-oauth.svg",
 };
 
 const curatedProviderIconIds = new Set([
@@ -242,10 +246,14 @@ const curatedProviderIconIds = new Set([
 
 export function getProviderIconPath(providerId) {
   const resolvedProviderId = resolveProviderId(providerId);
+  // Explicit overrides win (brand aliases + wrong curated SVG corrections).
+  if (providerIconPathOverrides[resolvedProviderId]) {
+    return providerIconPathOverrides[resolvedProviderId];
+  }
   if (curatedProviderIconIds.has(resolvedProviderId)) {
     return `/providers/${resolvedProviderId}.svg`;
   }
-  return providerIconPathOverrides[resolvedProviderId] || `/providers/${resolvedProviderId}.png`;
+  return `/providers/${resolvedProviderId}.png`;
 }
 
 const providerDomainIconMatches = [
