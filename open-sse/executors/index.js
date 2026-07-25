@@ -43,6 +43,10 @@ import { AuggieExecutor } from "./auggie.js";
 import { GheCopilotExecutor } from "./ghe-copilot.js";
 import { GrokCliExecutor } from "./grok-cli.js";
 import { SpecialProtocolExecutor } from "./specialProtocol.js";
+import { KimchiExecutor } from "./kimchi.js";
+import { OllamaLocalExecutor } from "./ollama-local.js";
+import { MoonshotExecutor } from "./moonshot.js";
+import { NlpCloudExecutor } from "./nlpcloud.js";
 
 const puter = new PuterExecutor();
 const cloudflareAi = new CloudflareAIExecutor();
@@ -174,6 +178,14 @@ const executors = {
     "adobe-firefly",
     "Adobe Firefly is an image generation API (not chat). Use image generation endpoints when available."
   ),
+
+  // 9router + Omni specialized (Đợt 11)
+  kimchi: new KimchiExecutor(),
+  "ollama-local": new OllamaLocalExecutor(),
+  moonshot: new MoonshotExecutor("moonshot"),
+  kimi: new MoonshotExecutor("kimi"),
+  nlpcloud: new NlpCloudExecutor(),
+  nlpc: new NlpCloudExecutor(),
 };
 
 // Register config-driven web-cookie chat providers (GenericWebExecutor).
@@ -242,3 +254,7 @@ export { AuggieExecutor } from "./auggie.js";
 export { GheCopilotExecutor } from "./ghe-copilot.js";
 export { GrokCliExecutor } from "./grok-cli.js";
 export { SpecialProtocolExecutor } from "./specialProtocol.js";
+export { KimchiExecutor } from "./kimchi.js";
+export { OllamaLocalExecutor } from "./ollama-local.js";
+export { MoonshotExecutor } from "./moonshot.js";
+export { NlpCloudExecutor } from "./nlpcloud.js";

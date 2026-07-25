@@ -93,6 +93,7 @@ import p_novita from "./registry/novita.js";
 import p_modal from "./registry/modal.js";
 import p_reka from "./registry/reka.js";
 import p_nlpcloud from "./registry/nlpcloud.js";
+import p_kimchi from "./registry/kimchi.js";
 import p_bazaarlink from "./registry/bazaarlink.js";
 import p_completions from "./registry/completions.js";
 import p_enally from "./registry/enally.js";
@@ -377,6 +378,7 @@ export const PROVIDERS = {
   "modal": p_modal,
   "reka": p_reka,
   "nlpcloud": p_nlpcloud,
+  "kimchi": p_kimchi,
   "bazaarlink": p_bazaarlink,
   "completions": p_completions,
   "enally": p_enally,

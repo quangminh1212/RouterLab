@@ -116,6 +116,26 @@ export const WEB_CHAT_CONFIGS = {
     implemented: false, authMode: "cookie", cookieName: "session",
     authHint: "Paste session cookie from felo.ai.",
   },
+  "copilot-m365-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste M365 Copilot session cookies from microsoft365.com.",
+  },
+  "hailuo-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from hailuoai.com / minimax web.",
+  },
+  "lmarena": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from lmarena.ai.",
+  },
+  "veoaifree-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session for free Veo/video web proxy (ToS risk).",
+  },
+  "microsoft-designer-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from designer.microsoft.com.",
+  },
 };
 
 export const WEB_CHAT_PROVIDER_IDS = Object.keys(WEB_CHAT_CONFIGS);
