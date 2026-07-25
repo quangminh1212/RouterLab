@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 const REPOS = [
@@ -73,6 +73,14 @@ export default function TokenSaverPageClient() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [headroom, setHeadroom] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/headroom/status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setHeadroom)
+      .catch(() => setHeadroom({ available: false, error: "unreachable" }));
+  }, []);
 
   const stats = result?.stats;
   const estimatedTokens = useMemo(() => {
@@ -106,6 +114,32 @@ export default function TokenSaverPageClient() {
         <h1 className="text-3xl font-semibold tracking-tight text-text-main">Token Saver</h1>
         <p className="text-sm text-text-muted">Preview RTK, Caveman và stacked compression trước khi bật trong Endpoint.</p>
       </header>
+
+      <section className="rounded-2xl border border-white/10 bg-black/10 p-4 md:p-5 space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-text-main">Headroom status</h2>
+            <p className="text-sm text-text-muted">
+              Proxy nén context ngoài (mặc định localhost:8787). Chi tiết điều khiển:{" "}
+              <Link href="/dashboard/ops" className="text-primary underline">Ops</Link>.
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              headroom?.available
+                ? "bg-emerald-500/15 text-emerald-400"
+                : "bg-white/10 text-text-muted"
+            }`}
+          >
+            {headroom == null ? "…" : headroom.available ? "Available" : "Offline"}
+          </span>
+        </div>
+        {headroom && (
+          <pre className="text-xs font-mono rounded-lg bg-black/20 p-3 overflow-auto max-h-32">
+            {JSON.stringify(headroom, null, 2)}
+          </pre>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">

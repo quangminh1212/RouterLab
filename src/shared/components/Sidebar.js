@@ -11,21 +11,26 @@ import Button from "./Button";
 import { ConfirmModal } from "./Modal";
 import { fetchWithTimeout } from "@/shared/utils/fetch";
 
-// const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "webSearch", "webFetch", "video", "music"];
-const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts", "stt"];
+// Media kinds with full provider UI (match MEDIA_PROVIDER_KINDS)
+const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "video", "music"];
 const MEDIA_NAV_ITEMS = [
   { id: "embedding", label: "Embedding", icon: "data_array" },
   { id: "image", label: "Tạo ảnh", icon: "brush" },
+  { id: "imageToText", label: "Ảnh → Text / OCR", icon: "image_search" },
   { id: "tts", label: "Đọc văn bản", icon: "record_voice_over" },
   { id: "stt", label: "Nhận giọng nói", icon: "mic" },
+  { id: "video", label: "Video", icon: "movie" },
+  { id: "music", label: "Nhạc", icon: "music_note" },
 ];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
 const coreItems = [
   { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
+  { href: "/dashboard/playground", label: "Playground", icon: "science" },
   { href: "/dashboard/endpoint", label: "Điểm cuối", icon: "api" },
   { href: "/dashboard/providers", label: "Nhà cung cấp", icon: "dns" },
   { href: "/dashboard/combos", label: "Kết hợp", icon: "layers" },
+  { href: "/dashboard/cloud-agents", label: "Cloud Agents", icon: "smart_toy" },
   { href: "/dashboard/usage", label: "Thống kê", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Hạn mức", icon: "data_usage" },
 ];
@@ -47,6 +52,7 @@ const TOOLS_ITEMS = [
 
 const POWER_UP_ITEMS = [
   { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "compress" },
+  { href: "/dashboard/ops", label: "Vận hành / Ops", icon: "tune" },
   { href: "/dashboard/rules", label: "Luật AI", icon: "gavel" },
   { href: "/dashboard/ai-integrations", label: "Nguồn AI", icon: "hub" },
   { href: "/dashboard/skills", label: "Thư viện skill", icon: "menu_book" },
