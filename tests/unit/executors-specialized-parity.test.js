@@ -7,7 +7,11 @@ import {
 import { mapModel, generateRequestToken } from "../../open-sse/executors/theoldllm.js";
 import { injectSystemMarker, MIMO_SYSTEM_MARKER } from "../../open-sse/executors/mimo-free.js";
 import { parseOcrModel, getOcrProvider } from "../../open-sse/handlers/ocrCore.js";
-import { getCredentialStoreMode } from "../../src/lib/credentialStore.js";
+import { getCredentialStoreMode, getCredentialStore } from "../../src/lib/credentialStore.js";
+import { normalizeMoonshotRequest } from "../../open-sse/executors/moonshot.js";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 const REQUIRED_SPECIALIZED = [
   "puter",
@@ -40,6 +44,11 @@ const REQUIRED_SPECIALIZED = [
   "promptql",
   "adobe-firefly",
   "notion-web",
+  "kimchi",
+  "ollama-local",
+  "moonshot",
+  "kimi",
+  "nlpcloud",
   "azure",
   "azure-openai",
   "devin-cli",
@@ -148,4 +157,53 @@ describe("specialized executor parity (OmniRoute/9router/CLIProxyAPI)", () => {
     expect(out.model).toBe("grok-4");
     expect(out.reasoning_effort).toBe("high");
   });
+
+  it("kimchi strips anthropic-only fields", () => {
+    const ex = getExecutor("kimchi");
+    const out = ex.transformRequest(
+      "gpt-test",
+      { messages: [{ role: "user", content: "hi" }], thinking: { type: "enabled" }, system: "sys" },
+      false,
+      {}
+    );
+    expect(out.thinking).toBeUndefined();
+    expect(out.system).toBeUndefined();
+    expect(out.messages.some((m) => m.role === "system")).toBe(true);
+  });
+
+  it("moonshot normalizes kimi-k3 sampling", () => {
+    const out = normalizeMoonshotRequest("kimi-k3", {
+      model: "kimi-k3",
+      temperature: 0.7,
+      max_tokens: 100,
+    });
+    expect(out.temperature).toBeUndefined();
+    expect(out.reasoning_effort).toBe("max");
+    expect(out.max_completion_tokens).toBe(100);
+  });
+
+  it("credential store exposes postgres/git/s3 backends", () => {
+    const prev = process.env.CREDENTIAL_STORE;
+    process.env.CREDENTIAL_STORE = "file";
+    expect(getCredentialStore().name).toBe("file");
+    process.env.CREDENTIAL_STORE = "git";
+    expect(getCredentialStore().name).toBe("git");
+    process.env.CREDENTIAL_STORE = "postgres";
+    expect(getCredentialStore().name).toBe("postgres");
+    process.env.CREDENTIAL_STORE = "s3";
+    expect(getCredentialStore().name).toBe("s3");
+    if (prev === undefined) delete process.env.CREDENTIAL_STORE;
+    else process.env.CREDENTIAL_STORE = prev;
+  });
+
+  it("CLIProxy codex backend-api route file exists", () => {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+    expect(
+      existsSync(path.join(root, "src/app/api/backend-api/codex/responses/route.js"))
+    ).toBe(true);
+    expect(
+      existsSync(path.join(root, "src/app/api/v0/management/[[...path]]/route.js"))
+    ).toBe(true);
+  });
 });
+

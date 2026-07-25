@@ -56,7 +56,7 @@ Cập nhật lần cuối: 2026-07-25
 | 17 | `POST /v1/messages/count_tokens` | ✓ | | ✓ | ✓ | ✅ |
 | 18 | `POST /v1/responses` (+ `/compact`) | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 19 | `GET/POST /v1beta/models/*` (Gemini) | ✓ | ✓ | ✓ | ✓ | ✅ |
-| 20 | `POST /backend-api/codex/responses` | | | ✓ | 🟡 | 🟡 |
+| 20 | `POST /backend-api/codex/responses` | | | ✓ | ✓ | ✅ (Đợt 11 — alias → /v1/responses + compact) |
 | 21 | Batch API `/v1/batches` (+files) | | | | ✓ | ✅ (đã thêm) |
 | 22 | A2A `/.well-known/agent.json` + `/a2a` | ✓ | | | ✓ | ✅ (đã thêm) |
 | 23 | MCP bridge `/api/mcp/sse` + `/api/mcp/messages` | ✓ | ✓ | | ✓ | ✅ |
@@ -114,9 +114,9 @@ Cập nhật lần cuối: 2026-07-25
 | 2 | Cloud sync (cross-device) | 9router/Omni | ✓ (`initCloudSync`) | ✅ |
 | 3 | GitHub Gist backup/restore | 9router/Omni | ✓ (`gistBackup.js`) | ✅ |
 | 4 | Google Drive sync | XLab | ✓ (`googleDriveSync.js`) | ✅ |
-| 5 | Postgres credential store | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter `credentialStore.js`, driver stub) |
-| 6 | Git credential store | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter stub) |
-| 7 | S3/Object store backend | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter stub) |
+| 5 | Postgres credential store | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=postgres` + DATABASE_URL + pg) |
+| 6 | Git credential store | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=git` + CREDENTIAL_GIT_DIR) |
+| 7 | S3/Object store backend | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=s3` + S3_BUCKET + AWS SDK) |
 | 8 | Tunnel: Cloudflare | tất cả | ✓ | ✅ |
 | 9 | Tunnel: Ngrok | 9router/Omni | ✓ | ✅ |
 | 10 | Tunnel: Tailscale | XLab | ✓ | ✅ |
@@ -382,9 +382,17 @@ Gap live vs OmniRoute main: specialized executors ~23 → **60+** (catalog trư�
   pluggable env `CREDENTIAL_STORE`) + xai-oauth refresh trong executor
 - ✅ Unit: `tests/unit/executors-specialized-parity.test.js`
 
-Còn cố ý defer (hạ tầng nặng / ToS RE / desktop-only):
-full 100+ Omni internal helper modules, gamification/leaderboard, full browser RE
-cho web-scraper phức tạp, aistudio WS auth, zed OS keychain, Postgres/Git/S3
-store backends đầy đủ (adapter đã có, implement driver khi cần). Production
-routing + specialized executor surface cho free/OAuth/CLI/upstream proxy đã đủ.
+### Đợt 11 ✅ (2026-07-25) — close remaining 3-repo gaps
+- ✅ 9router: **kimchi** executor + models service + catalog; **ollama-local** executor
+- ✅ Omni: **moonshot/kimi** thinking normalize; **nlpcloud** proprietary chatbot wire
+- ✅ CLIProxyAPI: `POST /backend-api/codex/responses` (+ compact); `/v0/management/*` alias
+- ✅ Credential stores: full **postgres / git / s3** drivers (env-gated)
+- ✅ webChat registry: notion/qwen/yuanbao/zai/felo/copilot-m365/hailuo/lmarena/veo/designer
+- ✅ Unit: specialized-parity 17/17
+
+Còn defer (ToS RE / desktop / non-proxy):
+full browser reverse-engineer for web-scrapers (501 clear), aistudio WS auth,
+zed OS keychain, gamification/leaderboard, 300+ Omni internal service helpers
+(quota engines, chaos, browser pool) that do not map 1:1 to RouterLab architecture.
+Production surface from Omni/9router/CLIProxyAPI feature sets is covered.
 
