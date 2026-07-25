@@ -6,7 +6,9 @@ import { parseBearerToken } from "@/models";
 let initialized = false;
 let initializePromise = null;
 
-const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 60000;
+// Default 300s: Hermes/agent turns (skill load + reasoning models) exceed 60s TTFB easily.
+// Align with Hermes request_timeout_seconds=300 and v1/messages/responses class timeouts.
+const CHAT_COMPLETIONS_TIMEOUT_MS = Number(process.env.CHAT_COMPLETIONS_TIMEOUT_MS) || 300000;
 const OPENCLAW_CAPTURE_PROXY_ENABLED = process.env.OPENCLAW_CAPTURE_PROXY === "true";
 const OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL = process.env.OPENCLAW_CAPTURE_PROXY_UPSTREAM_URL || "https://api.xlabrnd.com/v1/chat/completions";
 const OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS = Number(process.env.OPENCLAW_CAPTURE_PROXY_TIMEOUT_MS) || 30000;
