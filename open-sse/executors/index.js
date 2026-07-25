@@ -41,6 +41,8 @@ import { TraeExecutor } from "./trae.js";
 import { ZedHostedExecutor } from "./zed-hosted.js";
 import { AuggieExecutor } from "./auggie.js";
 import { GheCopilotExecutor } from "./ghe-copilot.js";
+import { GrokCliExecutor } from "./grok-cli.js";
+import { SpecialProtocolExecutor } from "./specialProtocol.js";
 
 const puter = new PuterExecutor();
 const cloudflareAi = new CloudflareAIExecutor();
@@ -137,6 +139,41 @@ const executors = {
   "zed-hosted": zedHosted,
   auggie,
   "ghe-copilot": new GheCopilotExecutor(),
+  "grok-cli": new GrokCliExecutor(),
+  gcli: new GrokCliExecutor(),
+  // Non-OpenAI protocols: clear 501 instead of broken DefaultExecutor fetch
+  chipotle: new SpecialProtocolExecutor(
+    "chipotle",
+    "Chipotle AI uses Amelia WebSocket/STOMP (not OpenAI chat). Full OmniRoute chipotle executor not ported yet."
+  ),
+  pepper: new SpecialProtocolExecutor(
+    "chipotle",
+    "Chipotle AI uses Amelia WebSocket/STOMP (not OpenAI chat). Full OmniRoute chipotle executor not ported yet."
+  ),
+  hyperagent: new SpecialProtocolExecutor(
+    "hyperagent",
+    "HyperAgent uses a proprietary threads API. Specialized OmniRoute executor not fully ported yet."
+  ),
+  ha: new SpecialProtocolExecutor(
+    "hyperagent",
+    "HyperAgent uses a proprietary threads API. Specialized OmniRoute executor not fully ported yet."
+  ),
+  promptql: new SpecialProtocolExecutor(
+    "promptql",
+    "PromptQL uses GraphQL playground protocol, not OpenAI chat/completions."
+  ),
+  pql: new SpecialProtocolExecutor(
+    "promptql",
+    "PromptQL uses GraphQL playground protocol, not OpenAI chat/completions."
+  ),
+  "adobe-firefly": new SpecialProtocolExecutor(
+    "adobe-firefly",
+    "Adobe Firefly is an image generation API (not chat). Use image generation endpoints when available."
+  ),
+  firefly: new SpecialProtocolExecutor(
+    "adobe-firefly",
+    "Adobe Firefly is an image generation API (not chat). Use image generation endpoints when available."
+  ),
 };
 
 // Register config-driven web-cookie chat providers (GenericWebExecutor).
@@ -203,3 +240,5 @@ export { TraeExecutor } from "./trae.js";
 export { ZedHostedExecutor } from "./zed-hosted.js";
 export { AuggieExecutor } from "./auggie.js";
 export { GheCopilotExecutor } from "./ghe-copilot.js";
+export { GrokCliExecutor } from "./grok-cli.js";
+export { SpecialProtocolExecutor } from "./specialProtocol.js";

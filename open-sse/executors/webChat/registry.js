@@ -91,6 +91,31 @@ export const WEB_CHAT_CONFIGS = {
     implemented: false, authMode: "cookie", cookieName: "session",
     authHint: "Paste your session cookie from doubao.com.",
   },
+  "notion-web": {
+    implemented: false,
+    authMode: "cookie",
+    cookieName: "token_v2",
+    chatUrl: "https://app.notion.com/api/v3/runInferenceTranscript",
+    origin: "https://www.notion.so",
+    referer: "https://www.notion.so/",
+    authHint: "Paste your token_v2 cookie from notion.so (Notion AI). Unofficial; ToS risk.",
+  },
+  "qwen-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from tongyi.aliyun.com / qwen chat.",
+  },
+  "yuanbao-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from yuanbao.tencent.com.",
+  },
+  "zai-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from chat.z.ai.",
+  },
+  "felo-web": {
+    implemented: false, authMode: "cookie", cookieName: "session",
+    authHint: "Paste session cookie from felo.ai.",
+  },
 };
 
 export const WEB_CHAT_PROVIDER_IDS = Object.keys(WEB_CHAT_CONFIGS);

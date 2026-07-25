@@ -34,6 +34,12 @@ const REQUIRED_SPECIALIZED = [
   "zed-hosted",
   "auggie",
   "ghe-copilot",
+  "grok-cli",
+  "chipotle",
+  "hyperagent",
+  "promptql",
+  "adobe-firefly",
+  "notion-web",
   "azure",
   "azure-openai",
   "devin-cli",
@@ -116,5 +122,30 @@ describe("specialized executor parity (OmniRoute/9router/CLIProxyAPI)", () => {
 
   it("credential store defaults to file", () => {
     expect(getCredentialStoreMode()).toMatch(/file|postgres|git|s3/);
+  });
+
+  it("special-protocol providers return 501 with actionable message", async () => {
+    const ex = getExecutor("chipotle");
+    const { response } = await ex.execute({
+      model: "x",
+      body: { messages: [] },
+      stream: false,
+      credentials: {},
+    });
+    expect(response.status).toBe(501);
+    const data = await response.json();
+    expect(data.error?.code).toBe("special_protocol_not_implemented");
+    expect(String(data.error?.message || "")).toMatch(/Chipotle|Amelia|WebSocket/i);
+  });
+
+  it("notion-web is registered via webChat generic path", () => {
+    expect(hasSpecializedExecutor("notion-web")).toBe(true);
+  });
+
+  it("grok-cli strips effort suffix", () => {
+    const ex = getExecutor("grok-cli");
+    const out = ex.transformRequest("grok-4-high", { model: "grok-4-high" }, true, {});
+    expect(out.model).toBe("grok-4");
+    expect(out.reasoning_effort).toBe("high");
   });
 });
