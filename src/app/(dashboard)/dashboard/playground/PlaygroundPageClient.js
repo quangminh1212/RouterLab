@@ -6,6 +6,10 @@ import Link from "next/link";
 const TABS = [
   { id: "ocr", label: "OCR", icon: "document_scanner", hint: "POST /v1/ocr" },
   { id: "translate", label: "Dịch audio", icon: "translate", hint: "POST /v1/audio/translations" },
+  { id: "embed", label: "Embeddings", icon: "data_array", hint: "POST /v1/embeddings" },
+  { id: "search", label: "Search", icon: "travel_explore", hint: "POST /v1/search" },
+  { id: "moderations", label: "Moderations", icon: "shield", hint: "POST /v1/moderations" },
+  { id: "rerank", label: "Rerank", icon: "swap_vert", hint: "POST /v1/rerank" },
   { id: "music", label: "Nhạc", icon: "music_note", hint: "POST /v1/audio/music" },
   { id: "video", label: "Video", icon: "movie", hint: "POST /v1/videos/generations" },
   { id: "endpoints", label: "Endpoint map", icon: "api", hint: "Danh sách API" },
@@ -49,6 +53,11 @@ export default function PlaygroundPageClient() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("mistral-ocr-latest");
   const [prompt, setPrompt] = useState("A calm lo-fi beat");
+  const [embedInput, setEmbedInput] = useState("The quick brown fox");
+  const [searchQuery, setSearchQuery] = useState("latest AI router tools");
+  const [modInput, setModInput] = useState("I want to harm someone");
+  const [rerankQuery, setRerankQuery] = useState("best vector database");
+  const [rerankDocs, setRerankDocs] = useState("Pinecone\nWeaviate\nChroma\nQdrant");
   const [documentUrl, setDocumentUrl] = useState("");
   const [documentB64, setDocumentB64] = useState("");
   const [audioFile, setAudioFile] = useState(null);
@@ -263,6 +272,92 @@ export default function PlaygroundPageClient() {
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {loading ? "Đang dịch…" : "Dịch audio → EN"}
+            </button>
+          </div>
+        )}
+
+        {tab === "embed" && (
+          <div className="space-y-3">
+            <p className="text-xs text-text-muted">POST /v1/embeddings — model dạng provider/model-id</p>
+            <textarea value={embedInput} onChange={(e) => setEmbedInput(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-input p-3 text-sm" />
+            <button type="button" disabled={loading} onClick={async () => {
+              setLoading(true); setError(""); setResult(null);
+              try {
+                const res = await fetch("/api/v1/embeddings", {
+                  method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+                  body: JSON.stringify({ model: model || "openai/text-embedding-3-small", input: embedInput }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+                setResult(data);
+              } catch (e) { setError(e.message || String(e)); } finally { setLoading(false); }
+            }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {loading ? "…" : "Embed"}
+            </button>
+          </div>
+        )}
+
+        {tab === "search" && (
+          <div className="space-y-3">
+            <p className="text-xs text-text-muted">POST /v1/search</p>
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" />
+            <button type="button" disabled={loading} onClick={async () => {
+              setLoading(true); setError(""); setResult(null);
+              try {
+                const res = await fetch("/api/v1/search", {
+                  method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+                  body: JSON.stringify({ model: model || "tavily", query: searchQuery }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+                setResult(data);
+              } catch (e) { setError(e.message || String(e)); } finally { setLoading(false); }
+            }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {loading ? "…" : "Search"}
+            </button>
+          </div>
+        )}
+
+        {tab === "moderations" && (
+          <div className="space-y-3">
+            <p className="text-xs text-text-muted">POST /v1/moderations</p>
+            <textarea value={modInput} onChange={(e) => setModInput(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-input p-3 text-sm" />
+            <button type="button" disabled={loading} onClick={async () => {
+              setLoading(true); setError(""); setResult(null);
+              try {
+                const res = await fetch("/api/v1/moderations", {
+                  method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+                  body: JSON.stringify({ model: model || "omni-moderation-latest", input: modInput }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+                setResult(data);
+              } catch (e) { setError(e.message || String(e)); } finally { setLoading(false); }
+            }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {loading ? "…" : "Moderate"}
+            </button>
+          </div>
+        )}
+
+        {tab === "rerank" && (
+          <div className="space-y-3">
+            <p className="text-xs text-text-muted">POST /v1/rerank — documents mỗi dòng</p>
+            <input value={rerankQuery} onChange={(e) => setRerankQuery(e.target.value)} className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" placeholder="query" />
+            <textarea value={rerankDocs} onChange={(e) => setRerankDocs(e.target.value)} rows={4} className="w-full rounded-lg border border-border bg-input p-3 text-sm font-mono" />
+            <button type="button" disabled={loading} onClick={async () => {
+              setLoading(true); setError(""); setResult(null);
+              try {
+                const documents = rerankDocs.split("\n").map((s) => s.trim()).filter(Boolean);
+                const res = await fetch("/api/v1/rerank", {
+                  method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+                  body: JSON.stringify({ model: model || "jina-reranker-v2", query: rerankQuery, documents }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+                setResult(data);
+              } catch (e) { setError(e.message || String(e)); } finally { setLoading(false); }
+            }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {loading ? "…" : "Rerank"}
             </button>
           </div>
         )}

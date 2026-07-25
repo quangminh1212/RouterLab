@@ -31,6 +31,8 @@ const coreItems = [
   { href: "/dashboard/providers", label: "Nhà cung cấp", icon: "dns" },
   { href: "/dashboard/combos", label: "Kết hợp", icon: "layers" },
   { href: "/dashboard/cloud-agents", label: "Cloud Agents", icon: "smart_toy" },
+  { href: "/dashboard/batches", label: "Batches", icon: "inventory_2" },
+  { href: "/dashboard/a2a", label: "A2A Agents", icon: "hub" },
   { href: "/dashboard/usage", label: "Thống kê", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Hạn mức", icon: "data_usage" },
 ];

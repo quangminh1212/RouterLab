@@ -228,6 +228,48 @@ export const CLI_TOOLS = {
     description: "Nous Research self-improving AI agent",
     configType: "custom",
   },
+  jcode: {
+    id: "jcode",
+    name: "JCode",
+    image: "/providers/jcode.png",
+    color: "#0EA5E9",
+    description: "JCode CLI — OpenAI-compatible via RouterLab",
+    configType: "guide",
+    guideSteps: [
+      { step: 1, title: "Open jcode config", desc: "Edit ~/.jcode/config.toml or provider env" },
+      { step: 2, title: "Base URL", value: "{{baseUrl}}/v1", copyable: true },
+      { step: 3, title: "API Key", type: "apiKeySelector" },
+      { step: 4, title: "Model", type: "modelSelector" },
+    ],
+  },
+  "deepseek-tui": {
+    id: "deepseek-tui",
+    name: "DeepSeek TUI",
+    image: "/providers/deepseek.png",
+    color: "#4D6BFE",
+    description: "DeepSeek terminal UI via OpenAI-compatible endpoint",
+    configType: "guide",
+    guideSteps: [
+      { step: 1, title: "Config", desc: "Open ~/.deepseek/config.toml" },
+      { step: 2, title: "Base URL", value: "{{baseUrl}}/v1", copyable: true },
+      { step: 3, title: "API Key", type: "apiKeySelector" },
+      { step: 4, title: "Model", type: "modelSelector" },
+    ],
+  },
+  "grok-build": {
+    id: "grok-build",
+    name: "Grok Build / CLI",
+    image: "/providers/grok-cli.png",
+    color: "#000000",
+    description: "xAI Grok Build CLI — point at RouterLab OpenAI endpoint",
+    configType: "guide",
+    guideSteps: [
+      { step: 1, title: "Config", desc: "Edit ~/.grok/config.toml" },
+      { step: 2, title: "Base URL", value: "{{baseUrl}}/v1", copyable: true },
+      { step: 3, title: "API Key", type: "apiKeySelector" },
+      { step: 4, title: "Model", type: "modelSelector" },
+    ],
+  },
   // HIDDEN: gemini-cli
   // "gemini-cli": {
   //   id: "gemini-cli",

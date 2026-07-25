@@ -32,6 +32,13 @@ const STATUS_ENDPOINTS = {
   cowork: "/api/cli-tools/cowork-settings",
   droid: "/api/cli-tools/droid-settings",
   hermes: "/api/cli-tools/hermes-settings",
+  cline: "/api/cli-tools/cline-settings",
+  kilo: "/api/cli-tools/kilo-settings",
+  jcode: "/api/cli-tools/jcode-settings",
+  "deepseek-tui": "/api/cli-tools/deepseek-tui-settings",
+  "grok-build": "/api/cli-tools/grok-build-settings",
+  copilot: "/api/cli-tools/copilot-settings",
+  openclaw: "/api/cli-tools/openclaw-settings",
 };
 
 const PROVIDERS_FETCH_TIMEOUT_MS = 4500;
@@ -212,7 +219,17 @@ export default function CLIToolsPageClient() {
       case "hermes":
         return <HermesToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.hermes} />;
       default:
-        return <DefaultToolCard key={toolId} toolId={toolId} {...commonProps} activeProviders={getActiveProviders()} cloudEnabled={cloudEnabled} tunnelEnabled={tunnelEnabled} />;
+        return (
+          <DefaultToolCard
+            key={toolId}
+            toolId={toolId}
+            {...commonProps}
+            activeProviders={getActiveProviders()}
+            cloudEnabled={cloudEnabled}
+            tunnelEnabled={tunnelEnabled}
+            initialStatus={toolStatuses[toolId]}
+          />
+        );
     }
   };
 

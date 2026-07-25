@@ -200,9 +200,34 @@ export default function CombosPage() {
             Combos: Fallback · Round Robin · Fusion · Random · P2C · Weighted…
           </p>
         </div>
-        <Button icon="add" onClick={() => setShowCreateModal(true)}>
-          Create Combo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            icon="healing"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/management/combo-self-heal", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ dryRun: true, minSamples: 6 }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.error || "Self-heal failed");
+                const n = Array.isArray(data?.results) ? data.results.length : 0;
+                alert(
+                  `Self-heal dry-run OK (${n} combo checks).\nApply tại Ops nếu muốn ghi thứ tự model.`
+                );
+              } catch (e) {
+                alert(e.message || String(e));
+              }
+            }}
+          >
+            Self-heal (dry-run)
+          </Button>
+          <Button icon="add" onClick={() => setShowCreateModal(true)}>
+            Create Combo
+          </Button>
+        </div>
       </div>
 
       {/* OpenClaw Combo Section */}
