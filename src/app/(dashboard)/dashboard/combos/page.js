@@ -10,6 +10,28 @@ import { fetchWithTimeout } from "@/shared/utils/fetch";
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
 const COMBO_SETTINGS_TIMEOUT_MS = 5000;
 
+/** Strategies backed by open-sse/services/combo.js COMBO_STRATEGIES */
+const COMBO_STRATEGY_OPTIONS = [
+  { value: "fallback", label: "Fallback", hint: "Thử model theo thứ tự, fail thì model tiếp" },
+  { value: "round-robin", label: "Round Robin", hint: "Xoay vòng model (sticky N requests)" },
+  { value: "fusion", label: "Fusion", hint: "Chạy song song rồi judge ghép câu trả lời" },
+  { value: "random", label: "Random", hint: "Xáo thứ tự mỗi request" },
+  { value: "p2c", label: "P2C", hint: "Power-of-two-choices" },
+  { value: "weighted", label: "Weighted", hint: "Ưu tiên model đầu + random explore" },
+  { value: "least-used", label: "Least used", hint: "Model ít dùng trước" },
+  { value: "cost-optimized", label: "Cost optimized", hint: "Ưu tiên latency/cost thấp" },
+  { value: "auto", label: "Auto / LKGP", hint: "Xếp theo performance (auto/lkgp)" },
+];
+
+function resolveComboStrategy(entry) {
+  const raw = entry?.fallbackStrategy || entry?.strategy || "fallback";
+  const s = String(raw).toLowerCase().trim();
+  if (s === "priority" || s === "fill-first" || s === "fillfirst") return "fallback";
+  if (s === "strict-random") return "random";
+  if (s === "lkgp" || s === "context-optimized") return "auto";
+  return s || "fallback";
+}
+
 export default function CombosPage() {
   const [combos, setCombos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,20 +139,26 @@ export default function CombosPage() {
     });
   };
 
-  const handleToggleRoundRobin = async (comboName, enabled) => {
+  const handleStrategyChange = async (comboName, strategy, extra = {}) => {
+    const strat = String(strategy || "fallback").toLowerCase().trim() || "fallback";
     try {
       setSavingStrategy((prev) => ({ ...prev, [comboName]: true }));
-      const updated = { ...comboStrategies };
-      const currentSticky = comboStrategies[comboName]?.stickyRoundRobinLimit || 1;
-      if (enabled) {
-        updated[comboName] = {
-          fallbackStrategy: "round-robin",
-          stickyRoundRobinLimit: currentSticky,
-        };
-      } else {
-        delete updated[comboName];
-      }
-
+      const prev = comboStrategies[comboName] || {};
+      const updated = {
+        ...comboStrategies,
+        [comboName]: {
+          ...prev,
+          fallbackStrategy: strat,
+          stickyRoundRobinLimit:
+            extra.stickyRoundRobinLimit != null
+              ? extra.stickyRoundRobinLimit
+              : Math.max(1, Number(prev.stickyRoundRobinLimit) || 1),
+          ...(extra.fusionJudgeModel !== undefined
+            ? { fusionJudgeModel: extra.fusionJudgeModel || null }
+            : {}),
+        },
+      };
+      // Default strategy = fallback: still persist so UI shows selection
       await persistComboStrategies(updated);
       setComboStrategies(updated);
     } catch (error) {
@@ -143,26 +171,14 @@ export default function CombosPage() {
   const handleStickyLimitChange = async (comboName, value) => {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 1) return;
+    await handleStrategyChange(comboName, "round-robin", { stickyRoundRobinLimit: parsed });
+  };
 
-    const updated = {
-      ...comboStrategies,
-      [comboName]: {
-        fallbackStrategy: "round-robin",
-        stickyRoundRobinLimit: parsed,
-      },
-    };
-
-    setComboStrategies(updated);
-
-    try {
-      setSavingStrategy((prev) => ({ ...prev, [comboName]: true }));
-      await persistComboStrategies(updated);
-    } catch (error) {
-      console.log("Error updating combo sticky limit:", error);
-      await fetchData();
-    } finally {
-      setSavingStrategy((prev) => ({ ...prev, [comboName]: false }));
-    }
+  const handleFusionJudgeChange = async (comboName, judgeModel) => {
+    const strategy = resolveComboStrategy(comboStrategies[comboName]) || "fusion";
+    await handleStrategyChange(comboName, strategy === "fusion" ? "fusion" : strategy, {
+      fusionJudgeModel: judgeModel || null,
+    });
   };
 
   if (loading) {
@@ -181,7 +197,7 @@ export default function CombosPage() {
         <div>
           <h1 className="text-2xl font-semibold">Combos</h1>
           <p className="text-sm text-text-muted mt-1">
-            Create model combos with fallback support
+            Combos: Fallback · Round Robin · Fusion · Random · P2C · Weighted…
           </p>
         </div>
         <Button icon="add" onClick={() => setShowCreateModal(true)}>
@@ -202,11 +218,13 @@ export default function CombosPage() {
                 onCopy={copy}
                 onEdit={() => setEditingCombo(openclawCombo)}
                 onDelete={() => handleDelete(openclawCombo.id)}
-                roundRobinEnabled={comboStrategies[openclawCombo.name]?.fallbackStrategy === "round-robin"}
+                strategy={resolveComboStrategy(comboStrategies[openclawCombo.name])}
                 stickyLimit={comboStrategies[openclawCombo.name]?.stickyRoundRobinLimit || 1}
+                fusionJudgeModel={comboStrategies[openclawCombo.name]?.fusionJudgeModel || ""}
                 savingStrategy={!!savingStrategy[openclawCombo.name]}
-                onToggleRoundRobin={(enabled) => handleToggleRoundRobin(openclawCombo.name, enabled)}
+                onStrategyChange={(s) => handleStrategyChange(openclawCombo.name, s)}
                 onStickyLimitChange={(value) => handleStickyLimitChange(openclawCombo.name, value)}
+                onFusionJudgeChange={(v) => handleFusionJudgeChange(openclawCombo.name, v)}
               />
             </div>
           );
@@ -246,11 +264,13 @@ export default function CombosPage() {
                   onCopy={copy}
                   onEdit={() => setEditingCombo(combo)}
                   onDelete={() => handleDelete(combo.id)}
-                  roundRobinEnabled={comboStrategies[combo.name]?.fallbackStrategy === "round-robin"}
+                  strategy={resolveComboStrategy(comboStrategies[combo.name])}
                   stickyLimit={comboStrategies[combo.name]?.stickyRoundRobinLimit || 1}
+                  fusionJudgeModel={comboStrategies[combo.name]?.fusionJudgeModel || ""}
                   savingStrategy={!!savingStrategy[combo.name]}
-                  onToggleRoundRobin={(enabled) => handleToggleRoundRobin(combo.name, enabled)}
+                  onStrategyChange={(s) => handleStrategyChange(combo.name, s)}
                   onStickyLimitChange={(value) => handleStickyLimitChange(combo.name, value)}
+                  onFusionJudgeChange={(v) => handleFusionJudgeChange(combo.name, v)}
                 />
               ))}
             </div>
@@ -280,9 +300,23 @@ export default function CombosPage() {
   );
 }
 
-function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled, stickyLimit = 1, savingStrategy = false, onToggleRoundRobin, onStickyLimitChange }) {
+function ComboCard({
+  combo,
+  copied,
+  onCopy,
+  onEdit,
+  onDelete,
+  strategy = "fallback",
+  stickyLimit = 1,
+  fusionJudgeModel = "",
+  savingStrategy = false,
+  onStrategyChange,
+  onStickyLimitChange,
+  onFusionJudgeChange,
+}) {
   const [showInModels, setShowInModels] = useState(combo.showInModelsEndpoint !== false);
   const [savingVisibility, setSavingVisibility] = useState(false);
+  const strategyMeta = COMBO_STRATEGY_OPTIONS.find((o) => o.value === strategy) || COMBO_STRATEGY_OPTIONS[0];
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -347,16 +381,26 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
             />
           </div>
 
-          <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
-            <span className="text-xs text-text-muted font-medium">Round Robin</span>
-            <Toggle
-              size="sm"
-              checked={roundRobinEnabled}
-              onChange={onToggleRoundRobin}
-            />
+          <div
+            className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]"
+            title={strategyMeta.hint}
+          >
+            <span className="text-xs text-text-muted font-medium whitespace-nowrap">Strategy</span>
+            <select
+              value={strategy || "fallback"}
+              disabled={savingStrategy}
+              onChange={(e) => onStrategyChange?.(e.target.value)}
+              className="min-w-[8.5rem] rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+            >
+              {COMBO_STRATEGY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {roundRobinEnabled && (
+          {strategy === "round-robin" && (
             <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">
               <span className="text-xs text-text-muted font-medium whitespace-nowrap">Sticky</span>
               <input
@@ -369,6 +413,26 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
                 title="Giữ cùng model trong N requests trước khi rotate"
               />
               <span className="text-[11px] text-text-muted whitespace-nowrap">req</span>
+            </div>
+          )}
+
+          {strategy === "fusion" && (
+            <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02] max-w-[14rem]">
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Judge</span>
+              <select
+                value={fusionJudgeModel || ""}
+                disabled={savingStrategy}
+                onChange={(e) => onFusionJudgeChange?.(e.target.value)}
+                className="min-w-0 flex-1 truncate rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+                title="Model dùng làm judge (mặc định model đầu combo)"
+              >
+                <option value="">(first model)</option>
+                {(combo.models || []).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
