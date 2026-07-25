@@ -1,16 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="_图层_1" data-name="图层 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #fff;
-      }
-    </style>
-  </defs>
-  <path class="cls-1" d="M10,0C4.48,0,0,4.48,0,10s4.48,10,10,10,10-4.48,10-10S15.52,0,10,0ZM7.3,16.34h-3.65v-3.65h3.65v3.65ZM11.82,16.34h-3.65v-3.65h3.65v3.65ZM11.82,11.83h-3.65v-3.66h3.65v3.66ZM11.82,7.31h-3.65v-3.65h3.65v3.65ZM16.34,7.31h-3.65v-3.66h3.65v3.66Z"/>
-  <rect x="3.65" y="12.69" width="3.65" height="3.65"/>
-  <rect x="8.17" y="12.69" width="3.65" height="3.65"/>
-  <rect x="8.17" y="8.17" width="3.65" height="3.66"/>
-  <rect x="8.17" y="3.66" width="3.65" height="3.65"/>
-  <rect x="12.69" y="3.65" width="3.65" height="3.66"/>
-</svg>
+<svg height="1em" style="flex:none;line-height:1" viewBox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><title>Stepfun</title><path d="M22.012 0h1.032v.927H24v.968h-.956V3.78h-1.032V1.896h-1.878v-.97h1.878V0zM2.6 12.371V1.87h.969v10.502h-.97zm10.423.66h10.95v.918h-6.208v9.579h-4.742V13.03zM5.629 3.333v12.356H0v4.51h10.386V8L20.859 8l-.003-4.668-15.227.001z" fill="url(#lobe-icons-stepfun-_R_0_)" fill-rule="evenodd"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="lobe-icons-stepfun-_R_0_" x1="1.646" x2="18.342" y1="1.916" y2="22.091"><stop stop-color="#01A9FF"></stop><stop offset="1" stop-color="#0160FF"></stop></linearGradient></defs></svg>
