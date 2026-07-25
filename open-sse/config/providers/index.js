@@ -239,6 +239,27 @@ import p_oobabooga from "./registry/oobabooga.js";
 import p_ideogram from "./registry/ideogram.js";
 import p_leonardo from "./registry/leonardo.js";
 import p_haiper from "./registry/haiper.js";
+import p_fal_ai from "./registry/fal-ai.js";
+import p_black_forest_labs from "./registry/black-forest-labs.js";
+import p_recraft from "./registry/recraft.js";
+import p_runwayml from "./registry/runwayml.js";
+import p_topaz from "./registry/topaz.js";
+import p_sdwebui from "./registry/sdwebui.js";
+import p_comfyui from "./registry/comfyui.js";
+import p_edge_tts from "./registry/edge-tts.js";
+import p_aws_polly from "./registry/aws-polly.js";
+import p_google_tts from "./registry/google-tts.js";
+import p_elevenlabs from "./registry/elevenlabs.js";
+import p_voyage_ai from "./registry/voyage-ai.js";
+import p_jina_ai from "./registry/jina-ai.js";
+import p_jina_reader from "./registry/jina-reader.js";
+import p_local_device from "./registry/local-device.js";
+import p_coqui from "./registry/coqui.js";
+import p_tortoise from "./registry/tortoise.js";
+import p_hyperbolic_tts from "./registry/hyperbolic-tts.js";
+import p_playht from "./registry/playht.js";
+import p_cartesia from "./registry/cartesia.js";
+import p_inworld from "./registry/inworld.js";
 import p_stability_ai from "./registry/stability-ai.js";
 import p_segmind from "./registry/segmind.js";
 import p_bedrock from "./registry/bedrock.js";
@@ -528,6 +549,27 @@ export const PROVIDERS = {
   "haiper": p_haiper,
   "stability-ai": p_stability_ai,
   "segmind": p_segmind,
+  "fal-ai": p_fal_ai,
+  "black-forest-labs": p_black_forest_labs,
+  "recraft": p_recraft,
+  "runwayml": p_runwayml,
+  "topaz": p_topaz,
+  "sdwebui": p_sdwebui,
+  "comfyui": p_comfyui,
+  "edge-tts": p_edge_tts,
+  "aws-polly": p_aws_polly,
+  "google-tts": p_google_tts,
+  "elevenlabs": p_elevenlabs,
+  "voyage-ai": p_voyage_ai,
+  "jina-ai": p_jina_ai,
+  "jina-reader": p_jina_reader,
+  "local-device": p_local_device,
+  "coqui": p_coqui,
+  "tortoise": p_tortoise,
+  "hyperbolic-tts": p_hyperbolic_tts,
+  "playht": p_playht,
+  "cartesia": p_cartesia,
+  "inworld": p_inworld,
   "bedrock": p_bedrock,
 
   "agnes": p_agnes,
