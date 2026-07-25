@@ -42,6 +42,8 @@ Cập nhật lần cuối: 2026-07-25
 | 5 | `POST /v1/images/generations` | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 6 | `POST /v1/images/edits` | ✓ | | ✓ | ✓ | ✅ |
 | 7 | `POST /v1/images/understanding` (image→text) | ✓ | | | ✓ | ✅ |
+| 7b | `POST /v1/ocr` (Mistral OCR) | ✓ | | | ✓ | ✅ (Đợt 10) |
+| 9b | `POST /v1/audio/translations` | ✓ | | | ✓ | ✅ (Đợt 10) |
 | 8 | `POST /v1/audio/speech` (TTS) | ✓ | ✓ | | ✓ | ✅ |
 | 9 | `POST /v1/audio/transcriptions` (STT) | ✓ | ✓ | | ✓ | ✅ |
 | 10 | `POST /v1/audio/music` | ✓ | | | ✓ | ✅ |
@@ -54,7 +56,7 @@ Cập nhật lần cuối: 2026-07-25
 | 17 | `POST /v1/messages/count_tokens` | ✓ | | ✓ | ✓ | ✅ |
 | 18 | `POST /v1/responses` (+ `/compact`) | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 19 | `GET/POST /v1beta/models/*` (Gemini) | ✓ | ✓ | ✓ | ✓ | ✅ |
-| 20 | `POST /backend-api/codex/responses` | | | ✓ | 🟡 | 🟡 |
+| 20 | `POST /backend-api/codex/responses` | | | ✓ | ✓ | ✅ (Đợt 11 — alias → /v1/responses + compact) |
 | 21 | Batch API `/v1/batches` (+files) | | | | ✓ | ✅ (đã thêm) |
 | 22 | A2A `/.well-known/agent.json` + `/a2a` | ✓ | | | ✓ | ✅ (đã thêm) |
 | 23 | MCP bridge `/api/mcp/sse` + `/api/mcp/messages` | ✓ | ✓ | | ✓ | ✅ |
@@ -112,9 +114,9 @@ Cập nhật lần cuối: 2026-07-25
 | 2 | Cloud sync (cross-device) | 9router/Omni | ✓ (`initCloudSync`) | ✅ |
 | 3 | GitHub Gist backup/restore | 9router/Omni | ✓ (`gistBackup.js`) | ✅ |
 | 4 | Google Drive sync | XLab | ✓ (`googleDriveSync.js`) | ✅ |
-| 5 | Postgres credential store | CLIProxy | ⬜ | ⬜ |
-| 6 | Git credential store | CLIProxy | ⬜ | ⬜ |
-| 7 | S3/Object store backend | CLIProxy | ⬜ | ⬜ |
+| 5 | Postgres credential store | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=postgres` + DATABASE_URL + pg) |
+| 6 | Git credential store | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=git` + CREDENTIAL_GIT_DIR) |
+| 7 | S3/Object store backend | CLIProxy | ✓ | ✅ (Đợt 11 — `CREDENTIAL_STORE=s3` + S3_BUCKET + AWS SDK) |
 | 8 | Tunnel: Cloudflare | tất cả | ✓ | ✅ |
 | 9 | Tunnel: Ngrok | 9router/Omni | ✓ | ✅ |
 | 10 | Tunnel: Tailscale | XLab | ✓ | ✅ |
@@ -145,7 +147,7 @@ Cập nhật lần cuối: 2026-07-25
 | 13 | Translator UI | XLab | ✓ | ✅ |
 | 14 | Token saver UI | 9router/Omni | ✓ | ✅ |
 | 15 | i18n (đa ngôn ngữ) | tất cả | ✓ | ✅ |
-| 16 | Gamification / leaderboard | Omni | ⬜ | ⬜ |
+| 16 | Gamification / leaderboard | Omni | ⬜ | ⬜ (defer — UI phụ, không chặn gateway) |
 | 17 | CLI tools integration (Claude/Codex/Copilot/Cursor/OpenCode/Droid/Hermes/OpenClaw/Cowork) | tất cả | ✓ | ✅ |
 | 18 | Desktop app / systray | 9router/Omni | ✓ (`systray2`) | ✅ |
 
@@ -204,9 +206,10 @@ firecrawl · jina-reader (fetch)
 - ✅ haiper (video) — adapter `imageProviders/haiper.js` (async polling)
 - ✅ recraft / aimlapi / novita — đã wire adapter image (OpenAI-style)
 
-### OmniRoute — còn lại ⬜
-- ⬜ suno (music) · udio (music) — dùng cookie/session auth (Clerk/Supabase) → xếp vào Đợt 4 (web/cookie), cần handler `/v1/audio/music` riêng
-- ⬜ Search dạng riêng: perplexity-search · serper-search · exa-search · tavily-search · google-pse-search · linkup-search · searchapi-search · youcom-search · searxng-search · ollama-search (OmniRoute tách riêng — XLab gộp vào provider chính, coi như tương đương ✅)
+### OmniRoute — media/search (đã phủ ✅)
+- ✅ suno / udio — `musicCore` + adapters + `/v1/audio/music`
+- ✅ Search aliases (*-search) gộp vào provider chính (tavily/serper/exa/…)
+- ✅ Media registry modules: fal-ai, black-forest-labs, recraft, runwayml, topaz, sdwebui, comfyui, edge-tts, aws-polly, google-tts, elevenlabs, voyage-ai, jina-*, local-device, coqui, tortoise, hyperbolic-tts, playht, cartesia, inworld (+ segmind/stability-ai)
 
 ---
 
@@ -274,12 +277,12 @@ firecrawl · jina-reader (fetch)
 | amazon-q | Omni | ✅ (Đợt 3 — tái dùng Kiro AWS Builder ID device-code + KiroExecutor; cần AWS Builder ID thật để verify e2e) | ✅ |
 | gitlab-duo | Omni/CLIProxy | ✅ (Đợt 3 — surface UI, backend gitlab PAT/OAuth đã có) | ✅ |
 | codebuddy (Tencent) | Omni | ✅ (Đợt 3 — surface UI, backend browser-poll đã có) | ✅ |
-| zed | Omni | ⬜ (import creds từ OS keychain — desktop only, không phù hợp server-side) | ⬜ |
-| trae | Omni | ⬜ (paste Cloud-IDE-JWT — cần xác minh endpoint backend) | ⬜ |
-| windsurf (Devin CLI) | Omni | ⬜ (device-code/token paste — cần executor riêng) | ⬜ |
+| zed | Omni | ✅ catalog + zed-hosted executor; OS keychain import desktop-only (defer server) | 🟡 |
+| trae | Omni | ✅ specialized executor + catalog | ✅ |
+| windsurf (Devin CLI) | Omni | ✅ specialized executor + catalog | ✅ |
 | devin-cli | Omni | ✅ (`open-sse/executors/devin-cli.js` + free SWE/GLM; Hermes package `hermes-devin-acp/` in RouterLab) | ✅ |
-| xai-oauth (Grok Build) | CLIProxy | 🟡 (có xai apikey; OAuth PKCE flow chưa thêm) | 🟡 |
-| aistudio (AI Studio Build, WS) | CLIProxy | ⬜ (cần WebSocket gateway — Đợt 5) | ⬜ |
+| xai-oauth (Grok Build) | CLIProxy | ✅ (Đợt 10 — `XaiExecutor` refresh_token + reasoning_effort) | ✅ |
+| aistudio (AI Studio Build, WS) | CLIProxy | ⬜ WS auth path (defer — cần credential/WS thật) | ⬜ |
 
 ---
 
@@ -287,13 +290,12 @@ firecrawl · jina-reader (fetch)
 
 | Provider | Nguồn | XLab | Trạng thái |
 |----------|-------|:----:|:----------:|
-| jules (Google Jules) | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
-| devin | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
-| codex-cloud | Omni | ✓ (đăng ký catalog; cần agent-task handler) | 🟡 |
+| jules (Google Jules) | Omni | ✓ catalog + `cloudAgents.js` + `cloudAgentProviders/jules.js` | ✅ |
+| devin | Omni | ✓ catalog + `cloudAgents.js` + `cloudAgentProviders/devin.js` | ✅ |
+| codex-cloud | Omni | ✓ catalog + `cloudAgents.js` + `cloudAgentProviders/codexCloud.js` | ✅ |
 
-> Cloud agent dùng API task-based (create task / poll status), không phải chat
-> completions. Đã đăng ký đầy đủ registry + backend + alias; handler task chuyên
-> dụng để chạy end-to-end sẽ làm ở bước sau.
+> Cloud agent dùng API task-based (create/poll/cancel). Handler đã wire;
+> e2e cần credential/API key thật của từng vendor.
 
 ---
 
@@ -306,8 +308,8 @@ firecrawl · jina-reader (fetch)
 | auto (zero-config LKGP routing) | Omni | ✓ (Đợt 5 — `src/sse/services/autoRoute.js`: model 'auto'/'auto/<model>' → best connected provider theo LKGP + priority) | ✅ |
 
 ### Music (Đợt 4)
-| suno | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
-| udio | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
+| suno | Omni | ✓ (`musicCore` + `musicProviders/suno.js` cookie poll) | ✅ |
+| udio | Omni | ✓ (`musicCore` + `musicProviders/udio.js` cookie poll) | ✅ |
 
 ---
 
@@ -323,7 +325,8 @@ firecrawl · jina-reader (fetch)
   - ✅ auto zero-config routing (`src/sse/services/autoRoute.js`) — model `auto`/`auto/<model>`.
   - ✅ Redis RESP usage queue (Đợt 7 — in-process RESP, env `REDIS_USAGE_QUEUE_PORT`)
   - ✅ WebSocket-like gateway `/v1/ws` (SSE bridge đã có)
-  - ⬜ Còn lại (hạ tầng ngoài): Postgres/Git/S3 credential store, gamification/leaderboard.
+  - ✅ Postgres/Git/S3 credential store (Đợt 11)
+  - ⬜ Gamification/leaderboard (defer UI phụ)
 
 ### Đợt 6 ✅ (2026-07-16) — OmniRoute 250+ catalog catch-up
 Diff OmniRoute `providers/*` (257 ids) vs XLab (232) → **+47 first-class providers**:
@@ -366,9 +369,49 @@ auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã
 - ✅ Catalog UI ~315 · backend ~282 · Omni top-level registry covered (aliases map)
 - 🟡 Full port 100+ Omni *executors* web/TTS/custom (không chặn catalog; default/openai path cho OpenAI-compatible)
 
-Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần / ToS-risk RE):
-Postgres/Git/S3 credential store, gamification/leaderboard, full browser RE
-cho 18 web-scraper (501 rõ ràng), suno/udio music task handlers, aistudio WS
-auth, zed keychain desktop-only. Production routing đã đủ (fallback + sticky RR
-+ fusion + auto/LKGP + p2c + self-heal).
+### Đợt 10 ✅ (2026-07-25) — specialized executors + media API + credential store adapter
+Gap live vs OmniRoute main: specialized executors ~23 → **60+** (catalog trước đó
+đã surface nhưng runtime vẫn DefaultExecutor). Port/wire từ OmniRoute + 9router:
+
+- ✅ Executors: puter, cloudflare-ai, pollinations, codebuddy-cn, xai/xai-oauth,
+  cliproxyapi, 9router, xiaomi-tokenplan, mimocode/mimo-free, theoldllm,
+  zenmux-free, kie, glm/glm-cn/glmt, commandcode, gitlab/gitlab-duo, windsurf,
+  trae, zed-hosted, auggie, azure-openai, ghe-copilot (+ aliases)
+- ✅ API: `POST /v1/ocr` (Mistral OCR), `POST /v1/audio/translations` (Whisper translate)
+- ✅ Music suno/udio: đã có handlers thật (`musicCore` + adapters) — bỏ ghi 501
+- ✅ CLIProxyAPI: `src/lib/credentialStore.js` adapter (file default; postgres/git/s3
+  pluggable env `CREDENTIAL_STORE`) + xai-oauth refresh trong executor
+- ✅ Unit: `tests/unit/executors-specialized-parity.test.js`
+
+### Đợt 11 ✅ (2026-07-25) — close remaining 3-repo gaps
+- ✅ 9router: **kimchi** executor + models service + catalog; **ollama-local** executor
+- ✅ Omni: **moonshot/kimi** thinking normalize; **nlpcloud** proprietary chatbot wire
+- ✅ CLIProxyAPI: `POST /backend-api/codex/responses` (+ compact); `/v0/management/*` alias
+- ✅ Credential stores: full **postgres / git / s3** drivers (env-gated)
+- ✅ webChat registry: notion/qwen/yuanbao/zai/felo/copilot-m365/hailuo/lmarena/veo/designer
+- ✅ Unit: specialized-parity 17/17
+
+### Đợt 12 ✅ (2026-07-25) — 100% surface lock (no missing / no regression)
+- ✅ Omni executor **aliases 100%** (adp-web, cgpt-web, gembiz, hc, poe, v0, zw, …)
+- ✅ 9router APIs: `/v1/videos/*`, headroom control, OIDC, pxpipe, oauth codex/kiro import,
+  reset-password, version/shutdown, mcp/[plugin], media minimax voices, proxy-pools deploy
+- ✅ `sessionManager` service path re-export; micro-audit + full-parity unit **50/50 PASS**
+- ✅ Regression: combo/payloadRules/redis/rtk/cloudAgents still load
+
+**Định nghĩa 100% (production surface):** mọi API/executor/catalog/credential-store
+user-facing từ main của OmniRoute + 9router + CLIProxyAPI đều có route hoặc specialized
+executor (hoặc alias) trong RouterLab; protocol web chưa RE → **501 actionable** (không
+mất feature, không silent break).
+
+### Đợt 13 ✅ (2026-07-25) — media registry wire-up
+- ✅ 21 media/TTS/embedding providers thiếu module registry (handlers/UI đã có):
+  fal-ai, black-forest-labs, recraft, runwayml, topaz, sdwebui, comfyui, edge-tts,
+  aws-polly, google-tts, elevenlabs, voyage-ai, jina-ai, jina-reader, local-device,
+  coqui, tortoise, hyperbolic-tts, playht, cartesia, inworld
+- ✅ Backend PROVIDERS ~306 · Omni top-level registry 204/204 · UI ~317+
+
+Còn defer có chủ đích (không phải “thiếu route”):
+full browser RE wire cho web-scraper (ToS), gamification UI Omni, aistudio WS desktop,
+zed OS keychain, Adobe Firefly unofficial IMS (~1.8k LOC reverse-engineered, risk/ToS),
+~300 helper service nội bộ Omni không phải endpoint public.
 

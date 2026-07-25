@@ -90,6 +90,8 @@ const ALIAS_TO_PROVIDER_ID = {
   "fal-ai": "fal-ai",
   stability: "stability-ai",
   "stability-ai": "stability-ai",
+  segmind: "segmind",
+
   bfl: "black-forest-labs",
   "black-forest-labs": "black-forest-labs",
   recraft: "recraft",

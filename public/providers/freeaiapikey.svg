@@ -1,7 +1,5 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="FreeAIAPIKey icon">
-  <rect width="128" height="128" rx="28" fill="#111827"/>
-  <path d="M29 37h70v15H47v18h43v15H47v26H29z" fill="#f8fafc"/>
-  <path d="M76 37h23v74H76z" fill="#38bdf8"/>
-  <circle cx="88" cy="49" r="6" fill="#22c55e"/>
-  <circle cx="88" cy="99" r="6" fill="#f97316"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <title>FreeAIAPIKey</title>
+  <circle cx="12" cy="12" r="12" fill="#059669"/>
+  <text x="12" y="16" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="system-ui">K</text>
 </svg>

@@ -1,6 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="BluesMinds icon">
-  <rect width="128" height="128" rx="28" fill="#0b3b8c"/>
-  <circle cx="46" cy="54" r="22" fill="#60a5fa"/>
-  <circle cx="76" cy="54" r="22" fill="#bfdbfe" opacity=".92"/>
-  <path d="M36 83c14 12 42 12 56 0" fill="none" stroke="#dbeafe" stroke-width="8" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <title>Bluesminds</title>
+  <circle cx="12" cy="12" r="12" fill="#2563EB"/>
+  <text x="12" y="16" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="system-ui">B</text>
 </svg>

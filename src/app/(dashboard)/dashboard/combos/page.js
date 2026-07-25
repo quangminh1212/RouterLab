@@ -539,6 +539,10 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
     }
   };
 
+  const handleDeselectModel = (model) => {
+    setModels(models.filter((m) => m !== model.value));
+  };
+
   const handleRemoveModel = (index) => {
     setModels(models.filter((_, i) => i !== index));
   };
@@ -646,16 +650,21 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
         </div>
       </Modal>
 
-      {/* Model Select Modal */}
-      <ModelSelectModal
-        isOpen={showModelSelect}
-        onClose={() => setShowModelSelect(false)}
-        onSelect={handleAddModel}
-        activeProviders={activeProviders}
-        modelAliases={modelAliases}
-        title="Add Model to Combo"
-        kindFilter={kindFilter}
-      />
+      {/* Model Select Modal — 9router multi-select: click add / click again remove, stay open */}
+      {showModelSelect && (
+        <ModelSelectModal
+          isOpen={showModelSelect}
+          onClose={() => setShowModelSelect(false)}
+          onSelect={handleAddModel}
+          onDeselect={handleDeselectModel}
+          activeProviders={activeProviders}
+          modelAliases={modelAliases}
+          title="Add Model to Combo"
+          kindFilter={kindFilter}
+          addedModelValues={models}
+          closeOnSelect={false}
+        />
+      )}
     </>
   );
 }
