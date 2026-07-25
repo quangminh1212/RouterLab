@@ -7,6 +7,10 @@ import { AI_PROVIDERS, getProviderIconPath, getProviderIconPathFromConfig } from
 
 let reactFlowModulePromise = null;
 
+// Kame + electric particles along active edges (ported from 9router)
+const KAME_PARTICLE_COUNT = 6;
+const SPARK_COUNT = 5;
+
 function getProviderConfig(providerId) {
   return AI_PROVIDERS[providerId] || { color: "#6b7280", name: providerId };
 }
@@ -21,7 +25,7 @@ function createProviderNode(Handle, Position) {
   function ProviderNode({ data }) {
     const { label, color, imageUrl, textIcon, active, last, error } = data;
     const [imgError, setImgError] = useState(false);
-    const glowColor = error ? "#ef4444" : (active ? "#22c55e" : (last ? "#f59e0b" : color));
+    const glowColor = error ? "#ef4444" : (active ? color : (last ? "#f59e0b" : color));
     return (
       <div
         className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
@@ -38,11 +42,18 @@ function createProviderNode(Handle, Position) {
 
         {/* Provider icon */}
         <div
-          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-white border border-white/90 shadow-sm ring-1 ring-white/85"
-          style={{ boxShadow: active || last || error ? `0 0 12px ${glowColor}45` : "0 2px 12px rgba(255, 255, 255, 0.10)" }}
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${color}15` }}
         >
-          {!imgError ? (
-            <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
+          {imageUrl && !imgError ? (
+            <img
+              src={imageUrl}
+              alt={label}
+              className="w-6 h-6 rounded-sm object-contain"
+              loading="lazy"
+              decoding="async"
+              onError={() => setImgError(true)}
+            />
           ) : (
             <span className="text-sm font-bold" style={{ color: glowColor }}>{textIcon}</span>
           )}
@@ -76,19 +87,32 @@ function createProviderNode(Handle, Position) {
 
 function createRouterNode(Handle, Position) {
   function RouterNode({ data }) {
+    const powering = (data.activeCount || 0) > 0;
     return (
-      <div className="flex items-center justify-center px-5 py-3 rounded-xl border-2 border-primary bg-primary/5 shadow-md min-w-[130px]">
+      <div
+        className={`relative z-[1] flex items-center justify-center px-5 py-3 rounded-xl border-2 min-w-[130px] ${
+          powering
+            ? "topology-router-core border-yellow-300 bg-gradient-to-br from-primary/30 via-yellow-400/20 to-cyan-400/25"
+            : "border-primary bg-primary/5 shadow-md"
+        }`}
+      >
         <Handle type="source" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
         <Handle type="source" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
         <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
         <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
-        <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-white/35 bg-white shadow-sm shadow-black/15 ring-1 ring-white/70 dark:ring-white/20">
-          <img src="/topup.png" alt="RouterLab" className="h-5 w-5 object-contain" />
+        <img
+          src="/topup.png"
+          alt="RouterLab"
+          className={`w-6 h-6 mr-2 object-contain ${powering ? "topology-router-icon" : ""}`}
+          loading="lazy"
+          decoding="async"
+        />
+        <span className={`text-sm font-bold ${powering ? "topology-router-label text-yellow-300" : "text-primary"}`}>
+          RouterLab
         </span>
-        <span className="text-sm font-bold text-primary">RouterLab</span>
         {data.activeCount > 0 && (
-          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
+          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-yellow-400 text-black text-xs font-bold topology-router-badge">
             {data.activeCount}
           </span>
         )}
@@ -101,6 +125,123 @@ function createRouterNode(Handle, Position) {
   };
 
   return RouterNode;
+}
+
+// Active: electric kame beam (multi-layer stroke + sparks). Idle/last/error: solid BaseEdge.
+function createTopologyEdge(BaseEdge, getBezierPath) {
+  function TopologyEdge({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    style = {},
+    data,
+  }) {
+    const [edgePath] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
+    const active = !!data?.active;
+    const stroke = style.stroke || "var(--color-border)";
+    const filterId = `topo-electric-${id}`;
+
+    if (!active) {
+      return <BaseEdge id={id} path={edgePath} style={{ ...style, stroke }} />;
+    }
+
+    return (
+      <g className="topology-edge-electric">
+        <defs>
+          <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2" result="noise">
+              <animate attributeName="baseFrequency" values="0.8;1.4;0.8" dur="0.25s" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth={10}
+          strokeOpacity={0.35}
+          strokeLinecap="round"
+          filter={`url(#${filterId})`}
+          className="topology-edge-halo"
+        />
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="#4ade80"
+          strokeWidth={5}
+          strokeOpacity={0.85}
+          strokeLinecap="round"
+          filter={`url(#${filterId})`}
+          className="topology-edge-plasma"
+        />
+        <BaseEdge
+          id={id}
+          path={edgePath}
+          style={{ stroke: "#f8fafc", strokeWidth: 2.2, opacity: 1 }}
+          className="topology-edge-kame"
+        />
+        {Array.from({ length: KAME_PARTICLE_COUNT }, (_, i) => (
+          <circle
+            key={`${id}-p-${i}`}
+            r={i % 2 === 0 ? 4 : 2.5}
+            fill={i % 3 === 0 ? "#fde047" : i % 3 === 1 ? "#67e8f9" : "#fff"}
+            opacity={0.95}
+            style={{ filter: "drop-shadow(0 0 4px #22d3ee)" }}
+          >
+            <animateMotion
+              dur={`${0.4 + i * 0.08}s`}
+              repeatCount="indefinite"
+              path={edgePath}
+              begin={`${i * 0.09}s`}
+            />
+          </circle>
+        ))}
+        {Array.from({ length: SPARK_COUNT }, (_, i) => (
+          <circle key={`${id}-s-${i}`} r={1.8} fill="#e0f2fe" opacity={0}>
+            <animate
+              attributeName="opacity"
+              values="0;1;0;0;1;0"
+              dur={`${0.35 + (i % 3) * 0.1}s`}
+              begin={`${i * 0.07}s`}
+              repeatCount="indefinite"
+            />
+            <animateMotion
+              dur={`${0.28 + i * 0.05}s`}
+              repeatCount="indefinite"
+              path={edgePath}
+              begin={`${i * 0.11}s`}
+            />
+          </circle>
+        ))}
+      </g>
+    );
+  }
+
+  TopologyEdge.propTypes = {
+    id: PropTypes.string,
+    sourceX: PropTypes.number,
+    sourceY: PropTypes.number,
+    targetX: PropTypes.number,
+    targetY: PropTypes.number,
+    sourcePosition: PropTypes.string,
+    targetPosition: PropTypes.string,
+    style: PropTypes.object,
+    data: PropTypes.object,
+  };
+
+  return TopologyEdge;
 }
 
 function serializeProviders(providers = []) {
@@ -150,9 +291,9 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
     draggable: false,
   });
 
-  const edgeStyle = (active, last, error, color) => {
+  const edgeStyle = (active, last, error) => {
     if (error) return { stroke: "#ef4444", strokeWidth: 2.5, opacity: 0.9 };
-    if (active) return { stroke: "#22c55e", strokeWidth: 2.5, opacity: 0.9 };
+    if (active) return { stroke: "#22d3ee", strokeWidth: 3.5, opacity: 1 };
     if (last) return { stroke: "#f59e0b", strokeWidth: 2, opacity: 0.7 };
     return { stroke: "var(--color-border)", strokeWidth: 1, opacity: 0.3 };
   };
@@ -200,12 +341,15 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
 
     edges.push({
       id: `e-${nodeId}`,
+      type: "topology",
       source: "router",
       sourceHandle,
       target: nodeId,
       targetHandle,
-      animated: active,
-      style: edgeStyle(active, last, error, config.color),
+      // Built-in animated uses stroke-dasharray (CPU-heavy); use particle beam instead
+      animated: false,
+      data: { active },
+      style: edgeStyle(active, last, error),
     });
   });
 
@@ -274,7 +418,16 @@ function ProviderTopology({ providers = [], activeRequests = [], lastProvider = 
     };
   }, [reactFlowModule]);
 
-  if (!reactFlowModule || !nodeTypes) {
+  const edgeTypes = useMemo(() => {
+    if (!reactFlowModule) return null;
+    const { BaseEdge, getBezierPath } = reactFlowModule;
+    if (!BaseEdge || !getBezierPath) return null;
+    return {
+      topology: createTopologyEdge(BaseEdge, getBezierPath),
+    };
+  }, [reactFlowModule]);
+
+  if (!reactFlowModule || !nodeTypes || !edgeTypes) {
     return (
       <div className="w-full rounded-lg border border-border bg-bg-subtle/30" style={{ height: 480 }}>
         <div className="h-full flex items-center justify-center text-text-muted text-sm">
@@ -298,6 +451,7 @@ function ProviderTopology({ providers = [], activeRequests = [], lastProvider = 
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           onInit={onInit}
