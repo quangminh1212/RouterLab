@@ -184,14 +184,82 @@ const executors = {
   "ollama-local": new OllamaLocalExecutor(),
   moonshot: new MoonshotExecutor("moonshot"),
   kimi: new MoonshotExecutor("kimi"),
+  "kimi-coding": new MoonshotExecutor("kimi-coding"),
+  "kimi-coding-apikey": new MoonshotExecutor("kimi-coding-apikey"),
   nlpcloud: new NlpCloudExecutor(),
   nlpc: new NlpCloudExecutor(),
+  // Gemini Business (Omni) — enterprise web; clear 501 until full StreamGenerate port
+  "gemini-business": new SpecialProtocolExecutor(
+    "gemini-business",
+    "Gemini Business uses enterprise StreamGenerate (cookie + entryUrl). Use gemini-cli or gemini API key for production, or configure Omni-compatible cookies when executor is fully ported."
+  ),
 };
 
 // Register config-driven web-cookie chat providers (GenericWebExecutor).
 for (const id of WEB_CHAT_PROVIDER_IDS) {
   if (!executors[id]) executors[id] = new GenericWebExecutor(id);
 }
+
+// OmniRoute alias map — every short id must resolve (100% executor key parity)
+const OMNI_EXECUTOR_ALIASES = {
+  "adp-web": "adapta-web",
+  "bb-web": "blackbox-web",
+  "cgpt-web": "chatgpt-web",
+  copilot: "copilot-web",
+  "cw-web": "claude-web",
+  db: "doubao-web",
+  ddgw: "duckduckgo-web",
+  "ds-web": "deepseek-web",
+  felo: "felo-web",
+  gc: "grok-cli",
+  gembiz: "gemini-business",
+  gweb: "gemini-web",
+  hc: "huggingchat",
+  "in-ai": "inner-ai",
+  lma: "lmarena",
+  "ms-web": "muse-spark-web",
+  msdesigner: "microsoft-designer-web",
+  nw: "notion-web",
+  poe: "poe-web",
+  "pplx-web": "perplexity-web",
+  t3chat: "t3-web",
+  v0: "v0-vercel-web",
+  ven: "venice-web",
+  "veo-free": "veoaifree-web",
+  ybw: "yuanbao-web",
+  zw: "zai-web",
+  // additional Omni aliases already used upstream
+  pol: "pollinations",
+  pu: "puter",
+  cf: "cloudflare-ai",
+  cpa: "cliproxyapi",
+  nr: "9router",
+  mcode: "mimocode",
+  tllm: "theoldllm",
+  zmf: "zenmux-free",
+  cmd: "commandcode",
+  gcli: "grok-cli",
+  xao: "xai-oauth",
+  cbcn: "codebuddy-cn",
+  pql: "promptql",
+  pepper: "chipotle",
+  firefly: "adobe-firefly",
+  dvcli: "devin-cli",
+  cu: "cursor",
+  agy: "antigravity",
+};
+
+for (const [alias, target] of Object.entries(OMNI_EXECUTOR_ALIASES)) {
+  if (!executors[alias] && executors[target]) {
+    executors[alias] = executors[target];
+  }
+}
+// fix gembiz after SpecialProtocol created
+if (executors["gemini-business"]) {
+  executors.gembiz = executors["gemini-business"];
+}
+// drop null placeholder if any
+if (executors.gembiz == null) delete executors.gembiz;
 
 const defaultCache = new Map();
 

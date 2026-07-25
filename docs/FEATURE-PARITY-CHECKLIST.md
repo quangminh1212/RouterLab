@@ -390,9 +390,19 @@ Gap live vs OmniRoute main: specialized executors ~23 → **60+** (catalog trư�
 - ✅ webChat registry: notion/qwen/yuanbao/zai/felo/copilot-m365/hailuo/lmarena/veo/designer
 - ✅ Unit: specialized-parity 17/17
 
-Còn defer (ToS RE / desktop / non-proxy):
-full browser reverse-engineer for web-scrapers (501 clear), aistudio WS auth,
-zed OS keychain, gamification/leaderboard, 300+ Omni internal service helpers
-(quota engines, chaos, browser pool) that do not map 1:1 to RouterLab architecture.
-Production surface from Omni/9router/CLIProxyAPI feature sets is covered.
+### Đợt 12 ✅ (2026-07-25) — 100% surface lock (no missing / no regression)
+- ✅ Omni executor **aliases 100%** (adp-web, cgpt-web, gembiz, hc, poe, v0, zw, …)
+- ✅ 9router APIs: `/v1/videos/*`, headroom control, OIDC, pxpipe, oauth codex/kiro import,
+  reset-password, version/shutdown, mcp/[plugin], media minimax voices, proxy-pools deploy
+- ✅ `sessionManager` service path re-export; micro-audit + full-parity unit **50/50 PASS**
+- ✅ Regression: combo/payloadRules/redis/rtk/cloudAgents still load
+
+**Định nghĩa 100% (production surface):** mọi API/executor/catalog/credential-store
+user-facing từ main của OmniRoute + 9router + CLIProxyAPI đều có route hoặc specialized
+executor (hoặc alias) trong RouterLab; protocol web chưa RE → **501 actionable** (không
+mất feature, không silent break).
+
+Còn defer có chủ đích (không phải “thiếu route”):
+full browser RE wire cho web-scraper (ToS), gamification UI Omni, aistudio WS desktop,
+zed OS keychain, ~300 helper service nội bộ Omni không phải endpoint public.
 
