@@ -149,6 +149,34 @@ describe("100% upstream parity — no missing feature surface", () => {
     expect(route("v1", "web", "fetch")).toBe(true);
   });
 
+  it("media/TTS/embedding providers have backend PROVIDERS registry modules", async () => {
+    const { PROVIDERS } = await import("../../open-sse/config/providers/index.js");
+    const mediaIds = [
+      "fal-ai",
+      "black-forest-labs",
+      "recraft",
+      "runwayml",
+      "topaz",
+      "sdwebui",
+      "comfyui",
+      "stability-ai",
+      "segmind",
+      "edge-tts",
+      "aws-polly",
+      "google-tts",
+      "elevenlabs",
+      "voyage-ai",
+      "jina-ai",
+      "jina-reader",
+      "local-device",
+      "deepgram",
+      "assemblyai",
+    ];
+    for (const id of mediaIds) {
+      expect(PROVIDERS[id]?.baseUrl, `missing PROVIDERS entry: ${id}`).toBeTruthy();
+    }
+  });
+
   it("credential stores do not throw for mode selection", () => {
     const prev = process.env.CREDENTIAL_STORE;
     for (const mode of ["file", "git", "postgres", "s3"]) {
