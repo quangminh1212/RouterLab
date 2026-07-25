@@ -771,8 +771,10 @@ export const PROVIDER_ID_TO_ALIAS = Object.fromEntries(
 );
 
 export function getModelsByProviderId(providerId) {
+  if (!providerId) return [];
   const alias = PROVIDER_ID_TO_ALIAS[providerId] || providerId;
-  return PROVIDER_MODELS[alias] || [];
+  // Prefer alias key, then raw provider id (seed lists are often keyed by id e.g. qwencoder)
+  return PROVIDER_MODELS[alias] || PROVIDER_MODELS[providerId] || [];
 }
 
 // Get strip list for a model entry (explicit opt-in only)

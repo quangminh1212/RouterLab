@@ -21,7 +21,8 @@ export const APIKEY_PROVIDERS = {
   // QwenCoder cloud gateway (OpenAI-compatible) — multi-model coding API used by Hermes/XLab combos
   qwencoder: {
     id: "qwencoder",
-    alias: "qwc",
+    // Keep alias === id so combo model strings match routing (qwencoder/model)
+    alias: "qwencoder",
     name: "QwenCoder",
     icon: "code",
     color: "#059669",

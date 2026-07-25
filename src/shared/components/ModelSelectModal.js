@@ -41,6 +41,8 @@ export default function ModelSelectModal({
   const [providerNodes, setProviderNodes] = useState([]);
   const [customModels, setCustomModels] = useState([]);
   const [disabledModels, setDisabledModels] = useState({});
+  /** connection providerId → live model list from /api/providers/{id}/models */
+  const [liveModelsByProvider, setLiveModelsByProvider] = useState({});
 
   const fetchCombos = async () => {
     try {
@@ -57,6 +59,67 @@ export default function ModelSelectModal({
   useEffect(() => {
     if (isOpen) fetchCombos();
   }, [isOpen]);
+
+  // Fetch live model lists for connected passthrough / API providers so combo picker
+  // shows setup providers even when static seed list is empty or incomplete.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+
+    const run = async () => {
+      const connections = Array.isArray(activeProviders) ? activeProviders : [];
+      if (connections.length === 0) {
+        if (!cancelled) setLiveModelsByProvider({});
+        return;
+      }
+
+      const results = await Promise.all(
+        connections.map(async (conn) => {
+          const providerId = conn?.provider;
+          const connectionId = conn?.id;
+          if (!providerId || !connectionId) return null;
+          try {
+            const res = await fetch(`/api/providers/${connectionId}/models`, { cache: "no-store" });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const list = Array.isArray(data?.models)
+              ? data.models
+              : Array.isArray(data?.data)
+                ? data.data
+                : Array.isArray(data)
+                  ? data
+                  : [];
+            const normalized = list
+              .map((m) => {
+                const id = m?.id || m?.model || m?.name;
+                if (!id || typeof id !== "string") return null;
+                return { id, name: m?.name || m?.display_name || id, type: m?.type || "llm" };
+              })
+              .filter(Boolean);
+            return { providerId, models: normalized };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) return;
+      const map = {};
+      for (const row of results) {
+        if (!row?.providerId || !row.models?.length) continue;
+        // Prefer longer list if multiple connections share a provider
+        if (!map[row.providerId] || row.models.length > map[row.providerId].length) {
+          map[row.providerId] = row.models;
+        }
+      }
+      setLiveModelsByProvider(map);
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, activeProviders]);
 
   const fetchProviderNodes = async () => {
     try {
@@ -165,39 +228,100 @@ export default function ModelSelectModal({
       }
 
       if (providerInfo.passthroughModels) {
+        // Route prefix: prefer provider id (matches combo storage e.g. qwencoder/model)
+        // while still accepting UI alias (qwc) and stored aliases under either prefix.
+        const routePrefix = providerId || alias;
+        const prefixes = [...new Set([routePrefix, alias, providerId].filter(Boolean))];
+
         const aliasModels = Object.entries(modelAliases)
-          .filter(([, fullModel]) => fullModel.startsWith(`${alias}/`))
-          .map(([aliasName, fullModel]) => ({
-            id: fullModel.replace(`${alias}/`, ""),
-            name: aliasName,
-            value: fullModel,
+          .filter(([, fullModel]) => prefixes.some((p) => fullModel.startsWith(`${p}/`)))
+          .map(([aliasName, fullModel]) => {
+            const modelId = fullModel.includes("/")
+              ? fullModel.slice(fullModel.indexOf("/") + 1)
+              : fullModel;
+            return {
+              id: modelId,
+              name: aliasName,
+              value: fullModel.startsWith(`${routePrefix}/`)
+                ? fullModel
+                : `${routePrefix}/${modelId}`,
+            };
+          });
+
+        const seedModels = getModelsByProviderId(providerId).map((m) => ({
+          id: m.id,
+          name: m.name || m.id,
+          value: `${routePrefix}/${m.id}`,
+          type: m.type,
+        }));
+
+        const customRegisteredModels = customModels
+          .filter((m) => m.providerAlias === alias || m.providerAlias === providerId || m.provider === providerId)
+          .map((m) => ({
+            id: m.id,
+            name: m.name || m.id,
+            value: `${routePrefix}/${m.id}`,
+            isCustom: true,
+            type: m.type,
           }));
 
-        // For typed kinds, only include hardcoded typed models (aliases are typically LLM-only and lack type info)
-        let combined = aliasModels;
+        // Live models fetched for connected passthrough providers (open when modal opens)
+        const liveModels = (liveModelsByProvider[providerId] || []).map((m) => ({
+          id: m.id,
+          name: m.name || m.id,
+          value: `${routePrefix}/${m.id}`,
+          type: m.type || "llm",
+          isLive: true,
+        }));
+
+        let combined;
         if (kindFilter && TYPED_KINDS.has(kindFilter)) {
-          combined = getModelsByProviderId(providerId)
-            .filter((m) => m.type === kindFilter)
-            .map((m) => ({ id: m.id, name: m.name, value: `${alias}/${m.id}`, type: m.type }));
-          // Fallback: provider-as-model when no hardcoded models match (tts/image/webFetch only)
+          combined = [...seedModels, ...liveModels, ...customRegisteredModels]
+            .filter((m) => m.type === kindFilter);
+          // Fallback: provider-as-model when no models match (tts/image/webFetch only)
           if (combined.length === 0 && ALLOW_PROVIDER_FALLBACK_KINDS.has(kindFilter)) {
             const supports = (providerInfo.serviceKinds || ["llm"]).includes(kindFilter);
             if (supports) combined = [{ id: providerId, name: providerInfo.name, value: alias }];
           }
+        } else {
+          // LLM combo picker: seed + live + aliases + custom (do not hide connected providers)
+          combined = [
+            ...seedModels,
+            ...liveModels,
+            ...aliasModels,
+            ...customRegisteredModels,
+          ];
         }
 
-        if (combined.length > 0) {
-          // Check for custom name from providerNodes (for compatible providers)
-          const matchedNode = providerNodes.find(node => node.id === providerId);
-          const displayName = matchedNode?.name || providerInfo.name;
+        // Dedupe by model id (prefer earlier = seed/live names)
+        const seenIds = new Set();
+        combined = combined.filter((m) => {
+          if (!m?.id || seenIds.has(m.id)) return false;
+          seenIds.add(m.id);
+          return true;
+        });
+        combined = filterByKind(combined);
 
-          groups[providerId] = {
-            name: displayName,
-            alias: alias,
-            color: providerInfo.color,
-            models: combined,
-          };
+        // Always show connected passthrough providers (placeholder if still empty)
+        if (combined.length === 0) {
+          combined = [{
+            id: `__placeholder__${providerId}`,
+            name: `${routePrefix}/model-id`,
+            value: `${routePrefix}/model-id`,
+            isPlaceholder: true,
+          }];
         }
+
+        const matchedNode = providerNodes.find(node => node.id === providerId);
+        const connection = activeProviders.find(p => p.provider === providerId);
+        const displayName = connection?.name || matchedNode?.name || providerInfo.name;
+
+        groups[providerId] = {
+          name: displayName,
+          alias: routePrefix,
+          color: providerInfo.color,
+          models: combined,
+        };
       } else if (isCustomProvider) {
         // Custom (openai/anthropic-compatible) providers are LLM-only — skip for typed media kinds
         if (kindFilter && TYPED_KINDS.has(kindFilter)) return;
@@ -304,7 +428,7 @@ export default function ModelSelectModal({
     });
 
     return groups;
-  }, [filteredActiveProviders, modelAliases, allProviders, providerNodes, customModels, disabledModels, kindFilter, activeProviders]);
+  }, [filteredActiveProviders, modelAliases, allProviders, providerNodes, customModels, disabledModels, kindFilter, activeProviders, liveModelsByProvider]);
 
   // Filter combos by search query (and hide combos when kindFilter is set — combos are LLM-only by design)
   const filteredCombos = useMemo(() => {
