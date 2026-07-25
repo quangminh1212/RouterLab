@@ -1,5 +1,6 @@
 import { AntigravityExecutor } from "./antigravity.js";
 import { AzureExecutor } from "./azure.js";
+import { AzureOpenAIExecutor } from "./azure-openai.js";
 import { GeminiCLIExecutor } from "./gemini-cli.js";
 import { GithubExecutor } from "./github.js";
 import { IFlowExecutor } from "./iflow.js";
@@ -20,10 +21,60 @@ import { GenericWebExecutor } from "./webChat/genericWeb.js";
 import { WEB_CHAT_PROVIDER_IDS } from "./webChat/registry.js";
 import { DefaultExecutor } from "./default.js";
 import { DevinCLIExecutor } from "./devin-cli.js";
+import { PuterExecutor } from "./puter.js";
+import { CloudflareAIExecutor } from "./cloudflare-ai.js";
+import { PollinationsExecutor } from "./pollinations.js";
+import { CodeBuddyCnExecutor } from "./codebuddy-cn.js";
+import { XaiExecutor } from "./xai.js";
+import { CliproxyapiExecutor } from "./cliproxyapi.js";
+import { NineRouterExecutor } from "./ninerouter.js";
+import { XiaomiTokenplanExecutor } from "./xiaomi-tokenplan.js";
+import { MimoFreeExecutor } from "./mimo-free.js";
+import { TheOldLlmExecutor } from "./theoldllm.js";
+import { ZenmuxFreeExecutor } from "./zenmux-free.js";
+import { KieExecutor } from "./kie.js";
+import { GlmExecutor } from "./glm.js";
+import { CommandCodeExecutor } from "./commandcode.js";
+import { GitlabExecutor } from "./gitlab.js";
+import { WindsurfExecutor } from "./windsurf.js";
+import { TraeExecutor } from "./trae.js";
+import { ZedHostedExecutor } from "./zed-hosted.js";
+import { AuggieExecutor } from "./auggie.js";
+import { GheCopilotExecutor } from "./ghe-copilot.js";
+
+const puter = new PuterExecutor();
+const cloudflareAi = new CloudflareAIExecutor();
+const pollinations = new PollinationsExecutor();
+const codebuddyCn = new CodeBuddyCnExecutor();
+const xai = new XaiExecutor("xai");
+const xaiOauth = new XaiExecutor("xai-oauth");
+const cliproxyapi = new CliproxyapiExecutor();
+const ninerouter = new NineRouterExecutor();
+const xiaomiTokenplan = new XiaomiTokenplanExecutor();
+const mimocode = new MimoFreeExecutor("mimocode");
+const mimoFree = new MimoFreeExecutor("mimo-free");
+const theoldllm = new TheOldLlmExecutor();
+const zenmuxFree = new ZenmuxFreeExecutor();
+const kie = new KieExecutor();
+const glm = new GlmExecutor("glm");
+const glmCn = new GlmExecutor("glm-cn");
+const glmt = new GlmExecutor("glmt");
+const commandcode = new CommandCodeExecutor("commandcode");
+const gitlab = new GitlabExecutor("gitlab");
+const gitlabDuo = new GitlabExecutor("gitlab-duo");
+const windsurf = new WindsurfExecutor("windsurf");
+const trae = new TraeExecutor();
+const zedHosted = new ZedHostedExecutor();
+const auggie = new AuggieExecutor();
+const azureLegacy = new AzureExecutor();
+const azureOpenaiAlias = new AzureOpenAIExecutor("azure-openai");
+const devinCli = new DevinCLIExecutor();
 
 const executors = {
   antigravity: new AntigravityExecutor(),
-  azure: new AzureExecutor(),
+  agy: new AntigravityExecutor(),
+  azure: azureLegacy,
+  "azure-openai": azureOpenaiAlias,
   "gemini-cli": new GeminiCLIExecutor(),
   github: new GithubExecutor(),
   iflow: new IFlowExecutor(),
@@ -31,19 +82,61 @@ const executors = {
   kiro: new KiroExecutor(),
   codex: new CodexExecutor(),
   cursor: new CursorExecutor(),
-  cu: new CursorExecutor(), // Alias for cursor
+  cu: new CursorExecutor(),
   vertex: new VertexExecutor("vertex"),
   "vertex-partner": new VertexExecutor("vertex-partner"),
   qwen: new QwenExecutor(),
   opencode: new OpenCodeExecutor(),
   "opencode-go": new OpenCodeGoExecutor(),
+  "opencode-zen": new OpenCodeExecutor(),
   "grok-web": new GrokWebExecutor(),
   "perplexity-web": new PerplexityWebExecutor(),
   bedrock: new BedrockExecutor(),
   "amazon-q": new AmazonQExecutor(),
   "duckduckgo-web": new DuckDuckGoWebExecutor(),
-  "devin-cli": new DevinCLIExecutor(),
-  dvcli: new DevinCLIExecutor(),
+  "devin-cli": devinCli,
+  dvcli: devinCli,
+  devin: devinCli,
+
+  // OmniRoute / 9router specialized executors (Đợt 10)
+  puter,
+  pu: puter,
+  "cloudflare-ai": cloudflareAi,
+  cf: cloudflareAi,
+  pollinations,
+  pol: pollinations,
+  "codebuddy-cn": codebuddyCn,
+  cbcn: codebuddyCn,
+  xai,
+  "xai-oauth": xaiOauth,
+  xao: xaiOauth,
+  cliproxyapi,
+  cpa: cliproxyapi,
+  "9router": ninerouter,
+  nr: ninerouter,
+  "xiaomi-tokenplan": xiaomiTokenplan,
+  mimocode,
+  mcode: mimocode,
+  "mimo-free": mimoFree,
+  theoldllm,
+  tllm: theoldllm,
+  "zenmux-free": zenmuxFree,
+  zmf: zenmuxFree,
+  kie,
+  glm,
+  "glm-cn": glmCn,
+  glmt,
+  commandcode,
+  "command-code": commandcode,
+  cmd: commandcode,
+  gitlab,
+  "gitlab-duo": gitlabDuo,
+  windsurf,
+  ws: windsurf,
+  trae,
+  "zed-hosted": zedHosted,
+  auggie,
+  "ghe-copilot": new GheCopilotExecutor(),
 };
 
 // Register config-driven web-cookie chat providers (GenericWebExecutor).
@@ -63,9 +156,14 @@ export function hasSpecializedExecutor(provider) {
   return !!executors[provider];
 }
 
+export function listSpecializedExecutors() {
+  return Object.keys(executors).sort();
+}
+
 export { BaseExecutor } from "./base.js";
 export { AntigravityExecutor } from "./antigravity.js";
 export { AzureExecutor } from "./azure.js";
+export { AzureOpenAIExecutor } from "./azure-openai.js";
 export { GeminiCLIExecutor } from "./gemini-cli.js";
 export { GithubExecutor } from "./github.js";
 export { IFlowExecutor } from "./iflow.js";
@@ -85,3 +183,23 @@ export { AmazonQExecutor } from "./amazon-q.js";
 export { DuckDuckGoWebExecutor } from "./webChat/duckduckgo.js";
 export { GenericWebExecutor } from "./webChat/genericWeb.js";
 export { DevinCLIExecutor } from "./devin-cli.js";
+export { PuterExecutor } from "./puter.js";
+export { CloudflareAIExecutor } from "./cloudflare-ai.js";
+export { PollinationsExecutor } from "./pollinations.js";
+export { CodeBuddyCnExecutor } from "./codebuddy-cn.js";
+export { XaiExecutor } from "./xai.js";
+export { CliproxyapiExecutor } from "./cliproxyapi.js";
+export { NineRouterExecutor } from "./ninerouter.js";
+export { XiaomiTokenplanExecutor } from "./xiaomi-tokenplan.js";
+export { MimoFreeExecutor } from "./mimo-free.js";
+export { TheOldLlmExecutor } from "./theoldllm.js";
+export { ZenmuxFreeExecutor } from "./zenmux-free.js";
+export { KieExecutor } from "./kie.js";
+export { GlmExecutor } from "./glm.js";
+export { CommandCodeExecutor } from "./commandcode.js";
+export { GitlabExecutor } from "./gitlab.js";
+export { WindsurfExecutor } from "./windsurf.js";
+export { TraeExecutor } from "./trae.js";
+export { ZedHostedExecutor } from "./zed-hosted.js";
+export { AuggieExecutor } from "./auggie.js";
+export { GheCopilotExecutor } from "./ghe-copilot.js";
