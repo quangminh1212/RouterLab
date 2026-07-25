@@ -291,7 +291,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         {/* Logo — 9router style brand tile */}
         <div className={cn("py-4 flex flex-col gap-2", collapsed ? "px-3" : "px-6")}>
           <Link href="/dashboard" prefetch={false} className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
-            <div className="flex items-center justify-center size-9 rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 shadow-[var(--shadow-warm)]">
+            <div className="flex items-center justify-center size-9 rounded-[10px] bg-gradient-to-br from-primary to-primary-hover shadow-[var(--shadow-warm)]">
               <span className="material-symbols-outlined text-white text-[20px]">hub</span>
             </div>
             {!collapsed && (

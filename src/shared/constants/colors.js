@@ -1,36 +1,36 @@
-// Claude-inspired color palette (match 9router)
-// Light theme: Warm beige/cream tones
-// Dark theme: Deep charcoal/brown tones
+// Teal-inspired color palette extracted from topup logo
+// Light theme: cool mint/teal neutrals
+// Dark theme: deep teal/charcoal tones
 
 export const COLORS = {
-  // Primary - Warm Coral/Terracotta (Claude-like)
+  // Primary - Teal
   primary: {
-    DEFAULT: "#D97757",
-    hover: "#C56243",
-    light: "#E8A58C",
-    dark: "#B0664D",
+    DEFAULT: "#187878",
+    hover: "#146a6a",
+    light: "#5FAEAE",
+    dark: "#0F5C5C",
   },
 
   // Light theme backgrounds
   light: {
-    bg: "#FBF9F6",
-    bgAlt: "#F5F1ED",
+    bg: "#F3F8F8",
+    bgAlt: "#E8F2F2",
     surface: "#FFFFFF",
-    sidebar: "rgba(246, 246, 246, 0.8)",
+    sidebar: "rgba(240, 248, 248, 0.82)",
     border: "rgba(0, 0, 0, 0.1)",
-    textMain: "#383733",
-    textMuted: "#75736E",
+    textMain: "#132325",
+    textMuted: "#4F6668",
   },
 
   // Dark theme backgrounds
   dark: {
-    bg: "#191918",
-    bgAlt: "#1F1F1E",
-    surface: "#242423",
-    sidebar: "rgba(30, 30, 30, 0.8)",
+    bg: "#0B1416",
+    bgAlt: "#101C1F",
+    surface: "#152226",
+    sidebar: "#111A1F",
     border: "rgba(255, 255, 255, 0.1)",
-    textMain: "#ECEBE8",
-    textMuted: "#9E9D99",
+    textMain: "#E8F3F3",
+    textMuted: "#98AFB1",
   },
 
   // Status colors
