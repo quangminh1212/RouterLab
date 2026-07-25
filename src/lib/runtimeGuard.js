@@ -18,8 +18,9 @@ const CONFIG = {
   maxInFlight: toPositiveNumber(process.env.RUNTIME_MAX_INFLIGHT, 80),
   maxInFlightDegraded: toPositiveNumber(process.env.RUNTIME_MAX_INFLIGHT_DEGRADED, 16),
   overloadQueueWaitMs: toPositiveNumber(process.env.RUNTIME_OVERLOAD_QUEUE_WAIT_MS, 3000),
-  timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 2))),
-  circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 15000),
+  // Higher trip threshold + shorter open: Hermes multi-retry must not sit behind a long circuit_open.
+  timeoutTripThreshold: Math.max(1, Math.floor(toPositiveNumber(process.env.RUNTIME_TIMEOUT_TRIP_THRESHOLD, 5))),
+  circuitOpenMs: toPositiveNumber(process.env.RUNTIME_CIRCUIT_OPEN_MS, 5000),
   slowRouteWarnMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_MS, 5000),
   slowRouteWarnCooldownMs: toPositiveNumber(process.env.RUNTIME_SLOW_ROUTE_WARN_COOLDOWN_MS, 30000),
 };

@@ -33,7 +33,9 @@ export const MEMORY_CONFIG = {
 };
 
 export const NETWORK_GUARD_CONFIG = {
-  defaultFetchTimeoutMs: Number(process.env.DEFAULT_FETCH_TIMEOUT_MS || 45000),
+  // 180s default: Hermes agent turns with large context exceed 45s often and surface as
+  // EmptyStreamError / "Connection error" after upstream abort mid-request.
+  defaultFetchTimeoutMs: Number(process.env.DEFAULT_FETCH_TIMEOUT_MS || 180000),
   streamingFetchTimeoutMs: Number(process.env.STREAMING_FETCH_TIMEOUT_MS || 300000),
   keepAliveTimeoutMs: Number(process.env.FETCH_KEEP_ALIVE_TIMEOUT_MS || 60000),
   keepAliveMaxTimeoutMs: Number(process.env.FETCH_KEEP_ALIVE_MAX_TIMEOUT_MS || 120000),
