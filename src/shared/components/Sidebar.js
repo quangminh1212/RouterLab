@@ -11,7 +11,7 @@ import Button from "./Button";
 import { ConfirmModal } from "./Modal";
 import { fetchWithTimeout } from "@/shared/utils/fetch";
 
-// Media kinds with full provider UI (match MEDIA_PROVIDER_KINDS)
+// Media kinds with full provider UI (9router base + RouterLab extras)
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "imageToText", "tts", "stt", "video", "music"];
 const MEDIA_NAV_ITEMS = [
   { id: "embedding", label: "Embedding", icon: "data_array" },
@@ -24,36 +24,35 @@ const MEDIA_NAV_ITEMS = [
 ];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
+// Top-level nav mirrors 9router (Endpoint, Providers, Combos, Usage, Quota, Token Saver, CLI Tools)
 const coreItems = [
-  { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
-  { href: "/dashboard/playground", label: "Playground", icon: "science" },
   { href: "/dashboard/endpoint", label: "Điểm cuối", icon: "api" },
   { href: "/dashboard/providers", label: "Nhà cung cấp", icon: "dns" },
   { href: "/dashboard/combos", label: "Kết hợp", icon: "layers" },
-  { href: "/dashboard/cloud-agents", label: "Cloud Agents", icon: "smart_toy" },
-  { href: "/dashboard/batches", label: "Batches", icon: "inventory_2" },
-  { href: "/dashboard/a2a", label: "A2A Agents", icon: "hub" },
   { href: "/dashboard/usage", label: "Thống kê", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Hạn mức", icon: "data_usage" },
-];
-
-const debugItems = [
-  { href: "/dashboard/console-log", label: "Nhật ký Console", icon: "terminal" },
-  { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate" },
+  { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "savings" },
+  { href: "/dashboard/cli-tools", label: "Công cụ CLI", icon: "terminal" },
 ];
 
 const SIDEBAR_BACKGROUND_FETCH_TIMEOUT_MS = 5000;
 
+// Features 9router does not have → Công cụ
 const TOOLS_ITEMS = [
   { href: "/dashboard/mitm", label: "MITM", icon: "security" },
-  { href: "/dashboard/cli-tools", label: "Công cụ CLI", icon: "terminal" },
   { href: "/dashboard/proxy-pools", label: "Proxy Pools", icon: "lan" },
   { href: "/dashboard/settings/pricing", label: "Bảng giá", icon: "payments" },
   { href: "/dashboard/console-log", label: "Nhật ký Console", icon: "terminal" },
+  { href: "/dashboard/translator", label: "Dịch thuật", icon: "translate", requiresTranslator: true },
 ];
 
+// Features 9router does not have → AI Nâng cao
 const POWER_UP_ITEMS = [
-  { href: "/dashboard/token-saver", label: "Tiết kiệm token", icon: "compress" },
+  { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
+  { href: "/dashboard/playground", label: "Playground", icon: "science" },
+  { href: "/dashboard/cloud-agents", label: "Cloud Agents", icon: "smart_toy" },
+  { href: "/dashboard/batches", label: "Batches", icon: "inventory_2" },
+  { href: "/dashboard/a2a", label: "A2A Agents", icon: "hub" },
   { href: "/dashboard/ops", label: "Vận hành / Ops", icon: "tune" },
   { href: "/dashboard/rules", label: "Luật AI", icon: "gavel" },
   { href: "/dashboard/ai-integrations", label: "Nguồn AI", icon: "hub" },
@@ -70,9 +69,17 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("xlabrouter-sidebar-collapsed") === "true";
   });
-  const [mediaOpen, setMediaOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [powerUpOpen, setPowerUpOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(() =>
+    typeof window !== "undefined" && window.location?.pathname?.startsWith("/dashboard/media-providers")
+  );
+  const [toolsOpen, setToolsOpen] = useState(() =>
+    typeof window !== "undefined" &&
+    TOOLS_ITEMS.some((it) => window.location?.pathname?.startsWith(it.href))
+  );
+  const [powerUpOpen, setPowerUpOpen] = useState(() =>
+    typeof window !== "undefined" &&
+    POWER_UP_ITEMS.some((it) => window.location?.pathname?.startsWith(it.href))
+  );
   
   const [showShutdownModal, setShowShutdownModal] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -431,7 +438,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               onClick={() => setToolsOpen((v) => !v)}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                TOOLS_ITEMS.some((it) => pathname.startsWith(it.href))
+                TOOLS_ITEMS.filter((it) => !it.requiresTranslator || enableTranslator).some((it) => pathname.startsWith(it.href))
                   ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
                   : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
               )}
@@ -444,25 +451,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             </button>
             {toolsOpen && (
               <div className="pl-3 space-y-0.5">
-                {TOOLS_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    onClick={onClose}
-                    title={item.label}
-                    className={cn(
-                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
-                      pathname.startsWith(item.href)
-                        ? "text-primary"
-                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
-                    )}
-                  >
-                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
-                    <span className="text-[13px]">{item.label}</span>
-                  </Link>
-                ))}
-                {debugItems.filter((d) => d.href === "/dashboard/translator" && enableTranslator).map((item) => (
+                {TOOLS_ITEMS.filter((item) => !item.requiresTranslator || enableTranslator).map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
