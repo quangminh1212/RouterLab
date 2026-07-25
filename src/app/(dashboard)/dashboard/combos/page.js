@@ -415,7 +415,7 @@ function ComboCard({
               value={strategy || "fallback"}
               disabled={savingStrategy}
               onChange={(e) => onStrategyChange?.(e.target.value)}
-              className="min-w-[8.5rem] rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+              className="ui-select min-w-[9rem] max-w-[11rem] px-2 py-1 pr-6 text-xs"
             >
               {COMBO_STRATEGY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -434,7 +434,7 @@ function ComboCard({
                 step="1"
                 value={stickyLimit}
                 onChange={(e) => onStickyLimitChange?.(e.target.value)}
-                className="w-16 rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+                className="w-16 rounded border border-border bg-surface px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
                 title="Giữ cùng model trong N requests trước khi rotate"
               />
               <span className="text-[11px] text-text-muted whitespace-nowrap">req</span>
@@ -442,13 +442,13 @@ function ComboCard({
           )}
 
           {strategy === "fusion" && (
-            <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02] max-w-[14rem]">
+            <div className="flex items-center gap-2 rounded-lg border border-black/5 dark:border-white/10 px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02] min-w-0 max-w-[18rem]">
               <span className="text-xs text-text-muted font-medium whitespace-nowrap">Judge</span>
               <select
                 value={fusionJudgeModel || ""}
                 disabled={savingStrategy}
                 onChange={(e) => onFusionJudgeChange?.(e.target.value)}
-                className="min-w-0 flex-1 truncate rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs text-text-main outline-none focus:border-primary"
+                className="ui-select min-w-[10rem] max-w-[15rem] flex-1 px-2 py-1 pr-6 text-xs"
                 title="Model dùng làm judge (mặc định model đầu combo)"
               >
                 <option value="">(first model)</option>

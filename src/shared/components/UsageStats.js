@@ -682,7 +682,7 @@ export default function UsageStats() {
           <select
             value={tableView}
             onChange={(e) => setTableView(e.target.value)}
-            className="px-3 py-1.5 rounded-lg border border-border bg-bg text-text text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 [&>option]:bg-bg [&>option]:text-text"
+            className="ui-select px-3 py-1.5 pr-8 text-sm font-medium focus:ring-2 focus:ring-primary/50"
           >
             {TABLE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>

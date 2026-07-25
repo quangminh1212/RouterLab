@@ -314,7 +314,7 @@ export default function TokenSaverPageClient() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <label className="space-y-1">
             <span className="text-xs font-medium text-text-muted">Mode</span>
-            <select value={mode} onChange={(event) => setMode(event.target.value)} className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-text-main outline-none focus:border-primary">
+            <select value={mode} onChange={(event) => setMode(event.target.value)} className="ui-select w-full px-3 py-2 pr-8 text-sm">
               <option value="rtk">RTK</option>
               <option value="caveman">Caveman</option>
               <option value="stacked">Stacked</option>
@@ -322,7 +322,7 @@ export default function TokenSaverPageClient() {
           </label>
           <label className="space-y-1">
             <span className="text-xs font-medium text-text-muted">Caveman intensity</span>
-            <select value={intensity} onChange={(event) => setIntensity(event.target.value)} disabled={mode === "rtk"} className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-text-main outline-none focus:border-primary disabled:opacity-50">
+            <select value={intensity} onChange={(event) => setIntensity(event.target.value)} disabled={mode === "rtk"} className="ui-select w-full px-3 py-2 pr-8 text-sm">
               <option value="lite">Lite</option>
               <option value="full">Full</option>
               <option value="ultra">Ultra</option>

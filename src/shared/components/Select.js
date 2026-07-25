@@ -30,10 +30,9 @@ export default function Select({
           onChange={onChange}
           disabled={disabled}
           className={cn(
-            "w-full py-2 px-3 pr-10 text-sm text-text-main",
-            "bg-white dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-md appearance-none",
-            "focus:ring-1 focus:ring-primary/30 focus:border-primary/50 focus:outline-none",
-            "transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+            "ui-select w-full py-2 px-3 pr-10 text-sm",
+            "focus:ring-1 focus:ring-primary/30 focus:border-primary/50",
+            "transition-all",
             "text-[16px] sm:text-sm",
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
