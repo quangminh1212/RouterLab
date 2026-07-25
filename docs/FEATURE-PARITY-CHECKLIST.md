@@ -42,6 +42,8 @@ Cập nhật lần cuối: 2026-07-25
 | 5 | `POST /v1/images/generations` | ✓ | ✓ | ✓ | ✓ | ✅ |
 | 6 | `POST /v1/images/edits` | ✓ | | ✓ | ✓ | ✅ |
 | 7 | `POST /v1/images/understanding` (image→text) | ✓ | | | ✓ | ✅ |
+| 7b | `POST /v1/ocr` (Mistral OCR) | ✓ | | | ✓ | ✅ (Đợt 10) |
+| 9b | `POST /v1/audio/translations` | ✓ | | | ✓ | ✅ (Đợt 10) |
 | 8 | `POST /v1/audio/speech` (TTS) | ✓ | ✓ | | ✓ | ✅ |
 | 9 | `POST /v1/audio/transcriptions` (STT) | ✓ | ✓ | | ✓ | ✅ |
 | 10 | `POST /v1/audio/music` | ✓ | | | ✓ | ✅ |
@@ -112,9 +114,9 @@ Cập nhật lần cuối: 2026-07-25
 | 2 | Cloud sync (cross-device) | 9router/Omni | ✓ (`initCloudSync`) | ✅ |
 | 3 | GitHub Gist backup/restore | 9router/Omni | ✓ (`gistBackup.js`) | ✅ |
 | 4 | Google Drive sync | XLab | ✓ (`googleDriveSync.js`) | ✅ |
-| 5 | Postgres credential store | CLIProxy | ⬜ | ⬜ |
-| 6 | Git credential store | CLIProxy | ⬜ | ⬜ |
-| 7 | S3/Object store backend | CLIProxy | ⬜ | ⬜ |
+| 5 | Postgres credential store | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter `credentialStore.js`, driver stub) |
+| 6 | Git credential store | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter stub) |
+| 7 | S3/Object store backend | CLIProxy | 🟡 | 🟡 (Đợt 10 — adapter stub) |
 | 8 | Tunnel: Cloudflare | tất cả | ✓ | ✅ |
 | 9 | Tunnel: Ngrok | 9router/Omni | ✓ | ✅ |
 | 10 | Tunnel: Tailscale | XLab | ✓ | ✅ |
@@ -278,7 +280,7 @@ firecrawl · jina-reader (fetch)
 | trae | Omni | ⬜ (paste Cloud-IDE-JWT — cần xác minh endpoint backend) | ⬜ |
 | windsurf (Devin CLI) | Omni | ⬜ (device-code/token paste — cần executor riêng) | ⬜ |
 | devin-cli | Omni | ✅ (`open-sse/executors/devin-cli.js` + free SWE/GLM; Hermes package `hermes-devin-acp/` in RouterLab) | ✅ |
-| xai-oauth (Grok Build) | CLIProxy | 🟡 (có xai apikey; OAuth PKCE flow chưa thêm) | 🟡 |
+| xai-oauth (Grok Build) | CLIProxy | ✅ (Đợt 10 — `XaiExecutor` refresh_token + reasoning_effort) | ✅ |
 | aistudio (AI Studio Build, WS) | CLIProxy | ⬜ (cần WebSocket gateway — Đợt 5) | ⬜ |
 
 ---
@@ -306,8 +308,8 @@ firecrawl · jina-reader (fetch)
 | auto (zero-config LKGP routing) | Omni | ✓ (Đợt 5 — `src/sse/services/autoRoute.js`: model 'auto'/'auto/<model>' → best connected provider theo LKGP + priority) | ✅ |
 
 ### Music (Đợt 4)
-| suno | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
-| udio | Omni | ✓ (đăng ký + endpoint `/v1/audio/music`; cần music task handler → 501) | 🟡 |
+| suno | Omni | ✓ (`musicCore` + `musicProviders/suno.js` cookie poll) | ✅ |
+| udio | Omni | ✓ (`musicCore` + `musicProviders/udio.js` cookie poll) | ✅ |
 
 ---
 
@@ -366,9 +368,23 @@ auto-routing, public free models, signature cache, cloaking, tunnels, MITM) đã
 - ✅ Catalog UI ~315 · backend ~282 · Omni top-level registry covered (aliases map)
 - 🟡 Full port 100+ Omni *executors* web/TTS/custom (không chặn catalog; default/openai path cho OpenAI-compatible)
 
-Còn cố ý chưa làm (hạ tầng ngoài / ngoài proxy thuần / ToS-risk RE):
-Postgres/Git/S3 credential store, gamification/leaderboard, full browser RE
-cho 18 web-scraper (501 rõ ràng), suno/udio music task handlers, aistudio WS
-auth, zed keychain desktop-only. Production routing đã đủ (fallback + sticky RR
-+ fusion + auto/LKGP + p2c + self-heal).
+### Đợt 10 ✅ (2026-07-25) — specialized executors + media API + credential store adapter
+Gap live vs OmniRoute main: specialized executors ~23 → **60+** (catalog trước đó
+đã surface nhưng runtime vẫn DefaultExecutor). Port/wire từ OmniRoute + 9router:
+
+- ✅ Executors: puter, cloudflare-ai, pollinations, codebuddy-cn, xai/xai-oauth,
+  cliproxyapi, 9router, xiaomi-tokenplan, mimocode/mimo-free, theoldllm,
+  zenmux-free, kie, glm/glm-cn/glmt, commandcode, gitlab/gitlab-duo, windsurf,
+  trae, zed-hosted, auggie, azure-openai, ghe-copilot (+ aliases)
+- ✅ API: `POST /v1/ocr` (Mistral OCR), `POST /v1/audio/translations` (Whisper translate)
+- ✅ Music suno/udio: đã có handlers thật (`musicCore` + adapters) — bỏ ghi 501
+- ✅ CLIProxyAPI: `src/lib/credentialStore.js` adapter (file default; postgres/git/s3
+  pluggable env `CREDENTIAL_STORE`) + xai-oauth refresh trong executor
+- ✅ Unit: `tests/unit/executors-specialized-parity.test.js`
+
+Còn cố ý defer (hạ tầng nặng / ToS RE / desktop-only):
+full 100+ Omni internal helper modules, gamification/leaderboard, full browser RE
+cho web-scraper phức tạp, aistudio WS auth, zed OS keychain, Postgres/Git/S3
+store backends đầy đủ (adapter đã có, implement driver khi cần). Production
+routing + specialized executor surface cho free/OAuth/CLI/upstream proxy đã đủ.
 
