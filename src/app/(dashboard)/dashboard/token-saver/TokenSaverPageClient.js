@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Card, Toggle } from "@/shared/components";
 
 const REPOS = [
   { name: "RTK (Rust Token Killer)", url: "https://github.com/rtk-ai/rtk", note: "Giảm token output terminal/log/build/test." },
@@ -74,6 +75,10 @@ export default function TokenSaverPageClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [headroom, setHeadroom] = useState(null);
+  const [rtkEnabled, setRtkEnabled] = useState(false);
+  const [cavemanEnabled, setCavemanEnabled] = useState(false);
+  const [cavemanLevel, setCavemanLevel] = useState("full");
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/headroom/status", { cache: "no-store" })
@@ -81,6 +86,61 @@ export default function TokenSaverPageClient() {
       .then(setHeadroom)
       .catch(() => setHeadroom({ available: false, error: "unreachable" }));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setRtkEnabled(!!data.rtkEnabled);
+        setCavemanEnabled(data.cavemanEnabled === true);
+        setCavemanLevel(data.cavemanLevel || "full");
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSettingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const patchSetting = async (patch) => {
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error("Failed to update settings");
+  };
+
+  const handleRtkEnabled = async (value) => {
+    try {
+      await patchSetting({ rtkEnabled: value });
+      setRtkEnabled(value);
+    } catch (err) {
+      console.log("Error updating rtkEnabled:", err);
+    }
+  };
+
+  const handleCavemanEnabled = async (value) => {
+    try {
+      await patchSetting({ cavemanEnabled: value });
+      setCavemanEnabled(value);
+    } catch (err) {
+      console.log("Error updating cavemanEnabled:", err);
+    }
+  };
+
+  const handleCavemanLevel = async (value) => {
+    try {
+      await patchSetting({ cavemanLevel: value });
+      setCavemanLevel(value);
+    } catch (err) {
+      console.log("Error updating cavemanLevel:", err);
+    }
+  };
 
   const stats = result?.stats;
   const estimatedTokens = useMemo(() => {
@@ -112,10 +172,114 @@ export default function TokenSaverPageClient() {
     <div className="p-6 space-y-5 max-w-6xl">
       <header className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight text-text-main">Token Saver</h1>
-        <p className="text-sm text-text-muted">Preview RTK, Caveman và stacked compression trước khi bật trong Endpoint.</p>
+        <p className="text-sm text-text-muted">
+          Bật RTK / Caveman tại đây (không còn trên Endpoint). Preview nén trước khi áp dụng.
+        </p>
       </header>
 
-      <section className="rounded-2xl border border-white/10 bg-black/10 p-4 md:p-5 space-y-3">
+      {/* Live toggles — same place as 9router Token Saver */}
+      <Card id="rtk">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">bolt</span>
+            Token Saver
+          </h2>
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            Experimental
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 pb-4 border-b border-border gap-4">
+          <div className="min-w-0 flex-1 pr-4">
+            <p className="font-medium">
+              Compress tool output{" "}
+              <a
+                href="https://github.com/rtk-ai/rtk"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-normal text-primary underline hover:opacity-80"
+              >
+                (RTK)
+              </a>
+            </p>
+            <p className="text-sm text-text-muted">
+              git/grep/ls/tree/logs trong tool_result → thường giảm 60–90% input tokens
+            </p>
+          </div>
+          <Toggle
+            checked={rtkEnabled}
+            disabled={settingsLoading}
+            onChange={() => handleRtkEnabled(!rtkEnabled)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-4 gap-4 flex-wrap">
+          <div className="min-w-0 flex-1 pr-4">
+            <p className="font-medium">
+              Compress LLM output{" "}
+              <a
+                href="https://github.com/JuliusBrussee/caveman-claude"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-normal text-primary underline hover:opacity-80"
+              >
+                (Caveman)
+              </a>
+            </p>
+            <p className="text-sm text-text-muted">
+              System prompt ngắn gọn → giảm ~30–65% output tokens, giữ code/path/lỗi nguyên
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {cavemanEnabled && (
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1.5">
+                  {["lite", "full", "ultra"].map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => handleCavemanLevel(lvl)}
+                      className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors capitalize ${
+                        cavemanLevel === lvl
+                          ? "bg-primary text-white border-primary"
+                          : "bg-transparent border-border text-text-muted hover:bg-surface-2"
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-text-muted">
+                  {cavemanLevel === "lite" && "Giữ ngữ pháp bình thường"}
+                  {cavemanLevel === "full" && "Rút gọn vừa phải"}
+                  {cavemanLevel === "ultra" && "Nén tối đa"}
+                </p>
+              </div>
+            )}
+            <Toggle
+              checked={cavemanEnabled}
+              disabled={settingsLoading}
+              onChange={() => handleCavemanEnabled(!cavemanEnabled)}
+            />
+          </div>
+        </div>
+
+        {rtkEnabled && cavemanEnabled && (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-[20px] text-primary mt-0.5">info</span>
+              <div className="text-xs text-text-muted">
+                <p className="font-medium text-text-main mb-1">Stacked mode active</p>
+                <p>
+                  RTK nén tool output trước, Caveman rút gọn reply sau. Thường tiết kiệm 70–95% trên session coding agent.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <section className="rounded-2xl border border-border bg-surface p-4 md:p-5 space-y-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-text-main">Headroom status</h2>
@@ -127,29 +291,24 @@ export default function TokenSaverPageClient() {
           <span
             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
               headroom?.available
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-white/10 text-text-muted"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-surface-2 text-text-muted"
             }`}
           >
             {headroom == null ? "…" : headroom.available ? "Available" : "Offline"}
           </span>
         </div>
         {headroom && (
-          <pre className="text-xs font-mono rounded-lg bg-black/20 p-3 overflow-auto max-h-32">
+          <pre className="text-xs font-mono rounded-lg bg-bg-alt p-3 overflow-auto max-h-32 border border-border">
             {JSON.stringify(headroom, null, 2)}
           </pre>
         )}
       </section>
 
       <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:p-5 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-text-main">Compression Preview</h2>
-            <p className="text-sm text-text-muted">RTK tối ưu log/tool output, Caveman rút gọn prose, Stacked chạy RTK rồi Caveman.</p>
-          </div>
-          <Link href="/dashboard/endpoint" className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-3 py-2 text-sm text-primary hover:bg-primary/10 transition-colors">
-            Mở Endpoint settings
-          </Link>
+        <div>
+          <h2 className="text-lg font-semibold text-text-main">Compression Preview</h2>
+          <p className="text-sm text-text-muted">RTK tối ưu log/tool output, Caveman rút gọn prose, Stacked chạy RTK rồi Caveman.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

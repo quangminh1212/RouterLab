@@ -165,9 +165,6 @@ export default function APIPageClient() {
   const [requireLogin, setRequireLogin] = useState(true);
   const [hasPassword, setHasPassword] = useState(true);
   const [tunnelDashboardAccess, setTunnelDashboardAccess] = useState(false);
-  const [rtkEnabled, setRtkEnabledState] = useState(false);
-  const [cavemanEnabled, setCavemanEnabledState] = useState(false);
-  const [cavemanLevel, setCavemanLevelState] = useState("full");
 
   // Cloudflare Tunnel state
   const [tunnelCheckingPrimary, setTunnelCheckingPrimary] = useState(false);
@@ -266,8 +263,6 @@ export default function APIPageClient() {
     setRequireLogin(settings.requireLogin !== false);
     setHasPassword(settings.hasPassword || false);
     setTunnelDashboardAccess(settings.tunnelDashboardAccess === true);
-    setCavemanEnabledState(settings.cavemanEnabled === true);
-    setCavemanLevelState(settings.cavemanLevel || "full");
   }
 
   function startTunnelCheckingUi() {
@@ -417,9 +412,6 @@ export default function APIPageClient() {
 
       const applyStart = performance.now();
       applySettingsState(data.settings);
-      setRtkEnabledState(data.settings?.rtkEnabled || false);
-      setCavemanEnabledState(data.settings?.cavemanEnabled === true);
-      setCavemanLevelState(data.settings?.cavemanLevel || "full");
       const applyStateDurationMs = Math.round(performance.now() - applyStart);
 
       logDashboardPerf("info", "fetchBootstrap:done", {
@@ -561,7 +553,6 @@ export default function APIPageClient() {
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         applySettingsState(data);
-        setRtkEnabledState(data.rtkEnabled || false);
       }
       if (statusRes.ok) {
         const data = await statusRes.json();
@@ -591,7 +582,6 @@ export default function APIPageClient() {
             if (settingsRes.ok) {
               const settings = await settingsRes.json();
               applySettingsState(settings);
-              setRtkEnabledState(settings.rtkEnabled || false);
             }
             if (statusRes.ok) {
               applyTunnelStatus(await statusRes.json());
@@ -641,45 +631,6 @@ export default function APIPageClient() {
     } catch (error) {
       console.log("Error updating requireApiKey:", error);
       setTunnelStatus({ type: "error", message: "Failed to update Require API key" });
-    }
-  };
-
-  const handleRtkEnabled = async (value) => {
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rtkEnabled: value }),
-      });
-      if (res.ok) setRtkEnabledState(value);
-    } catch (error) {
-      console.log("Error updating rtkEnabled:", error);
-    }
-  };
-
-  const handleCavemanEnabled = async (value) => {
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cavemanEnabled: value }),
-      });
-      if (res.ok) setCavemanEnabledState(value);
-    } catch (error) {
-      console.log("Error updating cavemanEnabled:", error);
-    }
-  };
-
-  const handleCavemanLevel = async (value) => {
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cavemanLevel: value }),
-      });
-      if (res.ok) setCavemanLevelState(value);
-    } catch (error) {
-      console.log("Error updating cavemanLevel:", error);
     }
   };
 
@@ -1941,103 +1892,6 @@ export default function APIPageClient() {
             <div className="flex items-center gap-1.5">
               <p className="font-medium text-sm">Allow dashboard access via tunnel</p>
               <Tooltip text="When enabled, the dashboard can be accessed through your tunnel or Tailscale URL (login still required). When disabled, dashboard access via tunnel/Tailscale is completely blocked." />
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Token Saver (RTK + Caveman) */}
-      <Card id="rtk">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">Token Saver</h2>
-            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-              Experimental
-            </span>
-          </div>
-          <Link href="/dashboard/token-saver" className="text-xs text-primary hover:underline flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px]">science</span>
-            Preview & test
-          </Link>
-        </div>
-        <div className="flex items-center justify-between pt-2">
-          <div className="pr-4">
-            <p className="font-medium">RTK: Compress tool output</p>
-            <p className="text-sm text-text-muted">
-              Auto-compress git diff / status / grep / find / ls / tree / logs in <code>tool_result</code> before sending to LLM. Check server console for <code>[RTK] saved ...</code> log.
-            </p>
-            <p className="text-xs text-text-muted mt-1">
-              Inspired by{" "}
-              <a
-                href="https://github.com/rtk-ai/rtk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-primary"
-              >
-                RTK (Rust Token Killer)
-              </a>
-              {" "}- ported to JavaScript. Typically saves 60-90% on command output.
-            </p>
-          </div>
-          <Toggle
-            checked={rtkEnabled}
-            onChange={() => handleRtkEnabled(!rtkEnabled)}
-          />
-        </div>
-
-        <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-          <div className="pr-4">
-            <p className="font-medium">Caveman: Terse replies</p>
-            <p className="text-sm text-text-muted">
-              Inject a terse system instruction before dispatch to reduce output tokens while keeping code, paths, commands, errors, and warnings exact.
-            </p>
-            <p className="text-xs text-text-muted mt-1">
-              Inspired by{" "}
-              <a
-                href="https://github.com/JuliusBrussee/caveman-claude"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-primary"
-              >
-                Caveman Claude
-              </a>
-              {" "}- typically saves 30-50% on prose output.
-            </p>
-          </div>
-          <Toggle
-            checked={cavemanEnabled}
-            onChange={() => handleCavemanEnabled(!cavemanEnabled)}
-          />
-        </div>
-
-        {cavemanEnabled && (
-          <div className="flex items-center justify-between pt-3">
-            <div className="pr-4">
-              <p className="font-medium text-sm">Caveman intensity</p>
-              <p className="text-xs text-text-muted">Lite keeps normal grammar, Full is terse, Ultra is maximum compression.</p>
-            </div>
-            <select
-              value={cavemanLevel}
-              onChange={(event) => handleCavemanLevel(event.target.value)}
-              className="min-w-[120px] rounded-lg border border-border bg-input px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
-            >
-              <option value="lite">Lite</option>
-              <option value="full">Full</option>
-              <option value="ultra">Ultra</option>
-            </select>
-          </div>
-        )}
-
-        {(rtkEnabled && cavemanEnabled) && (
-          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
-            <div className="flex items-start gap-2">
-              <span className="material-symbols-outlined text-[20px] text-primary mt-0.5">info</span>
-              <div className="text-xs text-text-muted">
-                <p className="font-medium text-text-main mb-1">Stacked mode active</p>
-                <p>
-                  RTK runs first to compress tool output, then Caveman guides concise replies. Combined savings usually reach 70-95% on coding-agent sessions.
-                </p>
-              </div>
             </div>
           </div>
         )}
