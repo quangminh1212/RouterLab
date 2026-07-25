@@ -324,6 +324,7 @@ const providerIconPathOverrides = {
   snowflake: "/providers/snowflake.png",
   sparkdesk: "/providers/sparkdesk.png",
   "stability-ai": "/providers/stability-ai.png",
+  segmind: "/providers/segmind.png",
   stepfun: "/providers/stepfun.png",
   sumopod: "/providers/sumopod.png",
   suno: "/providers/suno.png",

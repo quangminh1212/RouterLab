@@ -13,6 +13,7 @@ import runwayml from "./runwayml.js";
 import ideogram from "./ideogram.js";
 import leonardo from "./leonardo.js";
 import haiper from "./haiper.js";
+import segmind from "./segmind.js";
 
 const ADAPTERS = {
   openai: createOpenAIAdapter("openai"),
@@ -34,6 +35,7 @@ const ADAPTERS = {
   ideogram,
   leonardo,
   haiper,
+  segmind,
 };
 
 export function getImageAdapter(provider) {

@@ -675,6 +675,14 @@ export const PROVIDER_MODELS = {
     { id: "sd3.5-large-turbo", name: "Stable Diffusion 3.5 Large Turbo", type: "image", params: ["size"] },
     { id: "sd3.5-medium", name: "Stable Diffusion 3.5 Medium", type: "image", params: ["size"] },
   ],
+  segmind: [
+    { id: "flux-schnell", name: "FLUX.1 Schnell", type: "image", params: ["n", "size"] },
+    { id: "flux-dev", name: "FLUX.1 Dev", type: "image", params: ["n", "size"] },
+    { id: "flux-1.1-pro", name: "FLUX 1.1 Pro", type: "image", params: ["n", "size"] },
+    { id: "sdxl1.0-txt2img", name: "Stable Diffusion XL 1.0", type: "image", params: ["n", "size"] },
+    { id: "sd3.5-large-txt2img", name: "Stable Diffusion 3.5 Large", type: "image", params: ["n", "size"] },
+    { id: "kandinsky2.2-txt2img", name: "Kandinsky 2.2", type: "image", params: ["n", "size"] },
+  ],
   "black-forest-labs": [
     { id: "flux-pro-1.1", name: "FLUX Pro 1.1", type: "image", params: ["n", "size"] },
     { id: "flux-pro-1.1-ultra", name: "FLUX Pro 1.1 Ultra", type: "image", params: ["size"] },

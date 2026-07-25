@@ -239,6 +239,8 @@ import p_oobabooga from "./registry/oobabooga.js";
 import p_ideogram from "./registry/ideogram.js";
 import p_leonardo from "./registry/leonardo.js";
 import p_haiper from "./registry/haiper.js";
+import p_stability_ai from "./registry/stability-ai.js";
+import p_segmind from "./registry/segmind.js";
 import p_bedrock from "./registry/bedrock.js";
 import p_agnes from "./registry/agnes.js";
 import p_aihorde from "./registry/aihorde.js";
@@ -524,6 +526,8 @@ export const PROVIDERS = {
   "ideogram": p_ideogram,
   "leonardo": p_leonardo,
   "haiper": p_haiper,
+  "stability-ai": p_stability_ai,
+  "segmind": p_segmind,
   "bedrock": p_bedrock,
 
   "agnes": p_agnes,
