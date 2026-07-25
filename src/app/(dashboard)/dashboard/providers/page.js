@@ -95,21 +95,6 @@ function getConnectionErrorTag(connection) {
   return "ERR";
 }
 
-const FEATURED_PROVIDER_IDS = [
-  "openrouter",
-  "openai",
-  "claude",
-  "gemini",
-  "deepseek",
-  "groq",
-  "xai",
-  "nvidia",
-  "qwen-cloud",
-  "qwencoder",
-  "ollama",
-  "github",
-];
-
 const CATEGORY_CHIPS = [
   { id: "all", label: "All", icon: "apps" },
   { id: "configured", label: "Configured", icon: "check_circle" },
@@ -438,17 +423,6 @@ export default function ProvidersPage() {
     ? "grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
     : "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4";
 
-  // Featured strip: known popular providers still matching search (9router-style quick pick)
-  const featuredPool = [
-    ...oauthEntries.map(([key, info]) => ({ key, info, authType: "oauth", card: "provider" })),
-    ...freeEntries.map(([key, info]) => ({ key, info, authType: "free", card: "provider" })),
-    ...freeTierEntries.map(([key, info]) => ({ key, info, authType: "apikey", card: "apikey" })),
-    ...apikeyEntries.map(([key, info]) => ({ key, info, authType: "apikey", card: "apikey" })),
-  ];
-  const featuredEntries = FEATURED_PROVIDER_IDS.map((id) =>
-    featuredPool.find((e) => e.key === id),
-  ).filter(Boolean);
-
   const sectionVisible = {
     configured: showSection("configured") || showSection("all"),
     oauth: showSection("oauth") || showSection("all"),
@@ -512,31 +486,6 @@ export default function ProvidersPage() {
             {compactMode ? "Compact" : "Comfort"}
           </button>
         </div>
-        {featuredEntries.length > 0 && categoryFilter === "all" && !searchQuery.trim() && (
-          <div className="flex flex-col gap-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
-              Featured
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {featuredEntries.map((entry) => (
-                <Link
-                  key={`feat-${entry.key}`}
-                  href={`/dashboard/providers/${entry.key}`}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-bg px-2.5 py-1.5 text-xs hover:border-primary/40 hover:bg-primary/5"
-                >
-                  <ProviderIcon
-                    src={getProviderIconSources(entry.info)}
-                    alt={entry.info.name}
-                    size={20}
-                    fallbackText={entry.info.textIcon || entry.key.slice(0, 2).toUpperCase()}
-                    fallbackColor={entry.info.color}
-                  />
-                  <span className="font-medium text-text-main">{entry.info.name}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {!hasAnyResult && (
