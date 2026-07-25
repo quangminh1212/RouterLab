@@ -173,6 +173,23 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
   };
 
   const isPowerUpActive = POWER_UP_ITEMS.some((item) => pathname.startsWith(item.href));
+  const isToolsActive = TOOLS_ITEMS.filter((it) => !it.requiresTranslator || enableTranslator).some((it) =>
+    pathname.startsWith(it.href)
+  );
+  const navItemClass = (active) =>
+    cn(
+      collapsed
+        ? "flex items-center justify-center px-2 py-1.5 rounded-lg transition-all group"
+        : "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+      active
+        ? "bg-primary/10 text-primary"
+        : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+    );
+  const navIconClass = (active) =>
+    cn(
+      "material-symbols-outlined text-[18px]",
+      active ? "fill-1" : "group-hover:text-primary transition-colors"
+    );
   const renderNavItem = (item) => (
     <Link
       key={item.href}
@@ -180,22 +197,10 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
       prefetch={false}
       onClick={onClose}
       title={item.label}
-      className={cn(
-        collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-        isActive(item.href)
-          ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-          : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-      )}
+      className={navItemClass(isActive(item.href))}
     >
-      <span
-        className={cn(
-          "material-symbols-outlined text-[18px]",
-          isActive(item.href) ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
-        )}
-      >
-        {item.icon}
-      </span>
-      {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+      <span className={navIconClass(isActive(item.href))}>{item.icon}</span>
+      {!collapsed && <span className="text-[13px] font-medium">{item.label}</span>}
     </Link>
   );
   const handleUpdate = async () => {
@@ -247,17 +252,19 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
 
   return (
     <>
-      <aside className={cn(
-        "flex flex-col overflow-hidden border-r border-primary/15 bg-[#0F1D20] dark:bg-[#0F1D20] shadow-[inset_-1px_0_0_rgba(24,120,120,0.16)] transition-all duration-300 h-full",
-        collapsed ? "w-16" : "w-72"
-      )}>
+      <aside
+        className={cn(
+          "flex flex-col overflow-hidden border-r border-border-subtle bg-vibrancy backdrop-blur-xl transition-all duration-300 h-full min-h-full",
+          collapsed ? "w-16" : "w-72"
+        )}
+      >
         {/* Traffic lights */}
         <div className={cn("flex items-center gap-2 pt-5 pb-2", collapsed ? "justify-center px-3" : "px-6")}>
           {collapsed ? (
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-surface-2 hover:text-text-main"
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
@@ -265,13 +272,13 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
             </button>
           ) : (
             <>
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-          <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+              <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
+              <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+              <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-surface-2 hover:text-text-main"
                 aria-label="Collapse sidebar"
                 title="Collapse sidebar"
               >
@@ -281,17 +288,15 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
           )}
         </div>
 
-        {/* Logo */}
+        {/* Logo — 9router style brand tile */}
         <div className={cn("py-4 flex flex-col gap-2", collapsed ? "px-3" : "px-6")}>
           <Link href="/dashboard" prefetch={false} className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
-            <div className="flex items-center justify-center size-9 rounded overflow-hidden">
-              <img src="/topup.png" alt="RouterLab logo" loading="lazy" className="w-full h-full object-cover" />
+            <div className="flex items-center justify-center size-9 rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 shadow-[var(--shadow-warm)]">
+              <span className="material-symbols-outlined text-white text-[20px]">hub</span>
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <h1 className="text-lg font-semibold tracking-tight text-text-main">
-                  {APP_CONFIG.name}
-                </h1>
+                <h1 className="text-lg font-semibold tracking-tight text-text-main">{APP_CONFIG.name}</h1>
                 <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
               </div>
             )}
@@ -299,7 +304,7 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
           {updateInfo && !collapsed && (
             <div className="flex flex-col gap-1.5 rounded p-1 -m-1">
               <span className="text-xs font-semibold text-green-600 dark:text-amber-500">
-                ✨ New version available: v{updateInfo.latestVersion}
+                ↑ New version available: v{updateInfo.latestVersion}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -323,154 +328,168 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
         </div>
 
         {/* Navigation */}
-        <nav className={cn("flex-1 min-h-0 py-2 space-y-1 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
+        <nav className={cn("flex-1 min-h-0 py-2 space-y-0.5 overflow-y-auto custom-scrollbar", collapsed ? "px-2" : "px-4")}>
           {coreItems.map(renderNavItem)}
 
-          {/* Media + System sections */}
-          <div className="mt-2">
-            {/* Media Providers accordion */}
+          {/* System section (9router layout) */}
+          <div className="pt-3 mt-2 space-y-0.5">
+            {!collapsed && (
+              <p className="px-3 text-xs font-semibold text-text-muted/60 uppercase tracking-wider mb-2">System</p>
+            )}
+
+            {/* Media Providers */}
             {!collapsed && (
               <>
-            <button
-              onClick={() => setMediaOpen((v) => !v)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                pathname.startsWith("/dashboard/media-providers")
-                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">perm_media</span>
-              <span className="text-sm font-medium flex-1 text-left">Media Providers</span>
-              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: mediaOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                expand_more
-              </span>
-            </button>
-            {mediaOpen && (
-              <div className="pl-4">
-                {MEDIA_NAV_ITEMS.filter((kind) => VISIBLE_MEDIA_KINDS.includes(kind.id)).map((kind) => (
-                  <Link
-                    key={kind.id}
-                    href={`/dashboard/media-providers/${kind.id}`}
-                    prefetch={false}
-                    onClick={onClose}
-                      title={kind.label}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
-                      pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
-                        ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                        : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-                    )}
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-white/90 group-hover:text-white transition-colors">{kind.icon}</span>
-                    <span className="text-sm">{kind.label}</span>
-                  </Link>
-                ))}
-                <Link
-                  key={COMBINED_WEB_ITEM.id}
-                  href={COMBINED_WEB_ITEM.href}
-                  prefetch={false}
-                  onClick={onClose}
-                  title={COMBINED_WEB_ITEM.label}
+                <button
+                  type="button"
+                  onClick={() => setMediaOpen((v) => !v)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
-                    pathname.startsWith(COMBINED_WEB_ITEM.href)
-                      ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                      : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
+                    "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                    pathname.startsWith("/dashboard/media-providers")
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-muted hover:bg-surface-2 hover:text-text-main"
                   )}
                 >
-                  <span className="material-symbols-outlined text-[16px] text-white/90 group-hover:text-white transition-colors">{COMBINED_WEB_ITEM.icon}</span>
-                  <span className="text-sm">{COMBINED_WEB_ITEM.label}</span>
-                </Link>
-              </div>
-            )}
+                  <span className="material-symbols-outlined text-[18px]">perm_media</span>
+                  <span className="text-[13px] font-medium flex-1 text-left">Media Providers</span>
+                  <span
+                    className="material-symbols-outlined text-[14px] transition-transform"
+                    style={{ transform: mediaOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  >
+                    expand_more
+                  </span>
+                </button>
+                {mediaOpen && (
+                  <div className="pl-4 space-y-0.5">
+                    {MEDIA_NAV_ITEMS.filter((kind) => VISIBLE_MEDIA_KINDS.includes(kind.id)).map((kind) => (
+                      <Link
+                        key={kind.id}
+                        href={`/dashboard/media-providers/${kind.id}`}
+                        prefetch={false}
+                        onClick={onClose}
+                        title={kind.label}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                          pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
+                            ? "bg-primary/10 text-primary"
+                            : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                        )}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
+                        <span className="text-sm">{kind.label}</span>
+                      </Link>
+                    ))}
+                    <Link
+                      href={COMBINED_WEB_ITEM.href}
+                      prefetch={false}
+                      onClick={onClose}
+                      title={COMBINED_WEB_ITEM.label}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                        pathname.startsWith(COMBINED_WEB_ITEM.href)
+                          ? "bg-primary/10 text-primary"
+                          : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                      )}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">{COMBINED_WEB_ITEM.icon}</span>
+                      <span className="text-sm">{COMBINED_WEB_ITEM.label}</span>
+                    </Link>
+                  </div>
+                )}
               </>
             )}
 
-            {/* Power Up accordion */}
+            {/* AI Nâng cao — RouterLab extras */}
             {!collapsed && (
               <>
-            <button
-              onClick={() => setPowerUpOpen((v) => !v)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                isPowerUpActive
-                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">rocket_launch</span>
-              <span className="text-sm font-medium flex-1 text-left">AI Nâng cao</span>
-              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                expand_more
-              </span>
-            </button>
-            {powerUpOpen && (
-              <div className="pl-3 space-y-0.5">
-                {POWER_UP_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    onClick={onClose}
-                    title={item.label}
-                    className={cn(
-                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
-                      pathname.startsWith(item.href)
-                        ? "text-primary"
-                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
-                    )}
+                <button
+                  type="button"
+                  onClick={() => setPowerUpOpen((v) => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                    isPowerUpActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                  <span className="text-[13px] font-medium flex-1 text-left">AI Nâng cao</span>
+                  <span
+                    className="material-symbols-outlined text-[14px] transition-transform"
+                    style={{ transform: powerUpOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                   >
-                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
-                    <span className="text-[13px]">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    expand_more
+                  </span>
+                </button>
+                {powerUpOpen && (
+                  <div className="pl-4 space-y-0.5">
+                    {POWER_UP_ITEMS.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch={false}
+                        onClick={onClose}
+                        title={item.label}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                          pathname.startsWith(item.href)
+                            ? "bg-primary/10 text-primary"
+                            : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                        )}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
-            {/* Tools accordion */}
+            {/* Công cụ — RouterLab extras */}
             {!collapsed && (
               <>
-            <button
-              type="button"
-              onClick={() => setToolsOpen((v) => !v)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                TOOLS_ITEMS.filter((it) => !it.requiresTranslator || enableTranslator).some((it) => pathname.startsWith(it.href))
-                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px] text-white/90 group-hover:text-white transition-colors">build</span>
-              <span className="text-sm font-medium flex-1 text-left">Công cụ</span>
-              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                expand_more
-              </span>
-            </button>
-            {toolsOpen && (
-              <div className="pl-3 space-y-0.5">
-                {TOOLS_ITEMS.filter((item) => !item.requiresTranslator || enableTranslator).map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    onClick={onClose}
-                    title={item.label}
-                    className={cn(
-                      "flex items-center gap-2.5 px-3 py-1.5 transition-colors group",
-                      pathname.startsWith(item.href)
-                        ? "text-primary"
-                        : "text-[#9BB4B6] hover:text-[#DFF5F3]"
-                    )}
+                <button
+                  type="button"
+                  onClick={() => setToolsOpen((v) => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                    isToolsActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[18px]">build</span>
+                  <span className="text-[13px] font-medium flex-1 text-left">Công cụ</span>
+                  <span
+                    className="material-symbols-outlined text-[14px] transition-transform"
+                    style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                   >
-                    <span className="material-symbols-outlined text-[15px] text-white/90 group-hover:text-white transition-colors">{item.icon}</span>
-                    <span className="text-[13px]">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    expand_more
+                  </span>
+                </button>
+                {toolsOpen && (
+                  <div className="pl-4 space-y-0.5">
+                    {TOOLS_ITEMS.filter((item) => !item.requiresTranslator || enableTranslator).map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch={false}
+                        onClick={onClose}
+                        title={item.label}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                          pathname.startsWith(item.href)
+                            ? "bg-primary/10 text-primary"
+                            : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                        )}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
@@ -479,38 +498,25 @@ export default function Sidebar({ onClose, initialEnableTranslator = false, init
               href="/dashboard/profile"
               prefetch={false}
               onClick={onClose}
-              title="Cài đặt"
-              className={cn(
-                collapsed ? "flex items-center justify-center px-2 py-2 rounded-lg transition-all group" : "flex items-center gap-3 px-4 py-2 rounded-lg transition-all group",
-                isActive("/dashboard/profile")
-                  ? "bg-primary/16 text-primary shadow-[inset_3px_0_0_rgba(24,120,120,0.75)]"
-                  : "text-[#9BB4B6] hover:bg-primary/8 hover:text-[#DFF5F3]"
-              )}
+              title="Settings"
+              className={navItemClass(isActive("/dashboard/profile"))}
             >
-              <span
-                className={cn(
-                  "material-symbols-outlined text-[18px]",
-                  isActive("/dashboard/profile") ? "fill-1 text-white" : "text-white/90 group-hover:text-white transition-colors"
-                )}
-              >
-                settings
-              </span>
-              {!collapsed && <span className="text-sm font-medium">Cài đặt</span>}
+              <span className={navIconClass(isActive("/dashboard/profile"))}>settings</span>
+              {!collapsed && <span className="text-[13px] font-medium">Settings</span>}
             </Link>
           </div>
         </nav>
 
-        {/* Footer section */}
-        <div className={cn("border-t border-primary/15", collapsed ? "p-2" : "p-3")}>
-          {/* Shutdown button */}
+        {/* Footer — shutdown (RouterLab convenience; 9router omits this) */}
+        <div className={cn("border-t border-border-subtle", collapsed ? "p-2" : "p-3")}>
           <Button
             variant="outline"
             fullWidth
             icon="power_settings_new"
             onClick={() => setShowShutdownModal(true)}
-            className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
+            className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300 dark:border-red-900/40 dark:hover:bg-red-950/30"
           >
-            {collapsed ? "" : "Tắt máy"}
+            {collapsed ? "" : "Shutdown"}
           </Button>
         </div>
       </aside>
