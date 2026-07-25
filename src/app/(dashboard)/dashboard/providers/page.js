@@ -517,21 +517,24 @@ export default function ProvidersPage() {
             <div className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
               Featured
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {featuredEntries.map((entry) => (
                 <Link
                   key={`feat-${entry.key}`}
                   href={`/dashboard/providers/${entry.key}`}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-bg px-2.5 py-1.5 text-xs hover:border-primary/40 hover:bg-primary/5"
+                  className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border bg-bg px-2.5 py-1.5 text-xs transition-colors hover:border-primary/40 hover:bg-primary/5"
                 >
                   <ProviderIcon
                     src={getProviderIconSources(entry.info)}
                     alt={entry.info.name}
-                    size={20}
+                    size={18}
+                    className="shrink-0"
                     fallbackText={entry.info.textIcon || entry.key.slice(0, 2).toUpperCase()}
                     fallbackColor={entry.info.color}
                   />
-                  <span className="font-medium text-text-main">{entry.info.name}</span>
+                  <span className="min-w-0 truncate font-medium text-text-main">
+                    {entry.info.name}
+                  </span>
                 </Link>
               ))}
             </div>
