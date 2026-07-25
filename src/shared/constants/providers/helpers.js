@@ -85,12 +85,65 @@ const providerIconPathOverrides = {
   thebai: "/providers/thebai.svg",
   vllm: "/providers/vllm.svg",
   "volcengine-ark": "/providers/volcengine-ark.svg",
-  "xiaomi-mimo": "/providers/xiaomi-mimo.ico",
+  "xiaomi-mimo": "/providers/xiaomi-mimo.svg",
+  x5lab: "/providers/x5lab.svg",
+  // Brand / endpoint aliases → existing local provider icons
+  qwencoder: "/providers/qwen.svg",
+  alibaba: "/providers/alicode.svg",
+  "alibaba-cn": "/providers/alicode.svg",
+  "bailian-coding-plan": "/providers/alicode.svg",
+  glmt: "/providers/glm.svg",
+  sparkdesk: "/providers/iflytek.png",
+  "v0-vercel": "/providers/v0-vercel-web.svg",
+  "codebuddy-cn": "/providers/codebuddy.png",
+  "kimi-coding-apikey": "/providers/kimi-coding.png",
+  "command-code": "/providers/commandcode.png",
+  agy: "/providers/antigravity.png",
+  "gitlab-duo": "/providers/gitlab.png",
+  "zai-web": "/providers/zai.svg",
+  "qwen-web": "/providers/qwen.svg",
+  "copilot-m365-web": "/providers/copilot-web.svg",
+  bai: "/providers/thebai.svg",
+  clinepass: "/providers/cline.svg",
+  "grok-cli": "/providers/xai.svg",
+  "devin-cli": "/providers/devin.png",
+  mimocode: "/providers/xiaomi-mimo.svg",
+  "yuanbao-web": "/providers/tencent.svg",
+  // SVG-only local assets (default path would wrongly request .png)
+  agnes: "/providers/agnes.svg",
+  aihorde: "/providers/aihorde.svg",
+  ainative: "/providers/ainative.svg",
+  aion: "/providers/aion.svg",
+  "ant-ling": "/providers/ant-ling.svg",
+  chenzk: "/providers/chenzk.svg",
+  chipotle: "/providers/chipotle.svg",
+  "clova-studio": "/providers/clova-studio.svg",
+  dahl: "/providers/dahl.svg",
+  freepik: "/providers/freepik.svg",
+  "g4f-gemini": "/providers/g4f-gemini.svg",
+  "g4f-groq": "/providers/g4f-groq.svg",
+  "g4f-nvidia": "/providers/g4f-nvidia.svg",
+  "g4f-ollama": "/providers/g4f-ollama.svg",
+  "g4f-pollinations": "/providers/g4f-pollinations.svg",
+  "ghe-copilot": "/providers/ghe-copilot.svg",
+  hyperagent: "/providers/hyperagent.svg",
+  inception: "/providers/inception.svg",
+  internlm: "/providers/internlm.svg",
+  nara: "/providers/nara.svg",
+  navy: "/providers/navy.svg",
+  "notion-web": "/providers/notion-web.svg",
+  "felo-web": "/providers/felo-web.svg",
+  plamo: "/providers/plamo.svg",
+  promptql: "/providers/promptql.svg",
+  "qwen-cloud": "/providers/qwen-cloud.svg",
+  "qwen-cloud-token-plan": "/providers/qwen-cloud-token-plan.svg",
+  routeway: "/providers/routeway.svg",
+  sarvam: "/providers/sarvam.svg",
+  sealion: "/providers/sealion.svg",
+  typhoon: "/providers/typhoon.svg",
+  writer: "/providers/writer.svg",
+  "xai-oauth": "/providers/xai-oauth.svg",
 };
-
-const providerReadableLocalIconIds = new Set([
-  "kilocode",
-]);
 
 const curatedProviderIconIds = new Set([
   "ai21",
@@ -405,11 +458,14 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
   const knownProviderIconPath = AI_PROVIDERS[providerId] ? getProviderIconPath(providerId) : "";
   const faviconUrls = getProviderFaviconUrlsFromConfig(providerConfig);
 
+  // Known catalog / endpoint providers: always prefer local /providers icon first.
+  // External favicons are fallback only (avoids wrong/generic domain icons).
   if (!hasExplicitBaseUrl) {
-    if (providerReadableLocalIconIds.has(providerId)) {
-      return [...new Set([knownProviderIconPath || fallbackIconPath, ...faviconUrls].filter(Boolean))];
-    }
-    return [...new Set([...faviconUrls, knownProviderIconPath || fallbackIconPath].filter(Boolean))];
+    return [...new Set([
+      knownProviderIconPath || fallbackIconPath,
+      ...faviconUrls,
+      fallbackIconPath,
+    ].filter(Boolean))];
   }
 
   const inferredProviderId = inferProviderIconId(providerConfig);
@@ -418,10 +474,20 @@ export function getProviderIconSources(providerOrConfig, fallbackIconPath = "") 
     ? getProviderFaviconUrlsFromConfig({ id: inferredProviderId })
     : [];
   if (inferredIconPath) {
-    return [...new Set([inferredIconPath, fallbackIconPath, ...inferredFaviconUrls, ...faviconUrls].filter(Boolean))];
+    return [...new Set([
+      inferredIconPath,
+      knownProviderIconPath,
+      fallbackIconPath,
+      ...inferredFaviconUrls,
+      ...faviconUrls,
+    ].filter(Boolean))];
   }
 
-  return [...new Set([...faviconUrls, fallbackIconPath, knownProviderIconPath].filter(Boolean))];
+  return [...new Set([
+    knownProviderIconPath,
+    fallbackIconPath,
+    ...faviconUrls,
+  ].filter(Boolean))];
 }
 
 // Alias to ID mapping (for quick lookup)
