@@ -5,6 +5,7 @@
 import { checkFallbackError, formatRetryAfter } from "./accountFallback.js";
 import { unavailableResponse } from "../utils/error.js";
 import { handleFusionChat } from "./comboFusion.js";
+import { rejectPoisonStreamResponse } from "../shared/poisonContent.js";
 
 /**
  * Track rotation state per combo (for round-robin strategy)
@@ -396,7 +397,16 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
 
     try {
       const startedAt = Date.now();
-      const result = await handleSingleModel(body, modelStr);
+      let result = await handleSingleModel(body, modelStr);
+      // Detect poison "assistant content" that is really an upstream queue/error dump
+      // (e.g. [qoder error 403: ...10605...isQueued...]) so combo keeps falling through.
+      if (result?.ok) {
+        try {
+          result = await rejectPoisonStreamResponse(result, { log });
+        } catch (peekErr) {
+          log?.warn?.("COMBO", `Poison peek failed for ${modelStr}: ${peekErr?.message || peekErr}`);
+        }
+      }
       const durationMs = Date.now() - startedAt;
       
       // Success (2xx) - return response

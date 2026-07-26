@@ -79,6 +79,9 @@ export const ERROR_RULES = [
   { text: "queue #",                   backoff: true },
   { text: "\"code\":\"10605\"",        backoff: true },
   { text: "\"code\": \"10605\"",       backoff: true },
+  { text: "qoder error",               backoff: true },
+  { text: "qmodel_preview",            backoff: true },
+  { text: "upstream_error_content",    backoff: true },
 
   // --- Status-based rules (fallback when text doesn't match) ---
   { status: 401, cooldownMs: COOLDOWN.long },

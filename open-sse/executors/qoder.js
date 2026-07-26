@@ -338,6 +338,9 @@ function wrapQoderSSE(response, model) {
     const statusVal = typeof envelope.statusCodeValue === "number" ? envelope.statusCodeValue : 200;
     const inner = typeof envelope.body === "string" ? envelope.body : "";
     if (statusVal !== 200) {
+      // Never dump queue/auth errors into assistant content — Hermes treats
+      // content deltas as a normal finish_reason=stop reply. Emit error-only
+      // terminal chunk (empty content) so clients/combo can fail over.
       const mapped = mapQoderError(statusVal, inner || data);
       const errChunk = JSON.stringify({
         id: `qoder-error-${Date.now()}`,
@@ -346,13 +349,14 @@ function wrapQoderSSE(response, model) {
         model,
         choices: [{
           index: 0,
-          delta: { content: `\n[${mapped.message}]` },
+          delta: {},
           finish_reason: "stop",
         }],
         error: {
           message: mapped.message,
           type: mapped.isQueued ? "rate_limit_error" : "server_error",
           code: mapped.isQueued ? "rate_limit_exceeded" : "qoder_error",
+          status: mapped.status,
         },
       });
       controller.enqueue(encoder.encode(`data: ${errChunk}\n\n`));
