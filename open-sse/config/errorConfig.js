@@ -73,6 +73,12 @@ export const ERROR_RULES = [
   { text: "currently overloaded",      backoff: true },
   { text: "servers are currently overloaded", backoff: true },
   { text: "service overloaded",        backoff: true },
+  // Qoder model queue (code 10605 / isQueued) — treat as rate-limit style fallback
+  { text: "is busy (queue",            backoff: true },
+  { text: "isqueued",                  backoff: true },
+  { text: "queue #",                   backoff: true },
+  { text: "\"code\":\"10605\"",        backoff: true },
+  { text: "\"code\": \"10605\"",       backoff: true },
 
   // --- Status-based rules (fallback when text doesn't match) ---
   { status: 401, cooldownMs: COOLDOWN.long },
