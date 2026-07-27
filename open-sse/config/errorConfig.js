@@ -32,11 +32,13 @@ export const DEFAULT_ERROR_MESSAGES = {
   529: "Server temporarily overloaded"
 };
 
-// Exponential backoff config for rate limits
+// Exponential backoff config for rate limits.
+// Cap 45s — longer locks (128s/256s) on a single shared API key make combo
+// fallback worse by parking every model for minutes.
 export const BACKOFF_CONFIG = {
   base: 1000,
-  max: 4 * 60 * 1000,
-  maxLevel: 15
+  max: 45 * 1000,
+  maxLevel: 8
 };
 
 // Default cooldown for transient/unknown errors
@@ -65,6 +67,12 @@ export const ERROR_RULES = [
   { text: "no credentials",            cooldownMs: COOLDOWN.long },
   { text: "request not allowed",       cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
+  // QwenCoder shared-key bursts: fixed short lock (do NOT exponential to 256s)
+  { text: "too many attempts",         cooldownMs: 15 * 1000 },
+  { text: "upstream_rate_limited",     cooldownMs: 20 * 1000 },
+  { text: "rate_limit_error",          cooldownMs: 15 * 1000 },
+  { text: "rate limited",              cooldownMs: 15 * 1000 },
+  { text: "invalid sse response",      cooldownMs: COOLDOWN.short },
   { text: "rate limit",                backoff: true },
   { text: "too many requests",         backoff: true },
   { text: "quota exceeded",            backoff: true },
@@ -80,7 +88,8 @@ export const ERROR_RULES = [
   { status: 403, cooldownMs: COOLDOWN.long },
   { status: 404, cooldownMs: COOLDOWN.long },
   { status: 408, cooldownMs: TRANSIENT_COOLDOWN_MS },
-  { status: 429, backoff: true },
+  // Prefer modest fixed lock over unbounded exponential for generic 429
+  { status: 429, cooldownMs: 15 * 1000 },
   { status: 529, backoff: true },
 ];
 

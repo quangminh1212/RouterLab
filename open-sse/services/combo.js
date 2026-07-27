@@ -389,6 +389,19 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
   let lastError = null;
   let earliestRetryAfter = null;
   let lastStatus = null;
+  // Shared-key providers (e.g. one QwenCoder account for all models): cascading
+  // through every model on 429 multiplies "Too many attempts" and locks the
+  // whole combo. Stop after a few consecutive rate-limits and return Retry-After
+  // so clients (Hermes never-stop) wait instead of hammering.
+  let consecutiveRateLimits = 0;
+  const MAX_CONSECUTIVE_RATE_LIMITS = Math.max(
+    1,
+    Number(process.env.COMBO_MAX_CONSECUTIVE_RATE_LIMITS) || 2
+  );
+  const MAX_WAIT_BETWEEN_MODELS_MS = Math.max(
+    1000,
+    Number(process.env.COMBO_MAX_WAIT_BETWEEN_MODELS_MS) || 8000
+  );
 
   for (let i = 0; i < rotatedModels.length; i++) {
     const modelStr = rotatedModels[i];
@@ -420,14 +433,20 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       const headerRetryAfter = toRetryAfterIso(parseRetryAfterMsFromHeaders(result.headers));
       if (!retryAfter && headerRetryAfter) retryAfter = headerRetryAfter;
 
-      // Track earliest retryAfter across all combo models
-      if (retryAfter && (!earliestRetryAfter || new Date(retryAfter) < new Date(earliestRetryAfter))) {
-        earliestRetryAfter = retryAfter;
-      }
-
       // Normalize error text to string (Worker-safe)
       if (typeof errorText !== "string") {
         try { errorText = JSON.stringify(errorText); } catch { errorText = String(errorText); }
+      }
+
+      // Derive retryAfter from body "reset after Ns" when headers omit it
+      if (!retryAfter) {
+        const resetSec = parseRetryAfterSecondsFromText(errorText);
+        if (resetSec) retryAfter = new Date(Date.now() + resetSec * 1000).toISOString();
+      }
+
+      // Track earliest retryAfter across all combo models
+      if (retryAfter && (!earliestRetryAfter || new Date(retryAfter) < new Date(earliestRetryAfter))) {
+        earliestRetryAfter = retryAfter;
       }
 
       // Check if should fallback to next model
@@ -439,19 +458,59 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
         return result;
       }
 
-      // For transient errors (503/502/504), wait for cooldown before falling through
-      // so a briefly-overloaded provider gets a chance to recover rather than being
-      // skipped immediately (fixes: combo falls through on transient 503)
-      if (cooldownMs && cooldownMs > 0 && cooldownMs <= 1200 &&
-          (result.status === 503 || result.status === 502 || result.status === 504)) {
-        log.info("COMBO", `Model ${modelStr} transient ${result.status}, waiting ${cooldownMs}ms before next`);
-        await new Promise(r => setTimeout(r, cooldownMs));
-      }
+      const lowerErr = (errorText || "").toLowerCase();
+      const isRateLimited =
+        result.status === 429
+        || lowerErr.includes("rate_limit")
+        || lowerErr.includes("rate limit")
+        || lowerErr.includes("too many attempts")
+        || lowerErr.includes("upstream_rate_limited")
+        || (lowerErr.includes("all") && lowerErr.includes("accounts locked"));
+      const isTransientGw =
+        result.status === 502
+        || result.status === 503
+        || result.status === 504
+        || lowerErr.includes("invalid sse")
+        || lowerErr.includes("bad gateway");
 
-      // Fallback to next model
+      if (isRateLimited) consecutiveRateLimits += 1;
+      else consecutiveRateLimits = 0;
+
       recordComboResult(comboName, modelStr, durationMs, false, comboSlowModelCooldownEnabled);
       lastError = errorText || String(result.status);
       if (!lastStatus) lastStatus = result.status;
+
+      // Stop cascade: more 429s on the same shared key only deepen the hole.
+      if (isRateLimited && consecutiveRateLimits >= MAX_CONSECUTIVE_RATE_LIMITS) {
+        if (!earliestRetryAfter) {
+          const waitMs = Math.min(
+            Math.max(cooldownMs || 15000, 5000),
+            60000
+          );
+          earliestRetryAfter = new Date(Date.now() + waitMs).toISOString();
+        }
+        log.warn(
+          "COMBO",
+          `Stop cascade after ${consecutiveRateLimits} consecutive rate-limits on ${modelStr} — return retry-after (do not burn remaining models)`,
+          { status: result.status, remaining: rotatedModels.length - i - 1 }
+        );
+        break;
+      }
+
+      // Wait before next model (429 + SSE/5xx) so locks can clear a bit.
+      let waitMs = 0;
+      const resetSec = parseRetryAfterSecondsFromText(errorText);
+      if (resetSec) waitMs = resetSec * 1000 + 500;
+      else if (cooldownMs && cooldownMs > 0) waitMs = cooldownMs;
+      if (waitMs > 0 && (isRateLimited || isTransientGw)) {
+        waitMs = Math.min(waitMs, MAX_WAIT_BETWEEN_MODELS_MS);
+        log.info(
+          "COMBO",
+          `Model ${modelStr} ${isRateLimited ? "rate-limited" : "transient"} ${result.status}, waiting ${waitMs}ms before next`
+        );
+        await new Promise(r => setTimeout(r, waitMs));
+      }
+
       log.warn("COMBO", `Model ${modelStr} failed, trying next`, { status: result.status, reason: errorText, cooldownMs });
     } catch (error) {
       // Catch unexpected exceptions to ensure fallback continues
