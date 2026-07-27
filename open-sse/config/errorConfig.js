@@ -32,6 +32,7 @@ export const DEFAULT_ERROR_MESSAGES = {
   529: "Server temporarily overloaded"
 };
 
+<<<<<<< HEAD
 // Exponential backoff config for rate limits.
 // Cap 45s — longer locks (128s/256s) on a single shared API key make combo
 // fallback worse by parking every model for minutes.
@@ -39,6 +40,13 @@ export const BACKOFF_CONFIG = {
   base: 1000,
   max: 45 * 1000,
   maxLevel: 8
+=======
+// Exponential backoff config for rate limits
+export const BACKOFF_CONFIG = {
+  base: 1000,
+  max: 4 * 60 * 1000,
+  maxLevel: 15
+>>>>>>> f6731fba436468c1570b40f74629cf2b5ae1c0c1
 };
 
 // Default cooldown for transient/unknown errors
@@ -67,12 +75,15 @@ export const ERROR_RULES = [
   { text: "no credentials",            cooldownMs: COOLDOWN.long },
   { text: "request not allowed",       cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
+<<<<<<< HEAD
   // QwenCoder shared-key bursts: fixed short lock (do NOT exponential to 256s)
   { text: "too many attempts",         cooldownMs: 15 * 1000 },
   { text: "upstream_rate_limited",     cooldownMs: 20 * 1000 },
   { text: "rate_limit_error",          cooldownMs: 15 * 1000 },
   { text: "rate limited",              cooldownMs: 15 * 1000 },
   { text: "invalid sse response",      cooldownMs: COOLDOWN.short },
+=======
+>>>>>>> f6731fba436468c1570b40f74629cf2b5ae1c0c1
   { text: "rate limit",                backoff: true },
   { text: "too many requests",         backoff: true },
   { text: "quota exceeded",            backoff: true },
@@ -81,6 +92,18 @@ export const ERROR_RULES = [
   { text: "currently overloaded",      backoff: true },
   { text: "servers are currently overloaded", backoff: true },
   { text: "service overloaded",        backoff: true },
+<<<<<<< HEAD
+=======
+  // Qoder model queue (code 10605 / isQueued) — treat as rate-limit style fallback
+  { text: "is busy (queue",            backoff: true },
+  { text: "isqueued",                  backoff: true },
+  { text: "queue #",                   backoff: true },
+  { text: "\"code\":\"10605\"",        backoff: true },
+  { text: "\"code\": \"10605\"",       backoff: true },
+  { text: "qoder error",               backoff: true },
+  { text: "qmodel_preview",            backoff: true },
+  { text: "upstream_error_content",    backoff: true },
+>>>>>>> f6731fba436468c1570b40f74629cf2b5ae1c0c1
 
   // --- Status-based rules (fallback when text doesn't match) ---
   { status: 401, cooldownMs: COOLDOWN.long },
@@ -88,8 +111,12 @@ export const ERROR_RULES = [
   { status: 403, cooldownMs: COOLDOWN.long },
   { status: 404, cooldownMs: COOLDOWN.long },
   { status: 408, cooldownMs: TRANSIENT_COOLDOWN_MS },
+<<<<<<< HEAD
   // Prefer modest fixed lock over unbounded exponential for generic 429
   { status: 429, cooldownMs: 15 * 1000 },
+=======
+  { status: 429, backoff: true },
+>>>>>>> f6731fba436468c1570b40f74629cf2b5ae1c0c1
   { status: 529, backoff: true },
 ];
 

@@ -1,0 +1,374 @@
+{
+  "ts": "2026-07-24T18:22:20.226525Z",
+  "base": "http://36.50.26.247:1212",
+  "state": {
+    "pcs": [
+      {
+        "id": "4d4f5245-f589-4e3a-b79e-d13ccb04fc58",
+        "provider": "xai",
+        "name": "thanvananie13@gmail.com",
+        "isActive": false,
+        "testStatus": "active",
+        "has_apiKey": false,
+        "apiKey_prefix": "",
+        "baseUrl": null,
+        "prefix": null,
+        "errorCode": 400,
+        "lastError": null
+      },
+      {
+        "id": "191f9fce-db02-4f20-8e84-aa4308e1b604",
+        "provider": "openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00",
+        "name": "qwen",
+        "isActive": true,
+        "testStatus": "active",
+        "has_apiKey": true,
+        "apiKey_prefix": "qwk_be3a8305",
+        "baseUrl": "https://api.qwencoder.cloud/api/v1",
+        "prefix": "qwencoder",
+        "errorCode": null,
+        "lastError": null
+      },
+      {
+        "id": "1d8294ef-192c-406f-863a-79d1fdd4ae13",
+        "provider": "qwencoder",
+        "name": "QwenCoder",
+        "isActive": true,
+        "testStatus": "active",
+        "has_apiKey": true,
+        "apiKey_prefix": "qwk_be3a8305",
+        "baseUrl": "https://api.qwencoder.cloud/api/v1",
+        "prefix": "qwencoder",
+        "errorCode": null,
+        "lastError": null
+      }
+    ],
+    "nodes": [
+      {
+        "id": "openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00",
+        "type": "openai-compatible",
+        "nodeName": "Qwencoder",
+        "baseUrl": "https://api.qwencoder.cloud/api/v1",
+        "apiType": "chat",
+        "createdAt": "2026-07-23T09:50:24.598Z",
+        "updatedAt": "2026-07-24T18:09:29.331741Z",
+        "prefix": "qwencoder"
+      },
+      {
+        "id": "openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00",
+        "type": "openai-compatible",
+        "nodeName": "Qwencoder",
+        "baseUrl": "https://api.qwencoder.cloud/api/v1",
+        "apiType": "chat",
+        "createdAt": "2026-07-23T09:50:24.598Z",
+        "updatedAt": "2026-07-24T18:09:29.331741Z",
+        "prefix": "qwc"
+      }
+    ],
+    "combos": [
+      {
+        "name": "XLab",
+        "models": [
+          "qwencoder/kimi-2.6",
+          "qwencoder/gpt-5.6-luna",
+          "qwencoder/gpt-5.6-sol",
+          "qwencoder/qwen3.7-max",
+          "qwencoder/minimax-m2.7",
+          "qwencoder/minimax-m3",
+          "qwencoder/glm-5.2",
+          "qwencoder/mimo-2.5",
+          "qwencoder/laguna-s-2.1",
+          "qwencoder/grok-4.5",
+          "qwencoder/step-3.7-flash",
+          "qwencoder/qwen3.6-35b-a3b"
+        ],
+        "n": 12
+      }
+    ],
+    "keys": [
+      {
+        "name": "ClaudeCode",
+        "enabled": true,
+        "prefix": "sk-6520dcd38ef35"
+      },
+      {
+        "name": "zzzzzzz",
+        "enabled": true,
+        "prefix": "sk-1774390dab6d8"
+      },
+      {
+        "name": "Luyt",
+        "enabled": true,
+        "prefix": "sk-6520dcd38ef35"
+      }
+    ]
+  },
+  "meta": {
+    "/api/version": {
+      "ok": true,
+      "status": 200,
+      "ms": 256.8,
+      "snippet": "{'currentVersion': '1.0.48', 'latestVersion': '1.0.47', 'hasUpdate': False, 'buildId': '5hPC2izNox4X-r_dl2BEd', 'serverTime': '2026-07-24T18:19:37.078Z'}"
+    },
+    "/api/monitoring/health": {
+      "ok": true,
+      "status": 200,
+      "ms": 53.9,
+      "snippet": "{'status': 'healthy', 'app': {'name': 'RouterLab', 'version': '1.0.48'}, 'settings': {'requireApiKey': False, 'requireLogin': True, 'fallbackStrategy': 'fill-first', 'observabilityEnabled': True}, 'totals': {'providers': 3, 'connections': 3, 'activeConnections': 2, 'cooldownConnections': 0, 'unavail"
+    },
+    "/manifest.webmanifest": {
+      "ok": true,
+      "status": 200,
+      "ms": 67.9,
+      "snippet": "{'name': 'RouterLab - AI Infrastructure Management', 'short_name': 'RouterLab', 'description': 'One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.', 'start_url': '/', 'display': 'standalone', 'background_color': '#0a0a0a', 'theme_color': '#0a0a0a', 'orientati"
+    },
+    "/v1/models": {
+      "ok": true,
+      "status": 200,
+      "ms": 93.2,
+      "snippet": "{'object': 'list', 'data': [{'id': 'XLab', 'object': 'model', 'created': 1784917253, 'owned_by': 'combo', 'permission': [], 'root': 'XLab', 'parent': None}]}",
+      "model_ids": [
+        "XLab"
+      ],
+      "has_XLab": true
+    }
+  },
+  "models": {
+    "qwencoder/kimi-2.6": {
+      "model": "qwencoder/kimi-2.6",
+      "ok": true,
+      "status": 200,
+      "ms": 429.2,
+      "upstream_model": "kimi-2.6",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/gpt-5.6-luna": {
+      "model": "qwencoder/gpt-5.6-luna",
+      "ok": true,
+      "status": 200,
+      "ms": 1192.0,
+      "upstream_model": "gpt-5.6-luna",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/gpt-5.6-sol": {
+      "model": "qwencoder/gpt-5.6-sol",
+      "ok": true,
+      "status": 200,
+      "ms": 3710.7,
+      "upstream_model": "gpt-5.6-sol",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/qwen3.7-max": {
+      "model": "qwencoder/qwen3.7-max",
+      "ok": true,
+      "status": 200,
+      "ms": 2163.6,
+      "upstream_model": "qwen3.7-max",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/minimax-m2.7": {
+      "model": "qwencoder/minimax-m2.7",
+      "ok": true,
+      "status": 200,
+      "ms": 4390.4,
+      "upstream_model": "minimax-m2.7",
+      "content": "<think>\nThe user is asking me to reply with exactly \"PONG\". This is a simple, direct request. I\n</think>",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/minimax-m3": {
+      "model": "qwencoder/minimax-m3",
+      "ok": true,
+      "status": 200,
+      "ms": 1325.8,
+      "upstream_model": "minimax-m3",
+      "content": "<think>\nThe user wants exactly \"PONG\". But the developer policy says to be ultra-terse, which aligns with just\n</think>",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/glm-5.2": {
+      "model": "qwencoder/glm-5.2",
+      "ok": false,
+      "status": 503,
+      "ms": 7072.5,
+      "upstream_model": null,
+      "content": null,
+      "content_ok": null,
+      "pong": null,
+      "error": "{\"error\":{\"message\":\"[openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00/glm-5.2] [503]: {\\\"error\\\":{\\\"message\\\":\\\"Currently unavailable.\\\",\\\"type\\\":\\\"server_error\\\",\\\"param\\\":null,\\\"code\\\":\\\"UPSTREAM_UNAVAILABLE\\\"}} (reset after 30s)\"}}"
+    },
+    "qwencoder/mimo-2.5": {
+      "model": "qwencoder/mimo-2.5",
+      "ok": false,
+      "status": 400,
+      "ms": 483.9,
+      "upstream_model": null,
+      "content": null,
+      "content_ok": null,
+      "pong": null,
+      "error": "{\"error\":{\"message\":\"[400]: {\\\"error\\\":{\\\"message\\\":\\\"Request rejected.\\\",\\\"type\\\":\\\"invalid_request_error\\\",\\\"param\\\":null,\\\"code\\\":\\\"UPSTREAM_BAD_REQUEST\\\"}}\",\"type\":\"invalid_request_error\",\"code\":\"bad_request\"}}"
+    },
+    "qwencoder/laguna-s-2.1": {
+      "model": "qwencoder/laguna-s-2.1",
+      "ok": false,
+      "status": 429,
+      "ms": 13599.8,
+      "upstream_model": null,
+      "content": null,
+      "content_ok": null,
+      "pong": null,
+      "error": "{\"error\":{\"message\":\"[openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00/laguna-s-2.1] [429]: {\\\"error\\\":{\\\"message\\\":\\\"Rate limit exceeded.\\\",\\\"type\\\":\\\"rate_limit_error\\\",\\\"param\\\":null,\\\"code\\\":\\\"UPSTREAM_RATE_LIMITED\\\"}} (reset after 16s)\"}}"
+    },
+    "qwencoder/grok-4.5": {
+      "model": "qwencoder/grok-4.5",
+      "ok": true,
+      "status": 200,
+      "ms": 4286.0,
+      "upstream_model": "grok-4.5",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwencoder/step-3.7-flash": {
+      "model": "qwencoder/step-3.7-flash",
+      "ok": false,
+      "status": 502,
+      "ms": 45093.2,
+      "upstream_model": null,
+      "content": null,
+      "content_ok": null,
+      "pong": null,
+      "error": "{\"error\":{\"message\":\"[openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00/step-3.7-flash] [502]: Fetch timeout after 45000ms (reset after 30s)\"}}"
+    },
+    "qwencoder/qwen3.6-35b-a3b": {
+      "model": "qwencoder/qwen3.6-35b-a3b",
+      "ok": false,
+      "status": 503,
+      "ms": 8781.4,
+      "upstream_model": null,
+      "content": null,
+      "content_ok": null,
+      "pong": null,
+      "error": "{\"error\":{\"message\":\"[openai-compatible-chat-1b2d65d3-4506-42b6-9e91-cf2ab38adb00/qwen3.6-35b-a3b] [503]: {\\\"error\\\":{\\\"message\\\":\\\"Currently unavailable.\\\",\\\"type\\\":\\\"server_error\\\",\\\"param\\\":null,\\\"code\\\":\\\"UPSTREAM_UNAVAILABLE\\\"}} (reset after 22s)\"}}"
+    },
+    "qwc/gpt-5.6-sol": {
+      "model": "qwc/gpt-5.6-sol",
+      "ok": true,
+      "status": 200,
+      "ms": 1859.5,
+      "upstream_model": "gpt-5.6-sol",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwc/gpt-5.6-luna": {
+      "model": "qwc/gpt-5.6-luna",
+      "ok": true,
+      "status": 200,
+      "ms": 1141.2,
+      "upstream_model": "gpt-5.6-luna",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    },
+    "qwc/kimi-2.6": {
+      "model": "qwc/kimi-2.6",
+      "ok": true,
+      "status": 200,
+      "ms": 229.3,
+      "upstream_model": "kimi-2.6",
+      "content": "PONG",
+      "content_ok": true,
+      "pong": true,
+      "error": null
+    }
+  },
+  "combo": {
+    "model": "XLab",
+    "rounds": [
+      {
+        "ok": true,
+        "status": 200,
+        "ms": 200.0,
+        "upstream_model": "kimi-2.6",
+        "content": "PONG",
+        "content_ok": true,
+        "pong": true,
+        "error": null
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "ms": 197.3,
+        "upstream_model": "kimi-2.6",
+        "content": "PONG",
+        "content_ok": true,
+        "pong": true,
+        "error": null
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "ms": 235.3,
+        "upstream_model": "kimi-2.6",
+        "content": "PONG",
+        "content_ok": true,
+        "pong": true,
+        "error": null
+      }
+    ]
+  },
+  "summary": {
+    "models_total": 15,
+    "models_pass": 10,
+    "models_fail": 5,
+    "fail_ids": [
+      "qwencoder/glm-5.2",
+      "qwencoder/mimo-2.5",
+      "qwencoder/laguna-s-2.1",
+      "qwencoder/step-3.7-flash",
+      "qwencoder/qwen3.6-35b-a3b"
+    ],
+    "combo_pass": "3/3",
+    "multi_turn_ok": true,
+    "stream_ok": true,
+    "latency_ms": {
+      "p50": 1592.7,
+      "avg": 2072.8,
+      "max": 4390.4,
+      "min": 229.3
+    },
+    "overall_pass": false
+  },
+  "multi_turn": {
+    "ok": true,
+    "status": 200,
+    "ms": 1641.0,
+    "content": "STEP2",
+    "ok_content": true,
+    "error": null
+  },
+  "stream": {
+    "ok": true,
+    "chunks": 7,
+    "ms": 1767.9,
+    "error": null
+  }
+}
