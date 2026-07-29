@@ -475,6 +475,9 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
         || lowerErr.includes("rate limit")
         || lowerErr.includes("too many attempts")
         || lowerErr.includes("upstream_rate_limited")
+        || lowerErr.includes("client_abort_rate_limited")
+        || lowerErr.includes("too many cancelled")
+        || lowerErr.includes("cancelled requests")
         || (lowerErr.includes("all") && lowerErr.includes("accounts locked"));
       const isTransientGw =
         result.status === 502
