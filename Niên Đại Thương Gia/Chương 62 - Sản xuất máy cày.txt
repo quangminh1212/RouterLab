@@ -1,0 +1,254 @@
+============================================================
+Chương 62: Sản xuất máy cày
+============================================================
+
+Cuối năm 1985, những chiếc xe đạp của lô thử đầu tiên vẫn còn treo trên giá kiểm tra thì Hùng đã đặt lên bàn một câu hỏi khác: người nông dân cần gì hơn một phương tiện để đi chợ?
+
+Qua ô cửa xưởng, những thửa ruộng ven Quốc Oai nằm sẫm màu sau mưa. Vài con trâu kéo cày chậm trên nền đất nặng. Người đi sau lưỡi cày phải ghì cả hai tay, chân lún tới mắt cá. Cảnh ấy không xa lạ với Hùng. Điều khác biệt là lần này ông không chỉ nhìn thấy sức người bị bào mòn; ông còn nhìn thấy một bài toán cơ khí có thể chia thành từng phần.
+
+Trên tấm bảng gỗ, ông viết bốn dòng bằng phấn:
+
+Động cơ: mua ngoài.
+
+Khung, tay lái, bánh lồng, bộ gá: tự chế.
+
+Hộp truyền động: cải tiến từ cụm có sẵn, chưa tự sản xuất.
+
+Mục tiêu: máy cày hai bánh, công suất nhỏ, dùng cho ruộng hẹp.
+
+Lan đọc hết rồi hỏi:
+
+“Anh ghi rõ ‘mua ngoài’ ngay từ đầu để làm gì? Người ngoài nhìn vào có thể bảo mình chỉ biết lắp ráp.”
+
+“Vì mình đúng là chưa làm được động cơ,” Hùng đáp. “Che một chỗ yếu không làm nó mạnh lên. Xưởng vừa dựng được khung xe đạp, chưa thể sáng ngủ dậy đã đúc thân máy, làm pít-tông, mài trục khuỷu. Ta làm phần mình kiểm soát được, mua phần vượt quá năng lực, rồi thử xem cả chiếc máy có giúp được người cày hay không.”
+
+Ông khoanh dòng cuối. Máy cày hai bánh, không phải loại bốn bánh lớn dùng trên những cánh đồng rộng. Ruộng miền Bắc chia nhỏ, bờ hẹp, nhiều góc cua. Một cỗ máy nặng quá sẽ tự biến thành gánh nặng. Mẫu đầu chỉ được phép dùng động cơ dầu một xi-lanh mua từ một đầu mối cơ khí trong nước, công suất danh định tám mã lực. Hùng tự đặt giới hạn vận hành ở mức thấp hơn: không kéo quá tải, không chạy liên tục quá hai giờ, không đưa xuống ruộng nếu tấm che dây đai và chốt ngắt máy chưa đạt.
+
+Người thợ cả của xưởng, mái tóc đã lấm những sợi bạc vì bụi mài, cầm viên phấn viết thêm dưới bảng: “Phụ tùng thay thế.”
+
+“Động cơ mua được một lần chưa chắc mua được lần thứ hai,” bác nói. “Dây đai đứt, bạc đạn vỡ, lọc dầu bẩn, máy nằm giữa ruộng thì người ta chửi cả chiếc, không chừa phần nào là của mình hay của người khác.”
+
+Hùng đặt viên phấn xuống.
+
+“Bác nói đúng. Chưa có bộ phụ tùng thì chưa giao máy. Mỗi mẫu thử phải kèm hai dây đai, một bộ lọc, chốt dự phòng, dầu bôi trơn và bản hướng dẫn bằng hình. Người không đọc thạo vẫn phải biết chỗ nào được chạm, chỗ nào phải tránh.”
+
+Lan mở sổ, chia trang giấy thành ba cột: tự làm, mua ngoài, bắt buộc dự phòng. Cô không dùng những lời lớn. Mỗi dòng đều có người nhận việc, hạn hoàn thành và cách kiểm. Phần tự làm gồm khung thép, tay lái điều chỉnh, giá động cơ, chắn bùn, bánh lồng, bánh cao su dùng khi đi đường và bộ gá lưỡi cày. Phần mua ngoài gồm động cơ, vòng bi, dây đai, bu-lông chịu lực và cụm bánh răng. Phần dự phòng gồm những món dễ mòn hoặc dễ thất lạc.
+
+Chiếc xe đạp ở Chương 61 cho xưởng một bài học hữu ích: ống thép mỏng có thể chịu tải tốt nếu mối hàn đều, nhưng máy cày không phải xe đạp. Rung động từ động cơ và lực giật của đất truyền ngược lên khung mạnh hơn nhiều. Hùng yêu cầu bỏ ngay ý định tận dụng nguyên kích thước ống khung xe. Khung máy cày dùng thép thành dày hơn, có thanh giằng chéo; chỗ bắt động cơ lót đệm cao su; mối hàn chịu lực phải được mài sạch rồi kiểm bằng dầu thấm.
+
+Một thợ trẻ phản đối. Cậu cho rằng làm như vậy tốn thép, mẫu máy sẽ nặng, giá khó bán.
+
+“Khung đầu tiên chỉ cần đủ dày, sau thử mới giảm,” cậu nói. “Nếu cứ thêm giằng, thêm tấm, chẳng khác gì mang cái cổng làng xuống ruộng.”
+
+Người thợ cả gõ đầu búa lên bàn:
+
+“Giảm trước khi biết lực chạy qua đâu là đánh bạc.”
+
+Hai người cùng nhìn Hùng. Ông không chọn theo tuổi nghề.
+
+“Làm hai đoạn khung thử,” ông quyết định. “Một đoạn theo bản dày, một đoạn giảm vật liệu như đề nghị. Ép tải tĩnh, sau đó cho rung liên tục. Con số trả lời. Đoạn nào cong trước thì dừng tranh luận.”
+
+Buổi thử khung diễn ra ngay chiều hôm ấy. Họ kê hai đầu đoạn thép, treo tải từng nấc, đo độ võng bằng thước lá và một mũi kim vạch trên giấy. Đoạn khung nhẹ bắt đầu biến dạng thấy rõ khi tải vượt mức dự kiến của động cơ cùng lực kéo. Đoạn có giằng giữ được hình, nhưng một mối hàn xuất hiện đường dầu mảnh dưới phép thử thấm.
+
+Người thợ trẻ không né lỗi. Cậu tự lấy phấn đánh dấu chỗ nứt.
+
+“Khung nhẹ chưa dùng được. Mối này cũng phải hàn lại.”
+
+Hùng ghi tên cậu vào sổ người phát hiện lỗi, không phải sổ người gây lỗi.
+
+“Thấy trước khi xuống ruộng là công,” ông nói. “Che nó mới là tội.”
+
+Ba ngày sau, mẫu máy thứ nhất thành hình. Động cơ đặt phía trước, hai bánh lồng thép ở giữa, tay lái kéo dài ra sau. Cụm truyền động dùng hai cấp dây đai và hộp giảm tốc mua ngoài. Tốc độ được hãm thấp để máy không kéo người vận hành chạy theo. Lưỡi cày một thân gắn bằng chốt rút, có ba nấc chỉnh độ sâu. Một tấm thép che kín phần dây đai quay; phía tay phải có cần cắt truyền động. Dây giật tắt máy buộc vào cổ tay người điều khiển, nếu người ngã hoặc buông tay, động cơ vẫn nổ nhưng bánh kéo phải ngừng.
+
+Hùng đi quanh máy hai vòng mà không cho ai khởi động.
+
+“Kiểm nguội trước.”
+
+Người thợ cả đọc từng mục. Dầu máy đủ. Nhiên liệu không rò. Bu-lông chân máy có vòng hãm. Dây đai thẳng. Tấm che không chạm puli. Cần cắt truyền động trả về vị trí tự do. Tay lái khóa chắc ở hai độ cao. Lưỡi cày không nứt. Chốt có dây giữ. Bánh lồng quay không vướng.
+
+Lan đứng ngoài vạch vôi, giữ sổ. Cô hỏi:
+
+“Ai được vận hành?”
+
+“Chỉ bác thợ cả trong lần nổ máy đầu,” Hùng đáp. “Những người khác đứng ngoài bán kính ba mét. Không ai cúi qua dây đai, dù đã có tấm che.”
+
+Động cơ giật ba lần mới nổ. Tiếng máy một xi-lanh vang cộc cộc trong sân, làm bụi trên mái tôn rung xuống. Khung rung mạnh ở tốc độ thấp. Khi tăng ga vừa phải, rung giảm nhưng tay lái vẫn giật theo từng nhịp. Bác thợ cả cắt truyền động, thử số chậm. Hai bánh lồng quay, chiếc máy nhích lên trên nền đất nện.
+
+Chưa đầy bốn phút, dây đai trượt khỏi rãnh.
+
+Không ai reo, cũng không ai vội lắp lại. Hùng ra hiệu tắt động cơ. Cả nhóm chờ puli dừng hẳn mới tháo tấm che. Giá đỡ hộp giảm tốc lệch gần ba mi-li-mét; dưới rung động, dây đai bò dần ra mép.
+
+Người thợ phụ trách gá lắp đỏ mặt:
+
+“Tôi đo lúc chưa siết. Siết bu-lông xong giá bị kéo lệch.”
+
+“Ghi đúng câu ấy vào biên bản,” Hùng nói. “Thêm bước đo lại sau siết. Làm dưỡng căn thẳng, đừng trông vào mắt.”
+
+Lan ngồi xuống cạnh bàn, sửa ngay quy trình. Một tấm thép phẳng được khoan thành dưỡng, ép hai puli về cùng mặt trước khi khóa bu-lông. Họ thêm thanh chống vào giá hộp giảm tốc và thay vòng đệm thường bằng vòng đệm hãm. Việc sửa mất gần một ngày, nhưng lần chạy thứ hai kéo dài đủ một giờ trên sân mà dây đai không trượt.
+
+Thử trên sân chỉ chứng minh máy có thể tự đi. Nó chưa chứng minh được khả năng cày.
+
+Hùng nhờ cán bộ nông nghiệp huyện giới thiệu một thửa ruộng sau thu hoạch, đất thịt còn ẩm, diện tích vừa đủ để thử mà không ảnh hưởng vụ gieo trồng. Vị cán bộ tới xưởng vào sáng hôm sau, xem máy, xem tấm che và hỏi thẳng:
+
+“Các anh định bán ngay à?”
+
+“Không,” Hùng trả lời. “Đây là mẫu thử. Nếu hỏng, chúng tôi kéo về. Nếu đạt, vẫn chỉ làm lô nhỏ sau khi sửa đủ lỗi. Biên bản hôm nay phải ghi cả phần thất bại.”
+
+Người cán bộ nhìn dòng “động cơ mua ngoài” trên bảng kê rồi hỏi tiếp:
+
+“Dân nghe tám mã lực dễ tưởng kéo gì cũng được. Ai chịu trách nhiệm nếu họ móc xe hàng vào máy?”
+
+“Chúng tôi giới hạn công dụng bằng hướng dẫn, bằng bộ gá và bằng buổi bàn giao. Không bán riêng lời hứa. Máy chỉ thiết kế cho cày nông, xới và kéo tải nhẹ trên đường nội đồng. Không dùng chở người, không kéo trên đường lớn, không xuống dốc khi gắn bánh lồng.”
+
+Vị cán bộ không khen. Ông yêu cầu có người dân trực tiếp thử, bởi thợ máy thường biết cách chiều một cỗ máy mà người dùng bình thường không biết.
+
+Người được mời là một nông dân có hơn hai mươi năm cày ruộng trong vùng. Bác có đôi bàn tay chai dày, nhìn chiếc máy rất lâu rồi mới hỏi giá. Hùng chưa trả lời bằng một con số.
+
+“Giá còn phụ thuộc việc máy có làm được không,” ông nói. “Hôm nay bác chỉ giúp chỉ ra cái dở. Không cần giữ ý.”
+
+Bác nông dân chống tay lên tay lái, lắc thử.
+
+“Nặng đầu. Quay ở bờ hẹp sẽ mệt. Cần cắt này xa ngón tay. Lúc máy chồm, tôi không rảnh buông một tay để tìm.”
+
+Ba nhận xét đầu đã đi thẳng vào những chỗ nhóm thợ chưa ghi. Hùng yêu cầu dời cần cắt sát tay nắm, bọc tay cầm bằng cao su có gân, đồng thời gắn thêm một bánh đỡ nhỏ phía trước để di chuyển khi chưa hạ lưỡi. Bánh đỡ có thể gập lên lúc cày, không chịu lực kéo chính.
+
+Thửa ruộng thử được chia thành bốn dải. Dải đầu dành cho bác thợ cả vận hành, dải thứ hai cho bác nông dân, hai dải còn lại dùng sau khi điều chỉnh. Hai cọc tre đánh dấu chiều dài một trăm mét. Lan chuẩn bị đồng hồ cơ, can đong nhiên liệu, thước đo độ sâu và bao vải để gom phần đất bị lưỡi cày hất không đều. Mục tiêu ghi rõ trước khi máy chạy: cày sâu trung bình từ mười hai đến mười lăm phân; đi hết dải một trăm mét không chết máy quá một lần; mức tiêu hao không vượt lượng nhiên liệu đã định cho giờ thử; người vận hành phải dừng được máy trong vòng hai bước chân khi buông tay.
+
+Trước khi nổ máy, bác thợ cả đi bộ dọc dải ruộng. Bác nhặt hai hòn đá lớn, cắm cọc vào một chỗ đất trũng và chỉ cho mọi người vị trí gốc rạ dày. Hùng không cho dọn sạch đến mức biến thửa ruộng thành sân diễn. Máy phải gặp điều kiện thật, chỉ loại bỏ vật có thể gây tai nạn vô nghĩa.
+
+Lượt đầu bắt đầu ở số chậm. Lưỡi cày ăn đất, động cơ trầm giọng xuống. Hai bánh lồng bám chắc trong mười mét đầu. Đến chỗ đất ướt, bánh trái lún sâu hơn, máy kéo lệch. Bác thợ cả ghì tay lái, nâng nhẹ lưỡi rồi đưa máy qua. Độ sâu đo ở ba điểm đầu lần lượt là mười ba, mười bốn và mười một phân. Điểm cuối chưa đạt.
+
+Ở mét thứ ba mươi bảy, máy chết đột ngột.
+
+Cả nhóm đứng nguyên theo quy ước. Bác thợ cả cắt ga, đưa cần truyền động về tự do, chờ rồi mới cúi kiểm tra. Một búi rơm quấn quanh trục bánh, kéo theo dây bùn chặn chuyển động. Không có bộ phận nào gãy, nhưng vị trí trục hở khiến rơm rất dễ cuốn vào.
+
+“Dùng tay gỡ là nhanh,” một người thợ nói.
+
+Hùng chặn lại:
+
+“Không đưa tay vào khi máy còn khả năng quay. Tắt máy, khóa cần, dùng móc.”
+
+Họ lấy thanh móc đã chuẩn bị, gỡ rơm trong hơn ba phút. Sự cố được ghi đầy đủ: vị trí, thời gian dừng, nguyên nhân, cách xử lý. Sau khi chạy lại, máy hoàn thành dải đầu trong hai mươi sáu phút, gồm cả thời gian dừng. Nhiên liệu dùng hết khoảng bảy phần mười lít. Độ sâu trung bình đạt gần mười ba phân, nhưng đường cày lệch ở vùng đất ướt và rơm quấn trục là lỗi phải sửa.
+
+Bác nông dân nhận tay lái ở dải thứ hai. Hùng đứng bên ngoài, chỉ nhắc ba thao tác an toàn: cắt truyền động trước khi quay đầu, không đứng phía trước máy, kéo dây ngắt nếu mất thăng bằng. Ông không hướng dẫn từng nhịp, vì cần biết thiết kế có tự nhiên với người dùng hay không.
+
+Máy đi được mười lăm mét thì bác dừng.
+
+“Tay lái cao quá.”
+
+Nhóm thợ hạ xuống một nấc. Đi tiếp mười mét, bác lại dừng.
+
+“Không phải chỉ cao. Khi lưỡi ăn sâu, nó kéo tay tôi xuống. Thanh cân bằng phải đổi góc.”
+
+Người thợ trẻ mang thước ra đo. Điểm nối tay lái nằm thấp hơn đường lực dự tính, khiến phản lực từ lưỡi cày truyền lên cổ tay. Họ chưa thể cắt hàn ngay giữa ruộng, nên lượt thử của bác nông dân chỉ tiếp tục ở độ sâu mười hai phân. Kết quả vẫn hữu ích: bác giữ đường thẳng tốt trên đất chắc, nhưng phải dùng quá nhiều sức khi qua chỗ lún. Sau gần năm mươi mét, bác tự dừng vì mỏi vai.
+
+“Nó nhanh hơn trâu ở đoạn thẳng,” bác nhận xét, thở đều lại. “Nhưng quay đầu khó, tay bị giật. Nếu làm cả sào ruộng với kiểu này, tối về vẫn đau người. Máy giúp được, chưa phải máy dùng được.”
+
+Không ai cố đổi câu ấy thành lời khen.
+
+Buổi trưa, cả nhóm ăn cơm ngay dưới mái lán cạnh ruộng. Lan trải biên bản lên chiếc hòm gỗ. Những vệt bùn trên mép giấy làm con số trông thật hơn mọi bài giới thiệu. Cô cộng thời gian, nhiên liệu, số lần dừng và các điểm đo độ sâu.
+
+“Có người ngoài xưởng đứng xem,” cô nói. “Họ đã hỏi khi nào bán. Nếu mình để tin chạy trước máy, ngày mai sẽ có người bảo Thương Gia sản xuất được máy cày hoàn chỉnh.”
+
+Hùng nhìn sang bờ ruộng. Mấy người đi đường vẫn dừng lại chỉ trỏ.
+
+“Vậy nói đúng một câu: xưởng đang thử mẫu máy cày nhỏ, chưa nhận tiền đặt mua. Ai hỏi giá cũng trả lời như vậy.”
+
+“Có cần nhờ cán bộ huyện xác nhận không?”
+
+“Biên bản có chữ ký của cán bộ, người vận hành và xưởng. Chỉ công bố điều đã đo. Không mượn tên cán bộ để biến thử nghiệm thành chứng nhận.”
+
+Đó là cách Hùng xử lý lời đồn: không săn từng miệng người, không đẩy một lời khoe lớn hơn ra chợ. Ông treo tại cửa xưởng một tờ giấy viết tay: “Mẫu máy cày hai bánh đang thử kỹ thuật. Chưa bán. Chưa nhận tiền. Mọi góp ý về ruộng và cách vận hành được ghi vào sổ.” Áp lực từ người tò mò nhờ thế trở thành nguồn câu hỏi cụ thể, không còn là một đám tiếng ồn vô hình.
+
+Chiều hôm ấy, họ tháo máy ngay tại xưởng. Bùn được rửa sạch trước khi mở cụm truyền động. Dưới ánh đèn, các lỗi hiện ra rõ hơn. Chốt giữ lưỡi cày bị mòn một vệt; bu-lông bên trái chân máy đã xoay gần nửa vòng dù có vòng hãm; mép tấm chắn bùn rung chạm bánh; dầu ở hộp giảm tốc nóng hơn dự kiến. Không lỗi nào đủ làm máy vỡ ngay, nhưng cộng lại sẽ biến thành hỏng hóc sau vài ngày.
+
+Người thợ trẻ đề nghị dùng dây thép buộc bu-lông chân máy. Người thợ cả muốn khoan lỗ xuyên đầu bu-lông để cài chốt. Hùng yêu cầu xét khả năng sửa ngoài đồng. Dây thép dễ kiếm nhưng dễ buộc sai; chốt chắc hơn nhưng cần bu-lông làm riêng. Cuối cùng, họ dùng đai ốc kép cho mẫu sửa và đánh dấu sơn để người vận hành nhìn thấy nếu đai ốc xoay. Phương án bu-lông có chốt được giữ cho lô sau nếu xưởng gia công ổn định.
+
+Trục bánh được bổ sung vòng chắn rơm bằng thép mỏng, mép bo tròn. Góc tay lái nâng lên, điểm bắt thanh giằng lùi về sau. Tấm chắn bùn được cắt ngắn. Hộp giảm tốc thay dầu đúng độ đặc và thêm nút kiểm tra mức dầu. Bên cạnh đó, Hùng bắt nhóm thợ chế một thanh móc chuyên dụng sơn đỏ, gắn cố định lên khung. Người dùng không còn lý do đưa tay vào trục khi rơm quấn.
+
+Mẫu sửa quay lại ruộng sau hai ngày. Đất đã khô hơn, vì vậy họ giữ một dải cũ chưa cày và tưới một đoạn ngắn để tái tạo vùng lún. Mục tiêu thử không đổi; chỉ thêm hai điều kiện: chạy liên tục đủ hai giờ với các quãng quay đầu, và để bác nông dân tự thực hiện toàn bộ quy trình khởi động, cày, xử lý rơm giả lập, dừng máy.
+
+Lượt này, máy hoàn thành một trăm mét đầu trong mười chín phút, không chết máy. Độ sâu tại năm điểm là mười ba, mười ba, mười bốn, mười hai và mười ba phân. Đường cày qua chỗ ướt vẫn lệch nhưng người vận hành chỉnh được mà không phải nâng hẳn lưỡi. Một bó rơm được đặt có chủ ý trước bánh. Vòng chắn đẩy phần lớn rơm ra ngoài; số còn quấn được gỡ bằng thanh móc sau khi tắt máy và khóa truyền động.
+
+Bác nông dân chạy dải thứ hai rồi tự quay đầu ở bờ rộng ba mét. Lần đầu bác quay quá gấp, bánh phải đào thành một hố nhỏ. Bác lùi lại, cắt truyền động, nhấc lưỡi rồi quay theo hai nhịp. Lần sau máy đổi hướng gọn hơn.
+
+“Phải dạy đúng cách này,” bác nói. “Người mua mà chỉ được đưa chìa khóa rồi tự mò sẽ làm gãy chốt.”
+
+“Máy này dùng dây giật, chưa có chìa khóa,” Lan nhắc, rồi cả nhóm bật cười sau một buổi căng thẳng.
+
+Bác nông dân cũng cười:
+
+“Thì càng phải dạy. Không phải ai khỏe tay cũng biết máy.”
+
+Sau hai giờ, động cơ vẫn nổ đều. Nhiên liệu tiêu thụ được một lít ba phần mười, thấp hơn giới hạn họ đặt. Hai đai ốc chân máy không xoay khỏi vạch sơn. Dầu hộp giảm tốc ấm nhưng không còn nóng gắt. Tay bác nông dân mỏi, song bác nói lực giật đã giảm rõ và có thể làm từng phiên bốn mươi phút rồi nghỉ. Lưỡi cày giữ độ sâu ổn định hơn; chốt mới chỉ có vệt bóng, chưa mòn thành rãnh.
+
+Kết quả không hoàn hảo. Máy vẫn nặng khi kéo qua bờ, bánh đỡ trước nhỏ dễ lún, tiếng động cơ lớn, việc thay từ bánh cao su sang bánh lồng mất gần hai mươi phút. Hùng cho ghi bốn điểm ấy vào phần “chưa đạt”. Ông từ chối đề nghị sơn mới rồi mang máy ra cửa hàng trưng bày.
+
+“Trưng bày bây giờ chỉ khiến người ta tưởng có hàng,” ông nói. “Mẫu này phải ở xưởng để tiếp tục tháo kiểm.”
+
+Lan hỏi quyết định cuối cùng:
+
+“Làm tiếp hay dừng?”
+
+Hùng nhìn bảng số liệu. Hai lượt thử đã chứng minh kiến trúc cơ bản hoạt động: động cơ mua ngoài đủ sức kéo lưỡi cày nông; khung, tay lái, bánh lồng và bộ gá do xưởng chế tạo chịu được thử nghiệm; hệ truyền động cải tiến chưa hỏng sau hai giờ. Nhưng hai giờ không đại diện cho một vụ mùa. Xưởng cũng chưa có đủ động cơ, vòng bi và hộp giảm tốc để nói tới sản xuất đại trà.
+
+“Làm lô thử năm chiếc,” ông chốt. “Không hơn. Một chiếc giữ lại để thử bền ở xưởng. Bốn chiếc đưa cho bốn hộ có loại ruộng khác nhau dùng có giám sát. Chưa bán đứt. Xưởng chịu phụ tùng và sửa chữa trong thời gian thử. Mỗi tuần thu sổ giờ chạy, nhiên liệu, lỗi và thời gian nằm máy.”
+
+Người thợ cả hỏi:
+
+“Nếu nguồn động cơ chỉ giao được ba chiếc?”
+
+“Thì làm ba, không lấy động cơ khác thông số để đủ con số đẹp. Khung phải cho phép căn chỉnh, nhưng mỗi thay đổi động cơ đều cần thử lại. Không trộn linh kiện rồi gọi chung một mẫu.”
+
+Lan ghi quyết định bằng mực đen. Cô lập thêm một sổ phụ tùng: mỗi máy có số khung đóng tay, số động cơ, ngày lắp, người siết các mối chính và kết quả chạy nguội. Dây đai, lọc dầu, vòng bi, chốt lưỡi cày được cấp theo từng số máy. Nếu một món được lấy khỏi kho, người nhận phải ghi nó dùng cho máy nào. Hùng không muốn một lỗi thiếu phụ tùng bị giấu dưới câu “chắc ai đó đã lấy”.
+
+Trước khi rời xưởng, vị cán bộ nông nghiệp ký vào biên bản với tư cách người chứng kiến thử ruộng, không phải người chứng nhận chất lượng. Bác nông dân điểm chỉ bên cạnh phần nhận xét do Lan đọc lại từng câu. Hùng ký cuối cùng, ngay dưới dòng: “Mẫu thử đạt điều kiện làm lô thử nhỏ; chưa đủ điều kiện sản xuất đại trà.”
+
+Tối ấy, bà Hà thấy bùn còn bám ở gấu quần Hùng thì đặt chậu nước ấm ngoài hiên.
+
+“Máy cày được chưa cháu?” bà hỏi.
+
+“Cày được một đoạn rồi, bà.”
+
+“Thế là được hay chưa được?”
+
+Hùng ngồi xuống, dùng bàn chải chà lớp đất đã se cứng.
+
+“Là biết mình phải sửa gì tiếp. Nếu cháu nói được hẳn thì sớm quá.”
+
+Bà Hà nghe vậy, không hỏi doanh thu. Bà mang ra một bát khoai nóng, bảo Lan lấy thêm muối vừng. Lan vừa ăn vừa đọc cho bà nghe chuyện bó rơm quấn trục, chuyện bác nông dân chê tay lái, chuyện cả xưởng mất một ngày chỉ vì giá hộp số lệch ba mi-li-mét.
+
+Bà Hà nói:
+
+“Người làm ruộng không sợ máy xấu. Họ sợ vay tiền mua rồi máy nằm. Cháu nhớ chừa đường sửa cho người ta.”
+
+Hùng im lặng một lúc. Câu nói ấy đi thẳng vào phần mà bảng thử tải chưa đo được. Một chiếc máy nông nghiệp chỉ có giá trị khi phụ tùng và người sửa theo kịp nó. Nếu lô thử thành công, xưởng sẽ cần đào tạo thợ bảo dưỡng, giữ kho chi tiết mòn và tính chi phí sao cho người dùng không phải bỏ cả mùa vụ vì một dây đai đứt.
+
+Ông mở sổ, viết thêm ba điều kiện trước khi nghĩ đến lô lớn: ba mươi giờ chạy tích lũy cho mỗi máy; phụ tùng hỏng thông thường thay được trong một ngày; người dùng tự thực hiện được kiểm tra dầu, căng dây đai và dừng khẩn cấp. Dưới ba dòng ấy, ông ghi một câu ngắn: “Không nội địa hóa bằng lời nói.”
+
+Lan nhìn qua vai anh.
+
+“Mai em đặt mua năm động cơ?”
+
+“Chưa. Xác nhận cùng một kiểu máy, có phụ tùng đi kèm, giao thành hai đợt. Ba chiếc trước, kiểm đủ rồi mới nhận hai chiếc sau. Điều khoản phải cho phép từ chối nếu số máy hoặc thông số khác.”
+
+“Còn khung?”
+
+“Chuẩn bị vật liệu cho năm bộ, chỉ hàn ba. Kết quả ba chiếc đầu có thể buộc ta đổi khung. Đừng biến thép thành hàng sai trước khi cần.”
+
+Lan khép sổ. Ngoài sân, tiếng côn trùng chen qua khoảng lặng. Trong xưởng cách đó không xa, mẫu máy cày còn phủ bùn đang chờ sáng hôm sau được tháo kiểm lần nữa. Nó chưa phải thành tựu để mang đi khoe. Nó là bằng chứng rằng xưởng đã bước từ khung xe đạp sang một cỗ máy có động lực, nhưng cũng là lời nhắc về giới hạn của bước chân ấy.
+
+Hùng không mơ đến một cánh đồng đầy máy ngay trong đêm. Ông nghĩ đến năm bộ khung, ba động cơ đợt đầu, bốn hộ thử, một cuốn sổ phụ tùng và những đường cày phải đo lại. Đi chậm bằng số liệu vẫn nhanh hơn chạy xa bằng lời hứa.
+
+Trước khi ngủ, hệ thống hiện lên một lần duy nhất. Ánh chữ đứng yên, không thêm phần thưởng ngoài sổ cái đã khóa.
+
+============================================================
+「Hệ thống — GHI NHẬN ch.62」
+Năm: 1985
+Tổng EXP: 8,227 (+214 nhịp này)
+Không gian kho: 3,593m² (+46m²)
+Kỹ năng trọng yếu: Đầu tư lv2, Chiến lược lv1
+Ghi chú: Hoàn thành mẫu máy cày hai bánh và thử ruộng; phê duyệt lô thử nhỏ, chưa sản xuất đại trà; sổ cái khớp system_ledger — không double-book
+============================================================
+
+Sáng mai, việc đầu tiên không phải sơn biểu tượng lên thân máy. Đó là tháo chốt lưỡi cày, đo lại vệt mòn và hỏi xem một cỗ máy có thể chịu được bao nhiêu mùa ruộng trước khi người nông dân phải gọi người của xưởng tới.
