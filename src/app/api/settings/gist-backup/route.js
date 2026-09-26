@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
@@ -297,20 +297,44 @@ async function ensureCliAuth(current) {
   return await getValidatedGitHubCliAuth(storedLogin);
 }
 
-async function launchGitHubCliRefreshWindow() {
-  try {
-    await execFileAsync("powershell.exe", [
-      "-Command",
-      "Start-Process -FilePath powershell.exe -ArgumentList '-NoExit','-Command','gh auth refresh --hostname github.com --scopes gist,repo,read:org'",
-    ], {
-      timeout: 10000,
-      windowsHide: true,
-      maxBuffer: 16 * 1024,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+function launchGitHubCliRefreshHeadless() {
+  if (process.platform !== "win32") return Promise.resolve(false);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (launched) => {
+      if (settled) return;
+      settled = true;
+      resolve(launched);
+    };
+
+    try {
+      const child = spawn(
+        "gh.exe",
+        [
+          "auth",
+          "refresh",
+          "--hostname",
+          "github.com",
+          "--scopes",
+          "gist,repo,read:org",
+          "--clipboard",
+        ],
+        {
+          detached: true,
+          stdio: "ignore",
+          windowsHide: true,
+        },
+      );
+      child.once("error", () => finish(false));
+      child.once("spawn", () => {
+        child.unref();
+        finish(true);
+      });
+    } catch {
+      finish(false);
+    }
+  });
 }
 
 function buildStableGistPassphrase({ token, githubLogin }) {
@@ -349,14 +373,14 @@ export async function POST(request) {
         await updateSettings({ gistBackup: nextConfig });
         return NextResponse.json({ success: true, config: toPublicConfig({ gistBackup: nextConfig }) });
       } catch (error) {
-        const launched = await launchGitHubCliRefreshWindow();
+        const launched = await launchGitHubCliRefreshHeadless();
         return NextResponse.json({
           success: false,
           requiresLogin: true,
           launched,
           error: launched
-            ? "Token GitHub CLI cần refresh. Hãy hoàn tất cửa sổ gh auth refresh rồi bấm lại 'Dùng GitHub CLI'."
-            : "Không đọc được token từ GitHub CLI. Hãy chạy `gh auth refresh --hostname github.com --scopes gist,repo,read:org` rồi thử lại.",
+            ? "Token GitHub CLI cần refresh. Hoàn tất xác thực trong trình duyệt rồi bấm lại 'Dùng GitHub CLI'; mã xác thực đã được sao chép vào clipboard nếu trang yêu cầu."
+            : "Không đọc được token từ GitHub CLI. Hãy chạy gh auth refresh với các scope gist, repo và read:org rồi thử lại.",
           details: error?.message || "",
           config: toPublicConfig({ gistBackup: current }),
         });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockExecFileAsync = vi.fn();
+const mockSpawn = vi.fn();
 const mockGetSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockBackupToGist = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("next/server", () => ({
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
+  spawn: mockSpawn,
 }));
 
 vi.mock("node:util", () => ({
@@ -35,10 +37,26 @@ vi.mock("@/lib/gistBackup", () => ({
 }));
 
 describe("gist backup route auth flow", () => {
+  const originalPlatform = process.platform;
+  let mockSpawnedChild;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     global.fetch = vi.fn();
+    mockSpawn.mockReset();
+    mockSpawnedChild = {
+      once: vi.fn((event, callback) => {
+        if (event === "spawn") queueMicrotask(callback);
+        return mockSpawnedChild;
+      }),
+      unref: vi.fn(),
+    };
+    mockSpawn.mockReturnValue(mockSpawnedChild);
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform, writable: true });
   });
 
   it("stores gh-cli as token source when enabling GitHub CLI auth", async () => {
@@ -76,6 +94,34 @@ describe("gist backup route auth flow", () => {
         githubLogin: "octocat",
       }),
     });
+  });
+
+  it("starts scope refresh headlessly when gh-cli auth needs refresh", async () => {
+    Object.defineProperty(process, "platform", { value: "win32", writable: true });
+    mockGetSettings.mockResolvedValue({
+      gistBackup: {
+        enabled: false,
+        token: "",
+        tokenSource: "",
+        githubLogin: "",
+      },
+    });
+    mockExecFileAsync.mockRejectedValueOnce(new Error("GitHub CLI token unavailable"));
+
+    const { POST } = await import("../../src/app/api/settings/gist-backup/route.js");
+    const response = await POST({ json: async () => ({ action: "use-gh-cli" }) });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.requiresLogin).toBe(true);
+    expect(body.launched).toBe(true);
+    expect(body.error).toContain("trình duyệt");
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "gh.exe",
+      ["auth", "refresh", "--hostname", "github.com", "--scopes", "gist,repo,read:org", "--clipboard"],
+      { detached: true, stdio: "ignore", windowsHide: true },
+    );
+    expect(mockSpawnedChild.unref).toHaveBeenCalledOnce();
   });
 
   it("uses stored access token directly for backup without touching gh-cli", async () => {
